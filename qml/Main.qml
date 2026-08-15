@@ -35,13 +35,27 @@ ApplicationWindow {
             Layout.preferredHeight: 52
             radius: 14
             border.width: 1
-            border.color: "#232C33"
+            border.color: "#27323A"
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#171F26" }
-                GradientStop { position: 0.18; color: "#11181E" }
-                GradientStop { position: 1.0; color: "#080D12" }
+                GradientStop { position: 0.0; color: "#1B242B" }
+                GradientStop { position: 0.20; color: "#141C22" }
+                GradientStop { position: 0.62; color: "#0D1419" }
+                GradientStop { position: 1.0; color: "#070C10" }
             }
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:10;anchors.rightMargin:10;height:1;color:"#FFFFFF";opacity:.05 }
+
+            // Web panel-bevel uses both an inset highlight and a dark lower
+            // edge.  Recreate those layers explicitly so the toolbar does not
+            // read as a flat Qt rectangle.
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: 1
+                radius: 13
+                color: "transparent"
+                border.width: 1
+                border.color: "#0F2FFFFFF"
+            }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:11;anchors.rightMargin:11;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.075 }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.leftMargin:12;anchors.rightMargin:12;anchors.bottomMargin:1;height:1;color:"#000000";opacity:.58 }
 
             RowLayout {
                 anchors.fill: parent
@@ -57,9 +71,15 @@ ApplicationWindow {
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         radius: 6
-                        color: "#11171D"
                         border.width: 1
-                        border.color: "#2C343B"
+                        border.color: "#080B0D"
+                        gradient: Gradient {
+                            GradientStop { position:0;color:"#323A40" }
+                            GradientStop { position:.36;color:"#1A2228" }
+                            GradientStop { position:1;color:"#0A0E12" }
+                        }
+                        Rectangle { anchors.fill:parent;anchors.margins:1;radius:5;color:"transparent";border.width:1;border.color:"#18FFFFFF" }
+                        Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.13 }
                         Image { anchors.fill:parent;anchors.margins:4;source:"qrc:/assets/sonkupik-logo.png";fillMode:Image.PreserveAspectFit;smooth:true }
                     }
                     ColumnLayout {
@@ -99,11 +119,15 @@ ApplicationWindow {
                     Layout.preferredHeight: 34
                     radius: 9
                     border.width: 1
-                    border.color: "#252D34"
+                    border.color: "#070A0D"
                     gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#151C22" }
-                        GradientStop { position: 1.0; color: "#080C10" }
+                        GradientStop { position: 0.0; color: "#202930" }
+                        GradientStop { position: 0.24; color: "#171F25" }
+                        GradientStop { position: 1.0; color: "#070B0F" }
                     }
+                    Rectangle { anchors.fill:parent;anchors.margins:1;radius:8;color:"transparent";border.width:1;border.color:"#14FFFFFF" }
+                    Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.10 }
+                    Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.leftMargin:5;anchors.rightMargin:5;anchors.bottomMargin:1;height:1;color:"#000000";opacity:.60 }
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 4
@@ -115,7 +139,7 @@ ApplicationWindow {
                             onClicked:root.transportPlaying=!root.transportPlaying
                         }
                         SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;iconName:"skip-forward";iconOnly:true;iconFilled:true }
-                        Rectangle { Layout.preferredWidth:1;Layout.preferredHeight:17;color:"#2E3A43" }
+                        Rectangle { Layout.preferredWidth:1;Layout.preferredHeight:17;color:"#38454E";opacity:.80 }
                         SoftButton {
                             Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;iconName:"volume-x";iconOnly:true
                             checked:root.transportMuted;danger:root.transportMuted;onClicked:root.transportMuted=!root.transportMuted
@@ -127,15 +151,24 @@ ApplicationWindow {
                     Layout.preferredWidth: 124
                     Layout.preferredHeight: 34
                     radius: 8
-                    color: "#05080A"
                     border.width: 1
-                    border.color: "#3B3218"
+                    border.color: "#4A3A10"
+                    gradient: Gradient {
+                        GradientStop { position:0;color:"#17170F" }
+                        GradientStop { position:.48;color:"#0B0D09" }
+                        GradientStop { position:1;color:"#050706" }
+                    }
+                    Rectangle { anchors.fill:parent;anchors.margins:1;radius:7;color:"transparent";border.width:1;border.color:"#16FFB200" }
+                    Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:6;anchors.rightMargin:6;anchors.topMargin:1;height:1;color:Theme.amber;opacity:.12 }
                     Text { anchors.centerIn:parent;text:"DEFAULT FLAT";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:11;font.weight:Font.Bold }
                 }
 
                 RowLayout {
                     spacing: 5
-                    Rectangle { width:7;height:7;radius:4;color:Theme.textFaint }
+                    Rectangle {
+                        width:7;height:7;radius:4;color:Theme.textFaint
+                        Rectangle { anchors.centerIn:parent;width:3;height:3;radius:2;color:"#D0D7DC";opacity:.22 }
+                    }
                     Text { text:"LIVE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.8 }
                     SoftButton { Layout.preferredWidth:48;text:"BT";iconName:"bluetooth";compact:true;checked:true }
                     SoftButton { Layout.preferredWidth:48;text:"USB";iconName:"usb";compact:true }
@@ -146,9 +179,13 @@ ApplicationWindow {
                     Layout.preferredWidth: 72
                     Layout.preferredHeight: 29
                     radius: 8
-                    color: "#0C0D08"
                     border.width: 1
                     border.color: "#493C16"
+                    gradient: Gradient {
+                        GradientStop { position:0;color:"#17170F" }
+                        GradientStop { position:1;color:"#080906" }
+                    }
+                    Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;anchors.topMargin:1;height:1;color:Theme.amber;opacity:.10 }
                     Text { anchors.centerIn:parent;text:"OFFLINE";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7 }
                 }
 
@@ -207,24 +244,58 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 47
                             radius: 8
+                            transformOrigin: Item.Center
+                            scale: navPointer.pressed ? 0.987 : 1
+                            transform: Translate {
+                                y: navPointer.pressed ? 1 : 0
+                                Behavior on y { NumberAnimation { duration:55; easing.type:Easing.OutQuad } }
+                            }
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
-                                GradientStop { position:0;color:navItem.active?"#183A3E":navPointer.containsMouse?"#151F26":"#00101518" }
-                                GradientStop { position:.55;color:navItem.active?"#10272A":navPointer.containsMouse?"#10171C":"#00101518" }
-                                GradientStop { position:1;color:navItem.active?"#071315":"#00101518" }
+                                // Exact Web intent: cyan at ~12% on the left,
+                                // fading almost completely into the rail.
+                                GradientStop { position:0;color:navItem.active?"#2024E9F2":navPointer.containsMouse?"#101FFFFFF":"#00101518" }
+                                GradientStop { position:.48;color:navItem.active?"#1024E9F2":navPointer.containsMouse?"#091FFFFFF":"#00101518" }
+                                GradientStop { position:1;color:navItem.active?"#0024E9F2":"#00101518" }
                             }
                             border.width: 1
-                            border.color: navItem.active ? Theme.accentSoft : "transparent"
+                            border.color: navItem.active ? "#6624E9F2" : navPointer.containsMouse ? "#26323B" : "transparent"
+                            Behavior on border.color { ColorAnimation { duration:90 } }
+                            Behavior on scale { NumberAnimation { duration:55; easing.type:Easing.OutQuad } }
+
+                            Rectangle {
+                                anchors.fill:parent
+                                anchors.margins:1
+                                radius:7
+                                color:"transparent"
+                                border.width:1
+                                border.color:navItem.active?"#1224E9F2":navPointer.containsMouse?"#0DFFFFFF":"transparent"
+                            }
+                            Rectangle {
+                                anchors.left:parent.left
+                                anchors.right:parent.right
+                                anchors.top:parent.top
+                                anchors.leftMargin:8
+                                anchors.rightMargin:8
+                                anchors.topMargin:1
+                                height:1
+                                color:navItem.active?Theme.accent:"#FFFFFF"
+                                opacity:navItem.active?.17:navPointer.containsMouse?.08:0
+                            }
 
                             Rectangle {
                                 id: navIconShell
                                 x: 7
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 28; height: 28; radius: 6
-                                color: navItem.active ? "#0B2B2E" : "transparent"
                                 border.width: 1
-                                border.color: navItem.active ? Theme.accentSoft : Theme.borderSoft
-                                LucideIcon { anchors.centerIn:parent;width:15;height:15;name:modelData.icon;color:navItem.active?Theme.accent:Theme.textDim;strokeWidth:1.8 }
+                                border.color: navItem.active ? "#9924E9F2" : navPointer.containsMouse ? "#384650" : Theme.borderSoft
+                                gradient: Gradient {
+                                    GradientStop { position:0;color:navItem.active?"#1824E9F2":navPointer.containsMouse?"#15232B31":"#06101518" }
+                                    GradientStop { position:1;color:navItem.active?"#0824E9F2":"#00101518" }
+                                }
+                                Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:4;anchors.rightMargin:4;anchors.topMargin:1;height:1;color:navItem.active?Theme.accent:"#FFFFFF";opacity:navItem.active?.25:.05 }
+                                LucideIcon { anchors.centerIn:parent;width:15;height:15;name:modelData.icon;color:navItem.active?Theme.accent:navPointer.containsMouse?Theme.textSoft:Theme.textDim;strokeWidth:1.8 }
                             }
                             Column {
                                 anchors.left:navIconShell.right;anchors.leftMargin:10
@@ -232,7 +303,7 @@ ApplicationWindow {
                                 anchors.verticalCenter:parent.verticalCenter
                                 spacing:0
                                 Text { width:parent.width;text:modelData.name;color:navItem.active?Theme.accent:Theme.text;font.family:Theme.displayFamily;font.pixelSize:12;font.weight:Font.DemiBold }
-                                Text { width:parent.width;text:modelData.sub;color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:9 }
+                                Text { width:parent.width;text:modelData.sub;color:navItem.active?"#9AA8B2":Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:9 }
                             }
                             MouseArea { id:navPointer;anchors.fill:parent;hoverEnabled:true;cursorShape:Qt.PointingHandCursor;onClicked:root.selectedSection=index }
                         }
