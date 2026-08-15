@@ -69,9 +69,9 @@ StudioPanel {
                             font.letterSpacing: .35
                         }
                         StudioFader {
-                            Layout.preferredHeight: 126
-                            Layout.minimumHeight: 126
-                            Layout.maximumHeight: 126
+                            Layout.preferredHeight: 160
+                            Layout.minimumHeight: 160
+                            Layout.maximumHeight: 160
                             Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
                             value: Number(modelData.value)
