@@ -191,7 +191,7 @@ void K500Controller::queueBlockFrame(const QString &key, const QByteArray &frame
 void K500Controller::flushEqFrames()
 {
     m_eqTimer.stop();
-    m_lastEqFlush.restart();
+    m_lastEqFlush.start();
     if (!m_liveEnabled) {
         m_pendingEqFrames.clear();
         return;
@@ -205,7 +205,7 @@ void K500Controller::flushEqFrames()
 void K500Controller::flushBlockFrames()
 {
     m_blockTimer.stop();
-    m_lastBlockFlush.restart();
+    m_lastBlockFlush.start();
     if (!m_liveEnabled) {
         m_pendingBlockFrames.clear();
         return;
