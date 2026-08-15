@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 
 Item {
     id: root
@@ -14,6 +15,12 @@ Item {
 
     implicitWidth: 48
     implicitHeight: 160
+    // One physical fader metric for the entire product.  These attached
+    // layout constraints also cover direct StudioFader users (for example the
+    // System recording/trigger rack) that previously stretched with fillHeight.
+    Layout.preferredHeight: 160
+    Layout.minimumHeight: 160
+    Layout.maximumHeight: 160
 
     property real previewValue: value
     property bool dragging: false
