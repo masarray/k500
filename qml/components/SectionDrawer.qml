@@ -51,14 +51,14 @@ StudioPanel {
                 Layout.preferredHeight: 48
                 radius: 8
                 border.width: 1
-                border.color: active ? "#6324E9F2" : navPointer.containsMouse ? "#293740" : "transparent"
+                border.color: active ? "#4724E9F2" : navPointer.containsMouse ? "#27343D" : "transparent"
                 transformOrigin: Item.Center
-                scale: navPointer.pressed ? .988 : 1
+                scale: navPointer.pressed ? .991 : 1
 
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
-                    GradientStop { position:0;color:active?"#2024E9F2":navPointer.containsMouse?"#0CFFFFFF":"#00101418" }
-                    GradientStop { position:.62;color:active?"#0C24E9F2":navPointer.containsMouse?"#06FFFFFF":"#00101418" }
+                    GradientStop { position:0;color:active?"#1724E9F2":navPointer.containsMouse?"#09FFFFFF":"#00101418" }
+                    GradientStop { position:.58;color:active?"#0924E9F2":navPointer.containsMouse?"#04FFFFFF":"#00101418" }
                     GradientStop { position:1;color:"#00101418" }
                 }
 
@@ -67,11 +67,33 @@ StudioPanel {
                     anchors.left: parent.left
                     anchors.leftMargin: 1
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 2
-                    height: 26
-                    radius: 1
+                    width: 1
+                    height: 25
+                    radius: .5
                     color: Theme.accent
-                    opacity: .78
+                    opacity: .58
+                }
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    radius: 7
+                    color: "transparent"
+                    border.width: 1
+                    border.color: navItem.active ? "#1024E9F2" : navPointer.containsMouse ? "#0AFFFFFF" : "transparent"
+                }
+
+                Rectangle {
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.top: parent.top
+                    anchors.leftMargin: 8
+                    anchors.rightMargin: 8
+                    anchors.topMargin: 1
+                    height: 1
+                    radius: .5
+                    color: navItem.active ? Theme.accent : "#FFFFFF"
+                    opacity: navItem.active ? .11 : navPointer.containsMouse ? .05 : 0
                 }
 
                 Rectangle {
@@ -82,9 +104,22 @@ StudioPanel {
                     width: 27
                     height: 27
                     radius: 6
-                    color: navItem.active ? "#10242B2F" : "#09101518"
+                    color: navItem.active ? "#0C242B2F" : "#07101518"
                     border.width: 1
-                    border.color: navItem.active ? "#8A24E9F2" : navPointer.containsMouse ? "#3A4750" : Theme.borderSoft
+                    border.color: navItem.active ? "#6824E9F2" : navPointer.containsMouse ? "#35434C" : Theme.borderSoft
+
+                    Rectangle {
+                        anchors.left: parent.left
+                        anchors.right: parent.right
+                        anchors.top: parent.top
+                        anchors.leftMargin: 4
+                        anchors.rightMargin: 4
+                        anchors.topMargin: 1
+                        height: 1
+                        radius: .5
+                        color: navItem.active ? Theme.accent : "#FFFFFF"
+                        opacity: navItem.active ? .15 : .04
+                    }
 
                     LucideIcon {
                         anchors.centerIn: parent
@@ -92,7 +127,7 @@ StudioPanel {
                         height: 15
                         name: navItem.modelData.icon
                         color: navItem.active ? Theme.accent : navPointer.containsMouse ? Theme.textSoft : Theme.textDim
-                        strokeWidth: 1.75
+                        strokeWidth: 1.7
                     }
                 }
 
@@ -129,8 +164,8 @@ StudioPanel {
                     onClicked: root.sectionSelected(navItem.index)
                 }
 
-                Behavior on border.color { ColorAnimation { duration: 85 } }
-                Behavior on scale { NumberAnimation { duration: 55; easing.type: Easing.OutQuad } }
+                Behavior on border.color { ColorAnimation { duration: 80 } }
+                Behavior on scale { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
             }
         }
 

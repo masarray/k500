@@ -14,10 +14,12 @@ Rectangle {
     property bool iconFilled: false
     property bool transport: false
     property bool accentIcon: false
+    property bool toolbar: false
     signal clicked()
 
     readonly property bool activeAccent: root.checked || root.neonAccent
     readonly property color resolvedAccent: root.amber ? Theme.amber : Theme.accent
+    readonly property real activeBorderAlpha: root.amber ? .44 : .54
 
     activeFocusOnTab: true
     clip: false
@@ -25,40 +27,53 @@ Rectangle {
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
     radius: root.transport ? 6 : 7
     transformOrigin: Item.Center
-    scale: mouse.pressed ? .975 : 1
+    scale: mouse.pressed ? .982 : 1
 
     border.width: 1
     border.color: root.activeFocus ? root.resolvedAccent
                  : root.danger ? "#71323A"
-                 : root.activeAccent ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.62)
-                 : mouse.containsMouse ? "#46535D"
-                 : "#11171C"
+                 : root.activeAccent ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.activeBorderAlpha)
+                 : mouse.containsMouse ? (root.toolbar ? "#46545E" : "#3B4851")
+                 : root.toolbar ? "#263139" : "#11171C"
 
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: root.danger ? "#351A20"
-                 : root.activeAccent ? "#25484E"
-                 : mouse.pressed ? "#1A2025"
-                 : mouse.containsMouse ? "#3A444C"
-                 : "#303940"
+            color: root.danger ? "#31181E"
+                 : root.activeAccent ? (root.amber ? "#2B2818" : "#193B40")
+                 : mouse.pressed ? "#171D22"
+                 : mouse.containsMouse ? (root.toolbar ? "#313A42" : "#343E45")
+                 : root.toolbar ? "#252E35" : "#2C353C"
         }
         GradientStop {
-            position: .20
-            color: root.danger ? "#251319"
-                 : root.activeAccent ? "#1A373D"
-                 : mouse.containsMouse ? "#2D363D"
-                 : "#242C32"
+            position: .22
+            color: root.danger ? "#231218"
+                 : root.activeAccent ? (root.amber ? "#18170E" : "#132D32")
+                 : mouse.containsMouse ? "#283139"
+                 : root.toolbar ? "#1A2228" : "#222A30"
         }
         GradientStop {
-            position: .68
-            color: root.danger ? "#120B0E"
-                 : root.activeAccent ? "#10252A"
-                 : "#141A1F"
+            position: .70
+            color: root.danger ? "#10090C"
+                 : root.activeAccent ? (root.amber ? "#0C0D08" : "#0C2024")
+                 : "#12181D"
         }
-        GradientStop { position: 1; color: root.danger ? "#080608" : "#090D11" }
+        GradientStop { position: 1; color: root.danger ? "#070507" : "#080C10" }
     }
 
+    // Tight external rim: enough to separate active hardware without a gamer-like glow.
+    Rectangle {
+        visible: root.toolbar && root.activeAccent
+        anchors.fill: parent
+        anchors.margins: -1
+        radius: parent.radius + 1
+        color: "transparent"
+        border.width: 1
+        border.color: root.resolvedAccent
+        opacity: root.amber ? .055 : .075
+    }
+
+    // Inner bevel is intentionally dimmer than P1 so the face reads machined rather than glossy.
     Rectangle {
         anchors.fill: parent
         anchors.margins: 1
@@ -66,8 +81,8 @@ Rectangle {
         color: "transparent"
         border.width: 1
         border.color: root.activeAccent
-                      ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.20)
-                      : "#12FFFFFF"
+                      ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber?.13:.16)
+                      : root.toolbar ? "#0EFFFFFF" : "#12FFFFFF"
     }
 
     Rectangle {
@@ -80,7 +95,7 @@ Rectangle {
         height: 1
         radius: 1
         color: root.activeAccent ? root.resolvedAccent : "#FFFFFF"
-        opacity: root.activeAccent ? .30 : mouse.containsMouse ? .16 : .11
+        opacity: root.activeAccent ? (root.amber?.18:.22) : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
     }
 
     Rectangle {
@@ -93,7 +108,7 @@ Rectangle {
         height: 1
         radius: 1
         color: "#000000"
-        opacity: mouse.pressed ? .22 : .58
+        opacity: mouse.pressed ? .18 : .50
     }
 
     Rectangle {
@@ -101,11 +116,11 @@ Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 2
-        width: Math.max(10,parent.width-14)
-        height: 2
-        radius: 1
+        width: Math.max(10,parent.width-16)
+        height: 1
+        radius: .5
         color: root.resolvedAccent
-        opacity: root.transport ? .34 : .22
+        opacity: root.transport ? .30 : root.amber ? .16 : .20
     }
 
     Row {
@@ -120,9 +135,11 @@ Rectangle {
             name: root.iconName
             color: root.danger ? "#FFD8D8"
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
-                 : root.transport ? "#C9D3D8" : "#D5DDE1"
-            strokeWidth: root.transport ? 1.85 : 1.75
-            filled: root.iconFilled
+                 : root.toolbar ? "#C3CFD5" : "#D5DDE1"
+            strokeWidth: root.transport ? 1.75 : root.toolbar ? 1.70 : 1.75
+            // Toolbar glyphs are always canonical Lucide stroke icons. Filled paths were
+            // the source of the heavy/broken-looking transport symbols in P1.
+            filled: root.toolbar ? false : root.iconFilled
         }
 
         Text {
@@ -131,12 +148,12 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             color: root.danger ? "#FFD8D8"
                  : root.amber && root.activeAccent ? Theme.amber
-                 : root.checked ? "#F1F7F8"
-                 : root.activeAccent ? "#DDF9F6" : "#D8DFE4"
+                 : root.checked ? "#EEF5F6"
+                 : root.activeAccent ? "#DDF9F6" : root.toolbar ? "#D2DADF" : "#D8DFE4"
             font.family: Theme.fontFamily
             font.pixelSize: root.compact ? Theme.textXS : Theme.textS
             font.weight: root.activeAccent ? Font.DemiBold : Font.Medium
-            font.letterSpacing: .15
+            font.letterSpacing: .12
         }
     }
 
@@ -153,6 +170,6 @@ Rectangle {
         if(event.key===Qt.Key_Space||event.key===Qt.Key_Return||event.key===Qt.Key_Enter){root.clicked();event.accepted=true}
     }
 
-    Behavior on border.color { ColorAnimation { duration:85 } }
-    Behavior on scale { NumberAnimation { duration:55; easing.type:Easing.OutQuad } }
+    Behavior on border.color { ColorAnimation { duration:80 } }
+    Behavior on scale { NumberAnimation { duration:50; easing.type:Easing.OutQuad } }
 }
