@@ -4,43 +4,41 @@ import QtQuick.Layouts
 StudioPanel {
     id: root
 
-    property string eyebrow: "INPUT MIXER"
+    property string eyebrow: ""
     property string title: "Mic Inputs"
     property var channels: []
     property color accentColor: Theme.accent
+    accentTop: false
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 11
-        spacing: 7
+        spacing: 0
 
-        ColumnLayout {
+        Item {
             Layout.fillWidth: true
-            spacing: 0
+            Layout.preferredHeight: 35
             Text {
-                text: root.eyebrow.toUpperCase()
-                color: Theme.textDim
-                font.family: Theme.fontFamily
-                font.pixelSize: 8
-                font.weight: Font.DemiBold
-                font.letterSpacing: 1.0
-            }
-            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
                 text: root.title.toUpperCase()
                 color: Theme.text
-                font.family: Theme.fontFamily
+                font.family: Theme.monoFamily
                 font.pixelSize: 10
                 font.weight: Font.Bold
-                font.letterSpacing: .35
+                font.letterSpacing: 1.05
             }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
         }
-
-        Rectangle { Layout.fillWidth:true; Layout.preferredHeight:1; color:Theme.borderSoft; opacity:.78 }
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 3
+            Layout.leftMargin: 10
+            Layout.rightMargin: 10
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
+            spacing: 2
 
             Repeater {
                 model: root.channels
@@ -49,34 +47,38 @@ StudioPanel {
                     required property var modelData
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumWidth: 60
+                    Layout.minimumWidth: 48
                     property real localValue: Number(modelData.value)
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 4
+                        spacing: 3
 
-                        Text {
+                        ColumnLayout {
                             Layout.alignment: Qt.AlignHCenter
-                            text: String(channel.modelData.label || "")
-                            color: Theme.textDim
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            font.weight: Font.DemiBold
-                            font.letterSpacing: .45
-                        }
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            visible: String(channel.modelData.badge || "").length > 0
-                            text: String(channel.modelData.badge || "")
-                            color: Theme.textFaint
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 7
+                            spacing: -1
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                text: String(channel.modelData.label || "")
+                                color: Theme.textDim
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 9
+                                font.weight: Font.Medium
+                                font.letterSpacing: .45
+                            }
+                            Text {
+                                Layout.alignment: Qt.AlignHCenter
+                                visible: String(channel.modelData.badge || "").length > 0
+                                text: String(channel.modelData.badge || "")
+                                color: Theme.textFaint
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 7
+                            }
                         }
 
                         StudioFader {
                             Layout.fillHeight: true
-                            Layout.preferredWidth: 62
+                            Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
                             value: channel.localValue
                             from: Number(channel.modelData.from)
@@ -89,19 +91,19 @@ StudioPanel {
 
                         Rectangle {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 58
+                            Layout.preferredWidth: 48
                             Layout.preferredHeight: 23
-                            radius: 5
+                            radius: 8
                             color: "#080C10"
                             border.width: 1
-                            border.color: Theme.borderSoft
+                            border.color: "#050708"
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 3
                                 Text {
                                     text: channel.localValue.toFixed(Number(channel.modelData.decimals || 0))
                                     color: Theme.amber
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme.monoFamily
                                     font.pixelSize: 9
                                     font.weight: Font.Bold
                                 }
@@ -109,7 +111,7 @@ StudioPanel {
                                     visible: String(channel.modelData.unit || "").length > 0
                                     text: String(channel.modelData.unit || "")
                                     color: Theme.textDim
-                                    font.family: Theme.fontFamily
+                                    font.family: Theme.monoFamily
                                     font.pixelSize: 7
                                     anchors.baseline: parent.children[0].baseline
                                 }
