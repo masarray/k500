@@ -19,6 +19,12 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500Protocol.h
     src/k500/K500Controller.cpp
     src/k500/K500Controller.h
+    src/k500/K500ResponseParser.cpp
+    src/k500/K500ResponseParser.h
+    src/k500/K500WinIo.cpp
+    src/k500/K500WinIo.h
+    src/k500/K500DeviceManager.cpp
+    src/k500/K500DeviceManager.h
 )
 
 set_source_files_properties(qml/theme/Theme.qml
@@ -73,6 +79,13 @@ target_link_libraries(sonkupik_studio_native
         Qt6::Quick
         Qt6::QuickControls2
 )
+
+if(WIN32)
+    # Native K500 transport uses SetupAPI for HID enumeration and hid.lib for
+    # report capabilities. Bluetooth SPP uses Win32 COM directly, so no
+    # QtSerialPort or third-party hidapi runtime is required.
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid)
+endif()
 
 set_target_properties(sonkupik_studio_native PROPERTIES
     OUTPUT_NAME "SONKUPIK-STUDIO-Native-UI"
