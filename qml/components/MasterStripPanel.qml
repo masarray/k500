@@ -4,7 +4,11 @@ import QtQuick.Layouts
 StudioPanel {
     id: root
     required property var engine
+    implicitWidth: 188
     implicitHeight: 304
+    Layout.minimumWidth: 188
+    Layout.preferredWidth: 188
+    Layout.maximumWidth: 188
     accentTop: false
 
     ColumnLayout {
