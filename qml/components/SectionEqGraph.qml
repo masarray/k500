@@ -14,12 +14,18 @@ StudioPanel {
     property real selectedGain: 0
     property real selectedQ: 1
     readonly property var bands: bandModel
-    readonly property real leftPad: 56
-    readonly property real rightPad: 22
-    readonly property real topPad: 24
-    readonly property real bottomPad: 38
-    readonly property real plotBottom: Math.max(topPad + 120, graph.height - bottomPad)
-    readonly property var colors: ["#5EDDD4", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928"]
+
+    // The web PEQ is authored in a 1040 × 354 SVG and rendered with
+    // preserveAspectRatio="none". Scale the same virtual PAD values here
+    // instead of treating them as physical Qt pixels.
+    readonly property real virtualScaleX: graph.width > 0 ? graph.width / 1040.0 : 1.0
+    readonly property real virtualScaleY: graph.height > 0 ? graph.height / 354.0 : 1.0
+    readonly property real leftPad: 56 * virtualScaleX
+    readonly property real rightPad: 22 * virtualScaleX
+    readonly property real topPad: 24 * virtualScaleY
+    readonly property real bottomPad: 38 * virtualScaleY
+    readonly property real plotBottom: Math.max(topPad + 120 * virtualScaleY, graph.height - bottomPad)
+    readonly property var colors: [Theme.accent, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber]
 
     signal micChannelRequested(int channel)
     signal eqLinkRequested(bool linked)
@@ -130,7 +136,7 @@ StudioPanel {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 50
+            Layout.preferredHeight: 56
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             spacing: 8
@@ -141,7 +147,7 @@ StudioPanel {
                     text: "PARAMETRIC EQ   ·   " + root.bands.count + " BANDS"
                     color: Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     font.weight: Font.Medium
                     font.letterSpacing: 1.35
                 }
@@ -172,7 +178,7 @@ StudioPanel {
             }
         }
 
-        Rectangle { Layout.fillWidth:true; Layout.preferredHeight:1; color:Theme.borderSoft; opacity:.75 }
+        Rectangle { Layout.fillWidth:true; Layout.preferredHeight:1; color:Theme.borderSoft; opacity:.72 }
 
         Item {
             Layout.fillWidth: true
@@ -184,9 +190,9 @@ StudioPanel {
                 id: graph
                 anchors.fill: parent
                 radius: 10
-                color: "#080B0E"
+                color: "#040507"
                 border.width: 1
-                border.color: "#020304"
+                border.color: "#010203"
                 clip: true
 
                 Repeater {
@@ -197,12 +203,12 @@ StudioPanel {
                         color:"#FFFFFF";opacity:.05
                         Text {
                             anchors.horizontalCenter:parent.horizontalCenter
-                            y:root.plotBottom+10
+                            y:root.plotBottom+10*root.virtualScaleY
                             text:root.fmtF(modelData)
                             color:Theme.textDim
-                            opacity:.82
+                            opacity:.90
                             font.family:Theme.monoFamily
-                            font.pixelSize:9
+                            font.pixelSize:10
                         }
                     }
                 }
@@ -213,11 +219,11 @@ StudioPanel {
                         x:root.leftPad;y:root.yFor(modelData);width:graph.width-root.leftPad-root.rightPad;height:modelData===0?1.1:1
                         color:modelData===0?Theme.accent:"#FFFFFF";opacity:modelData===0?.20:.05
                         Text {
-                            anchors.right:parent.left;anchors.rightMargin:10;anchors.verticalCenter:parent.verticalCenter
+                            anchors.right:parent.left;anchors.rightMargin:10*root.virtualScaleX;anchors.verticalCenter:parent.verticalCenter
                             text:modelData>0?"+"+modelData:modelData
                             color:Theme.textDim
                             font.family:Theme.monoFamily
-                            font.pixelSize:9
+                            font.pixelSize:10
                         }
                     }
                 }
@@ -232,30 +238,26 @@ StudioPanel {
                         var c=getContext("2d");c.reset()
                         var n=Math.max(280,Math.floor(width/3)),i,t,f,x,y,zero=root.yFor(0)
 
-                        // Composite fill to the 0 dB datum, same visual hierarchy as the web editor.
                         c.beginPath()
                         for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
                         c.lineTo(width-root.rightPad,zero);c.lineTo(root.leftPad,zero);c.closePath()
                         var fill=c.createLinearGradient(0,root.topPad,0,root.plotBottom)
-                        fill.addColorStop(0,"rgba(94,221,212,0.24)");fill.addColorStop(.55,"rgba(94,221,212,0.08)");fill.addColorStop(1,"rgba(94,221,212,0)")
+                        fill.addColorStop(0,"rgba(36,233,242,0.24)");fill.addColorStop(.55,"rgba(36,233,242,0.08)");fill.addColorStop(1,"rgba(36,233,242,0)")
                         c.fillStyle=fill;c.fill()
 
-                        // Per-band response.
                         for(var b=0;b<root.bands.count;++b){
                             var band=root.bands.get(b);if(Math.abs(band.gain)<.05)continue
                             c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                            c.globalAlpha=b===root.selectedIndex?.65:.13;c.lineWidth=b===root.selectedIndex?1.6:1;c.strokeStyle=b===root.selectedIndex?Theme.amber.toString():Theme.accent.toString();c.stroke()
+                            c.globalAlpha=b===root.selectedIndex?.65:.13;c.lineWidth=b===root.selectedIndex?1.7:1.1;c.strokeStyle=b===root.selectedIndex?Theme.amber.toString():Theme.accent.toString();c.stroke()
                         }
 
-                        // Crossover response under the composite.
                         c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.crossDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=.40;c.lineWidth=1.2;c.strokeStyle=Theme.amber.toString();c.stroke()
+                        c.globalAlpha=.40;c.lineWidth=1.3;c.strokeStyle=Theme.amber.toString();c.stroke()
 
-                        // Composite: dark separation, cyan glow, cyan→amber→cyan core.
                         c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=.88;c.lineWidth=6.2;c.strokeStyle="#020304";c.stroke()
-                        c.globalAlpha=.18;c.lineWidth=8;c.strokeStyle=Theme.accent.toString();c.stroke()
-                        c.globalAlpha=1;c.lineWidth=3.2
+                        c.globalAlpha=.88;c.lineWidth=6.6;c.strokeStyle="#010203";c.stroke()
+                        c.globalAlpha=.18;c.lineWidth=8.4;c.strokeStyle=Theme.accent.toString();c.stroke()
+                        c.globalAlpha=1;c.lineWidth=3.4
                         var stroke=c.createLinearGradient(root.leftPad,0,width-root.rightPad,0)
                         stroke.addColorStop(0,Theme.accent.toString());stroke.addColorStop(.55,Theme.amber.toString());stroke.addColorStop(1,Theme.accent.toString())
                         c.strokeStyle=stroke;c.stroke();c.globalAlpha=1
@@ -263,22 +265,28 @@ StudioPanel {
                 }
 
                 Item {
-                    x:root.xFor(root.bands.hpfHz)-12;y:root.topPad;width:24;height:root.plotBottom-root.topPad
-                    Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:12;y:index*9;color:Theme.amber;opacity:.35} }
-                    Text { x:24;y:6;text:Math.round(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
+                    width:24*root.virtualScaleX;height:root.plotBottom-root.topPad
+                    x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
+                    Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.35} }
+                    Text { x:parent.width/2+12*root.virtualScaleX;y:6*root.virtualScaleY;text:Math.round(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold }
                     Rectangle {
-                        anchors.horizontalCenter:parent.horizontalCenter;y:root.yFor(0)-root.topPad-9;width:18;height:18;radius:9
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        y:root.yFor(0)-root.topPad-height/2
+                        width:18*root.virtualScaleX;height:18*root.virtualScaleY;radius:Math.min(width,height)/2
                         color:Theme.amber;border.width:1;border.color:"#090805"
                         Text{anchors.centerIn:parent;text:"HP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
                     MouseArea { anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}} }
                 }
                 Item {
-                    x:root.xFor(root.bands.lpfHz)-12;y:root.topPad;width:24;height:root.plotBottom-root.topPad
-                    Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:12;y:index*9;color:Theme.amber;opacity:.35} }
-                    Text { anchors.right:parent.horizontalCenter;anchors.rightMargin:12;y:6;text:root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
+                    width:24*root.virtualScaleX;height:root.plotBottom-root.topPad
+                    x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
+                    Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.35} }
+                    Text { anchors.right:parent.horizontalCenter;anchors.rightMargin:12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold }
                     Rectangle {
-                        anchors.horizontalCenter:parent.horizontalCenter;y:root.yFor(0)-root.topPad-9;width:18;height:18;radius:9
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        y:root.yFor(0)-root.topPad-height/2
+                        width:18*root.virtualScaleX;height:18*root.virtualScaleY;radius:Math.min(width,height)/2
                         color:Theme.amber;border.width:1;border.color:"#090805"
                         Text{anchors.centerIn:parent;text:"LP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
@@ -293,12 +301,23 @@ StudioPanel {
                         required property real gain
                         required property real q
                         required property string typeName
-                        x:root.xFor(freq)-18;y:root.yFor(gain)-18;width:36;height:36
-                        Rectangle { anchors.centerIn:parent;width:index===root.selectedIndex?36:26;height:width;radius:width/2;color:index===root.selectedIndex?Theme.accent:Theme.amber;opacity:index===root.selectedIndex?.17:.12 }
+                        readonly property real haloVirtual: index===root.selectedIndex?36:26
+                        readonly property real coreVirtual: index===root.selectedIndex?21:16
+                        width:haloVirtual*root.virtualScaleX;height:haloVirtual*root.virtualScaleY
+                        x:root.xFor(freq)-width/2;y:root.yFor(gain)-height/2
                         Rectangle {
-                            anchors.centerIn:parent;width:index===root.selectedIndex?21:16;height:width;radius:width/2
-                            color:index===root.selectedIndex?Theme.accent:Theme.amber;border.width:1.5;border.color:"#090B0C"
-                            Text{anchors.centerIn:parent;text:index+1;color:"#0A0D0F";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                            anchors.centerIn:parent
+                            width:parent.haloVirtual*root.virtualScaleX;height:parent.haloVirtual*root.virtualScaleY
+                            radius:Math.min(width,height)/2
+                            color:index===root.selectedIndex?Theme.accent:Theme.amber
+                            opacity:index===root.selectedIndex?.17:.12
+                        }
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:parent.coreVirtual*root.virtualScaleX;height:parent.coreVirtual*root.virtualScaleY
+                            radius:Math.min(width,height)/2
+                            color:index===root.selectedIndex?Theme.accent:Theme.amber;border.width:1.5;border.color:"#07090A"
+                            Text{anchors.centerIn:parent;text:index+1;color:"#070A0C";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                         }
                         MouseArea {
                             anchors.fill:parent;cursorShape:Qt.SizeAllCursor
@@ -348,21 +367,21 @@ StudioPanel {
                     required property string typeName
                     Layout.fillWidth:true;Layout.preferredHeight:43;radius:9
                     gradient:Gradient {
-                        GradientStop{position:0;color:index===root.selectedIndex?"#17363A":"#11171C"}
-                        GradientStop{position:1;color:index===root.selectedIndex?"#0B171A":"#090D11"}
+                        GradientStop{position:0;color:index===root.selectedIndex?"#0D2A2D":"#0D1216"}
+                        GradientStop{position:1;color:index===root.selectedIndex?"#071516":"#06090C"}
                     }
-                    border.width:1;border.color:index===root.selectedIndex?Theme.accentSoft:"#242C33"
+                    border.width:1;border.color:index===root.selectedIndex?Theme.accentSoft:"#20282F"
                     Column {
                         anchors.fill:parent;anchors.margins:6;spacing:0
                         Row { width:parent.width
-                            Text{text:"B"+(index+1);color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8}
+                            Text{text:"B"+(index+1);color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
                             Item{width:Math.max(0,parent.width-34);height:1}
-                            Text{text:root.typeShort(typeName);color:index===root.selectedIndex?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                            Text{text:root.typeShort(typeName);color:index===root.selectedIndex?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                         }
                         Row { width:parent.width
                             Text{text:root.fmtF(freq);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                             Item{width:Math.max(0,parent.width-54);height:1}
-                            Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:8}
+                            Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9}
                         }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectBand(index)}
