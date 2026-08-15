@@ -92,7 +92,7 @@ Item {
                 title: "FREQ"
                 value: root.frequency
                 from: 20; to: 20000; step: 5; defaultValue: root.frequency
-                decimals: 0; unit: "Hz"; accentColor: Theme.amber
+                decimals: 0; unit: ""; accentColor: Theme.amber
                 onValueEdited: function(v) { root.frequencyEdited(v) }
             }
             ValueField {
