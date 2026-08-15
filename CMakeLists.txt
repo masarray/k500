@@ -46,6 +46,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/InputFader.qml
         qml/components/PresetPanel.qml
         qml/components/BandInspector.qml
+        qml/components/CrossoverInspector.qml
         qml/components/MusicInputPanel.qml
         qml/components/MusicTonePanel.qml
         qml/components/FilterPanel.qml
