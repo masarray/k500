@@ -13,6 +13,12 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/main.cpp
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
+    src/k500/K500Protocol.cpp
+    src/k500/K500Protocol.h
+    src/k500/K500Controller.cpp
+    src/k500/K500Controller.h
 )
 
 set_source_files_properties(qml/theme/Theme.qml
