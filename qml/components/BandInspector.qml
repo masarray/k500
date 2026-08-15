@@ -17,6 +17,13 @@ Item {
     implicitWidth: 320
     implicitHeight: 86
 
+    function shortType() {
+        if (!bandModel) return "P"
+        var t = String(bandModel.get(bandIndex).typeName || "BELL")
+        return t === "LOW SHELF" ? "LS" : t === "HIGH SHELF" ? "HS" : "P"
+    }
+    function longType(v) { return v === "LS" ? "LOW SHELF" : v === "HS" ? "HIGH SHELF" : "BELL" }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 5
@@ -73,10 +80,10 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     enabled: root.bandModel !== null
-                    model: ["BELL", "LOW SHELF", "HIGH SHELF"]
-                    value: root.bandModel ? root.bandModel.get(root.bandIndex).typeName : "BELL"
+                    model: ["P", "LS", "HS"]
+                    value: root.shortType()
                     accentColor: Theme.amber
-                    onValueEdited: function(v) { if (root.bandModel) root.bandModel.setBandType(root.bandIndex, v) }
+                    onValueEdited: function(v) { if (root.bandModel) root.bandModel.setBandType(root.bandIndex, root.longType(v)) }
                 }
             }
 
