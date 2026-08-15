@@ -17,8 +17,6 @@ Item {
     property color accentColor: Theme.accent
     signal valueEdited(real newValue)
 
-    // Web Knob defaults to a 64 px SVG face. Keep the complete control compact,
-    // but do not shrink the physical dial to the old Qt 50 px version.
     implicitWidth: compact ? 72 : 80
     implicitHeight: compact ? 102 : 110
 
@@ -76,40 +74,40 @@ Item {
             antialiasing:true
             onPaint:{
                 var ctx=getContext("2d");ctx.reset()
-                var cx=width/2,arcCy=height*.50,faceCy=height*.64,norm=root.valueToNorm(root.previewValue)
+                // One shared visual centre for the arc, metal cap and pointer.
+                // The previous faceCy=.64 made the cap visibly sag below the cyan arc.
+                var cx=width/2,cy=height*.50,norm=root.valueToNorm(root.previewValue)
                 var start=Math.PI*.75,sweep=Math.PI*1.5,end=start+sweep,activeEnd=start+sweep*norm
                 var arcR=width*.36
 
-                // Web primitive: 4/100 dark track, 8/100 cyan halo, then 4/100 cyan core.
                 ctx.lineCap="round"
                 ctx.globalAlpha=1
                 ctx.lineWidth=2.6
                 ctx.strokeStyle="#020304"
-                ctx.beginPath();ctx.arc(cx,arcCy,arcR,start,end,false);ctx.stroke()
+                ctx.beginPath();ctx.arc(cx,cy,arcR,start,end,false);ctx.stroke()
 
                 ctx.globalAlpha=.16
                 ctx.lineWidth=5.1
                 ctx.strokeStyle=root.accentColor.toString()
-                ctx.beginPath();ctx.arc(cx,arcCy,arcR,start,activeEnd,false);ctx.stroke()
+                ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
 
                 ctx.globalAlpha=1
                 ctx.lineWidth=2.6
                 ctx.strokeStyle=root.accentColor.toString()
-                ctx.beginPath();ctx.arc(cx,arcCy,arcR,start,activeEnd,false);ctx.stroke()
+                ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
 
-                // The Web face is intentionally lower than the arc center.
                 var capR=width*.245
-                var g=ctx.createRadialGradient(cx-capR*.30,faceCy-capR*.42,1,cx,faceCy,capR)
+                var g=ctx.createRadialGradient(cx-capR*.30,cy-capR*.42,1,cx,cy,capR)
                 g.addColorStop(0,"#555E66");g.addColorStop(.28,"#30383F");g.addColorStop(.72,"#181E23");g.addColorStop(1,"#0C1014")
-                ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,faceCy,capR,0,Math.PI*2);ctx.fill()
+                ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,capR,0,Math.PI*2);ctx.fill()
                 ctx.strokeStyle="#020304";ctx.lineWidth=1;ctx.stroke()
 
                 var a2=activeEnd
                 ctx.strokeStyle=Theme.amber.toString()
                 ctx.lineWidth=1.9
                 ctx.beginPath()
-                ctx.moveTo(cx+Math.cos(a2)*capR*.42,faceCy+Math.sin(a2)*capR*.42)
-                ctx.lineTo(cx+Math.cos(a2)*capR*.88,faceCy+Math.sin(a2)*capR*.88)
+                ctx.moveTo(cx+Math.cos(a2)*capR*.42,cy+Math.sin(a2)*capR*.42)
+                ctx.lineTo(cx+Math.cos(a2)*capR*.88,cy+Math.sin(a2)*capR*.88)
                 ctx.stroke()
             }
         }

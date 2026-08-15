@@ -40,8 +40,8 @@ StudioPanel {
             Layout.fillHeight: true
             Layout.leftMargin: 7
             Layout.rightMargin: 7
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
             spacing: 1
 
             Repeater {
@@ -58,16 +58,24 @@ StudioPanel {
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 4
-                        Item { Layout.fillHeight: true }
-                        Text {
+
+                        Item {
                             Layout.alignment: Qt.AlignHCenter
-                            text: modelData.label
-                            color: Theme.textDim
-                            font.family: Theme.monoFamily
-                            font.pixelSize: 10
-                            font.weight: Font.DemiBold
-                            font.letterSpacing: .35
+                            Layout.preferredHeight: 25
+                            Layout.preferredWidth: 48
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: Theme.textDim
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 9
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: .35
+                            }
                         }
+
+                        Item { Layout.preferredHeight: 4 }
+
                         StudioFader {
                             Layout.preferredHeight: 160
                             Layout.minimumHeight: 160
@@ -86,6 +94,7 @@ StudioPanel {
                                 else root.engine.masterFx = v
                             }
                         }
+
                         Rectangle {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: 54
@@ -96,6 +105,7 @@ StudioPanel {
                             border.color: "#020304"
                             Text { anchors.centerIn:parent;text:Math.round(Number(modelData.value));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
                         }
+
                         Item { Layout.fillHeight: true }
                     }
                 }

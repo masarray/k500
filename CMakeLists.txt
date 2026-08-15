@@ -25,6 +25,8 @@ qt_add_qml_module(sonkupik_studio_native
     QML_FILES
         qml/Main.qml
         qml/theme/Theme.qml
+        qml/components/TopBar.qml
+        qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml
         qml/components/StudioComboBox.qml

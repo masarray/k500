@@ -9,7 +9,7 @@ StudioPanel {
     property var channels: []
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
-    readonly property real webFaderHeight: 160
+    readonly property real faderHeight: 160
     accentTop: false
 
     ColumnLayout {
@@ -38,8 +38,8 @@ StudioPanel {
             Layout.fillHeight: true
             Layout.leftMargin: 10
             Layout.rightMargin: 10
-            Layout.topMargin: 8
-            Layout.bottomMargin: 8
+            Layout.topMargin: 10
+            Layout.bottomMargin: 10
             spacing: 2
 
             Repeater {
@@ -57,34 +57,42 @@ StudioPanel {
                         anchors.fill: parent
                         spacing: 4
 
-                        Item { Layout.fillHeight: true }
-
-                        ColumnLayout {
+                        // Reserve exactly the same top control slot used by
+                        // MusicInputPanel. This keeps every fader track on the
+                        // same vertical datum throughout the lower rack.
+                        Item {
                             Layout.alignment: Qt.AlignHCenter
-                            spacing: -1
-                            Text {
-                                Layout.alignment: Qt.AlignHCenter
-                                text: String(channel.modelData.label || "")
-                                color: Theme.textDim
-                                font.family: Theme.monoFamily
-                                font.pixelSize: 10
-                                font.weight: Font.DemiBold
-                                font.letterSpacing: .45
-                            }
-                            Text {
-                                Layout.alignment: Qt.AlignHCenter
-                                visible: String(channel.modelData.badge || "").length > 0
-                                text: String(channel.modelData.badge || "")
-                                color: Theme.textFaint
-                                font.family: Theme.monoFamily
-                                font.pixelSize: 9
+                            Layout.preferredWidth: Math.max(48,channel.width-4)
+                            Layout.preferredHeight: 25
+                            Column {
+                                anchors.centerIn: parent
+                                spacing: -1
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    text: String(channel.modelData.label || "")
+                                    color: Theme.textDim
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 9
+                                    font.weight: Font.DemiBold
+                                    font.letterSpacing: .35
+                                }
+                                Text {
+                                    anchors.horizontalCenter: parent.horizontalCenter
+                                    visible: String(channel.modelData.badge || "").length > 0
+                                    text: String(channel.modelData.badge || "")
+                                    color: Theme.textFaint
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 8
+                                }
                             }
                         }
 
+                        Item { Layout.preferredHeight: 4 }
+
                         StudioFader {
-                            Layout.preferredHeight: root.webFaderHeight
-                            Layout.minimumHeight: root.webFaderHeight
-                            Layout.maximumHeight: root.webFaderHeight
+                            Layout.preferredHeight: root.faderHeight
+                            Layout.minimumHeight: root.faderHeight
+                            Layout.maximumHeight: root.faderHeight
                             Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
                             value: channel.localValue
