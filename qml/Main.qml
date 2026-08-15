@@ -5,6 +5,7 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     required property var studioEngine
+    required property var deviceManager
     visible: true
     width: 1540
     height: 940
@@ -14,8 +15,23 @@ ApplicationWindow {
     color: Theme.bg
     readonly property int lowerRackHeight: 286
     property bool transportPlaying: false
-    property bool transportMuted: false
+    readonly property bool transportMuted: deviceManager.muted
     property int selectedSection: 0
+
+    readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
+    readonly property string deviceStatusText: deviceManager.status === "connected" ? "ONLINE"
+                                                : deviceManager.status === "connecting" ? "CONNECT"
+                                                : deviceManager.status === "syncing" ? "SYNC"
+                                                : deviceManager.status === "error" ? "ERROR"
+                                                : "OFFLINE"
+
+    Connections {
+        target: root.deviceManager
+        function onStatusChanged() {
+            if (!root.deviceManager.connected)
+                root.transportPlaying = false
+        }
+    }
 
     background: Rectangle {
         gradient: Gradient {
@@ -78,20 +94,35 @@ ApplicationWindow {
                         anchors.fill: parent
                         anchors.margins: 4
                         spacing: 3
-                        SoftButton { Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true; iconName: "skip-back"; iconOnly: true; iconFilled: true }
+                        SoftButton {
+                            Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true
+                            iconName: "skip-back"; iconOnly: true; iconFilled: true
+                            enabled: root.deviceManager.connected
+                            onClicked: root.deviceManager.sendPlayerCommand("rewind")
+                        }
                         SoftButton {
                             Layout.preferredWidth: 31; Layout.fillHeight: true; transport: true
                             iconName: root.transportPlaying ? "pause" : "play"; iconOnly: true; iconFilled: true
                             neonAccent: true; checked: root.transportPlaying
-                            onClicked: root.transportPlaying = !root.transportPlaying
+                            enabled: root.deviceManager.connected
+                            onClicked: {
+                                root.deviceManager.sendPlayerCommand("playPause")
+                                root.transportPlaying = !root.transportPlaying
+                            }
                         }
-                        SoftButton { Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true; iconName: "skip-forward"; iconOnly: true; iconFilled: true }
+                        SoftButton {
+                            Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true
+                            iconName: "skip-forward"; iconOnly: true; iconFilled: true
+                            enabled: root.deviceManager.connected
+                            onClicked: root.deviceManager.sendPlayerCommand("forward")
+                        }
                         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#2E3A43" }
                         SoftButton {
                             Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true
                             iconName: "volume-x"; iconOnly: true; accentIcon: !root.transportMuted
                             checked: root.transportMuted; danger: root.transportMuted
-                            onClicked: root.transportMuted = !root.transportMuted
+                            enabled: root.deviceManager.connected
+                            onClicked: root.deviceManager.toggleMute()
                         }
                     }
                 }
@@ -108,21 +139,67 @@ ApplicationWindow {
 
                 RowLayout {
                     spacing: 4
-                    Rectangle { width: 6; height: 6; radius: 3; color: Theme.textFaint }
-                    Text { text: "LIVE"; color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.8 }
-                    SoftButton { Layout.preferredWidth: 48; text: "BT"; iconName: "bluetooth"; compact: true; checked: true }
-                    SoftButton { Layout.preferredWidth: 54; text: "USB"; iconName: "usb"; compact: true }
-                    SoftButton { Layout.preferredWidth: 86; text: "CONNECT"; iconName: "cable"; compact: true }
+                    Rectangle {
+                        width: 6; height: 6; radius: 3
+                        color: root.deviceManager.liveEnabled ? Theme.accent
+                              : root.deviceBusy ? Theme.amber
+                              : root.deviceManager.status === "error" ? "#FF6868"
+                              : Theme.textFaint
+                    }
+                    Text {
+                        text: "LIVE"
+                        color: root.deviceManager.liveEnabled ? Theme.accent : Theme.textDim
+                        font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.8
+                    }
+                    SoftButton {
+                        Layout.preferredWidth: 48
+                        text: "BT"; iconName: "bluetooth"; compact: true
+                        checked: root.deviceManager.transportMode === "bt"
+                        enabled: !root.deviceBusy
+                        onClicked: root.deviceManager.setTransportMode("bt")
+                    }
+                    SoftButton {
+                        Layout.preferredWidth: 54
+                        text: "USB"; iconName: "usb"; compact: true
+                        checked: root.deviceManager.transportMode === "usb"
+                        enabled: !root.deviceBusy
+                        onClicked: root.deviceManager.setTransportMode("usb")
+                    }
+                    SoftButton {
+                        Layout.preferredWidth: 94
+                        text: root.deviceManager.connected || root.deviceBusy ? "DISCONNECT" : "CONNECT"
+                        iconName: root.deviceManager.connected ? "unplug" : "cable"
+                        compact: true
+                        checked: root.deviceManager.connected
+                        neonAccent: root.deviceManager.connected
+                        onClicked: root.deviceManager.toggleConnection()
+                    }
                 }
 
                 Rectangle {
-                    Layout.preferredWidth: 72
+                    id: deviceBadge
+                    Layout.preferredWidth: 78
                     Layout.preferredHeight: 28
                     radius: 6
-                    color: "#12130D"
+                    color: root.deviceManager.connected ? "#0B1717"
+                         : root.deviceManager.status === "error" ? "#1A0E0E"
+                         : "#12130D"
                     border.width: 1
-                    border.color: "#493C16"
-                    Text { anchors.centerIn: parent; text: "OFFLINE"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.7 }
+                    border.color: root.deviceManager.connected ? Theme.accentSoft
+                                : root.deviceManager.status === "error" ? "#6A3030"
+                                : "#493C16"
+                    Text {
+                        anchors.centerIn: parent
+                        text: root.deviceStatusText
+                        color: root.deviceManager.connected ? Theme.accent
+                             : root.deviceManager.status === "error" ? "#FF7A7A"
+                             : Theme.amber
+                        font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.7
+                    }
+                    MouseArea { id: deviceStatusHover; anchors.fill: parent; hoverEnabled: true }
+                    ToolTip.visible: deviceStatusHover.containsMouse && (root.deviceManager.lastError.length > 0 || root.deviceManager.portLabel.length > 0)
+                    ToolTip.text: root.deviceManager.lastError.length > 0 ? root.deviceManager.lastError : root.deviceManager.portLabel
+                    ToolTip.delay: 350
                 }
                 SoftButton { Layout.preferredWidth: 74; text: "IMPORT"; iconName: "upload"; compact: true }
                 SoftButton { Layout.preferredWidth: 74; text: "EXPORT"; iconName: "download"; compact: true }
