@@ -136,7 +136,7 @@ StudioPanel {
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 56
+            Layout.preferredHeight: 52
             Layout.leftMargin: 16
             Layout.rightMargin: 16
             spacing: 8
@@ -184,7 +184,6 @@ StudioPanel {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.margins: 12
-            Layout.bottomMargin: 7
 
             Rectangle {
                 id: graph
@@ -203,7 +202,7 @@ StudioPanel {
                         color:"#FFFFFF";opacity:.05
                         Text {
                             anchors.horizontalCenter:parent.horizontalCenter
-                            y:root.plotBottom+10*root.virtualScaleY
+                            y:parent.height+10*root.virtualScaleY
                             text:root.fmtF(modelData)
                             color:Theme.textDim
                             opacity:.90
@@ -248,16 +247,16 @@ StudioPanel {
                         for(var b=0;b<root.bands.count;++b){
                             var band=root.bands.get(b);if(Math.abs(band.gain)<.05)continue
                             c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                            c.globalAlpha=b===root.selectedIndex?.65:.13;c.lineWidth=b===root.selectedIndex?1.7:1.1;c.strokeStyle=b===root.selectedIndex?Theme.amber.toString():Theme.accent.toString();c.stroke()
+                            c.globalAlpha=b===root.selectedIndex?.65:.13;c.lineWidth=b===root.selectedIndex?1.6:1.0;c.strokeStyle=b===root.selectedIndex?Theme.amber.toString():Theme.accent.toString();c.stroke()
                         }
 
                         c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.crossDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=.40;c.lineWidth=1.3;c.strokeStyle=Theme.amber.toString();c.stroke()
+                        c.globalAlpha=.40;c.lineWidth=1.2;c.strokeStyle=Theme.amber.toString();c.stroke()
 
                         c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=.88;c.lineWidth=6.6;c.strokeStyle="#010203";c.stroke()
-                        c.globalAlpha=.18;c.lineWidth=8.4;c.strokeStyle=Theme.accent.toString();c.stroke()
-                        c.globalAlpha=1;c.lineWidth=3.4
+                        c.globalAlpha=.88;c.lineWidth=6.2;c.strokeStyle="#010203";c.stroke()
+                        c.globalAlpha=.18;c.lineWidth=8;c.strokeStyle=Theme.accent.toString();c.stroke()
+                        c.globalAlpha=1;c.lineWidth=3.2
                         var stroke=c.createLinearGradient(root.leftPad,0,width-root.rightPad,0)
                         stroke.addColorStop(0,Theme.accent.toString());stroke.addColorStop(.55,Theme.amber.toString());stroke.addColorStop(1,Theme.accent.toString())
                         c.strokeStyle=stroke;c.stroke();c.globalAlpha=1
@@ -355,7 +354,7 @@ StudioPanel {
             Layout.preferredHeight:55
             Layout.leftMargin:12
             Layout.rightMargin:12
-            Layout.bottomMargin:10
+            Layout.bottomMargin:12
             spacing:6
             Repeater {
                 model:root.bands
@@ -365,12 +364,12 @@ StudioPanel {
                     required property real gain
                     required property real q
                     required property string typeName
-                    Layout.fillWidth:true;Layout.preferredHeight:43;radius:9
+                    Layout.fillWidth:true;Layout.preferredHeight:43;radius:10
                     gradient:Gradient {
-                        GradientStop{position:0;color:index===root.selectedIndex?"#0D2A2D":"#0D1216"}
-                        GradientStop{position:1;color:index===root.selectedIndex?"#071516":"#06090C"}
+                        GradientStop{position:0;color:index===root.selectedIndex?"#103136":"#11171C"}
+                        GradientStop{position:1;color:index===root.selectedIndex?"#081719":"#090D11"}
                     }
-                    border.width:1;border.color:index===root.selectedIndex?Theme.accentSoft:"#20282F"
+                    border.width:1;border.color:index===root.selectedIndex?Theme.accentSoft:"#242C33"
                     Column {
                         anchors.fill:parent;anchors.margins:6;spacing:0
                         Row { width:parent.width
