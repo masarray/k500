@@ -34,6 +34,8 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/LevelMeter.qml
         qml/components/ChannelStrip.qml
         qml/components/EqGraph.qml
+        qml/components/SectionEqGraph.qml
+        qml/components/LocalEqModel.qml
         qml/components/CompressorGraph.qml
         qml/components/KeyControl.qml
         qml/components/MusicControlPanel.qml
@@ -46,6 +48,10 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/MusicTonePanel.qml
         qml/components/FilterPanel.qml
         qml/components/MasterStripPanel.qml
+        qml/components/RackFaderPanel.qml
+        qml/components/RackDynamicsPanel.qml
+        qml/components/RackFilterPanel.qml
+        qml/components/SystemWorkspace.qml
         qml/components/SectionWorkspace.qml
 )
 
