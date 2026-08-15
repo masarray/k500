@@ -9,6 +9,7 @@ StudioPanel {
     property var channels: []
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
+    readonly property real webFaderHeight: title === "Startup Limits" ? 150 : 126
     accentTop: false
 
     ColumnLayout {
@@ -37,8 +38,8 @@ StudioPanel {
             Layout.fillHeight: true
             Layout.leftMargin: 10
             Layout.rightMargin: 10
-            Layout.topMargin: 10
-            Layout.bottomMargin: 10
+            Layout.topMargin: 8
+            Layout.bottomMargin: 8
             spacing: 2
 
             Repeater {
@@ -54,7 +55,9 @@ StudioPanel {
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 3
+                        spacing: 4
+
+                        Item { Layout.fillHeight: true }
 
                         ColumnLayout {
                             Layout.alignment: Qt.AlignHCenter
@@ -79,7 +82,9 @@ StudioPanel {
                         }
 
                         StudioFader {
-                            Layout.fillHeight: true
+                            Layout.preferredHeight: root.webFaderHeight
+                            Layout.minimumHeight: root.webFaderHeight
+                            Layout.maximumHeight: root.webFaderHeight
                             Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
                             value: channel.localValue
@@ -119,6 +124,8 @@ StudioPanel {
                                 }
                             }
                         }
+
+                        Item { Layout.fillHeight: true }
                     }
                 }
             }
