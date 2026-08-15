@@ -32,7 +32,7 @@ StudioPanel {
                 width: 8; height: 8; radius: 4
                 color: Theme.amber
             }
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
 
         RowLayout {
@@ -64,7 +64,9 @@ StudioPanel {
                             text: modelData.label
                             color: Theme.textDim
                             font.family: Theme.monoFamily
-                            font.pixelSize: 9
+                            font.pixelSize: 10
+                            font.weight: Font.DemiBold
+                            font.letterSpacing: .35
                         }
                         StudioFader {
                             Layout.preferredHeight: 126
@@ -86,12 +88,12 @@ StudioPanel {
                         }
                         Rectangle {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 48
+                            Layout.preferredWidth: 54
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: "#080C10"
+                            color: "#05080A"
                             border.width: 1
-                            border.color: "#050708"
+                            border.color: "#020304"
                             Text { anchors.centerIn:parent;text:Math.round(Number(modelData.value));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
                         }
                         Item { Layout.fillHeight: true }
