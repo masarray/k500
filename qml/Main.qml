@@ -69,8 +69,6 @@ ApplicationWindow {
 
                 Item { Layout.fillWidth: true }
 
-                // Clean web-style player transport: one shell, one edge and
-                // the illuminated controls. No negative-margin shadows.
                 Rectangle {
                     Layout.preferredWidth: 148
                     Layout.preferredHeight: 36
@@ -184,23 +182,31 @@ ApplicationWindow {
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 0
+            Layout.margins: 11
+            spacing: 10
 
-            Rectangle {
-                Layout.preferredWidth: 172
+            // Sections is now a proper rounded console module and shares the
+            // exact top/bottom baseline with the workspace cards to its right.
+            StudioPanel {
+                Layout.preferredWidth: 162
+                Layout.minimumWidth: 162
+                Layout.maximumWidth: 162
                 Layout.fillHeight: true
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: "#172029" }
-                    GradientStop { position: 0.18; color: "#10171D" }
-                    GradientStop { position: 1.0; color: "#090E13" }
-                }
-                Rectangle { anchors.right: parent.right; anchors.top: parent.top; anchors.bottom: parent.bottom; width: 1; color: Theme.border }
 
                 ColumnLayout {
                     anchors.fill: parent
-                    anchors.margins: 11
+                    anchors.margins: 10
                     spacing: 5
-                    Text { text: "SECTIONS"; color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.DemiBold; font.letterSpacing: 1.2; leftPadding: 6; bottomPadding: 5 }
+                    Text {
+                        text: "SECTIONS"
+                        color: Theme.textDim
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 8
+                        font.weight: Font.DemiBold
+                        font.letterSpacing: 1.2
+                        leftPadding: 6
+                        bottomPadding: 5
+                    }
 
                     Repeater {
                         model: [
@@ -234,10 +240,10 @@ ApplicationWindow {
 
                             Rectangle {
                                 anchors.fill: parent
-                                anchors.margins: -3
-                                radius: navItem.radius + 3
+                                anchors.margins: -2
+                                radius: navItem.radius + 2
                                 color: Theme.accent
-                                opacity: navItem.active ? 0.075 : 0
+                                opacity: navItem.active ? 0.055 : 0
                                 z: -2
                                 Behavior on opacity { NumberAnimation { duration: 130 } }
                             }
@@ -245,12 +251,12 @@ ApplicationWindow {
                                 anchors.left: parent.left
                                 anchors.top: parent.top
                                 anchors.bottom: parent.bottom
-                                anchors.topMargin: 7
-                                anchors.bottomMargin: 7
+                                anchors.topMargin: 8
+                                anchors.bottomMargin: 8
                                 width: 2
                                 radius: 1
                                 color: Theme.accent
-                                opacity: navItem.active ? 0.95 : 0
+                                opacity: navItem.active ? 0.9 : 0
                             }
                             Rectangle {
                                 id: navIconShell
@@ -312,55 +318,66 @@ ApplicationWindow {
                 }
             }
 
-            ColumnLayout {
+            StackLayout {
+                id: workspaceStack
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                Layout.margins: 11
-                spacing: 10
+                currentIndex: root.selectedSection === 0 ? 0 : 1
 
-                EqGraph {
-                    id: eqGraph
-                    bandModel: root.studioEngine.musicEqBands
-                    hpfFreq: root.studioEngine.hpfHz
-                    lpfFreq: root.studioEngine.lpfHz
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.minimumHeight: 430
+                Item {
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 10
+
+                        EqGraph {
+                            id: eqGraph
+                            bandModel: root.studioEngine.musicEqBands
+                            hpfFreq: root.studioEngine.hpfHz
+                            lpfFreq: root.studioEngine.lpfHz
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            Layout.minimumHeight: 430
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: root.lowerRackHeight
+                            Layout.minimumHeight: root.lowerRackHeight
+                            Layout.maximumHeight: root.lowerRackHeight
+                            spacing: 10
+                            MusicInputPanel {
+                                engine: root.studioEngine
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.preferredWidth: 455
+                                Layout.minimumWidth: 400
+                            }
+                            MusicTonePanel {
+                                engine: root.studioEngine
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.preferredWidth: 350
+                                Layout.minimumWidth: 310
+                            }
+                            FilterPanel {
+                                engine: root.studioEngine
+                                Layout.preferredWidth: 236
+                                Layout.minimumWidth: 228
+                                Layout.fillHeight: true
+                            }
+                            MasterStripPanel {
+                                engine: root.studioEngine
+                                Layout.preferredWidth: 212
+                                Layout.minimumWidth: 202
+                                Layout.maximumWidth: 226
+                                Layout.fillHeight: true
+                            }
+                        }
+                    }
                 }
 
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: root.lowerRackHeight
-                    Layout.minimumHeight: root.lowerRackHeight
-                    Layout.maximumHeight: root.lowerRackHeight
-                    spacing: 10
-                    MusicInputPanel {
-                        engine: root.studioEngine
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: 455
-                        Layout.minimumWidth: 400
-                    }
-                    MusicTonePanel {
-                        engine: root.studioEngine
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        Layout.preferredWidth: 350
-                        Layout.minimumWidth: 310
-                    }
-                    FilterPanel {
-                        engine: root.studioEngine
-                        Layout.preferredWidth: 236
-                        Layout.minimumWidth: 228
-                        Layout.fillHeight: true
-                    }
-                    MasterStripPanel {
-                        engine: root.studioEngine
-                        Layout.preferredWidth: 212
-                        Layout.minimumWidth: 202
-                        Layout.maximumWidth: 226
-                        Layout.fillHeight: true
-                    }
+                SectionWorkspace {
+                    sectionIndex: root.selectedSection
                 }
             }
         }
