@@ -1,6 +1,6 @@
 # SONKUPIK STUDIO Native UI Prototype
 
-This folder is a **visual-first Qt 6 / QML prototype**. It intentionally does not connect to K500 yet. The goal is to approve the premium mixer UI, interaction density, motion and control feel before porting the communication engine.
+This repository is a **standalone Qt 6 / QML native prototype** for SONKUPIK STUDIO / K500. It intentionally does not connect to K500 hardware yet. The current goal is to approve the premium mixer UI, interaction density, motion and control feel before porting the communication engine.
 
 ## Visual direction
 
@@ -17,29 +17,65 @@ The prototype uses **Segoe UI Variable Text**, matching the current web product'
 
 ## Requirements
 
-- Qt 6.8 or newer
+- Qt 6.8 or newer (Desktop MSVC kit)
 - Qt Quick + Qt Quick Controls 2
 - CMake 3.21+
-- Ninja
-- A Desktop MSVC 2022 Qt kit on Windows
+- Visual Studio with Desktop development with C++ / MSVC
+- Ninja is optional; the smart builder falls back to NMake automatically
 
-## Windows build
+## Smart Windows build
 
-Example from Command Prompt:
+The repository is drive-agnostic. It can live in either:
+
+```text
+C:\Git\k500
+D:\Git\k500
+```
+
+and Qt can live in either:
+
+```text
+C:\Qt\6.8.3\msvc2022_64
+D:\Qt\6.8.3\msvc2022_64
+```
+
+No hard-coded C: or D: repository path is required. `build-smart.ps1` uses its own repository location (`$PSScriptRoot`) and automatically detects Qt on C: or D:.
+
+From Command Prompt or PowerShell, the normal one-command build is:
 
 ```bat
-set CMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
 build-windows.cmd
 ```
 
-Or directly:
+To build, deploy Qt runtime, and immediately launch the app:
 
 ```bat
-cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build --config Release
+build-windows.cmd -Run
 ```
 
-The prototype opens on the Music workspace and follows the current web product's operator layout: PEQ and selected-band inspector above Music Input, Pitch/Tone, filters and Master Strip. Controls are interactive, but nothing is transmitted to hardware yet.
+To force a clean rebuild:
+
+```bat
+build-windows.cmd -Clean
+```
+
+If Qt is ever installed somewhere else, override detection explicitly:
+
+```bat
+build-windows.cmd -QtRoot "E:\Qt\6.8.3\msvc2022_64"
+```
+
+The smart builder performs these steps automatically:
+
+1. Uses the folder containing the script as the repository root, whether that is on C: or D:.
+2. Detects a valid Qt Desktop MSVC installation from `QT_ROOT`, `CMAKE_PREFIX_PATH`, `C:\Qt`, or `D:\Qt`.
+3. Finds Visual Studio using `vswhere.exe` and activates the MSVC x64 Developer Shell when needed.
+4. Uses Ninja when available, otherwise falls back to `NMake Makefiles`.
+5. Detects incompatible CMake cache when the generator or Qt path changes and cleans it automatically.
+6. Builds Release.
+7. Runs `windeployqt` and creates a runnable `package\SONKUPIK-STUDIO-Native-UI.exe`.
+
+The prototype opens on the Music workspace and follows the current operator layout: PEQ and selected-band inspector above Music Input, Pitch/Tone, filters and Master Strip. Controls are interactive, but nothing is transmitted to hardware yet.
 
 Visible Music controls are backed by the native `StudioEngine` QObject. PEQ bands use a `QAbstractListModel`; faders, pitch/tone, crossover frequencies and filter-type selectors write canonical store-style paths through the engine's `stateEdited(path, value)` signal. This establishes the boundary for preset parsing and K500 transport wiring without coupling QML controls directly to device I/O.
 
