@@ -235,26 +235,28 @@ StudioPanel {
                     var n=Math.max(260,Math.floor(width/3)),i,t,f,x,y
                     c.beginPath()
                     for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                    c.globalAlpha=.78;c.lineWidth=4.2;c.strokeStyle="#020405";c.stroke()
-                    c.globalAlpha=.07;c.lineWidth=6.2;c.strokeStyle=Theme.accent.toString();c.stroke()
-                    c.globalAlpha=.95;c.lineWidth=1.8;c.strokeStyle="#60DDD7";c.stroke();c.globalAlpha=1
+                    c.globalAlpha=0.78;c.lineWidth=4.2;c.strokeStyle="#020405";c.stroke()
+                    c.globalAlpha=0.07;c.lineWidth=6.2;c.strokeStyle=Theme.accent.toString();c.stroke()
+                    c.globalAlpha=0.95;c.lineWidth=1.8;c.strokeStyle="#60DDD7";c.stroke();c.globalAlpha=1
                     for(var b=0;b<root.bands.count;++b){
-                        var band=root.bands.get(b); if(Math.abs(band.gain)<.05)continue
+                        var band=root.bands.get(b); if(Math.abs(band.gain)<0.05)continue
                         c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=b===root.selectedIndex?.64:.18;c.lineWidth=b===root.selectedIndex?1.4:.8;c.strokeStyle=root.colorFor(b);c.stroke();c.globalAlpha=1
+                        c.globalAlpha = b === root.selectedIndex ? 0.64 : 0.18
+                        c.lineWidth = b === root.selectedIndex ? 1.4 : 0.8
+                        c.strokeStyle=root.colorFor(b);c.stroke();c.globalAlpha=1
                     }
                 }
             }
 
             Item {
                 x: root.xFor(root.bands.hpfHz)-10; y: root.topPad; width: 20; height: root.plotBottom-root.topPad
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 1; height: parent.height; color: Theme.amber; opacity: .28 }
+                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 1; height: parent.height; color: Theme.amber; opacity: 0.28 }
                 Text { anchors.left: parent.horizontalCenter; anchors.leftMargin: 8; y: 4; text: Math.round(root.bands.hpfHz)+" Hz"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold }
                 Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: root.yFor(0)-root.topPad-9; width: 18; height: 18; radius: 9; color: "#17140B"; border.width: 1; border.color: Theme.amber; Text{anchors.centerIn:parent;text:"HP";color:Theme.amber;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold} }
             }
             Item {
                 x: root.xFor(root.bands.lpfHz)-10; y: root.topPad; width: 20; height: root.plotBottom-root.topPad
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 1; height: parent.height; color: Theme.amber; opacity: .28 }
+                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 1; height: parent.height; color: Theme.amber; opacity: 0.28 }
                 Text { anchors.right: parent.horizontalCenter; anchors.rightMargin: 8; y: 4; text: root.fmtF(root.bands.lpfHz)+" Hz"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold }
                 Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: root.yFor(0)-root.topPad-9; width: 18; height: 18; radius: 9; color: "#17140B"; border.width: 1; border.color: Theme.amber; Text{anchors.centerIn:parent;text:"LP";color:Theme.amber;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold} }
             }
@@ -276,7 +278,14 @@ StudioPanel {
                         color: index===root.selectedIndex?"#0E171A":"#0A0E11"
                         border.width: 2
                         border.color: root.colorFor(index)
-                        Rectangle { anchors.fill: parent; anchors.margins: -5; radius: width/2; color: root.colorFor(index); opacity: index===root.selectedIndex?.12:.035; z:-1 }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: -5
+                            radius: width/2
+                            color: root.colorFor(index)
+                            opacity: index === root.selectedIndex ? 0.12 : 0.035
+                            z: -1
+                        }
                         Text { anchors.centerIn: parent; text: index+1; color: index===root.selectedIndex?root.colorFor(index):Theme.textSoft; font.family: Theme.fontFamily; font.pixelSize: 9; font.weight: Font.Bold }
                     }
                     MouseArea {
@@ -297,7 +306,7 @@ StudioPanel {
             Rectangle {
                 width: inspector.width+12; height: inspector.height+12
                 x: inspector.x-6; y: inspector.y+4
-                radius: inspector.radius+4; color: "#52000000"; opacity: .70
+                radius: inspector.radius+4; color: "#52000000"; opacity: 0.70
             }
             BandInspector {
                 id: inspector
