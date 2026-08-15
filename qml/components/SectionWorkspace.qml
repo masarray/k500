@@ -1,364 +1,297 @@
 import QtQuick
-import QtQuick.Controls
 import QtQuick.Layouts
 
 Item {
     id: root
 
+    required property var engine
     property int sectionIndex: 1
-    property string activeMode: ""
-    readonly property var profile: profileFor(sectionIndex)
+    property int micChannel: 0
+    property bool micEqLinked: false
+    readonly property int lowerRackHeight: 304
 
-    function p(label, value, from, to, unit, decimals, step, logarithmic) {
-        return {
-            label: label,
-            value: value,
-            from: from,
-            to: to,
-            unit: unit,
-            decimals: decimals === undefined ? 1 : decimals,
-            step: step === undefined ? 0.1 : step,
-            logarithmic: logarithmic === undefined ? false : logarithmic
+    function activeEqModel() {
+        switch (sectionIndex) {
+        case 1: return micChannel === 0 ? micAModel : micBModel
+        case 2: return reverbModel
+        case 3: return echoModel
+        case 4: return mainModel
+        case 5: return surroundModel
+        case 6: return centerModel
+        case 7: return subModel
+        default: return micAModel
+        }
+    }
+    function activeEqLabel() {
+        switch (sectionIndex) {
+        case 1: return micChannel === 0 ? "Mic A" : "Mic B"
+        case 2: return "Reverb"
+        case 3: return "Echo"
+        case 4: return "Main"
+        case 5: return "Surround"
+        case 6: return "Center"
+        case 7: return "Subwoofer"
+        default: return "Mic A"
         }
     }
 
-    function profileFor(index) {
-        switch (index) {
-        case 1:
-            return {
-                kicker: "DUAL VOCAL INPUT", title: "Mic", icon: "mic-2", accent: "#5EDDD4",
-                subtitle: "Two-channel vocal front end · gain staging · tone · dynamics",
-                heroTitle: "VOCAL FRONT END",
-                heroParams: [
-                    p("MIC 1 GAIN", 0.0, -24, 24, "dB", 1, 0.5),
-                    p("MIC 2 GAIN", 0.0, -24, 24, "dB", 1, 0.5),
-                    p("HPF", 90, 40, 300, "Hz", 0, 5),
-                    p("PRESENCE", 1.5, -12, 12, "dB", 1, 0.1),
-                    p("AIR", 1.0, -12, 12, "dB", 1, 0.1),
-                    p("DE-ESS", 22, 0, 100, "%", 0, 1)
-                ],
-                leftTitle: "MIC 1 CHANNEL", leftNote: "Primary vocal strip",
-                leftParams: [p("LOW", 0, -12, 12, "dB", 1, 0.1), p("MID", 0, -12, 12, "dB", 1, 0.1), p("HIGH", 0, -12, 12, "dB", 1, 0.1), p("COMP", 28, 0, 100, "%", 0, 1), p("LEVEL", 0, -60, 12, "dB", 1, 0.5)],
-                midTitle: "MIC 2 CHANNEL", midNote: "Secondary vocal strip",
-                midParams: [p("LOW", 0, -12, 12, "dB", 1, 0.1), p("MID", 0, -12, 12, "dB", 1, 0.1), p("HIGH", 0, -12, 12, "dB", 1, 0.1), p("COMP", 28, 0, 100, "%", 0, 1), p("LEVEL", 0, -60, 12, "dB", 1, 0.5)],
-                rightTitle: "VOCAL BUS", rightNote: "Shared output and routing",
-                rightParams: [p("WIDTH", 100, 0, 200, "%", 0, 1), p("FX SEND", -12, -60, 6, "dB", 1, 0.5), p("PAN", 0, -100, 100, "%", 0, 1), p("BUS LEVEL", 0, -60, 12, "dB", 1, 0.5)],
-                modes: ["DUAL MONO", "LINKED", "STEREO"]
-            }
-        case 2:
-            return {
-                kicker: "ROOM TAIL", title: "Reverb", icon: "sparkles", accent: "#A58AE8",
-                subtitle: "Early reflections · room body · decay shaping · wet/dry control",
-                heroTitle: "ROOM ENGINE",
-                heroParams: [p("PRE-DELAY", 28, 0, 180, "ms", 0, 1), p("DECAY", 2.4, 0.2, 10, "s", 1, 0.1), p("ROOM SIZE", 68, 0, 100, "%", 0, 1), p("DIFFUSION", 72, 0, 100, "%", 0, 1), p("DAMPING", 58, 0, 100, "%", 0, 1), p("MIX", 18, 0, 100, "%", 0, 1)],
-                leftTitle: "EARLY REFLECTIONS", leftNote: "Attack and space definition",
-                leftParams: [p("LEVEL", -8, -60, 6, "dB", 1, 0.5), p("SIZE", 46, 0, 100, "%", 0, 1), p("SPREAD", 72, 0, 100, "%", 0, 1), p("LOW CUT", 140, 20, 1200, "Hz", 0, 10, true), p("HIGH CUT", 9.5, 2, 20, "kHz", 1, 0.1)],
-                midTitle: "TAIL SHAPER", midNote: "Density and spectral decay",
-                midParams: [p("DENSITY", 74, 0, 100, "%", 0, 1), p("MOD DEPTH", 12, 0, 100, "%", 0, 1), p("LOW DECAY", 92, 20, 180, "%", 0, 1), p("HIGH DECAY", 66, 20, 180, "%", 0, 1), p("AIR", 1.2, -12, 12, "dB", 1, 0.1)],
-                rightTitle: "REVERB OUTPUT", rightNote: "Mode and return level",
-                rightParams: [p("RETURN", -6, -60, 6, "dB", 1, 0.5), p("WIDTH", 118, 0, 200, "%", 0, 1), p("DUCKING", 16, 0, 100, "%", 0, 1), p("PAN", 0, -100, 100, "%", 0, 1)],
-                modes: ["HALL", "PLATE", "ROOM", "CHAMBER"]
-            }
-        case 3:
-            return {
-                kicker: "DELAY ENGINE", title: "Echo", icon: "repeat", accent: "#69AEEA",
-                subtitle: "Tempo-aware delay · feedback contour · stereo motion · vocal ducking",
-                heroTitle: "ECHO CORE",
-                heroParams: [p("TIME", 320, 40, 1200, "ms", 0, 1), p("FEEDBACK", 28, 0, 92, "%", 0, 1), p("MIX", 14, 0, 100, "%", 0, 1), p("SPREAD", 58, 0, 100, "%", 0, 1), p("LOW CUT", 180, 20, 1800, "Hz", 0, 10, true), p("HIGH CUT", 7.8, 2, 20, "kHz", 1, 0.1)],
-                leftTitle: "TAP GEOMETRY", leftNote: "Timing and stereo placement",
-                leftParams: [p("L OFFSET", -8, -50, 50, "ms", 0, 1), p("R OFFSET", 12, -50, 50, "ms", 0, 1), p("PING PONG", 54, 0, 100, "%", 0, 1), p("MOD RATE", 0.6, 0.1, 8, "Hz", 1, 0.1), p("MOD DEPTH", 7, 0, 100, "%", 0, 1)],
-                midTitle: "TONE & DUCKING", midNote: "Keep repeats behind the vocal",
-                midParams: [p("DAMPING", 46, 0, 100, "%", 0, 1), p("SATURATION", 8, 0, 100, "%", 0, 1), p("DUCKING", 34, 0, 100, "%", 0, 1), p("ATTACK", 18, 1, 200, "ms", 0, 1), p("RELEASE", 420, 40, 2000, "ms", 0, 10)],
-                rightTitle: "ECHO OUTPUT", rightNote: "Return routing and width",
-                rightParams: [p("RETURN", -8, -60, 6, "dB", 1, 0.5), p("WIDTH", 112, 0, 200, "%", 0, 1), p("PAN", 0, -100, 100, "%", 0, 1), p("DRY TRIM", 0, -12, 12, "dB", 1, 0.1)],
-                modes: ["STEREO", "PING PONG", "CENTER", "WIDE"]
-            }
-        case 4:
-            return {
-                kicker: "FRONT OUTPUT", title: "Main", icon: "speaker", accent: "#F0B928",
-                subtitle: "Main L/R output · tonal balance · loudness control · protection",
-                heroTitle: "MAIN OUTPUT PROCESSOR",
-                heroParams: [p("LEVEL", 0, -60, 12, "dB", 1, 0.5), p("BALANCE", 0, -100, 100, "%", 0, 1), p("LOW SHELF", 0, -12, 12, "dB", 1, 0.1), p("HIGH SHELF", 0, -12, 12, "dB", 1, 0.1), p("HPF", 28, 20, 240, "Hz", 0, 1), p("LPF", 20, 4, 20, "kHz", 1, 0.1)],
-                leftTitle: "OUTPUT TONE", leftNote: "Broad tonal trim",
-                leftParams: [p("BASS", 0, -12, 12, "dB", 1, 0.1), p("LOW MID", 0, -12, 12, "dB", 1, 0.1), p("HIGH MID", 0, -12, 12, "dB", 1, 0.1), p("TREBLE", 0, -12, 12, "dB", 1, 0.1), p("AIR", 0, -12, 12, "dB", 1, 0.1)],
-                midTitle: "DYNAMICS", midNote: "Output headroom and protection",
-                midParams: [p("THRESHOLD", -2, -24, 0, "dB", 1, 0.1), p("RELEASE", 180, 20, 1200, "ms", 0, 10), p("SOFT CLIP", 12, 0, 100, "%", 0, 1), p("MAKEUP", 0, -12, 12, "dB", 1, 0.1), p("CEILING", -0.5, -6, 0, "dB", 1, 0.1)],
-                rightTitle: "MAIN ROUTING", rightNote: "Front speaker topology",
-                rightParams: [p("WIDTH", 100, 0, 200, "%", 0, 1), p("L TRIM", 0, -12, 12, "dB", 1, 0.1), p("R TRIM", 0, -12, 12, "dB", 1, 0.1), p("DELAY", 0, 0, 80, "ms", 1, 0.1)],
-                modes: ["STEREO", "MONO", "L/R LINK"]
-            }
-        case 5:
-            return {
-                kicker: "REAR FIELD", title: "Surround", icon: "waves", accent: "#57D49A",
-                subtitle: "Rear ambience field · decorrelation · distance · spatial balance",
-                heroTitle: "SURROUND FIELD",
-                heroParams: [p("LEVEL", -8, -60, 12, "dB", 1, 0.5), p("WIDTH", 138, 0, 200, "%", 0, 1), p("DISTANCE", 62, 0, 100, "%", 0, 1), p("DECORRELATE", 34, 0, 100, "%", 0, 1), p("DELAY", 18, 0, 80, "ms", 1, 0.1), p("AMBIENCE", 22, 0, 100, "%", 0, 1)],
-                leftTitle: "REAR TONE", leftNote: "Spectral placement behind the listener",
-                leftParams: [p("LOW CUT", 120, 20, 1500, "Hz", 0, 10, true), p("BASS", -1, -12, 12, "dB", 1, 0.1), p("MID", -0.5, -12, 12, "dB", 1, 0.1), p("TREBLE", -1.5, -12, 12, "dB", 1, 0.1), p("HIGH CUT", 14, 3, 20, "kHz", 1, 0.1)],
-                midTitle: "FIELD SHAPER", midNote: "Depth without pulling focus rearward",
-                midParams: [p("EARLY", 18, 0, 100, "%", 0, 1), p("LATE", 26, 0, 100, "%", 0, 1), p("CROSSFEED", 12, 0, 100, "%", 0, 1), p("MOTION", 8, 0, 100, "%", 0, 1), p("FOCUS", 56, 0, 100, "%", 0, 1)],
-                rightTitle: "REAR ROUTING", rightNote: "Rear pair alignment",
-                rightParams: [p("L TRIM", 0, -12, 12, "dB", 1, 0.1), p("R TRIM", 0, -12, 12, "dB", 1, 0.1), p("BALANCE", 0, -100, 100, "%", 0, 1), p("POLARITY", 0, 0, 1, "", 0, 1)],
-                modes: ["REAR STEREO", "DIFFUSE", "AMBIENCE"]
-            }
-        case 6:
-            return {
-                kicker: "VOCAL FOCUS", title: "Center", icon: "radio-tower", accent: "#F07A85",
-                subtitle: "Center image · vocal anchoring · intelligibility · center speaker control",
-                heroTitle: "CENTER FOCUS",
-                heroParams: [p("LEVEL", -3, -60, 12, "dB", 1, 0.5), p("FOCUS", 66, 0, 100, "%", 0, 1), p("PRESENCE", 1.5, -12, 12, "dB", 1, 0.1), p("AIR", 0.8, -12, 12, "dB", 1, 0.1), p("HPF", 100, 40, 500, "Hz", 0, 5), p("DELAY", 0, 0, 80, "ms", 1, 0.1)],
-                leftTitle: "VOCAL TONE", leftNote: "Keep speech and singing intelligible",
-                leftParams: [p("BODY", 0, -12, 12, "dB", 1, 0.1), p("NASAL", 0, -12, 12, "dB", 1, 0.1), p("PRESENCE", 1, -12, 12, "dB", 1, 0.1), p("SIBILANCE", -1, -12, 12, "dB", 1, 0.1), p("AIR", 1, -12, 12, "dB", 1, 0.1)],
-                midTitle: "CENTER DYNAMICS", midNote: "Stable center image under loud passages",
-                midParams: [p("COMP", 24, 0, 100, "%", 0, 1), p("ATTACK", 18, 1, 200, "ms", 0, 1), p("RELEASE", 220, 20, 1200, "ms", 0, 10), p("DE-ESS", 18, 0, 100, "%", 0, 1), p("LIMIT", -1, -12, 0, "dB", 1, 0.1)],
-                rightTitle: "CENTER ROUTING", rightNote: "Speaker and phantom-center behavior",
-                rightParams: [p("MUSIC BLEED", -18, -60, 0, "dB", 1, 0.5), p("FX BLEED", -12, -60, 0, "dB", 1, 0.5), p("TRIM", 0, -12, 12, "dB", 1, 0.1), p("POLARITY", 0, 0, 1, "", 0, 1)],
-                modes: ["VOCAL CENTER", "PHANTOM", "FULL MIX"]
-            }
-        case 7:
-            return {
-                kicker: "BASS MANAGEMENT", title: "Sub", icon: "activity", accent: "#D8C15B",
-                subtitle: "Sub crossover · phase alignment · low-frequency contour · limiter",
-                heroTitle: "SUBWOOFER PROCESSOR",
-                heroParams: [p("LEVEL", -3, -60, 12, "dB", 1, 0.5), p("LPF", 90, 40, 220, "Hz", 0, 1), p("PHASE", 0, 0, 180, "deg", 0, 1), p("DELAY", 0, 0, 40, "ms", 1, 0.1), p("BASS BOOST", 0, -12, 12, "dB", 1, 0.1), p("LIMIT", -1.5, -18, 0, "dB", 1, 0.1)],
-                leftTitle: "CROSSOVER", leftNote: "Main-to-sub handoff",
-                leftParams: [p("LPF FREQ", 90, 40, 220, "Hz", 0, 1), p("SLOPE", 24, 6, 48, "dB", 0, 6), p("MAIN HPF", 70, 20, 220, "Hz", 0, 1), p("OVERLAP", 8, 0, 100, "%", 0, 1), p("ALIGN", 50, 0, 100, "%", 0, 1)],
-                midTitle: "LOW CONTOUR", midNote: "Weight without boom",
-                midParams: [p("SUBSONIC", 28, 15, 60, "Hz", 0, 1), p("PUNCH", 1, -12, 12, "dB", 1, 0.1), p("WEIGHT", 1.5, -12, 12, "dB", 1, 0.1), p("MUD CUT", -1, -12, 12, "dB", 1, 0.1), p("HARMONICS", 6, 0, 100, "%", 0, 1)],
-                rightTitle: "SUB OUTPUT", rightNote: "Protection and topology",
-                rightParams: [p("TRIM", 0, -12, 12, "dB", 1, 0.1), p("CEILING", -1, -12, 0, "dB", 1, 0.1), p("RELEASE", 240, 20, 1400, "ms", 0, 10), p("POLARITY", 0, 0, 1, "", 0, 1)],
-                modes: ["MONO SUB", "STEREO SUB", "LFE"]
-            }
-        default:
-            return {
-                kicker: "GLOBAL SETUP", title: "System", icon: "settings-2", accent: "#8FA4B2",
-                subtitle: "Device connection · global gain structure · safety · synchronization",
-                heroTitle: "SYSTEM CONTROL",
-                heroParams: [p("GLOBAL TRIM", 0, -18, 12, "dB", 1, 0.1), p("STARTUP LEVEL", -18, -60, 0, "dB", 1, 0.5), p("UI SCALE", 100, 80, 140, "%", 0, 1), p("SYNC RATE", 20, 5, 60, "Hz", 0, 1), p("METER RATE", 30, 10, 60, "Hz", 0, 1), p("SAFETY", 100, 0, 100, "%", 0, 1)],
-                leftTitle: "DEVICE", leftNote: "K500 transport preferences",
-                leftParams: [p("BT TIMEOUT", 8, 1, 30, "s", 0, 1), p("USB TIMEOUT", 5, 1, 30, "s", 0, 1), p("RETRY", 3, 0, 10, "", 0, 1), p("TX COALESCE", 18, 0, 100, "ms", 0, 1), p("RX FILTER", 12, 0, 100, "ms", 0, 1)],
-                midTitle: "GLOBAL SAFETY", midNote: "Limits applied across every output",
-                midParams: [p("MAX LEVEL", 6, -12, 12, "dB", 1, 0.1), p("MUTE RAMP", 24, 0, 500, "ms", 0, 1), p("START RAMP", 80, 0, 1000, "ms", 0, 10), p("PEAK HOLD", 1.2, 0, 5, "s", 1, 0.1), p("CLIP WARN", -1, -12, 0, "dB", 1, 0.1)],
-                rightTitle: "WORKFLOW", rightNote: "Preset and session behavior",
-                rightParams: [p("AUTOSAVE", 30, 5, 300, "s", 0, 5), p("HISTORY", 50, 0, 200, "", 0, 1), p("FADE LOAD", 120, 0, 1000, "ms", 0, 10), p("CONFIRM", 1, 0, 1, "", 0, 1)],
-                modes: ["AUTO CONNECT", "BT PRIORITY", "USB PRIORITY", "MANUAL"]
-            }
-        }
-    }
+    LocalEqModel { id: micAModel; bandCount: 10; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: micBModel; bandCount: 10; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: reverbModel; bandCount: 5; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: echoModel; bandCount: 5; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: mainModel; bandCount: 7; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: surroundModel; bandCount: 5; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: centerModel; bandCount: 5; hpfHz: 20; lpfHz: 20000 }
+    LocalEqModel { id: subModel; bandCount: 5; hpfHz: 20; lpfHz: 20000 }
 
-    onSectionIndexChanged: activeMode = profile.modes.length ? profile.modes[0] : ""
-    Component.onCompleted: activeMode = profile.modes.length ? profile.modes[0] : ""
-
-    ColumnLayout {
+    StackLayout {
         anchors.fill: parent
-        spacing: 10
+        currentIndex: root.sectionIndex === 8 ? 1 : 0
 
-        StudioPanel {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 278
-            Layout.minimumHeight: 250
-
+        Item {
             ColumnLayout {
                 anchors.fill: parent
-                anchors.margins: 14
                 spacing: 10
+
+                SectionEqGraph {
+                    bandModel: root.activeEqModel()
+                    sectionLabel: root.activeEqLabel()
+                    showMicSelector: root.sectionIndex === 1
+                    micChannel: root.micChannel
+                    eqLinked: root.micEqLinked
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumHeight: 430
+                    onMicChannelRequested: function(channel) { root.micChannel = channel }
+                    onEqLinkRequested: function(linked) { root.micEqLinked = linked }
+                }
 
                 RowLayout {
                     Layout.fillWidth: true
+                    Layout.preferredHeight: root.lowerRackHeight
+                    Layout.minimumHeight: root.lowerRackHeight
+                    Layout.maximumHeight: root.lowerRackHeight
                     spacing: 10
 
-                    Rectangle {
-                        Layout.preferredWidth: 36
-                        Layout.preferredHeight: 36
-                        radius: 8
-                        color: "#0B1217"
-                        border.width: 1
-                        border.color: root.profile.accent
-                        LucideIcon {
-                            anchors.centerIn: parent
-                            width: 18
-                            height: 18
-                            name: root.profile.icon
-                            color: root.profile.accent
-                            strokeWidth: 1.9
-                        }
-                    }
-                    ColumnLayout {
+                    StackLayout {
+                        id: lowerStack
                         Layout.fillWidth: true
-                        spacing: -1
-                        Text {
-                            text: root.profile.kicker
-                            color: Theme.textDim
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            font.weight: Font.DemiBold
-                            font.letterSpacing: 1.05
+                        Layout.fillHeight: true
+                        currentIndex: Math.max(0, Math.min(6, root.sectionIndex - 1))
+
+                        // MIC — exact web page structure: Mic Inputs + Vocal Dynamics + Band Limits.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent
+                                spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 290
+                                    eyebrow: "INPUT MIXER"; title: "Mic Inputs"
+                                    channels: [
+                                        {label:"MIC A",value:96,from:0,to:100,step:1,unit:"",decimals:0},
+                                        {label:"MIC B",value:96,from:0,to:100,step:1,unit:"",decimals:0},
+                                        {label:"FBX",badge:"A+B",value:7,from:0,to:20,step:1,unit:"",decimals:0}
+                                    ]
+                                }
+                                RackDynamicsPanel {
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 520
+                                    title: "Vocal Dynamics"; includeGate: true
+                                    gate: -70; threshold: -12; ratio: 3; attack: 10; release: 200
+                                }
+                                RackFilterPanel {
+                                    Layout.preferredWidth: 245; Layout.fillHeight: true
+                                    eyebrow: "FILTERS"; title: "Band Limits"
+                                    fields: [
+                                        {label:"HPF",value:20,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:20000,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType: "HP LR 24"; lpType: "LP LR 24"
+                                }
+                            }
                         }
-                        Text {
-                            text: root.profile.title + "  ·  " + root.profile.heroTitle
-                            color: Theme.text
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 14
-                            font.weight: Font.DemiBold
+
+                        // REVERB — exact web structure: Room Engine + Tone.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440
+                                    eyebrow:"ROOM ENGINE"; title:"Reverb"
+                                    channels:[
+                                        {label:"LEVEL",value:24,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"DECAY",value:1800,from:100,to:5000,step:10,unit:"ms",decimals:0},
+                                        {label:"PRE",value:28,from:0,to:300,step:1,unit:"ms",decimals:0}
+                                    ]
+                                }
+                                RackFilterPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:420
+                                    eyebrow:"EFFECT FILTERS"; title:"Tone"
+                                    fields:[
+                                        {label:"HPF",value:80,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:12000,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType:"HP LR 24"; lpType:"LP LR 24"
+                                }
+                            }
                         }
-                        Text {
-                            text: root.profile.subtitle
-                            color: Theme.textDim
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 9
+
+                        // ECHO — exact web structure: Delay Engine + Tone.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440
+                                    eyebrow:"DELAY ENGINE"; title:"Echo"
+                                    channels:[
+                                        {label:"LEVEL",value:22,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REPEAT",value:28,from:0,to:100,step:1,unit:"",decimals:0},
+                                        {label:"DELAY",value:320,from:0,to:1000,step:1,unit:"ms",decimals:0}
+                                    ]
+                                }
+                                RackFilterPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:420
+                                    eyebrow:"DELAY FILTERS"; title:"Tone"
+                                    fields:[
+                                        {label:"HPF",value:100,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:10000,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType:"HP LR 24"; lpType:"LP LR 24"
+                                }
+                            }
+                        }
+
+                        // MAIN — exact web output-page structure.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430
+                                    eyebrow:"FRONT OUTPUT"; title:"Main Bus"
+                                    channels:[
+                                        {label:"L",value:0,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"R",value:0,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:35,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:35,from:0,to:100,step:1,unit:"%",decimals:0}
+                                    ]
+                                }
+                                RackDynamicsPanel { Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430; title:"Output Compressor"; threshold:-6; ratio:3; attack:10; release:200 }
+                                RackFilterPanel {
+                                    Layout.preferredWidth:245; Layout.fillHeight:true
+                                    eyebrow:"CROSSOVER"; title:"Band Limits / Delay"
+                                    fields:[
+                                        {label:"HPF",value:20,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:20000,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType:"HP LR 24"; lpType:"LP LR 24"
+                                }
+                            }
+                        }
+
+                        // SURROUND — same output architecture, with channel delays.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430
+                                    eyebrow:"REAR FIELD"; title:"Surround Bus"
+                                    channels:[
+                                        {label:"L",value:-3,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"R",value:-3,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:70,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:70,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:45,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:30,from:0,to:100,step:1,unit:"%",decimals:0}
+                                    ]
+                                }
+                                RackDynamicsPanel { Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430; title:"Output Compressor"; threshold:-8; ratio:3; attack:12; release:220 }
+                                RackFilterPanel {
+                                    Layout.preferredWidth:245; Layout.fillHeight:true
+                                    eyebrow:"CROSSOVER"; title:"Band Limits / Delay"
+                                    fields:[
+                                        {label:"L DELAY",value:18,from:0,to:50,step:1,unit:"ms",decimals:0},
+                                        {label:"R DELAY",value:18,from:0,to:50,step:1,unit:"ms",decimals:0},
+                                        {label:"HPF",value:80,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:16000,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType:"HP LR 24"; lpType:"LP LR 24"
+                                }
+                            }
+                        }
+
+                        // CENTER — same output architecture.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430
+                                    eyebrow:"VOCAL ANCHOR"; title:"Center Bus"
+                                    channels:[
+                                        {label:"CTR",value:-3,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:90,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:50,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:25,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:20,from:0,to:100,step:1,unit:"%",decimals:0}
+                                    ]
+                                }
+                                RackDynamicsPanel { Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430; title:"Output Compressor"; threshold:-8; ratio:3; attack:12; release:220 }
+                                RackFilterPanel {
+                                    Layout.preferredWidth:245; Layout.fillHeight:true
+                                    eyebrow:"CROSSOVER"; title:"Band Limits / Delay"
+                                    fields:[
+                                        {label:"HPF",value:80,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:16000,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType:"HP LR 24"; lpType:"LP LR 24"
+                                }
+                            }
+                        }
+
+                        // SUB — same output architecture.
+                        Item {
+                            RowLayout {
+                                anchors.fill: parent; spacing: 10
+                                RackFaderPanel {
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430
+                                    eyebrow:"BASS MANAGEMENT"; title:"Subwoofer Bus"
+                                    channels:[
+                                        {label:"SUB",value:-3,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:25,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:10,from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:10,from:0,to:100,step:1,unit:"%",decimals:0}
+                                    ]
+                                }
+                                RackDynamicsPanel { Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:430; title:"Output Compressor"; threshold:-4; ratio:4; attack:18; release:260 }
+                                RackFilterPanel {
+                                    Layout.preferredWidth:245; Layout.fillHeight:true
+                                    eyebrow:"CROSSOVER"; title:"Band Limits / Delay"
+                                    fields:[
+                                        {label:"HPF",value:20,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:120,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                    ]
+                                    hpType:"HP LR 24"; lpType:"LP LR 24"
+                                }
+                            }
                         }
                     }
-                    Rectangle {
-                        Layout.preferredWidth: 72
-                        Layout.preferredHeight: 26
-                        radius: 6
-                        color: "#0A1212"
-                        border.width: 1
-                        border.color: root.profile.accent
-                        opacity: 0.95
-                        Text {
-                            anchors.centerIn: parent
-                            text: "ACTIVE"
-                            color: root.profile.accent
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 8
-                            font.weight: Font.Bold
-                            font.letterSpacing: 0.8
-                        }
-                    }
-                    SoftButton { Layout.preferredWidth: 66; text: "RESET"; compact: true }
-                }
 
-                Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderSoft; opacity: 0.65 }
-
-                GridLayout {
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    columns: 2
-                    columnSpacing: 18
-                    rowSpacing: 4
-
-                    Repeater {
-                        model: root.profile.heroParams
-                        delegate: ParameterSlider {
-                            required property var modelData
-                            property real localValue: Number(modelData.value)
-                            Layout.fillWidth: true
-                            label: modelData.label
-                            value: localValue
-                            from: modelData.from
-                            to: modelData.to
-                            step: modelData.step
-                            decimals: modelData.decimals
-                            unit: modelData.unit
-                            defaultValue: modelData.value
-                            logarithmic: modelData.logarithmic
-                            accentColor: root.profile.accent
-                            onValueEdited: function(v) { localValue = v }
-                        }
+                    MasterStripPanel {
+                        engine: root.engine
+                        Layout.preferredWidth: 212
+                        Layout.minimumWidth: 202
+                        Layout.maximumWidth: 226
+                        Layout.fillHeight: true
                     }
                 }
             }
         }
 
-        RowLayout {
+        SystemWorkspace {
+            engine: root.engine
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 10
-
-            Repeater {
-                model: [
-                    { title: root.profile.leftTitle, note: root.profile.leftNote, params: root.profile.leftParams },
-                    { title: root.profile.midTitle, note: root.profile.midNote, params: root.profile.midParams }
-                ]
-                delegate: StudioPanel {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    Layout.fillHeight: true
-                    Layout.minimumWidth: 300
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: 13
-                        spacing: 7
-                        Text { text: modelData.title; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 0.7 }
-                        Text { text: modelData.note; color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8 }
-                        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderSoft; opacity: 0.62 }
-                        Repeater {
-                            model: modelData.params
-                            delegate: ParameterSlider {
-                                required property var modelData
-                                property real localValue: Number(modelData.value)
-                                Layout.fillWidth: true
-                                label: modelData.label
-                                value: localValue
-                                from: modelData.from
-                                to: modelData.to
-                                step: modelData.step
-                                decimals: modelData.decimals
-                                unit: modelData.unit
-                                defaultValue: modelData.value
-                                logarithmic: modelData.logarithmic
-                                accentColor: root.profile.accent
-                                onValueEdited: function(v) { localValue = v }
-                            }
-                        }
-                        Item { Layout.fillHeight: true }
-                    }
-                }
-            }
-
-            StudioPanel {
-                Layout.preferredWidth: 330
-                Layout.minimumWidth: 300
-                Layout.fillHeight: true
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 13
-                    spacing: 7
-                    Text { text: root.profile.rightTitle; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 0.7 }
-                    Text { text: root.profile.rightNote; color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8 }
-                    Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; color: Theme.borderSoft; opacity: 0.62 }
-
-                    Text { text: "MODE"; color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.DemiBold; font.letterSpacing: 0.55 }
-                    StudioComboBox {
-                        Layout.fillWidth: true
-                        model: root.profile.modes
-                        value: root.activeMode
-                        accentColor: root.profile.accent
-                        onValueEdited: function(v) { root.activeMode = v }
-                    }
-
-                    Repeater {
-                        model: root.profile.rightParams
-                        delegate: ParameterSlider {
-                            required property var modelData
-                            property real localValue: Number(modelData.value)
-                            Layout.fillWidth: true
-                            label: modelData.label
-                            value: localValue
-                            from: modelData.from
-                            to: modelData.to
-                            step: modelData.step
-                            decimals: modelData.decimals
-                            unit: modelData.unit
-                            defaultValue: modelData.value
-                            logarithmic: modelData.logarithmic
-                            accentColor: root.profile.accent
-                            onValueEdited: function(v) { localValue = v }
-                        }
-                    }
-
-                    Item { Layout.fillHeight: true }
-                    RowLayout {
-                        Layout.fillWidth: true
-                        spacing: 6
-                        SoftButton { Layout.fillWidth: true; text: "BYPASS"; compact: true }
-                        SoftButton { Layout.fillWidth: true; text: "MUTE"; compact: true; danger: true }
-                    }
-                }
-            }
         }
     }
 }

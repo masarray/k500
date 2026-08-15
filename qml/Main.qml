@@ -53,13 +53,7 @@ ApplicationWindow {
                     color: Theme.recessed
                     border.width: 1
                     border.color: Theme.border
-                    Image {
-                        anchors.fill: parent
-                        anchors.margins: 6
-                        source: "qrc:/assets/sonkupik-logo.png"
-                        fillMode: Image.PreserveAspectFit
-                        smooth: true
-                    }
+                    Image { anchors.fill: parent; anchors.margins: 6; source: "qrc:/assets/sonkupik-logo.png"; fillMode: Image.PreserveAspectFit; smooth: true }
                 }
                 ColumnLayout {
                     spacing: -1
@@ -80,44 +74,23 @@ ApplicationWindow {
                         GradientStop { position: 0.45; color: "#0E151B" }
                         GradientStop { position: 1.0; color: "#070B0F" }
                     }
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.leftMargin: 5
-                        anchors.rightMargin: 5
-                        anchors.topMargin: 1
-                        height: 1
-                        color: "#FFFFFF"
-                        opacity: 0.055
-                    }
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 4
                         spacing: 3
                         SoftButton { Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true; iconName: "skip-back"; iconOnly: true; iconFilled: true }
                         SoftButton {
-                            Layout.preferredWidth: 31
-                            Layout.fillHeight: true
-                            transport: true
-                            iconName: root.transportPlaying ? "pause" : "play"
-                            iconOnly: true
-                            iconFilled: true
-                            neonAccent: true
-                            checked: root.transportPlaying
+                            Layout.preferredWidth: 31; Layout.fillHeight: true; transport: true
+                            iconName: root.transportPlaying ? "pause" : "play"; iconOnly: true; iconFilled: true
+                            neonAccent: true; checked: root.transportPlaying
                             onClicked: root.transportPlaying = !root.transportPlaying
                         }
                         SoftButton { Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true; iconName: "skip-forward"; iconOnly: true; iconFilled: true }
                         Rectangle { Layout.preferredWidth: 1; Layout.preferredHeight: 16; color: "#2E3A43" }
                         SoftButton {
-                            Layout.preferredWidth: 27
-                            Layout.fillHeight: true
-                            transport: true
-                            iconName: "volume-x"
-                            iconOnly: true
-                            accentIcon: !root.transportMuted
-                            checked: root.transportMuted
-                            danger: root.transportMuted
+                            Layout.preferredWidth: 27; Layout.fillHeight: true; transport: true
+                            iconName: "volume-x"; iconOnly: true; accentIcon: !root.transportMuted
+                            checked: root.transportMuted; danger: root.transportMuted
                             onClicked: root.transportMuted = !root.transportMuted
                         }
                     }
@@ -130,17 +103,6 @@ ApplicationWindow {
                     color: "#080C0F"
                     border.width: 1
                     border.color: "#373019"
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.leftMargin: 6
-                        anchors.rightMargin: 6
-                        anchors.topMargin: 1
-                        height: 1
-                        color: Theme.amber
-                        opacity: 0.12
-                    }
                     Text { anchors.centerIn: parent; text: "DEFAULT FLAT"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: Theme.textS; font.weight: Font.Bold; font.letterSpacing: 0.35 }
                 }
 
@@ -160,18 +122,6 @@ ApplicationWindow {
                     color: "#12130D"
                     border.width: 1
                     border.color: "#493C16"
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.bottom: parent.bottom
-                        anchors.leftMargin: 7
-                        anchors.rightMargin: 7
-                        anchors.bottomMargin: 1
-                        height: 2
-                        radius: 1
-                        color: Theme.amber
-                        opacity: 0.18
-                    }
                     Text { anchors.centerIn: parent; text: "OFFLINE"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.7 }
                 }
                 SoftButton { Layout.preferredWidth: 74; text: "IMPORT"; iconName: "upload"; compact: true }
@@ -185,8 +135,6 @@ ApplicationWindow {
             Layout.margins: 11
             spacing: 10
 
-            // Sections is now a proper rounded console module and shares the
-            // exact top/bottom baseline with the workspace cards to its right.
             StudioPanel {
                 Layout.preferredWidth: 162
                 Layout.minimumWidth: 162
@@ -197,16 +145,7 @@ ApplicationWindow {
                     anchors.fill: parent
                     anchors.margins: 10
                     spacing: 5
-                    Text {
-                        text: "SECTIONS"
-                        color: Theme.textDim
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
-                        font.weight: Font.DemiBold
-                        font.letterSpacing: 1.2
-                        leftPadding: 6
-                        bottomPadding: 5
-                    }
+                    Text { text: "SECTIONS"; color: Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.DemiBold; font.letterSpacing: 1.2; leftPadding: 6; bottomPadding: 5 }
 
                     Repeater {
                         model: [
@@ -239,79 +178,27 @@ ApplicationWindow {
                             border.color: navItem.active ? Theme.accentSoft : navPointer.containsMouse ? Theme.borderSoft : "transparent"
 
                             Rectangle {
-                                anchors.fill: parent
-                                anchors.margins: -2
-                                radius: navItem.radius + 2
-                                color: Theme.accent
-                                opacity: navItem.active ? 0.055 : 0
-                                z: -2
-                                Behavior on opacity { NumberAnimation { duration: 130 } }
-                            }
-                            Rectangle {
-                                anchors.left: parent.left
-                                anchors.top: parent.top
-                                anchors.bottom: parent.bottom
-                                anchors.topMargin: 8
-                                anchors.bottomMargin: 8
-                                width: 2
-                                radius: 1
-                                color: Theme.accent
-                                opacity: navItem.active ? 0.9 : 0
-                            }
-                            Rectangle {
                                 id: navIconShell
                                 x: 8
                                 anchors.verticalCenter: parent.verticalCenter
-                                width: 28
-                                height: 28
-                                radius: 6
+                                width: 28; height: 28; radius: 6
                                 gradient: Gradient {
                                     GradientStop { position: 0.0; color: navItem.active ? "#1B4A4D" : "#182128" }
                                     GradientStop { position: 1.0; color: navItem.active ? "#0C2427" : "#0C1217" }
                                 }
                                 border.width: 1
                                 border.color: navItem.active ? Theme.accentSoft : Theme.borderSoft
-                                LucideIcon {
-                                    anchors.centerIn: parent
-                                    width: 15
-                                    height: 15
-                                    name: modelData.icon
-                                    color: navItem.active ? Theme.accent : Theme.textDim
-                                    strokeWidth: 1.85
-                                }
+                                LucideIcon { anchors.centerIn: parent; width: 15; height: 15; name: modelData.icon; color: navItem.active ? Theme.accent : Theme.textDim; strokeWidth: 1.85 }
                             }
                             Column {
-                                anchors.left: navIconShell.right
-                                anchors.leftMargin: 10
-                                anchors.right: parent.right
-                                anchors.rightMargin: 6
+                                anchors.left: navIconShell.right; anchors.leftMargin: 10
+                                anchors.right: parent.right; anchors.rightMargin: 6
                                 anchors.verticalCenter: parent.verticalCenter
                                 spacing: 0
-                                Text {
-                                    width: parent.width
-                                    text: modelData.name
-                                    horizontalAlignment: Text.AlignLeft
-                                    color: navItem.active ? Theme.accent : Theme.textSoft
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: Theme.textS
-                                    font.weight: Font.DemiBold
-                                }
-                                Text {
-                                    width: parent.width
-                                    text: modelData.sub
-                                    horizontalAlignment: Text.AlignLeft
-                                    color: navItem.active ? "#9BB3BA" : Theme.textDim
-                                    font.family: Theme.fontFamily
-                                    font.pixelSize: 8
-                                }
+                                Text { width: parent.width; text: modelData.name; color: navItem.active ? Theme.accent : Theme.textSoft; font.family: Theme.fontFamily; font.pixelSize: Theme.textS; font.weight: Font.DemiBold }
+                                Text { width: parent.width; text: modelData.sub; color: navItem.active ? "#9BB3BA" : Theme.textDim; font.family: Theme.fontFamily; font.pixelSize: 8 }
                             }
-                            MouseArea {
-                                id: navPointer
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: root.selectedSection = index
-                            }
+                            MouseArea { id: navPointer; anchors.fill: parent; hoverEnabled: true; cursorShape: Qt.PointingHandCursor; onClicked: root.selectedSection = index }
                         }
                     }
                     Item { Layout.fillHeight: true }
@@ -319,7 +206,6 @@ ApplicationWindow {
             }
 
             StackLayout {
-                id: workspaceStack
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 currentIndex: root.selectedSection === 0 ? 0 : 1
@@ -330,7 +216,6 @@ ApplicationWindow {
                         spacing: 10
 
                         EqGraph {
-                            id: eqGraph
                             bandModel: root.studioEngine.musicEqBands
                             hpfFreq: root.studioEngine.hpfHz
                             lpfFreq: root.studioEngine.lpfHz
@@ -345,38 +230,16 @@ ApplicationWindow {
                             Layout.minimumHeight: root.lowerRackHeight
                             Layout.maximumHeight: root.lowerRackHeight
                             spacing: 10
-                            MusicInputPanel {
-                                engine: root.studioEngine
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                Layout.preferredWidth: 455
-                                Layout.minimumWidth: 400
-                            }
-                            MusicTonePanel {
-                                engine: root.studioEngine
-                                Layout.fillWidth: true
-                                Layout.fillHeight: true
-                                Layout.preferredWidth: 350
-                                Layout.minimumWidth: 310
-                            }
-                            FilterPanel {
-                                engine: root.studioEngine
-                                Layout.preferredWidth: 236
-                                Layout.minimumWidth: 228
-                                Layout.fillHeight: true
-                            }
-                            MasterStripPanel {
-                                engine: root.studioEngine
-                                Layout.preferredWidth: 212
-                                Layout.minimumWidth: 202
-                                Layout.maximumWidth: 226
-                                Layout.fillHeight: true
-                            }
+                            MusicInputPanel { engine: root.studioEngine; Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 455; Layout.minimumWidth: 400 }
+                            MusicTonePanel { engine: root.studioEngine; Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 350; Layout.minimumWidth: 310 }
+                            FilterPanel { engine: root.studioEngine; Layout.preferredWidth: 236; Layout.minimumWidth: 228; Layout.fillHeight: true }
+                            MasterStripPanel { engine: root.studioEngine; Layout.preferredWidth: 212; Layout.minimumWidth: 202; Layout.maximumWidth: 226; Layout.fillHeight: true }
                         }
                     }
                 }
 
                 SectionWorkspace {
+                    engine: root.studioEngine
                     sectionIndex: root.selectedSection
                 }
             }
