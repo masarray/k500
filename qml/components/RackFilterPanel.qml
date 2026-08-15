@@ -25,35 +25,41 @@ StudioPanel {
         }
         Rectangle { Layout.fillWidth:true; Layout.preferredHeight:1; color:Theme.borderSoft; opacity:.78 }
 
-        GridLayout {
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            columns: root.showTypes ? 2 : 1
-            columnSpacing: 8
-            rowSpacing: 7
+            spacing: 8
 
-            Repeater {
-                model: root.fields
-                delegate: ValueField {
-                    required property var modelData
-                    Layout.fillWidth: true
-                    title: String(modelData.label || "")
-                    value: Number(modelData.value)
-                    from: Number(modelData.from)
-                    to: Number(modelData.to)
-                    step: Number(modelData.step || 1)
-                    decimals: Number(modelData.decimals || 0)
-                    unit: String(modelData.unit || "Hz")
-                    defaultValue: Number(modelData.value)
-                    accentColor: Theme.amber
+            ColumnLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 7
+                Repeater {
+                    model: root.fields
+                    delegate: ValueField {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        title: String(modelData.label || "")
+                        value: Number(modelData.value)
+                        from: Number(modelData.from)
+                        to: Number(modelData.to)
+                        step: Number(modelData.step || 1)
+                        decimals: Number(modelData.decimals || 0)
+                        unit: String(modelData.unit || "Hz")
+                        defaultValue: Number(modelData.value)
+                        accentColor: Theme.amber
+                    }
                 }
+                Item { Layout.fillHeight: true }
             }
 
             ColumnLayout {
                 visible: root.showTypes
                 Layout.fillWidth: true
+                Layout.fillHeight: true
                 Layout.alignment: Qt.AlignTop
                 spacing: 8
+                Text { text:"HP TYPE"; color:Theme.textDim; font.family:Theme.fontFamily; font.pixelSize:8; font.weight:Font.DemiBold; font.letterSpacing:.7 }
                 StudioComboBox {
                     Layout.fillWidth: true
                     value: root.hpType
@@ -61,6 +67,7 @@ StudioPanel {
                     accentColor: Theme.amber
                     onValueEdited: function(v){ root.hpType=v }
                 }
+                Text { text:"LP TYPE"; color:Theme.textDim; font.family:Theme.fontFamily; font.pixelSize:8; font.weight:Font.DemiBold; font.letterSpacing:.7 }
                 StudioComboBox {
                     Layout.fillWidth: true
                     value: root.lpType
@@ -68,6 +75,7 @@ StudioPanel {
                     accentColor: Theme.amber
                     onValueEdited: function(v){ root.lpType=v }
                 }
+                Item { Layout.fillHeight: true }
             }
         }
     }
