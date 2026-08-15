@@ -33,8 +33,6 @@ Item {
     }
     onValueChanged: if(!dragging)previewValue=value
 
-    // The web mixer does not tint the whole selected fader column. Selection is
-    // communicated by the source button and a subtle cap/track accent only.
     Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
@@ -46,23 +44,24 @@ Item {
         gradient: Gradient {
             GradientStop { position:0;color:"#050607" }
             GradientStop { position:.55;color:"#010203" }
-            GradientStop { position:1;color:"#090C0F" }
+            GradientStop { position:1;color:"#080B0E" }
         }
         border.width: 1
         border.color: "#010203"
         Rectangle { anchors.horizontalCenter:parent.horizontalCenter;anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.margins:2;width:2;radius:1;color:"#000000" }
     }
 
+    // Web VerticalFader renders seven quiet ticks on each side. The old Qt
+    // thirteen-tick ruler was visually much denser than the reference.
     Repeater {
-        model: 13
+        model: 7
         delegate: Item {
             required property int index
-            readonly property bool major: index%3===0
             width: root.width
             height: 1
-            y: 9+index*(root.height-18)/12
-            Rectangle { width:parent.major?11:6;height:1;x:1;color:parent.major?"#5A6872":"#36434D";opacity:parent.major?.68:.50 }
-            Rectangle { width:parent.major?11:6;height:1;anchors.right:parent.right;anchors.rightMargin:1;color:parent.major?"#5A6872":"#36434D";opacity:parent.major?.68:.50 }
+            y: 5 + index * (root.height - 10) / 6
+            Rectangle { width:8;height:1;x:1;color:"#89949C";opacity:.28 }
+            Rectangle { width:8;height:1;anchors.right:parent.right;anchors.rightMargin:1;color:"#89949C";opacity:.28 }
         }
     }
 
@@ -87,9 +86,9 @@ Item {
         border.width: 1
         border.color: root.dragging||root.activeFocus ? root.accentColor : "#090C0F"
         gradient: Gradient {
-            GradientStop { position:0;color:"#727D86" }
-            GradientStop { position:.22;color:"#4D5861" }
-            GradientStop { position:.60;color:"#2B333A" }
+            GradientStop { position:0;color:"#6C767E" }
+            GradientStop { position:.22;color:"#48525A" }
+            GradientStop { position:.60;color:"#293138" }
             GradientStop { position:1;color:"#151B20" }
         }
         Behavior on y { SmoothedAnimation { velocity:1100 } }
