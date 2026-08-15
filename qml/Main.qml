@@ -19,9 +19,9 @@ ApplicationWindow {
 
     background: Rectangle {
         gradient: Gradient {
-            GradientStop { position: 0.0; color: "#111820" }
+            GradientStop { position: 0.0; color: "#0C1116" }
             GradientStop { position: 0.48; color: Theme.bg }
-            GradientStop { position: 1.0; color: "#070B0F" }
+            GradientStop { position: 1.0; color: "#04070A" }
         }
     }
 
@@ -35,11 +35,11 @@ ApplicationWindow {
             Layout.preferredHeight: 52
             radius: 14
             border.width: 1
-            border.color: "#28333C"
+            border.color: "#232C33"
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#202932" }
-                GradientStop { position: 0.18; color: "#161E25" }
-                GradientStop { position: 1.0; color: "#0C1116" }
+                GradientStop { position: 0.0; color: "#171F26" }
+                GradientStop { position: 0.18; color: "#11181E" }
+                GradientStop { position: 1.0; color: "#080D12" }
             }
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:10;anchors.rightMargin:10;height:1;color:"#FFFFFF";opacity:.05 }
 
@@ -57,9 +57,9 @@ ApplicationWindow {
                         Layout.preferredWidth: 40
                         Layout.preferredHeight: 40
                         radius: 6
-                        color: "#151A1F"
+                        color: "#11171D"
                         border.width: 1
-                        border.color: "#343E47"
+                        border.color: "#2C343B"
                         Image { anchors.fill:parent;anchors.margins:4;source:"qrc:/assets/sonkupik-logo.png";fillMode:Image.PreserveAspectFit;smooth:true }
                     }
                     ColumnLayout {
@@ -127,7 +127,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 124
                     Layout.preferredHeight: 34
                     radius: 8
-                    color: "#080C0F"
+                    color: "#05080A"
                     border.width: 1
                     border.color: "#3B3218"
                     Text { anchors.centerIn:parent;text:"DEFAULT FLAT";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:11;font.weight:Font.Bold }
@@ -146,7 +146,7 @@ ApplicationWindow {
                     Layout.preferredWidth: 72
                     Layout.preferredHeight: 29
                     radius: 8
-                    color: "#12130D"
+                    color: "#0C0D08"
                     border.width: 1
                     border.color: "#493C16"
                     Text { anchors.centerIn:parent;text:"OFFLINE";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7 }
@@ -209,9 +209,9 @@ ApplicationWindow {
                             radius: 8
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
-                                GradientStop { position:0;color:navItem.active?"#263D42":navPointer.containsMouse?"#1B252D":"#00101518" }
-                                GradientStop { position:.55;color:navItem.active?"#172A2E":navPointer.containsMouse?"#131B21":"#00101518" }
-                                GradientStop { position:1;color:navItem.active?"#081416":"#00101518" }
+                                GradientStop { position:0;color:navItem.active?"#183A3E":navPointer.containsMouse?"#151F26":"#00101518" }
+                                GradientStop { position:.55;color:navItem.active?"#10272A":navPointer.containsMouse?"#10171C":"#00101518" }
+                                GradientStop { position:1;color:navItem.active?"#071315":"#00101518" }
                             }
                             border.width: 1
                             border.color: navItem.active ? Theme.accentSoft : "transparent"
@@ -221,7 +221,7 @@ ApplicationWindow {
                                 x: 7
                                 anchors.verticalCenter: parent.verticalCenter
                                 width: 28; height: 28; radius: 6
-                                color: navItem.active ? "#113338" : "transparent"
+                                color: navItem.active ? "#0B2B2E" : "transparent"
                                 border.width: 1
                                 border.color: navItem.active ? Theme.accentSoft : Theme.borderSoft
                                 LucideIcon { anchors.centerIn:parent;width:15;height:15;name:modelData.icon;color:navItem.active?Theme.accent:Theme.textDim;strokeWidth:1.8 }
@@ -279,13 +279,13 @@ ApplicationWindow {
                                 Layout.fillWidth:true
                                 Layout.fillHeight:true
                                 Layout.preferredWidth:316
-                                Layout.minimumWidth:240
+                                Layout.minimumWidth:224
                             }
                             FilterPanel {
                                 engine:root.studioEngine
-                                Layout.preferredWidth:218
-                                Layout.minimumWidth:200
-                                Layout.maximumWidth:230
+                                Layout.preferredWidth:180
+                                Layout.minimumWidth:180
+                                Layout.maximumWidth:180
                                 Layout.fillHeight:true
                             }
                             MasterStripPanel {
