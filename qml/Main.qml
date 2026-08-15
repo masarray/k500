@@ -62,6 +62,7 @@ ApplicationWindow {
 
                         EqGraph {
                             bandModel: root.studioEngine.musicEqBands
+                            engine: root.studioEngine
                             hpfFreq: root.studioEngine.hpfHz
                             lpfFreq: root.studioEngine.lpfHz
                             Layout.fillWidth: true
