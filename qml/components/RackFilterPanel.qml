@@ -11,6 +11,9 @@ StudioPanel {
     property string lpType: "LP LR 24"
     property bool showTypes: true
     property color accentColor: Theme.amber
+    signal fieldEdited(int index, real value)
+    signal hpTypeEdited(string value)
+    signal lpTypeEdited(string value)
     accentTop: false
 
     ColumnLayout {
@@ -50,6 +53,7 @@ StudioPanel {
                 Repeater {
                     model: root.fields
                     delegate: ValueField {
+                        required property int index
                         required property var modelData
                         Layout.fillWidth: true
                         Layout.preferredHeight: 50
@@ -62,6 +66,7 @@ StudioPanel {
                         unit: ""
                         defaultValue: Number(modelData.value)
                         accentColor: Theme.amber
+                        onValueEdited: function(v) { root.fieldEdited(index, v) }
                     }
                 }
                 Item { Layout.fillHeight: true }
@@ -83,7 +88,7 @@ StudioPanel {
                         value: root.hpType
                         model: ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
                         accentColor: Theme.amber
-                        onValueEdited: function(v){ root.hpType=v }
+                        onValueEdited: function(v){ root.hpTypeEdited(v) }
                     }
                 }
                 ColumnLayout {
@@ -96,7 +101,7 @@ StudioPanel {
                         value: root.lpType
                         model: ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
                         accentColor: Theme.amber
-                        onValueEdited: function(v){ root.lpType=v }
+                        onValueEdited: function(v){ root.lpTypeEdited(v) }
                     }
                 }
                 Item { Layout.fillHeight: true }
