@@ -5,38 +5,45 @@ Item {
     id: root
     property string label: "INPUT"
     property real value: -3
-    property real from: -60
-    property real to: 10
+    property real from: -12
+    property real to: 12
     property color accentColor: Theme.accent
     property bool active: false
     signal valueEdited(real newValue)
 
-    implicitWidth: 92
-    implicitHeight: 230
+    implicitWidth: 76
+    implicitHeight: 238
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 5
+        spacing: 4
 
         SoftButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 58
+            Layout.preferredHeight: 25
             text: root.label
             compact: true
             checked: root.active
             onClicked: root.active = !root.active
         }
+
+        Item { Layout.preferredHeight: 8 }
+
         Text {
             Layout.alignment: Qt.AlignHCenter
             text: root.label
-            color: root.active ? root.accentColor : Theme.textDim
-            font.family: Theme.fontFamily
-            font.pixelSize: 8
-            font.weight: Font.DemiBold
+            color: Theme.textDim
+            font.family: Theme.monoFamily
+            font.pixelSize: 9
+            font.weight: Font.Medium
         }
+
         StudioFader {
-            Layout.fillHeight: true
-            Layout.preferredWidth: 64
+            Layout.preferredHeight: 126
+            Layout.minimumHeight: 126
+            Layout.maximumHeight: 126
+            Layout.preferredWidth: 48
             Layout.alignment: Qt.AlignHCenter
             value: root.value
             from: root.from
@@ -47,22 +54,36 @@ Item {
             selected: root.active
             onValueEdited: function(v) { root.valueEdited(v) }
         }
+
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 58
-            Layout.preferredHeight: 22
-            radius: 5
+            Layout.preferredHeight: 23
+            radius: 8
             color: "#080C10"
             border.width: 1
-            border.color: root.active ? root.accentColor : Theme.borderSoft
-            Text {
+            border.color: "#050708"
+            Row {
                 anchors.centerIn: parent
-                text: root.value <= root.from + 0.1 ? "-∞" : root.value.toFixed(root.to > 20 ? 0 : 1) + (root.to > 20 ? "" : " dB")
-                color: Theme.amber
-                font.family: Theme.fontFamily
-                font.pixelSize: 9
-                font.weight: Font.Bold
+                spacing: 3
+                Text {
+                    text: root.value <= root.from + 0.1 ? "-∞" : root.value.toFixed(0)
+                    color: Theme.amber
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 9
+                    font.weight: Font.Bold
+                }
+                Text {
+                    visible: root.value > root.from + 0.1
+                    text: "dB"
+                    color: Theme.textDim
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 7
+                    anchors.baseline: parent.children[0].baseline
+                }
             }
         }
+
+        Item { Layout.fillHeight: true }
     }
 }
