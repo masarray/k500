@@ -6,8 +6,8 @@ ApplicationWindow {
     id: root
     required property var studioEngine
     visible: true
-    width: 1540
-    height: 940
+    width: 1484
+    height: 920
     minimumWidth: 1260
     minimumHeight: 800
     title: "SONKUPIK STUDIO — Karaoke Processor"
@@ -64,12 +64,22 @@ ApplicationWindow {
                     }
                     ColumnLayout {
                         spacing: 0
-                        Text {
-                            text: "SONKUPIK STUDIO"
-                            color: Theme.text
-                            font.family: Theme.displayFamily
-                            font.pixelSize: 14
-                            font.weight: Font.Bold
+                        RowLayout {
+                            spacing: 3
+                            Text {
+                                text: "SONKUPIK"
+                                color: Theme.text
+                                font.family: Theme.displayFamily
+                                font.pixelSize: 14
+                                font.weight: Font.Bold
+                            }
+                            Text {
+                                text: "STUDIO"
+                                color: Theme.amber
+                                font.family: Theme.displayFamily
+                                font.pixelSize: 14
+                                font.weight: Font.Bold
+                            }
                         }
                         Text {
                             text: "KARAOKE PROCESSOR"
