@@ -62,19 +62,11 @@ Item {
 
     Item {
         id:knobBox
-        width:root.compact?48:58
+        width:root.compact?50:60
         height:width
         anchors.top:titleLabel.bottom
         anchors.topMargin:root.compact?3:5
         anchors.horizontalCenter:parent.horizontalCenter
-
-        Rectangle {
-            anchors.centerIn:parent
-            width:parent.width*.82;height:width;radius:width/2
-            color:"#080B0E";border.width:1
-            border.color:root.activeFocus?Theme.focus:root.hovered?Theme.highlight:"#26313A"
-            Behavior on border.color { ColorAnimation { duration:80 } }
-        }
 
         Canvas {
             id:dial
@@ -82,14 +74,32 @@ Item {
             antialiasing:true
             onPaint:{
                 var ctx=getContext("2d");ctx.reset()
-                var cx=width/2,cy=height/2,norm=root.valueToNorm(root.previewValue),start=Math.PI*.75,sweep=Math.PI*1.5,end=start+sweep,activeEnd=start+sweep*norm,arcR=width*.43
-                ctx.lineCap="round";ctx.lineWidth=root.compact?2.1:2.6;ctx.strokeStyle="#2A343E";ctx.beginPath();ctx.arc(cx,cy,arcR,start,end,false);ctx.stroke()
-                ctx.strokeStyle=root.accentColor.toString();ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
-                for(var i=0;i<11;++i){var a=start+sweep*i/10,r1=arcR+4,r2=arcR+(i===5?7:6);ctx.strokeStyle=i===5?"#73808A":"#3A4650";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*r1,cy+Math.sin(a)*r1);ctx.lineTo(cx+Math.cos(a)*r2,cy+Math.sin(a)*r2);ctx.stroke()}
-                var capR=width*.29,g=ctx.createRadialGradient(cx-capR*.35,cy-capR*.42,2,cx,cy,capR)
-                g.addColorStop(0,"#44505A");g.addColorStop(.22,"#2E3740");g.addColorStop(.72,"#171D23");g.addColorStop(1,"#0E1318")
-                ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,capR,0,Math.PI*2);ctx.fill();ctx.strokeStyle="#4B5864";ctx.lineWidth=1;ctx.stroke()
-                var a2=activeEnd;ctx.strokeStyle="#F4F7F9";ctx.lineWidth=root.compact?1.6:1.8;ctx.beginPath();ctx.moveTo(cx+Math.cos(a2)*capR*.18,cy+Math.sin(a2)*capR*.18);ctx.lineTo(cx+Math.cos(a2)*capR*.76,cy+Math.sin(a2)*capR*.76);ctx.stroke()
+                var cx=width/2,cy=height*.62,norm=root.valueToNorm(root.previewValue)
+                var start=Math.PI*.75,sweep=Math.PI*1.5,end=start+sweep,activeEnd=start+sweep*norm
+                var arcR=width*.36
+
+                // Web knob = quiet dark arc, cyan active arc, metal face and one amber pointer.
+                ctx.lineCap="round"
+                ctx.lineWidth=root.compact?2.0:2.4
+                ctx.strokeStyle="#050607"
+                ctx.beginPath();ctx.arc(cx,cy,arcR,start,end,false);ctx.stroke()
+
+                ctx.strokeStyle=root.accentColor.toString()
+                ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
+
+                var capR=width*.245
+                var g=ctx.createRadialGradient(cx-capR*.30,cy-capR*.42,1,cx,cy,capR)
+                g.addColorStop(0,"#555E66");g.addColorStop(.28,"#30383F");g.addColorStop(.72,"#181E23");g.addColorStop(1,"#0C1014")
+                ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,capR,0,Math.PI*2);ctx.fill()
+                ctx.strokeStyle="#050607";ctx.lineWidth=1;ctx.stroke()
+
+                var a2=activeEnd
+                ctx.strokeStyle=Theme.amber.toString()
+                ctx.lineWidth=root.compact?1.8:2.0
+                ctx.beginPath()
+                ctx.moveTo(cx+Math.cos(a2)*capR*.42,cy+Math.sin(a2)*capR*.42)
+                ctx.lineTo(cx+Math.cos(a2)*capR*.88,cy+Math.sin(a2)*capR*.88)
+                ctx.stroke()
             }
         }
 
@@ -109,14 +119,14 @@ Item {
 
     Rectangle {
         anchors.top:knobBox.bottom
-        anchors.topMargin:root.compact?0:1
+        anchors.topMargin:root.compact?-2:0
         anchors.horizontalCenter:parent.horizontalCenter
         width:root.compact?64:76
         height:root.compact?18:20
         radius:7
-        color:"#090D11"
+        color:"#05080A"
         border.width:1
-        border.color:root.dragging?root.accentColor:root.activeFocus?Theme.focus:Theme.borderSoft
+        border.color:root.dragging?root.accentColor:root.activeFocus?Theme.focus:"#020304"
 
         Text {
             anchors.centerIn:parent
