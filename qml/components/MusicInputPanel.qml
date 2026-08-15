@@ -37,11 +37,11 @@ StudioPanel {
             Layout.bottomMargin: 10
             spacing: 0
 
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"IN 1";value:root.engine.input1Gain;onValueEdited:function(v){root.engine.input1Gain=v};accentColor:Theme.blue }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"IN 2";value:root.engine.input2Gain;onValueEdited:function(v){root.engine.input2Gain=v};accentColor:Theme.blue }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"BT";value:root.engine.bluetoothGain;onValueEdited:function(v){root.engine.bluetoothGain=v};active:true;accentColor:Theme.accent }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"UDISK";value:root.engine.uDiskGain;onValueEdited:function(v){root.engine.uDiskGain=v};accentColor:Theme.violet }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"DIG";value:root.engine.digitalGain;onValueEdited:function(v){root.engine.digitalGain=v};accentColor:Theme.amber }
+            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"IN 1";value:root.engine.input1Gain;from:-12;to:12;onValueEdited:function(v){root.engine.input1Gain=v};accentColor:Theme.blue }
+            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"IN 2";value:root.engine.input2Gain;from:-12;to:12;onValueEdited:function(v){root.engine.input2Gain=v};accentColor:Theme.blue }
+            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"BT";value:root.engine.bluetoothGain;from:-12;to:12;onValueEdited:function(v){root.engine.bluetoothGain=v};active:true;accentColor:Theme.accent }
+            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"UDISK";value:root.engine.uDiskGain;from:-12;to:12;onValueEdited:function(v){root.engine.uDiskGain=v};accentColor:Theme.violet }
+            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"DIG";value:root.engine.digitalGain;from:-12;to:12;onValueEdited:function(v){root.engine.digitalGain=v};accentColor:Theme.amber }
         }
     }
 }
