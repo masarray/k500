@@ -5,163 +5,320 @@ Item {
     id: root
     required property var engine
 
-    property int selectedPcPreset: 0
     property int selectedDeviceSlot: 3
-    property var pcPresets: [
+    property var deviceSlots: [
         "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
         "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
         "MC CERAMAH GEN 3", "ADZAN MEKAH GEN3"
     ]
+    readonly property int lowerRackHeight: 304
 
-    GridLayout {
+    ColumnLayout {
         anchors.fill: parent
-        columns: 12
-        rows: 2
-        columnSpacing: 10
-        rowSpacing: 10
+        spacing: 12
 
-        StudioPanel {
-            Layout.columnSpan: 4
-            Layout.rowSpan: 1
+        RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            spacing: 12
+
+            StudioPanel {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 466
+                accentTop: false
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 0
+
+                    Item {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 35
+                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PRESET FILES";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05 }
+                        Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft }
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        Layout.margins: 12
+                        spacing: 9
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { Layout.fillWidth:true;text:"D:\\Documents\\SONKUPIK STUDIO Presets";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideMiddle }
+                            SoftButton { Layout.preferredWidth:62;text:"Refresh";compact:true;checked:true }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            radius: 10
+                            color: "#090D11"
+                            border.width: 1
+                            border.color: "#050708"
+
+                            Rectangle {
+                                anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top
+                                anchors.margins:9;height:36;radius:7
+                                gradient: Gradient { GradientStop{position:0;color:"#151A1F"} GradientStop{position:1;color:"#0B0F13"} }
+                                border.width:1;border.color:"#242C33"
+                                RowLayout {
+                                    anchors.fill:parent;anchors.leftMargin:10;anchors.rightMargin:10;spacing:8
+                                    Text{text:"1";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                                    Text{Layout.fillWidth:true;text:"KARAOKE ARTIST LUXURY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideRight}
+                                    Text{text:"FACTORY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            spacing: 8
+                            SoftButton { Layout.fillWidth:true;text:"Save to PC";compact:true }
+                            SoftButton { Layout.fillWidth:true;text:"Upload to device";compact:true }
+                            SoftButton { Layout.fillWidth:true;text:"Mass upload";compact:true }
+                        }
+                    }
+                }
+            }
+
+            StudioPanel {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 432
+                accentTop: false
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    spacing: 0
+
+                    Item {
+                        Layout.fillWidth:true
+                        Layout.preferredHeight:35
+                        Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}
+                        Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
+                    }
+
+                    ColumnLayout {
+                        Layout.fillWidth:true
+                        Layout.fillHeight:true
+                        Layout.margins:12
+                        spacing:8
+
+                        RowLayout {
+                            Layout.fillWidth:true
+                            Text{Layout.fillWidth:true;text:"4 · KARAOKE ARTIST";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:12;font.weight:Font.Bold}
+                            Rectangle{width:52;height:24;radius:12;color:"#0B1715";border.width:1;border.color:"#31584E";Text{anchors.centerIn:parent;text:"ACTIVE";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}}
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            radius:10
+                            color:"#090D11"
+                            border.width:1
+                            border.color:"#050708"
+                            clip:true
+
+                            Column {
+                                anchors.fill:parent
+                                anchors.margins:7
+                                spacing:3
+                                Repeater {
+                                    model:root.deviceSlots
+                                    delegate:Rectangle {
+                                        required property int index
+                                        required property string modelData
+                                        width:parent.width
+                                        height:27
+                                        radius:6
+                                        readonly property bool active:index===3
+                                        readonly property bool selected:index===root.selectedDeviceSlot
+                                        color:selected?"#151B20":"#0D1115"
+                                        border.width:1
+                                        border.color:active?"#8B6A08":selected?Theme.accentSoft:"#252D34"
+                                        RowLayout {
+                                            anchors.fill:parent;anchors.leftMargin:9;anchors.rightMargin:9;spacing:7
+                                            Text{text:index+1;color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                                            Text{Layout.fillWidth:true;text:modelData;color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold;elide:Text.ElideRight}
+                                            Text{text:active?"ACTIVE":"";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                        }
+                                        MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectedDeviceSlot=index}
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth:true
+                            spacing:5
+                            Rectangle{width:13;height:13;radius:2;color:"#4A5055";border.width:1;border.color:"#60676C"}
+                            Text{text:"Use init volume";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
+                            Item{Layout.fillWidth:true}
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth:true
+                            spacing:8
+                            SoftButton{Layout.fillWidth:true;text:"Recall";compact:true}
+                            SoftButton{Layout.fillWidth:true;text:"Save";compact:true}
+                            SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true}
+                        }
+                    }
+                }
+            }
+
             ColumnLayout {
-                anchors.fill: parent; anchors.margins: 11; spacing: 7
-                RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                Layout.preferredWidth: 355
+                spacing: 12
+
+                StudioPanel {
                     Layout.fillWidth:true
-                    ColumnLayout { spacing:0; Text{text:"PC MODE";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8;font.weight:Font.DemiBold;font.letterSpacing:1.0} Text{text:"PRESET FILES";color:Theme.text;font.family:Theme.fontFamily;font.pixelSize:10;font.weight:Font.Bold} }
-                    Item{Layout.fillWidth:true}
-                    SoftButton{text:"REFRESH";compact:true;checked:true}
-                }
-                Rectangle{Layout.fillWidth:true;Layout.preferredHeight:1;color:Theme.borderSoft}
-                Rectangle {
-                    Layout.fillWidth:true; Layout.fillHeight:true; radius:6; color:"#080C10"; border.width:1; border.color:Theme.borderSoft; clip:true
-                    ListView {
-                        anchors.fill:parent; anchors.margins:5; spacing:3; model:root.pcPresets
-                        delegate: Rectangle {
-                            required property int index; required property string modelData
-                            width:ListView.view.width; height:27; radius:5
-                            color:index===root.selectedPcPreset?"#10272A":"transparent"
-                            border.width:index===root.selectedPcPreset?1:0; border.color:Theme.accentSoft
-                            RowLayout { anchors.fill:parent; anchors.leftMargin:7; anchors.rightMargin:7; spacing:6
-                                Text{text:String(index+1).padStart(2,"0");color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8}
-                                Text{Layout.fillWidth:true;text:modelData;color:index===root.selectedPcPreset?Theme.accent:Theme.textSoft;font.family:Theme.fontFamily;font.pixelSize:9;font.weight:Font.DemiBold;elide:Text.ElideRight}
-                                Text{text:index===root.selectedPcPreset?"LOADED":"FACTORY";color:index===root.selectedPcPreset?Theme.accent:Theme.textFaint;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold}
-                            }
-                            MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectedPcPreset=index}
+                    Layout.preferredHeight:212
+                    accentTop:false
+                    ColumnLayout {
+                        anchors.fill:parent
+                        spacing:0
+                        Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT NAME";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                        ColumnLayout {
+                            Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:12;spacing:8
+                            Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"KTV_BT_00AB12";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
+                            Text{text:"BLE NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"KTV_BLE_00AB12";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
+                            Item{Layout.fillHeight:true}
+                            RowLayout{Layout.fillWidth:true;spacing:8;SoftButton{Layout.fillWidth:true;text:"Modify";compact:true}SoftButton{Layout.fillWidth:true;text:"Reset";compact:true}}
                         }
                     }
                 }
-                RowLayout { Layout.fillWidth:true; spacing:6
-                    SoftButton{Layout.fillWidth:true;text:"SAVE TO PC";compact:true}
-                    SoftButton{Layout.fillWidth:true;text:"UPLOAD TO DEVICE";compact:true;checked:true}
-                    SoftButton{Layout.fillWidth:true;text:"MASS UPLOAD";compact:true}
+
+                StudioPanel {
+                    Layout.fillWidth:true
+                    Layout.fillHeight:true
+                    accentTop:false
+                    ColumnLayout {
+                        anchors.fill:parent
+                        spacing:0
+                        Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                        ColumnLayout {
+                            Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:12;spacing:8
+                            RowLayout {
+                                Layout.fillWidth:true;spacing:8
+                                ColumnLayout{Layout.fillWidth:true;spacing:4;Text{text:"LOCK KEY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"••••";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10}}}
+                                ColumnLayout{Layout.fillWidth:true;spacing:4;Text{text:"ADMIN";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"••••";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10}}}
+                            }
+                            RowLayout {
+                                Layout.fillWidth:true;spacing:9
+                                Repeater {
+                                    model:[{label:"Unlock",on:true},{label:"Lock",on:false},{label:"Admin",on:true}]
+                                    delegate:RowLayout {
+                                        required property var modelData
+                                        spacing:4
+                                        Rectangle{width:13;height:13;radius:2;color:modelData.on?Theme.accent:"#E6E9EB";border.width:1;border.color:modelData.on?Theme.accentSoft:"#B8C0C6";Text{anchors.centerIn:parent;visible:modelData.on;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}}
+                                        Text{text:modelData.label;color:Theme.text;font.family:Theme.fontFamily;font.pixelSize:9}
+                                    }
+                                }
+                                Item{Layout.fillWidth:true}
+                            }
+                            Item{Layout.fillHeight:true}
+                            Text{text:"NEW PASSWORD";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                            RowLayout {
+                                Layout.fillWidth:true;spacing:8
+                                Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708"}
+                                SoftButton{Layout.preferredWidth:58;text:"Modify";compact:true}
+                            }
+                        }
+                    }
                 }
             }
         }
 
-        StudioPanel {
-            Layout.columnSpan: 4
-            Layout.rowSpan: 1
+        RowLayout {
             Layout.fillWidth: true
-            Layout.fillHeight: true
-            ColumnLayout {
-                anchors.fill:parent; anchors.margins:11; spacing:7
-                RowLayout { Layout.fillWidth:true
-                    ColumnLayout{spacing:0;Text{text:"EQUIPMENT / DEVICE MODE";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8;font.weight:Font.DemiBold;font.letterSpacing:1.0}Text{text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.fontFamily;font.pixelSize:10;font.weight:Font.Bold}}
-                    Item{Layout.fillWidth:true}
-                    Rectangle{width:48;height:22;radius:5;color:"#0B1715";border.width:1;border.color:"#31584E";Text{anchors.centerIn:parent;text:"ACTIVE";color:Theme.green;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold}}
-                }
-                Rectangle{Layout.fillWidth:true;Layout.preferredHeight:1;color:Theme.borderSoft}
-                Rectangle {
-                    Layout.fillWidth:true; Layout.fillHeight:true; radius:6; color:"#080C10"; border.width:1; border.color:Theme.borderSoft; clip:true
-                    ListView {
-                        anchors.fill:parent; anchors.margins:5; spacing:3; model:root.pcPresets
-                        delegate: Rectangle {
-                            required property int index; required property string modelData
-                            width:ListView.view.width; height:27; radius:5
-                            readonly property bool active:index===3
-                            color:index===root.selectedDeviceSlot?"#10272A":"transparent"
-                            border.width:index===root.selectedDeviceSlot?1:0;border.color:Theme.accentSoft
-                            RowLayout {anchors.fill:parent;anchors.leftMargin:7;anchors.rightMargin:7;spacing:6
-                                Text{text:index+1;color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8}
-                                Text{Layout.fillWidth:true;text:modelData;color:active?Theme.accent:Theme.textSoft;font.family:Theme.fontFamily;font.pixelSize:9;font.weight:Font.DemiBold;elide:Text.ElideRight}
-                                Text{text:active?"ACTIVE":index===root.selectedDeviceSlot?"SELECT":"";color:active?Theme.green:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold}
+            Layout.preferredHeight: root.lowerRackHeight
+            Layout.minimumHeight: root.lowerRackHeight
+            Layout.maximumHeight: root.lowerRackHeight
+            spacing: 12
+
+            RackFaderPanel {
+                Layout.fillWidth:true
+                Layout.fillHeight:true
+                Layout.preferredWidth:466
+                title:"Startup Limits"
+                channels:[
+                    {label:"MUSIC INIT",value:25,from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MUSIC MAX",value:84,from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MIC INIT",value:25,from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MIC MAX",value:84,from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"EFFECT INIT",value:25,from:0,to:84,step:1,unit:"",decimals:0}
+                ]
+            }
+
+            StudioPanel {
+                Layout.fillWidth:true
+                Layout.fillHeight:true
+                Layout.preferredWidth:432
+                accentTop:false
+                ColumnLayout {
+                    anchors.fill:parent
+                    spacing:0
+                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                    RowLayout {
+                        Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
+                        Rectangle {
+                            Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
+                            ColumnLayout {
+                                anchors.fill:parent;anchors.margins:8;spacing:5
+                                Text{text:"RECORDING";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                                RowLayout {
+                                    Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
+                                    Repeater {
+                                        model:[{label:"UDISK REC",value:4,from:1,to:6},{label:"USB REC",value:4,from:1,to:6}]
+                                        delegate:ColumnLayout {
+                                            required property var modelData
+                                            Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8}
+                                            StudioFader{Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:modelData.value;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value}
+                                            Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:modelData.value;color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
+                                        }
+                                    }
+                                }
                             }
-                            MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectedDeviceSlot=index}
+                        }
+                        Rectangle {
+                            Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
+                            ColumnLayout {
+                                anchors.fill:parent;anchors.margins:8;spacing:5
+                                Text{text:"MIC TRIGGER";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                                RowLayout {
+                                    Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
+                                    Repeater {
+                                        model:[{label:"THRESHOLD",value:-50,from:-80,to:0,unit:"dB"},{label:"HOLD TIME",value:6,from:0,to:30,unit:"s"}]
+                                        delegate:ColumnLayout {
+                                            required property var modelData
+                                            Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8}
+                                            StudioFader{Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:modelData.value;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value}
+                                            Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:52;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Row{anchors.centerIn:parent;spacing:3;Text{text:modelData.value;color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Text{text:modelData.unit;color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline}}}
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
-                RowLayout{Layout.fillWidth:true;spacing:6;SoftButton{Layout.fillWidth:true;text:"RECALL";compact:true}SoftButton{Layout.fillWidth:true;text:"SAVE";compact:true;checked:true}SoftButton{Layout.fillWidth:true;text:"RESET ALL";compact:true}}
             }
-        }
 
-        ColumnLayout {
-            Layout.columnSpan: 2
-            Layout.rowSpan: 1
-            Layout.fillWidth:true
-            Layout.fillHeight:true
-            spacing:10
-            StudioPanel {
-                Layout.fillWidth:true;Layout.fillHeight:true
-                ColumnLayout{anchors.fill:parent;anchors.margins:11;spacing:7
-                    Text{text:"BLUETOOTH";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8;font.weight:Font.DemiBold;font.letterSpacing:1.0}
-                    Text{text:"BT NAME";color:Theme.text;font.family:Theme.fontFamily;font.pixelSize:10;font.weight:Font.Bold}
-                    ValueField{Layout.fillWidth:true;title:"BT NAME";value:500;from:0;to:999;step:1;decimals:0;unit:""}
-                    ValueField{Layout.fillWidth:true;title:"BLE NAME";value:500;from:0;to:999;step:1;decimals:0;unit:""}
-                    Item{Layout.fillHeight:true}
-                    RowLayout{Layout.fillWidth:true;SoftButton{Layout.fillWidth:true;text:"MODIFY";compact:true}SoftButton{Layout.fillWidth:true;text:"RESET";compact:true}}
-                }
+            MasterStripPanel {
+                engine: root.engine
+                Layout.fillWidth:true
+                Layout.fillHeight:true
+                Layout.preferredWidth:355
             }
-            StudioPanel {
-                Layout.fillWidth:true;Layout.fillHeight:true
-                ColumnLayout{anchors.fill:parent;anchors.margins:11;spacing:7
-                    Text{text:"ACCESS";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8;font.weight:Font.DemiBold;font.letterSpacing:1.0}
-                    Text{text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.fontFamily;font.pixelSize:10;font.weight:Font.Bold}
-                    RowLayout{Layout.fillWidth:true;SoftButton{Layout.fillWidth:true;text:"UNLOCK";compact:true;checked:true}SoftButton{Layout.fillWidth:true;text:"LOCK";compact:true}SoftButton{Layout.fillWidth:true;text:"ADMIN";compact:true;checked:true}}
-                    Item{Layout.fillHeight:true}
-                    SoftButton{Layout.fillWidth:true;text:"MODIFY PASSWORD";compact:true}
-                }
-            }
-        }
-
-        MasterStripPanel {
-            engine: root.engine
-            Layout.columnSpan: 2
-            Layout.rowSpan: 1
-            Layout.fillWidth:true
-            Layout.fillHeight:true
-        }
-
-        RackFaderPanel {
-            Layout.columnSpan: 5
-            Layout.rowSpan: 1
-            Layout.fillWidth:true
-            Layout.fillHeight:true
-            eyebrow:"SAFE BOOT"
-            title:"Startup Limits"
-            channels:[
-                {label:"MUSIC INIT",value:35,from:0,to:84,step:1,unit:"",decimals:0},
-                {label:"MUSIC MAX",value:84,from:0,to:84,step:1,unit:"",decimals:0},
-                {label:"MIC INIT",value:35,from:0,to:84,step:1,unit:"",decimals:0},
-                {label:"MIC MAX",value:84,from:0,to:84,step:1,unit:"",decimals:0},
-                {label:"EFFECT INIT",value:35,from:0,to:84,step:1,unit:"",decimals:0}
-            ]
-        }
-
-        RackFaderPanel {
-            Layout.columnSpan: 5
-            Layout.rowSpan: 1
-            Layout.fillWidth:true
-            Layout.fillHeight:true
-            eyebrow:"USB / UDISK · DANCE MODE"
-            title:"Recording / Mic Trigger"
-            channels:[
-                {label:"UDISK REC",value:4,from:1,to:6,step:1,unit:"",decimals:0},
-                {label:"USB REC",value:4,from:1,to:6,step:1,unit:"",decimals:0},
-                {label:"THRESHOLD",value:-50,from:-80,to:0,step:1,unit:"dB",decimals:0},
-                {label:"HOLD TIME",value:6,from:0,to:30,step:1,unit:"s",decimals:0}
-            ]
         }
     }
 }
