@@ -159,20 +159,26 @@ public:
         OVERLAPPED ov{};
         ov.hEvent = event;
         DWORD written = 0;
+        DWORD failureCode = ERROR_SUCCESS;
         BOOL ok = WriteFile(handle, bytes.constData(), static_cast<DWORD>(bytes.size()),
                             &written, &ov);
         if (!ok && GetLastError() == ERROR_IO_PENDING) {
             const DWORD wait = WaitForSingleObject(event, 1200);
-            if (wait == WAIT_OBJECT_0)
+            if (wait == WAIT_OBJECT_0) {
                 ok = GetOverlappedResult(handle, &ov, &written, FALSE);
-            else {
+            } else {
+                failureCode = wait == WAIT_TIMEOUT ? ERROR_TIMEOUT : GetLastError();
                 CancelIoEx(handle, &ov);
+                // OVERLAPPED lives on this stack frame. Wait until Windows has
+                // completed cancellation before the object and event go away.
+                DWORD ignored = 0;
+                GetOverlappedResult(handle, &ov, &ignored, TRUE);
                 ok = FALSE;
-                SetLastError(wait == WAIT_TIMEOUT ? ERROR_TIMEOUT : GetLastError());
             }
         }
 
-        const DWORD code = ok ? ERROR_SUCCESS : GetLastError();
+        const DWORD code = ok ? ERROR_SUCCESS
+                              : (failureCode != ERROR_SUCCESS ? failureCode : GetLastError());
         CloseHandle(event);
         if (!ok || written != static_cast<DWORD>(bytes.size())) {
             if (error)
