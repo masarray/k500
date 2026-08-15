@@ -35,8 +35,9 @@ Item {
             text: root.label
             color: Theme.textDim
             font.family: Theme.monoFamily
-            font.pixelSize: 9
-            font.weight: Font.Medium
+            font.pixelSize: 10
+            font.weight: Font.DemiBold
+            font.letterSpacing: .35
         }
 
         StudioFader {
@@ -60,9 +61,9 @@ Item {
             Layout.preferredWidth: 58
             Layout.preferredHeight: 23
             radius: 8
-            color: "#080C10"
+            color: "#05080A"
             border.width: 1
-            border.color: "#050708"
+            border.color: "#020304"
             Row {
                 anchors.centerIn: parent
                 spacing: 3
