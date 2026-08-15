@@ -12,6 +12,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Guard PEQ interaction parity
+        shell: pwsh
+        run: |
+          $qml = Get-Content "qml/components/SectionEqGraph.qml" -Raw
+          $required = @(
+            "PEQ_INTERACTION_PARITY_V1",
+            "WheelHandler",
+            "Qt.ShiftModifier",
+            "Qt.ControlModifier",
+            "Qt.MetaModifier",
+            "Math.exp(-qDy*(fine?0.003:0.012))",
+            "onDoubleClicked",
+            "setSelectedGain(0)"
+          )
+          foreach ($token in $required) {
+            if (-not $qml.Contains($token)) {
+              throw "PEQ interaction parity regression: missing '$token'"
+            }
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
