@@ -194,35 +194,65 @@ StudioPanel {
                 border.color: "#010203"
                 clip: true
 
+                // Keep grid-line opacity independent from axis-label opacity.
+                // The previous Rectangle delegate set opacity=.05 on the parent,
+                // which also multiplied the Text child opacity and made both
+                // frequency and dB markings almost disappear in Qt.
                 Repeater {
                     model:[20,30,50,70,100,200,500,1000,2000,5000,10000,20000]
-                    delegate: Rectangle {
+                    delegate: Item {
                         required property var modelData
-                        x:root.xFor(modelData);y:root.topPad;width:1;height:root.plotBottom-root.topPad
-                        color:"#FFFFFF";opacity:.05
+                        x:root.xFor(modelData)-0.5
+                        y:0
+                        width:1
+                        height:graph.height
+                        Rectangle {
+                            x:0
+                            y:root.topPad
+                            width:1
+                            height:root.plotBottom-root.topPad
+                            color:"#FFFFFF"
+                            opacity:.06
+                        }
                         Text {
                             anchors.horizontalCenter:parent.horizontalCenter
-                            y:parent.height+10*root.virtualScaleY
+                            y:root.plotBottom+10*root.virtualScaleY
                             text:root.fmtF(modelData)
-                            color:Theme.textDim
-                            opacity:.90
+                            color:"#A6B1BA"
+                            opacity:1
                             font.family:Theme.monoFamily
                             font.pixelSize:10
+                            font.weight:Font.Medium
                         }
                     }
                 }
                 Repeater {
                     model:[-24,-18,-12,-6,0,6,12,18,24]
-                    delegate: Rectangle {
+                    delegate: Item {
                         required property var modelData
-                        x:root.leftPad;y:root.yFor(modelData);width:graph.width-root.leftPad-root.rightPad;height:modelData===0?1.1:1
-                        color:modelData===0?Theme.accent:"#FFFFFF";opacity:modelData===0?.20:.05
+                        x:0
+                        y:root.yFor(modelData)-0.5
+                        width:graph.width
+                        height:1
+                        Rectangle {
+                            id:hGridLine
+                            x:root.leftPad
+                            y:0
+                            width:graph.width-root.leftPad-root.rightPad
+                            height:modelData===0?1.1:1
+                            color:modelData===0?Theme.accent:"#FFFFFF"
+                            opacity:modelData===0?.18:.06
+                        }
                         Text {
-                            anchors.right:parent.left;anchors.rightMargin:10*root.virtualScaleX;anchors.verticalCenter:parent.verticalCenter
+                            anchors.right:hGridLine.left
+                            anchors.rightMargin:10*root.virtualScaleX
+                            anchors.verticalCenter:hGridLine.verticalCenter
                             text:modelData>0?"+"+modelData:modelData
-                            color:Theme.textDim
+                            color:"#A6B1BA"
+                            opacity:1
                             font.family:Theme.monoFamily
                             font.pixelSize:10
+                            font.weight:Font.Medium
                         }
                     }
                 }
