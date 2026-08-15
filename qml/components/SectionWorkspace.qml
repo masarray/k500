@@ -36,8 +36,6 @@ Item {
         }
     }
 
-    // Values mirror the web DEFAULT FLAT screenshots so PEQ + lower rack can
-    // be reviewed against the same state instead of against fabricated data.
     LocalEqModel { id: micAModel; bandCount:10; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP LR 24"; defaultLpType:"LP LR 24" }
     LocalEqModel { id: micBModel; bandCount:10; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP LR 24"; defaultLpType:"LP LR 24" }
     LocalEqModel { id: reverbModel; bandCount:5; defaultHpfHz:217; defaultLpfHz:12000; defaultHpType:"HP Butter 12"; defaultLpType:"LP Butter 12" }
@@ -82,7 +80,7 @@ Item {
                         Layout.fillHeight: true
                         currentIndex: Math.max(0, Math.min(6, root.sectionIndex - 1))
 
-                        // MIC: web geometry ≈ .66fr / 1.5fr / 184 px.
+                        // Final web CSS at this viewport: .82fr / 1.72fr / 158 px.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
@@ -91,8 +89,8 @@ Item {
                                 RackFaderPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.preferredWidth: 266
-                                    Layout.minimumWidth: 220
+                                    Layout.preferredWidth: 289
+                                    Layout.minimumWidth: 248
                                     title: "Mic Inputs"
                                     channels: [
                                         {label:"MIC A",value:96,from:0,to:100,step:1,unit:"",decimals:0},
@@ -103,16 +101,16 @@ Item {
                                 RackDynamicsPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.preferredWidth: 604
+                                    Layout.preferredWidth: 607
                                     Layout.minimumWidth: 390
                                     title: "Vocal Dynamics"
                                     includeGate: true
                                     gate: -70; threshold: -12; ratio: 3; attack: 10; release: 200
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 184
-                                    Layout.minimumWidth: 184
-                                    Layout.maximumWidth: 184
+                                    Layout.preferredWidth: 158
+                                    Layout.minimumWidth: 158
+                                    Layout.maximumWidth: 158
                                     Layout.fillHeight: true
                                     title: "Band Limits"
                                     fields: [
@@ -128,7 +126,7 @@ Item {
                             }
                         }
 
-                        // REVERB: web uses one wide room-engine panel + 208 px tone.
+                        // Final web effect grid: wide engine + 214 px Tone.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
@@ -136,7 +134,7 @@ Item {
                                 RackFaderPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.minimumWidth: 330
+                                    Layout.minimumWidth: 380
                                     title: "Reverb"
                                     channels: [
                                         {label:"LEVEL",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
@@ -145,9 +143,9 @@ Item {
                                     ]
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 208
-                                    Layout.minimumWidth: 208
-                                    Layout.maximumWidth: 208
+                                    Layout.preferredWidth: 214
+                                    Layout.minimumWidth: 214
+                                    Layout.maximumWidth: 214
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
@@ -163,7 +161,6 @@ Item {
                             }
                         }
 
-                        // ECHO: web uses one wide delay-engine panel + 208 px tone.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
@@ -171,7 +168,7 @@ Item {
                                 RackFaderPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.minimumWidth: 330
+                                    Layout.minimumWidth: 380
                                     title: "Echo"
                                     channels: [
                                         {label:"LEVEL",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
@@ -180,9 +177,9 @@ Item {
                                     ]
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 208
-                                    Layout.minimumWidth: 208
-                                    Layout.maximumWidth: 208
+                                    Layout.preferredWidth: 214
+                                    Layout.minimumWidth: 214
+                                    Layout.maximumWidth: 214
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
@@ -198,13 +195,13 @@ Item {
                             }
                         }
 
-                        // MAIN: web output-page ≈ 1.04fr / 1.34fr / 18vw.
+                        // Final web output grid: 1.22fr / 1.55fr / 212 px.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 344; Layout.minimumWidth: 300
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 371; Layout.minimumWidth: 320
                                     title: "Main Bus"
                                     channels: [
                                         {label:"L",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -216,11 +213,11 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 443; Layout.minimumWidth: 320
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 471; Layout.minimumWidth: 360
                                     title: "Output Compressor"; threshold:-3; ratio:18; attack:7; release:100
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 267; Layout.minimumWidth:238; Layout.maximumWidth:292; Layout.fillHeight:true
+                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title: "Band Limits / Delay"
                                     fields:[
                                         {label:"HPF",value:mainModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
@@ -234,13 +231,12 @@ Item {
                             }
                         }
 
-                        // SURROUND.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:344; Layout.minimumWidth:300
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
                                     title:"Surround Bus"
                                     channels:[
                                         {label:"L",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -252,11 +248,11 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:443; Layout.minimumWidth:320
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
                                     title:"Output Compressor"; threshold:-20; ratio:100; attack:1; release:100
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:267; Layout.minimumWidth:238; Layout.maximumWidth:292; Layout.fillHeight:true
+                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"L DELAY",value:3,from:0,to:50,step:1,unit:"ms",decimals:0},
@@ -272,13 +268,12 @@ Item {
                             }
                         }
 
-                        // CENTER.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:344; Layout.minimumWidth:300
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
                                     title:"Center Bus"
                                     channels:[
                                         {label:"CTR",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -289,11 +284,11 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:443; Layout.minimumWidth:320
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
                                     title:"Output Compressor"; threshold:-20; ratio:100; attack:1; release:100
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:267; Layout.minimumWidth:238; Layout.maximumWidth:292; Layout.fillHeight:true
+                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"HPF",value:centerModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
@@ -307,13 +302,12 @@ Item {
                             }
                         }
 
-                        // SUBWOOFER.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:344; Layout.minimumWidth:300
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
                                     title:"Subwoofer Bus"
                                     channels:[
                                         {label:"SUB",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -324,11 +318,11 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:443; Layout.minimumWidth:320
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
                                     title:"Output Compressor"; threshold:-20; ratio:100; attack:25; release:100
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:267; Layout.minimumWidth:238; Layout.maximumWidth:292; Layout.fillHeight:true
+                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"HPF",value:subModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
