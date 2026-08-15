@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 StudioPanel {
@@ -6,8 +7,22 @@ StudioPanel {
     accentTop: false
     implicitHeight: 52
 
+    required property var deviceManager
     property bool transportPlaying: false
-    property bool transportMuted: false
+    readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
+    readonly property string deviceStatusText: deviceManager.status === "connected" ? "ONLINE"
+                                                : deviceManager.status === "connecting" ? "CONNECT"
+                                                : deviceManager.status === "syncing" ? "SYNC"
+                                                : deviceManager.status === "error" ? "ERROR"
+                                                : "OFFLINE"
+
+    Connections {
+        target: root.deviceManager
+        function onStatusChanged() {
+            if (!root.deviceManager.connected)
+                root.transportPlaying = false
+        }
+    }
 
     RowLayout {
         anchors.fill: parent
@@ -65,19 +80,32 @@ StudioPanel {
                 anchors.fill: parent
                 anchors.margins: 4
                 spacing: 3
-                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true }
+                SoftButton {
+                    Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true
+                    enabled: root.deviceManager.connected
+                    onClicked: root.deviceManager.sendPlayerCommand("rewind")
+                }
                 SoftButton {
                     Layout.preferredWidth:31;Layout.fillHeight:true;transport:true;toolbar:true
                     iconName:root.transportPlaying?"pause":"play";iconOnly:true
                     checked:root.transportPlaying;neonAccent:root.transportPlaying;accentIcon:true
-                    onClicked:root.transportPlaying=!root.transportPlaying
+                    enabled: root.deviceManager.connected
+                    onClicked: {
+                        root.deviceManager.sendPlayerCommand("playPause")
+                        root.transportPlaying = !root.transportPlaying
+                    }
                 }
-                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true }
+                SoftButton {
+                    Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true
+                    enabled: root.deviceManager.connected
+                    onClicked: root.deviceManager.sendPlayerCommand("forward")
+                }
                 Rectangle { Layout.preferredWidth:1;Layout.preferredHeight:16;color:"#344049";opacity:.58 }
                 SoftButton {
                     Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"volume-x";iconOnly:true
-                    checked:root.transportMuted;danger:root.transportMuted
-                    onClicked:root.transportMuted=!root.transportMuted
+                    checked:root.deviceManager.muted;danger:root.deviceManager.muted
+                    enabled: root.deviceManager.connected
+                    onClicked: root.deviceManager.toggleMute()
                 }
             }
         }
@@ -94,21 +122,56 @@ StudioPanel {
 
         RowLayout {
             spacing: 5
-            Rectangle { width:6;height:6;radius:3;color:Theme.textFaint }
-            Text { text:"LIVE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7 }
-            SoftButton { Layout.preferredWidth:50;Layout.preferredHeight:29;text:"BT";iconName:"bluetooth";compact:true;toolbar:true;checked:true }
-            SoftButton { Layout.preferredWidth:50;Layout.preferredHeight:29;text:"USB";iconName:"usb";compact:true;toolbar:true }
-            SoftButton { Layout.preferredWidth:76;Layout.preferredHeight:29;text:"Connect";iconName:"cable";compact:true;toolbar:true }
+            Rectangle {
+                width:6;height:6;radius:3
+                color: root.deviceManager.liveEnabled ? Theme.accent
+                     : root.deviceBusy ? Theme.amber
+                     : root.deviceManager.status === "error" ? "#FF6868"
+                     : Theme.textFaint
+            }
+            Text {
+                text:"LIVE"
+                color:root.deviceManager.liveEnabled ? Theme.accent : Theme.textDim
+                font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7
+            }
+            SoftButton {
+                Layout.preferredWidth:50;Layout.preferredHeight:29;text:"BT";iconName:"bluetooth";compact:true;toolbar:true
+                checked:root.deviceManager.transportMode === "bt"
+                enabled:!root.deviceBusy
+                onClicked:root.deviceManager.setTransportMode("bt")
+            }
+            SoftButton {
+                Layout.preferredWidth:50;Layout.preferredHeight:29;text:"USB";iconName:"usb";compact:true;toolbar:true
+                checked:root.deviceManager.transportMode === "usb"
+                enabled:!root.deviceBusy
+                onClicked:root.deviceManager.setTransportMode("usb")
+            }
+            SoftButton {
+                Layout.preferredWidth:86;Layout.preferredHeight:29
+                text:root.deviceManager.connected || root.deviceBusy ? "Disconnect" : "Connect"
+                iconName:root.deviceManager.connected ? "unplug" : "cable"
+                compact:true;toolbar:true
+                checked:root.deviceManager.connected
+                neonAccent:root.deviceManager.connected
+                onClicked:root.deviceManager.toggleConnection()
+            }
         }
 
         SoftButton {
+            id: statusButton
             Layout.preferredWidth: 72
             Layout.preferredHeight: 29
-            text: "OFFLINE"
+            text: root.deviceStatusText
             compact: true
             toolbar: true
-            amber: true
-            checked: true
+            amber: !root.deviceManager.connected && root.deviceManager.status !== "error"
+            danger: root.deviceManager.status === "error"
+            checked: root.deviceManager.connected
+            neonAccent: root.deviceManager.connected
+            ToolTip.visible: statusHover.containsMouse && (root.deviceManager.lastError.length > 0 || root.deviceManager.portLabel.length > 0)
+            ToolTip.text: root.deviceManager.lastError.length > 0 ? root.deviceManager.lastError : root.deviceManager.portLabel
+            ToolTip.delay: 350
+            MouseArea { id: statusHover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
         }
 
         Item { Layout.fillWidth:true }

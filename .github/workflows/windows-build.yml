@@ -39,6 +39,18 @@ jobs:
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
           windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
 
+      - name: K500 protocol and RX parser self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--protocol-self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "K500 protocol/RX parser self-test failed with exit code $($p.ExitCode)" }
+
+      - name: StudioEngine self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--engine-self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "StudioEngine self-test failed with exit code $($p.ExitCode)" }
+
       - name: Upload runnable build
         uses: actions/upload-artifact@v4
         with:
