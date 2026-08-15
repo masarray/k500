@@ -4,10 +4,14 @@ ListModel {
     id: root
 
     property int bandCount: 5
-    property real hpfHz: 20
-    property real lpfHz: 20000
-    property string hpType: "HP LR 24"
-    property string lpType: "LP LR 24"
+    property real hpfHz: defaultHpfHz
+    property real lpfHz: defaultLpfHz
+    property string hpType: defaultHpType
+    property string lpType: defaultLpType
+    property real defaultHpfHz: 20
+    property real defaultLpfHz: 20000
+    property string defaultHpType: "HP Butter 12"
+    property string defaultLpType: "LP Butter 12"
     property var defaultFrequencies: []
 
     signal bandChanged()
@@ -18,19 +22,14 @@ ListModel {
             return defaultFrequencies
         if (bandCount === 10) return [80, 125, 250, 500, 1000, 2000, 4000, 6300, 10000, 12500]
         if (bandCount === 7) return [80, 160, 315, 630, 1250, 2500, 8000]
-        return [80, 250, 800, 2500, 8000]
+        return [125, 250, 1000, 2500, 8000]
     }
 
     function rebuild() {
         clear()
         var freqs = defaultsForCount()
         for (var i = 0; i < bandCount; ++i) {
-            append({
-                freq: freqs[i],
-                gain: 0.0,
-                q: 1.0,
-                typeName: "BELL"
-            })
+            append({ freq: freqs[i], gain: 0.0, q: 1.0, typeName: "BELL" })
         }
         bandChanged()
     }
@@ -58,10 +57,10 @@ ListModel {
 
     function resetAll() {
         rebuild()
-        hpfHz = 20
-        lpfHz = 20000
-        hpType = "HP LR 24"
-        lpType = "LP LR 24"
+        hpfHz = defaultHpfHz
+        lpfHz = defaultLpfHz
+        hpType = defaultHpType
+        lpType = defaultLpType
         crossoverChanged()
     }
 
@@ -74,6 +73,9 @@ ListModel {
         lpfHz = Math.max(20, Math.min(20000, Number(value)))
         crossoverChanged()
     }
+
+    function setHpType(value) { hpType = String(value); crossoverChanged() }
+    function setLpType(value) { lpType = String(value); crossoverChanged() }
 
     onBandCountChanged: rebuild()
     Component.onCompleted: rebuild()
