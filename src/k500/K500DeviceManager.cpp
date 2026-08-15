@@ -168,9 +168,8 @@ void K500DeviceManager::beginBluetoothScan()
     // Native reconnect path: try the last protocol-verified K500 COM port first.
     if (!m_lastKnownSerialPort.isEmpty()) {
         const int index = m_serialCandidates.indexOf(m_lastKnownSerialPort);
-        if (index > 0) {
+        if (index > 0)
             m_serialCandidates.move(index, 0);
-        }
     }
 
     m_serialCandidateIndex = -1;
@@ -396,6 +395,15 @@ void K500DeviceManager::onIoError(const QString &message)
 {
     if (m_stage == Stage::Idle)
         return;
+
+    if (m_stage == Stage::ProbeBluetooth) {
+        // A Windows COM entry can be incoming-only, stale or disappear while
+        // scanning. Treat that as a rejected candidate, not a fatal K500 error.
+        setError({});
+        openNextBluetoothCandidate();
+        return;
+    }
+
     setError(message);
     resetConnectionState(true);
     setStatus(QStringLiteral("error"));
@@ -409,6 +417,11 @@ bool K500DeviceManager::writeFrame(const QByteArray &frame, const QString &label
     QString error;
     if (!m_io.writeProtocolFrame(frame, &error)) {
         setError(error);
+        if (m_stage == Stage::ProbeBluetooth) {
+            // Preserve probe stage so the caller can move to the next COM port.
+            m_io.close();
+            return false;
+        }
         resetConnectionState(true);
         setStatus(QStringLiteral("error"));
         return false;
