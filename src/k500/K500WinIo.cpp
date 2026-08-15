@@ -88,14 +88,15 @@ public:
             return;
         QByteArray data = hidReadBuffer.left(static_cast<int>(bytesRead));
 
-        // Windows HID user-mode buffers normally include report id 0 as byte
-        // zero. Strip it only when the following byte is a K500 frame header.
-        if (data.size() > 1 && static_cast<unsigned char>(data.at(0)) == 0x00) {
-            const quint8 next = static_cast<quint8>(static_cast<unsigned char>(data.at(1)));
-            if (next == 0x55 || next == 0xAA)
-                data.remove(0, 1);
-        }
-        emit q->bytesReceived(data);
+        // ReadFile on a Windows HID handle includes the report id as byte 0.
+        // K500 uses report id 0, so strip that byte on EVERY report. This is
+        // essential for responses larger than 64 data bytes: the continuation
+        // report also begins with report id 0 even though its payload does not
+        // begin with a fresh 0x55 frame header.
+        if (!data.isEmpty())
+            data.remove(0, 1);
+        if (!data.isEmpty())
+            emit q->bytesReceived(data);
     }
 
     void issueHidRead()
@@ -443,8 +444,11 @@ void K500WinIo::close()
         d->hidReadNotifier.reset();
     }
     if (d->handle != INVALID_HANDLE_VALUE) {
-        if (d->kind == Kind::UsbHid)
-            CancelIoEx(d->handle, nullptr);
+        if (d->kind == Kind::UsbHid && d->hidReadEvent) {
+            CancelIoEx(d->handle, &d->hidReadOverlapped);
+            DWORD ignored = 0;
+            GetOverlappedResult(d->handle, &d->hidReadOverlapped, &ignored, TRUE);
+        }
         CloseHandle(d->handle);
         d->handle = INVALID_HANDLE_VALUE;
     }
