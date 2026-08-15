@@ -44,7 +44,7 @@ ApplicationWindow {
             }
 
             // Web panel-bevel uses both an inset highlight and a dark lower
-            // edge.  Recreate those layers explicitly so the toolbar does not
+            // edge. Recreate those layers explicitly so the toolbar does not
             // read as a flat Qt rectangle.
             Rectangle {
                 anchors.fill: parent
@@ -52,7 +52,7 @@ ApplicationWindow {
                 radius: 13
                 color: "transparent"
                 border.width: 1
-                border.color: "#0F2FFFFFF"
+                border.color: "#0FFFFFFF"
             }
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:11;anchors.rightMargin:11;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.075 }
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.leftMargin:12;anchors.rightMargin:12;anchors.bottomMargin:1;height:1;color:"#000000";opacity:.58 }
@@ -252,10 +252,8 @@ ApplicationWindow {
                             }
                             gradient: Gradient {
                                 orientation: Gradient.Horizontal
-                                // Exact Web intent: cyan at ~12% on the left,
-                                // fading almost completely into the rail.
-                                GradientStop { position:0;color:navItem.active?"#2024E9F2":navPointer.containsMouse?"#101FFFFFF":"#00101518" }
-                                GradientStop { position:.48;color:navItem.active?"#1024E9F2":navPointer.containsMouse?"#091FFFFFF":"#00101518" }
+                                GradientStop { position:0;color:navItem.active?"#2024E9F2":navPointer.containsMouse?"#10FFFFFF":"#00101518" }
+                                GradientStop { position:.48;color:navItem.active?"#1024E9F2":navPointer.containsMouse?"#09FFFFFF":"#00101518" }
                                 GradientStop { position:1;color:navItem.active?"#0024E9F2":"#00101518" }
                             }
                             border.width: 1
