@@ -9,7 +9,7 @@ StudioPanel {
     property var channels: []
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
-    readonly property real webFaderHeight: title === "Startup Limits" ? 150 : 126
+    readonly property real webFaderHeight: 160
     accentTop: false
 
     ColumnLayout {
