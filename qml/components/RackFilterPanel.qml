@@ -11,6 +11,8 @@ StudioPanel {
     property string lpType: "LP LR 24"
     property bool showTypes: true
     property color accentColor: Theme.amber
+    readonly property bool stackedControls: root.title === "Band Limits"
+    readonly property bool effectTone: root.title === "Tone"
     signal fieldEdited(int index, real value)
     signal hpTypeEdited(string value)
     signal lpTypeEdited(string value)
@@ -37,26 +39,107 @@ StudioPanel {
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
 
-        RowLayout {
+        // Mic Band Limits follows the web crossover-control-stack: compact
+        // numeric field, full-width type selector, then LPF + selector.
+        ColumnLayout {
+            visible: root.stackedControls
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
-            Layout.topMargin: 10
-            Layout.bottomMargin: 10
-            spacing: 9
+            Layout.leftMargin: 9
+            Layout.rightMargin: 9
+            Layout.topMargin: 9
+            Layout.bottomMargin: 9
+            spacing: 5
+
+            ValueField {
+                Layout.preferredWidth: Math.min(78, parent.width * .52)
+                Layout.minimumWidth: 66
+                Layout.preferredHeight: 45
+                title: root.fields.length > 0 ? String(root.fields[0].label || "") + (String(root.fields[0].unit || "").length ? "  ·  " + String(root.fields[0].unit).toUpperCase() : "") : "HPF"
+                value: root.fields.length > 0 ? Number(root.fields[0].value) : 20
+                from: root.fields.length > 0 ? Number(root.fields[0].from) : 20
+                to: root.fields.length > 0 ? Number(root.fields[0].to) : 20000
+                step: root.fields.length > 0 ? Number(root.fields[0].step || 1) : 1
+                decimals: root.fields.length > 0 ? Number(root.fields[0].decimals || 0) : 0
+                unit: ""
+                defaultValue: value
+                accentColor: Theme.amber
+                onValueEdited: function(v) { if (root.fields.length > 0) root.fieldEdited(0, v) }
+            }
 
             ColumnLayout {
+                visible: root.showTypes
                 Layout.fillWidth: true
+                spacing: 2
+                Text { text:"HP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.letterSpacing:.8 }
+                StudioComboBox {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 29
+                    value: root.hpType
+                    model: ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
+                    accentColor: Theme.amber
+                    onValueEdited: function(v){ root.hpTypeEdited(v) }
+                }
+            }
+
+            ValueField {
+                Layout.preferredWidth: Math.min(78, parent.width * .52)
+                Layout.minimumWidth: 66
+                Layout.preferredHeight: 45
+                title: root.fields.length > 1 ? String(root.fields[1].label || "") + (String(root.fields[1].unit || "").length ? "  ·  " + String(root.fields[1].unit).toUpperCase() : "") : "LPF"
+                value: root.fields.length > 1 ? Number(root.fields[1].value) : 20000
+                from: root.fields.length > 1 ? Number(root.fields[1].from) : 20
+                to: root.fields.length > 1 ? Number(root.fields[1].to) : 20000
+                step: root.fields.length > 1 ? Number(root.fields[1].step || 1) : 1
+                decimals: root.fields.length > 1 ? Number(root.fields[1].decimals || 0) : 0
+                unit: ""
+                defaultValue: value
+                accentColor: Theme.amber
+                onValueEdited: function(v) { if (root.fields.length > 1) root.fieldEdited(1, v) }
+            }
+
+            ColumnLayout {
+                visible: root.showTypes
+                Layout.fillWidth: true
+                spacing: 2
+                Text { text:"LP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.letterSpacing:.8 }
+                StudioComboBox {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 29
+                    value: root.lpType
+                    model: ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
+                    accentColor: Theme.amber
+                    onValueEdited: function(v){ root.lpTypeEdited(v) }
+                }
+            }
+            Item { Layout.fillHeight: true }
+        }
+
+        // Effect/output rails use the web two-column cascade. The numeric
+        // side stays narrow so the type labels receive the larger column.
+        RowLayout {
+            visible: !root.stackedControls
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            Layout.leftMargin: 9
+            Layout.rightMargin: 9
+            Layout.topMargin: 9
+            Layout.bottomMargin: 9
+            spacing: 8
+
+            ColumnLayout {
+                Layout.preferredWidth: root.effectTone ? 66 : 72
+                Layout.minimumWidth: root.effectTone ? 66 : 72
+                Layout.maximumWidth: root.effectTone ? 66 : 82
                 Layout.alignment: Qt.AlignTop
-                spacing: 7
+                spacing: root.effectTone ? 9 : 5
                 Repeater {
                     model: root.fields
                     delegate: ValueField {
                         required property int index
                         required property var modelData
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 50
+                        Layout.preferredHeight: root.effectTone ? 48 : 45
                         title: String(modelData.label || "") + (String(modelData.unit || "").length ? "  ·  " + String(modelData.unit || "").toUpperCase() : "")
                         value: Number(modelData.value)
                         from: Number(modelData.from)
@@ -75,8 +158,9 @@ StudioPanel {
             ColumnLayout {
                 visible: root.showTypes
                 Layout.fillWidth: true
+                Layout.minimumWidth: root.effectTone ? 106 : 106
                 Layout.alignment: Qt.AlignTop
-                spacing: 7
+                spacing: root.effectTone ? 9 : 5
 
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -84,7 +168,7 @@ StudioPanel {
                     Text { text:"HP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.letterSpacing:.8 }
                     StudioComboBox {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 30
+                        Layout.preferredHeight: 29
                         value: root.hpType
                         model: ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
                         accentColor: Theme.amber
@@ -97,7 +181,7 @@ StudioPanel {
                     Text { text:"LP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.letterSpacing:.8 }
                     StudioComboBox {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 30
+                        Layout.preferredHeight: 29
                         value: root.lpType
                         model: ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
                         accentColor: Theme.amber
