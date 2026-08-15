@@ -54,14 +54,14 @@ StudioPanel {
             Layout.fillHeight: true
             Layout.leftMargin: 15
             Layout.rightMargin: 15
-            Layout.topMargin: 12
-            Layout.bottomMargin: 12
-            spacing: 14
+            Layout.topMargin: 8
+            Layout.bottomMargin: 10
+            spacing: 12
 
             Rectangle {
                 Layout.preferredWidth: root.includeGate ? 170 : 122
-                Layout.preferredHeight: 140
-                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredHeight: 150
+                Layout.alignment: Qt.AlignTop
                 radius: 8
                 color: "#040608"
                 border.width: 1
@@ -90,13 +90,11 @@ StudioPanel {
                             return input+(hard-input)*u*u*(3-2*u)
                         }
 
-                        // Web CompressorGraph grid.
                         c.globalAlpha=1;c.lineWidth=1;c.strokeStyle="#182128"
                         var gx=[-60,-48,-36,-24,-12,0],gy=[-48,-36,-24,-12,0]
                         for(var i=0;i<gx.length;i++){c.beginPath();c.moveTo(xx(gx[i]),top);c.lineTo(xx(gx[i]),height-bottom);c.stroke()}
                         for(i=0;i<gy.length;i++){c.beginPath();c.moveTo(left,yy(gy[i]));c.lineTo(width-right,yy(gy[i]));c.stroke()}
 
-                        // Reference unity line, kept quiet behind the transfer curve.
                         c.globalAlpha=.22;c.strokeStyle="#FFFFFF";c.lineWidth=1
                         for(i=0;i<12;i+=2){
                             var a=minDb+i*5,b=minDb+(i+1)*5
@@ -104,12 +102,10 @@ StudioPanel {
                         }
 
                         var th=clamp(Number(root.threshold)||-20,minDb,-1)
-                        // Subtle compression-area fill after threshold.
                         c.globalAlpha=.12;c.fillStyle=Theme.amber.toString();c.beginPath();c.moveTo(xx(th),yy(th))
                         for(i=0;i<=48;i++){var db=th+(maxDb-th)*i/48;c.lineTo(xx(db),yy(outDb(db)))}
                         c.lineTo(xx(maxDb),yy(maxDb));c.closePath();c.fill()
 
-                        // Transfer curve glow + cyan→amber core, matching the Web hierarchy.
                         c.globalAlpha=.15;c.strokeStyle=Theme.accent.toString();c.lineWidth=6;c.lineCap="round";c.beginPath()
                         for(i=0;i<=100;i++){db=minDb+(maxDb-minDb)*i/100;if(i===0)c.moveTo(xx(db),yy(outDb(db)));else c.lineTo(xx(db),yy(outDb(db)))}c.stroke()
                         c.globalAlpha=1;c.lineWidth=2.2
@@ -118,7 +114,6 @@ StudioPanel {
                         c.strokeStyle=grad;c.beginPath()
                         for(i=0;i<=100;i++){db=minDb+(maxDb-minDb)*i/100;if(i===0)c.moveTo(xx(db),yy(outDb(db)));else c.lineTo(xx(db),yy(outDb(db)))}c.stroke()
 
-                        // Threshold guide and marker.
                         c.strokeStyle=Theme.amber.toString();c.globalAlpha=.72;c.lineWidth=1
                         var tx=xx(th)
                         for(var sy=top;sy<height-bottom;sy+=8){c.beginPath();c.moveTo(tx,sy);c.lineTo(tx,Math.min(sy+4,height-bottom));c.stroke()}
@@ -130,7 +125,9 @@ StudioPanel {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.alignment: Qt.AlignVCenter
+                Layout.preferredHeight: 104
+                Layout.alignment: Qt.AlignTop
+                Layout.topMargin: 1
                 spacing: 3
 
                 StudioKnob {
@@ -171,6 +168,8 @@ StudioPanel {
                     onValueEdited: function(v){ root.release=v }
                 }
             }
+
+            Item { Layout.fillHeight: true; Layout.preferredWidth: 0 }
         }
     }
 }
