@@ -46,9 +46,12 @@ StudioPanel {
         return Math.round(raw/10)*10
     }
     function yFor(g){ return topPad+(24-clamp(g,-24,24))/48*Math.max(1,plotBottom-topPad) }
-    function gainForY(y){
+    function rawGainForY(y){
         var g=24-clamp((y-topPad)/Math.max(1,plotBottom-topPad),0,1)*48
-        g=Math.round(g*10)/10
+        return Math.round(g*10)/10
+    }
+    function gainForY(y){
+        var g=rawGainForY(y)
         return Math.abs(g)<0.3?0:g
     }
     function colorFor(i){ return colors[i%colors.length] }
@@ -205,6 +208,30 @@ StudioPanel {
                 border.color:"#010203"
                 clip:true
 
+                // PEQ_INTERACTION_PARITY_V1
+                // Keep the Qt graph aligned with the web/FabFilter-style workflow:
+                // wheel = selected-band Q, Shift = fine, Ctrl/Cmd + vertical drag = Q,
+                // normal drag = frequency/gain with magnetic 0 dB snap.
+                WheelHandler {
+                    id:peqWheelHandler
+                    target:null
+                    onWheel:function(event){
+                        if(root.selectedTarget!=="band"){
+                            event.accepted=false
+                            return
+                        }
+                        var delta=event.angleDelta.y
+                        if(delta===0)delta=event.pixelDelta.y
+                        if(delta===0){event.accepted=false;return}
+                        var direction=delta>0?1:-1
+                        var fine=(event.modifiers & Qt.ShiftModifier)!==0
+                        var step=fine?0.02:0.1
+                        var nextQ=Math.round(root.clamp(root.safeQ(root.selectedQ)+direction*step,0.1,30)*100)/100
+                        root.setSelectedQValue(nextQ)
+                        event.accepted=true
+                    }
+                }
+
                 Repeater {
                     model:[20,30,50,70,100,200,500,1000,2000,5000,10000,20000]
                     delegate:Item {
@@ -295,11 +322,14 @@ StudioPanel {
                 Repeater {
                     model:root.bands
                     delegate:Item {
+                        id:bandNode
                         required property int index
                         required property real freq
                         required property real gain
                         required property real q
                         required property string typeName
+                        property real dragLastX:0
+                        property real dragLastY:0
                         readonly property bool selected:root.selectedTarget==="band"&&index===root.selectedIndex
                         readonly property real haloVirtual:selected?36:26
                         readonly property real coreVirtual:selected?21:16
@@ -307,7 +337,45 @@ StudioPanel {
                         x:root.xFor(freq)-width/2;y:root.yFor(gain)-height/2
                         Rectangle{anchors.centerIn:parent;width:parent.haloVirtual*root.nodeScale;height:width;radius:width/2;color:parent.selected?Theme.accent:Theme.amber;opacity:parent.selected?.17:.12}
                         Rectangle{anchors.centerIn:parent;width:parent.coreVirtual*root.nodeScale;height:width;radius:width/2;color:parent.selected?Theme.accent:Theme.amber;border.width:1.5;border.color:"#07090A";Text{anchors.centerIn:parent;text:index+1;color:"#070A0C";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
-                        MouseArea{anchors.fill:parent;cursorShape:Qt.SizeAllCursor;onPressed:root.selectBand(index);onPositionChanged:function(e){if(!pressed)return;var p=mapToItem(graph,e.x,e.y);root.selectedFreq=root.freqForX(p.x);root.selectedGain=root.gainForY(p.y);root.updateSelected()};onDoubleClicked:{root.selectBand(index);root.setSelectedGain(0)}}
+                        MouseArea {
+                            anchors.fill:parent
+                            cursorShape:Qt.SizeAllCursor
+                            preventStealing:true
+                            onPressed:function(e){
+                                root.selectBand(index)
+                                var p=mapToItem(graph,e.x,e.y)
+                                bandNode.dragLastX=p.x
+                                bandNode.dragLastY=p.y
+                            }
+                            onPositionChanged:function(e){
+                                if(!pressed)return
+                                var p=mapToItem(graph,e.x,e.y)
+                                var fine=(e.modifiers & Qt.ShiftModifier)!==0
+                                var qDrag=(e.modifiers & Qt.ControlModifier)!==0 || (e.modifiers & Qt.MetaModifier)!==0
+                                if(qDrag){
+                                    var qDy=p.y-bandNode.dragLastY
+                                    bandNode.dragLastX=p.x
+                                    bandNode.dragLastY=p.y
+                                    var factor=Math.exp(-qDy*(fine?0.003:0.012))
+                                    root.selectedQ=Math.round(root.clamp(root.safeQ(root.selectedQ)*factor,0.1,30)*100)/100
+                                    root.updateSelected()
+                                    return
+                                }
+                                if(fine){
+                                    var dx=(p.x-bandNode.dragLastX)*0.25
+                                    var dy=(p.y-bandNode.dragLastY)*0.25
+                                    root.selectedFreq=root.freqForX(root.xFor(root.selectedFreq)+dx)
+                                    root.selectedGain=root.rawGainForY(root.yFor(root.selectedGain)+dy)
+                                }else{
+                                    root.selectedFreq=root.freqForX(p.x)
+                                    root.selectedGain=root.gainForY(p.y)
+                                }
+                                bandNode.dragLastX=p.x
+                                bandNode.dragLastY=p.y
+                                root.updateSelected()
+                            }
+                            onDoubleClicked:{root.selectBand(index);root.setSelectedGain(0)}
+                        }
                     }
                 }
 
