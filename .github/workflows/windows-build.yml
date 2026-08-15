@@ -12,6 +12,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Guard PEQ interaction parity
+        shell: pwsh
+        run: |
+          $qml = Get-Content "qml/components/SectionEqGraph.qml" -Raw
+          $required = @(
+            "PEQ_INTERACTION_PARITY_V1",
+            "WheelHandler",
+            "Qt.ShiftModifier",
+            "Qt.ControlModifier",
+            "Qt.MetaModifier",
+            "Math.exp(-qDy*(fine?0.003:0.012))",
+            "onDoubleClicked",
+            "setSelectedGain(0)"
+          )
+          foreach ($token in $required) {
+            if (-not $qml.Contains($token)) {
+              throw "PEQ interaction parity regression: missing '$token'"
+            }
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -38,6 +58,18 @@ jobs:
           New-Item -ItemType Directory -Force -Path package | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
           windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
+
+      - name: K500 protocol and RX parser self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--protocol-self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "K500 protocol/RX parser self-test failed with exit code $($p.ExitCode)" }
+
+      - name: StudioEngine self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--engine-self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "StudioEngine self-test failed with exit code $($p.ExitCode)" }
 
       - name: Upload runnable build
         uses: actions/upload-artifact@v4

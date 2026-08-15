@@ -5,6 +5,7 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: root
     required property var studioEngine
+    required property var deviceManager
     visible: true
     width: 1484
     height: 920
@@ -34,6 +35,7 @@ ApplicationWindow {
             Layout.preferredHeight: 52
             Layout.minimumHeight: 52
             Layout.maximumHeight: 52
+            deviceManager: root.deviceManager
         }
 
         RowLayout {
