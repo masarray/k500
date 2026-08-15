@@ -2,28 +2,27 @@
 setlocal
 cd /d "%~dp0"
 
-where cmake >nul 2>nul || (
-  echo [SONKUPIK] CMake tidak ditemukan.
-  echo Install Qt 6.8+ Desktop MSVC 2022 melalui Qt Online Installer.
+where powershell.exe >nul 2>nul || (
+  echo [SONKUPIK] PowerShell tidak ditemukan.
   pause
   exit /b 1
 )
 
-set "BUILD_DIR=build"
-
-if not defined CMAKE_PREFIX_PATH (
-  echo [SONKUPIK] CMAKE_PREFIX_PATH belum diset ke folder Qt MSVC.
-  echo Contoh:
-  echo   set CMAKE_PREFIX_PATH=C:\Qt\6.8.3\msvc2022_64
-  echo lalu jalankan kembali file ini.
-  pause
-  exit /b 1
-)
-
-cmake -S . -B "%BUILD_DIR%" -G Ninja -DCMAKE_BUILD_TYPE=Release || exit /b 1
-cmake --build "%BUILD_DIR%" --config Release || exit /b 1
+echo [SONKUPIK] Smart build launcher
+echo [SONKUPIK] Repo: %CD%
 
 echo.
-echo [SONKUPIK] Build selesai:
-echo   %CD%\%BUILD_DIR%\SONKUPIK-STUDIO-Native-UI.exe
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0build-smart.ps1" %*
+set "ERR=%ERRORLEVEL%"
+
+if not "%ERR%"=="0" (
+  echo.
+  echo [SONKUPIK] Build gagal dengan exit code %ERR%.
+  pause
+  exit /b %ERR%
+)
+
+echo.
+echo [SONKUPIK] Selesai. Untuk build + langsung run:
+echo   build-windows.cmd -Run
 pause
