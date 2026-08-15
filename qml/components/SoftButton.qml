@@ -32,96 +32,137 @@ Rectangle {
     implicitWidth: root.transport ? 29 : root.compact ? 52 : 70
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
     transformOrigin: Item.Center
-    scale: mouse.pressed ? (root.transport ? 0.975 : 0.965) : 1.0
+    scale: mouse.pressed ? (root.transport ? 0.972 : 0.965) : 1.0
     transform: Translate {
         y: mouse.pressed ? 1 : 0
         Behavior on y { NumberAnimation { duration: 55; easing.type: Easing.OutQuad } }
     }
 
-    radius: root.transport ? 5 : Theme.radiusSmall
+    radius: root.transport ? 6 : 8
     border.width: 1
-    border.color: root.activeFocus ? Theme.focus
-                 : root.danger ? "#9E4C53"
-                 : root.activeAccent ? Qt.rgba(root.resolvedAccent.r, root.resolvedAccent.g, root.resolvedAccent.b, root.transport ? 0.72 : 0.62)
-                 : mouse.containsMouse ? "#465560"
-                 : root.transport ? "#34414B" : Theme.borderSoft
+    border.color: root.activeFocus ? root.resolvedAccent
+                 : root.danger ? "#7C3038"
+                 : root.activeAccent ? Qt.rgba(root.resolvedAccent.r, root.resolvedAccent.g, root.resolvedAccent.b, 0.68)
+                 : mouse.containsMouse ? "#3D4952"
+                 : "#070A0D"
 
+    // Match the Web chrome-button stack: a lighter metallic crown, darker
+    // lower face and a restrained cyan/amber active tint.  The old Qt button
+    // used a nearly-flat dark fill, which made the transport and toolbar look
+    // lifeless next to the Web build.
     gradient: Gradient {
         GradientStop {
             position: 0.0
-            color: root.danger ? (mouse.pressed ? "#211317" : "#30191D")
-                 : root.activeAccent ? (mouse.pressed ? "#173034" : root.transport ? "#203B40" : "#20383C")
-                 : mouse.pressed ? "#11171C"
-                 : mouse.containsMouse ? "#26313A"
-                 : root.transport ? "#202A32" : "#252F38"
+            color: root.danger ? (mouse.pressed ? "#241116" : "#3B1B22")
+                 : root.activeAccent ? (mouse.pressed ? "#17373C" : "#27525A")
+                 : mouse.pressed ? "#151B20"
+                 : mouse.containsMouse ? "#3B454D"
+                 : "#343D44"
         }
         GradientStop {
-            position: 0.48
-            color: root.danger ? "#1B1013"
-                 : root.activeAccent ? (root.transport ? "#13272B" : "#152A2D")
-                 : mouse.pressed ? "#0D1216" : "#151C22"
+            position: 0.22
+            color: root.danger ? "#2B151A"
+                 : root.activeAccent ? "#1D4046"
+                 : mouse.containsMouse ? "#303941"
+                 : "#2A3239"
+        }
+        GradientStop {
+            position: 0.58
+            color: root.danger ? "#1A0D11"
+                 : root.activeAccent ? "#163036"
+                 : mouse.pressed ? "#0F1418"
+                 : "#1A2127"
         }
         GradientStop {
             position: 1.0
-            color: root.danger ? "#0D090B"
-                 : root.activeAccent ? "#081216"
-                 : "#080D11"
+            color: root.danger ? "#090608"
+                 : root.activeAccent ? "#0A171B"
+                 : "#0B1014"
         }
     }
 
     Behavior on border.color { ColorAnimation { duration: 85 } }
     Behavior on scale { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
 
-    // Active tint stays completely inside the control bounds. This avoids
-    // the old negative-margin glow being clipped by Qt Layout containers.
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: Math.max(2, parent.radius - 1)
-        color: root.resolvedAccent
-        opacity: root.activeAccent ? (root.transport ? 0.055 : 0.045) : 0
-        Behavior on opacity { NumberAnimation { duration: 90 } }
-    }
-
-    // Console-style underglow: intentionally inset so every button keeps a
-    // clean cyan/amber light without spilling outside its layout cell.
+    // Dark lower lip creates the same physical button depth as the Web
+    // box-shadow without requiring a blur effect.
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.bottom: parent.bottom
-        anchors.leftMargin: root.transport ? 4 : 5
-        anchors.rightMargin: root.transport ? 4 : 5
+        anchors.leftMargin: 2
+        anchors.rightMargin: 2
         anchors.bottomMargin: 1
-        height: root.transport ? 4 : 3
-        radius: height / 2
-        color: root.resolvedAccent
-        opacity: root.activeAccent ? (mouse.pressed ? 0.16 : root.transport ? 0.30 : 0.22) : 0
-        Behavior on opacity { NumberAnimation { duration: 90 } }
+        height: 2
+        radius: 1
+        color: "#000000"
+        opacity: mouse.pressed ? 0.28 : 0.60
     }
 
-    // One inner edge only for transport buttons; the previous extra border
-    // stack made the top bar look dirty at native DPI scaling.
+    // Fine inner bevel.  In active state this doubles as the cyan inner rim
+    // visible on the Web buttons.
     Rectangle {
-        visible: root.transport
+        anchors.fill: parent
+        anchors.margins: 1
+        radius: Math.max(3, parent.radius - 1)
+        color: "transparent"
+        border.width: 1
+        border.color: root.activeAccent
+                      ? Qt.rgba(root.resolvedAccent.r, root.resolvedAccent.g, root.resolvedAccent.b, 0.28)
+                      : "#16FFFFFF"
+    }
+
+    // Active tint stays inside the control so it remains clean under native
+    // DPI scaling and Layout clipping.
+    Rectangle {
         anchors.fill: parent
         anchors.margins: 2
         radius: Math.max(2, parent.radius - 2)
-        color: "transparent"
-        border.width: 1
-        border.color: root.activeAccent ? "#285EDDD4" : "#12FFFFFF"
+        color: root.resolvedAccent
+        opacity: root.activeAccent ? (root.transport ? 0.050 : 0.038) : 0
+        Behavior on opacity { NumberAnimation { duration: 90 } }
+    }
+
+    // Console-style underglow, kept inside the hardware face.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: root.transport ? 5 : 7
+        anchors.rightMargin: root.transport ? 5 : 7
+        anchors.bottomMargin: 2
+        height: root.transport ? 3 : 2
+        radius: height / 2
+        color: root.resolvedAccent
+        opacity: root.activeAccent ? (mouse.pressed ? 0.17 : root.transport ? 0.34 : 0.24) : 0
+        Behavior on opacity { NumberAnimation { duration: 90 } }
+    }
+
+    // Metallic crown / inset highlight.
+    Rectangle {
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 4
+        anchors.rightMargin: 4
+        anchors.topMargin: 1
+        height: 1
+        radius: 1
+        color: root.activeAccent ? root.resolvedAccent : "#FFFFFF"
+        opacity: root.activeAccent ? 0.42 : mouse.containsMouse ? 0.19 : 0.13
     }
 
     Rectangle {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
-        anchors.leftMargin: root.transport ? 4 : 3
-        anchors.rightMargin: root.transport ? 4 : 3
-        anchors.topMargin: 1
+        anchors.leftMargin: 7
+        anchors.rightMargin: 7
+        anchors.topMargin: 2
         height: 1
-        color: root.activeAccent ? root.resolvedAccent : "#FFFFFF"
-        opacity: root.activeAccent ? (root.transport ? 0.40 : 0.30)
-                 : mouse.containsMouse ? 0.11 : 0.065
+        radius: 1
+        color: "#FFFFFF"
+        opacity: root.activeAccent ? 0.08 : mouse.containsMouse ? 0.08 : 0.045
     }
 
     Row {
@@ -134,9 +175,8 @@ Rectangle {
             height: width
             anchors.verticalCenter: parent.verticalCenter
 
-            // Keep icon glow subtle and contained. The web console reads as
-            // illuminated hardware because the focal light is on the glyph,
-            // not because several outlines glow at once.
+            // Two-pass glyph gives the small focused light that makes Web
+            // transport controls look illuminated without a large outer glow.
             LucideIcon {
                 anchors.centerIn: parent
                 width: parent.width + (root.transport ? 3 : 2)
@@ -145,7 +185,7 @@ Rectangle {
                 color: root.danger ? Theme.red : root.resolvedAccent
                 strokeWidth: root.transport ? 3.0 : 2.8
                 filled: root.iconFilled
-                opacity: root.activeAccent ? (root.transport ? 0.14 : 0.10) : 0
+                opacity: root.activeAccent ? (root.transport ? 0.16 : 0.11) : 0
             }
             LucideIcon {
                 anchors.centerIn: parent
@@ -154,7 +194,7 @@ Rectangle {
                 name: root.iconName
                 color: root.danger ? "#FFD8D8"
                      : root.activeAccent || root.accentIcon ? root.resolvedAccent
-                     : root.transport ? "#A7BBC6" : Theme.textSoft
+                     : root.transport ? "#C4D0D6" : "#D0D7DC"
                 strokeWidth: root.transport ? 1.9 : 1.8
                 filled: root.iconFilled
             }
@@ -165,12 +205,12 @@ Rectangle {
             visible: !root.iconOnly && text.length > 0
             anchors.verticalCenter: parent.verticalCenter
             color: root.danger ? "#FFD8D8"
-                 : root.checked ? Theme.text
-                 : root.activeAccent ? "#DDF9F6" : Theme.textSoft
+                 : root.checked ? "#F2F7F8"
+                 : root.activeAccent ? "#DDF9F6" : "#D8DFE4"
             font.family: Theme.fontFamily
             font.pixelSize: root.compact ? Theme.textXS : Theme.textS
-            font.weight: root.checked ? Font.DemiBold : Font.Medium
-            font.letterSpacing: 0.25
+            font.weight: root.checked || root.activeAccent ? Font.DemiBold : Font.Medium
+            font.letterSpacing: 0.20
         }
     }
 
