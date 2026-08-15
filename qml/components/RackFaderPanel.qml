@@ -8,7 +8,7 @@ StudioPanel {
     property string title: "Mic Inputs"
     property var channels: []
     property color accentColor: Theme.accent
-    property bool compactCluster: false
+    property bool compactCluster: title === "Reverb" || title === "Echo"
     accentTop: false
 
     ColumnLayout {
@@ -39,7 +39,7 @@ StudioPanel {
             Layout.rightMargin: 10
             Layout.topMargin: 10
             Layout.bottomMargin: 10
-            spacing: root.compactCluster ? 2 : 2
+            spacing: 2
 
             Repeater {
                 model: root.channels
