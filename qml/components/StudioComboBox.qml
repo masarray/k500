@@ -9,8 +9,8 @@ ComboBox {
     signal valueEdited(string newValue)
 
     implicitHeight: 34
-    leftPadding: 11
-    rightPadding: 32
+    leftPadding: 8
+    rightPadding: 22
     topPadding: 0
     bottomPadding: 0
     currentIndex: Math.max(0, control.model.indexOf(control.value))
@@ -22,27 +22,26 @@ ComboBox {
     }
 
     contentItem: Text {
-        leftPadding: 1
         text: control.displayText
         color: control.enabled ? control.accentColor : Theme.textFaint
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
         font.family: Theme.monoFamily
-        font.pixelSize: 9
+        font.pixelSize: 8
         font.weight: Font.Bold
-        font.letterSpacing: 0.1
+        font.letterSpacing: 0
     }
 
     indicator: Item {
-        x: control.width - width - 9
+        x: control.width - width - 6
         y: (control.height - height) / 2
-        width: 16
-        height: 16
+        width: 12
+        height: 12
         LucideIcon {
             anchors.fill: parent
             name: "chevron-down"
             color: control.popup.visible || control.hovered ? control.accentColor : Theme.textDim
-            strokeWidth: 2.1
+            strokeWidth: 1.8
             rotation: control.popup.visible ? 180 : 0
             Behavior on rotation { NumberAnimation { duration: 120; easing.type: Easing.OutCubic } }
             Behavior on color { ColorAnimation { duration: 100 } }
@@ -54,12 +53,12 @@ ComboBox {
         border.width: 1
         border.color: control.activeFocus || control.popup.visible ? control.accentColor : control.hovered ? "#6B5B24" : Theme.borderSoft
         gradient: Gradient {
-            GradientStop { position: 0.0; color: control.down ? "#11120E" : control.hovered ? "#25251B" : "#171B1D" }
-            GradientStop { position: 0.48; color: control.down ? "#0A0C0D" : "#101417" }
-            GradientStop { position: 1.0; color: "#070A0C" }
+            GradientStop { position: 0.0; color: control.down ? "#0E100C" : control.hovered ? "#1D1D15" : "#111518" }
+            GradientStop { position: 0.48; color: control.down ? "#080A0B" : "#0B0F12" }
+            GradientStop { position: 1.0; color: "#050709" }
         }
-        Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;height:1;color:control.accentColor;opacity:control.activeFocus||control.popup.visible?.45:.10 }
-        Rectangle { anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.right:parent.right;anchors.rightMargin:27;width:1;color:Theme.borderSoft }
+        Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;height:1;color:control.accentColor;opacity:control.activeFocus||control.popup.visible?.40:.07 }
+        Rectangle { anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.right:parent.right;anchors.rightMargin:19;width:1;color:Theme.borderSoft }
     }
 
     delegate: ItemDelegate {
@@ -68,15 +67,15 @@ ComboBox {
         required property int index
         width: control.width - 8
         height: 30
-        leftPadding: 9
-        rightPadding: 8
+        leftPadding: 7
+        rightPadding: 6
         highlighted: control.highlightedIndex === index
         contentItem: Text {
             text: option.modelData
             color: option.highlighted ? control.accentColor : Theme.textSoft
             verticalAlignment: Text.AlignVCenter
             font.family: Theme.monoFamily
-            font.pixelSize: 9
+            font.pixelSize: 8
             font.weight: option.highlighted ? Font.Bold : Font.Medium
         }
         background: Rectangle { radius:5;color:option.highlighted?Theme.amberFaint:"transparent";border.width:option.highlighted?1:0;border.color:Theme.amberSoft }
@@ -84,11 +83,11 @@ ComboBox {
 
     popup: Popup {
         y: control.height + 4
-        width: control.width
+        width: Math.max(control.width, 112)
         implicitHeight: Math.min(contentItem.implicitHeight + 8, 224)
         padding: 4
         z: 50
         contentItem: ListView { clip:true;implicitHeight:contentHeight;model:control.popup.visible?control.delegateModel:null;currentIndex:control.highlightedIndex;spacing:2 }
-        background: Rectangle { radius:8;color:"#10161B";border.width:1;border.color:"#46535D" }
+        background: Rectangle { radius:8;color:"#0D1318";border.width:1;border.color:"#36424B" }
     }
 }
