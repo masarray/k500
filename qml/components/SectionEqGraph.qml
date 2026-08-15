@@ -14,29 +14,40 @@ StudioPanel {
     property real selectedGain: 0
     property real selectedQ: 1
     readonly property var bands: bandModel
-    readonly property real leftPad: 54
+    readonly property real leftPad: 56
     readonly property real rightPad: 22
     readonly property real topPad: 24
-    readonly property real dockHeight: 96
-    readonly property real plotBottom: Math.max(topPad + 150, graph.height - dockHeight)
-    readonly property var colors: ["#58DED7", "#F0B928", "#DDAA20", "#E3A51A", "#F0B928", "#E6A713", "#F0A800", "#E6A20A", "#F4AE10", "#F7B20A"]
+    readonly property real bottomPad: 38
+    readonly property real plotBottom: Math.max(topPad + 120, graph.height - bottomPad)
+    readonly property var colors: ["#5EDDD4", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928", "#F0B928"]
 
     signal micChannelRequested(int channel)
     signal eqLinkRequested(bool linked)
 
-    implicitHeight: 430
+    implicitHeight: 500
+    accentTop: false
 
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
     function safeQ(q){ return clamp(Number(q)||0.7,0.1,30) }
     function normF(f){ return Math.log(clamp(f,20,20000)/20)/Math.log(1000) }
     function freq(n){ return 20*Math.pow(1000,clamp(n,0,1)) }
     function xFor(f){ return leftPad+normF(f)*Math.max(1,graph.width-leftPad-rightPad) }
-    function freqForX(x){ return freq((x-leftPad)/Math.max(1,graph.width-leftPad-rightPad)) }
+    function freqForX(x){
+        var raw=freq((x-leftPad)/Math.max(1,graph.width-leftPad-rightPad))
+        if(raw<100)return Math.round(raw)
+        if(raw<1000)return Math.round(raw/5)*5
+        return Math.round(raw/10)*10
+    }
     function yFor(g){ return topPad+(24-clamp(g,-24,24))/48*Math.max(1,plotBottom-topPad) }
-    function gainForY(y){ return 24-clamp((y-topPad)/Math.max(1,plotBottom-topPad),0,1)*48 }
+    function gainForY(y){
+        var g=24-clamp((y-topPad)/Math.max(1,plotBottom-topPad),0,1)*48
+        g=Math.round(g*10)/10
+        return Math.abs(g)<0.3?0:g
+    }
     function colorFor(i){ return colors[i%colors.length] }
     function dbLin(db){ return Math.pow(10,db/20) }
-    function fmtF(f){ return f>=1000?(f/1000).toFixed(f>=10000?1:2)+"k":Math.round(f).toString() }
+    function fmtF(f){ return f>=1000?((f/1000)%1===0?(f/1000).toFixed(0):(f/1000).toFixed(1))+"k":Math.round(f).toString() }
+    function typeShort(t){ t=String(t||"BELL"); return t==="LOW SHELF"?"LS":t==="HIGH SHELF"?"HS":"P" }
 
     function peak(f,q,g){
         var sr=48000,A=dbLin(g/2),w=2*Math.PI*clamp(f,1,sr/2-1)/sr
@@ -67,12 +78,20 @@ StudioPanel {
         else c=peak(b.freq,b.q,b.gain)
         return mag(c,f)
     }
+    function bessel(order,r){
+        var co=order===4?[105,105,45,10,1]:order===3?[15,15,6,1]:[3,3,1]
+        var sc=order===4?2.113917674904216:order===3?1.7556723686812106:1.3616541287161308
+        var xx=Math.max(0,r)*sc,re=0,im=0
+        for(var p=0;p<co.length;++p){var m=co[p]*Math.pow(xx,p),ph=p*Math.PI/2;re+=m*Math.cos(ph);im+=m*Math.sin(ph)}
+        return co[0]/Math.max(1e-12,Math.sqrt(re*re+im*im))
+    }
     function crossOne(kind,label,cut,f){
         label=String(label||"LR 24").toUpperCase()
         var order=label.indexOf("24")>=0?4:label.indexOf("18")>=0?3:2
-        var r=kind==="lpf"?Math.max(f,1)/Math.max(cut,1):Math.max(cut,1)/Math.max(f,1)
-        var m=1/Math.sqrt(1+Math.pow(r,2*order))
-        if(label.indexOf("LR")>=0){var b=1/Math.sqrt(1+Math.pow(r,4));m=b*b}
+        var r=kind==="lpf"?Math.max(f,1)/Math.max(cut,1):Math.max(cut,1)/Math.max(f,1),m
+        if(label.indexOf("BESSEL")>=0)m=bessel(order,r)
+        else if(label.indexOf("LR")>=0){var b=1/Math.sqrt(1+Math.pow(r,4));m=b*b}
+        else m=1/Math.sqrt(1+Math.pow(r,2*order))
         return 20*Math.log(Math.max(m,1e-12))/Math.LN10
     }
     function crossDb(f){
@@ -84,7 +103,7 @@ StudioPanel {
     function totalDb(f){ var d=crossDb(f); for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f); return clamp(d,-48,48) }
 
     function selectBand(i){
-        if(!bands || bands.count<1)return
+        if(!bands||bands.count<1)return
         selectedIndex=clamp(i,0,bands.count-1)
         var b=bands.get(selectedIndex)
         selectedFreq=b.freq;selectedGain=b.gain;selectedQ=b.q
@@ -99,37 +118,38 @@ StudioPanel {
 
     Connections {
         target: bands
-        function onBandChanged(){ root.selectBand(Math.min(root.selectedIndex, root.bands.count-1)); curve.requestPaint() }
-        function onCrossoverChanged(){ curve.requestPaint() }
+        function onBandChanged(){root.selectBand(Math.min(root.selectedIndex,root.bands.count-1));curve.requestPaint()}
+        function onCrossoverChanged(){curve.requestPaint()}
     }
-    onBandModelChanged: Qt.callLater(function(){ root.selectBand(0); curve.requestPaint() })
+    onBandModelChanged: Qt.callLater(function(){root.selectBand(0);curve.requestPaint()})
     Component.onCompleted: selectBand(0)
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 12
-        spacing: 8
+        spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 38
-            spacing: 7
+            Layout.preferredHeight: 50
+            Layout.leftMargin: 16
+            Layout.rightMargin: 16
+            spacing: 8
 
             ColumnLayout {
-                spacing: 0
+                spacing: -1
                 Text {
                     text: "PARAMETRIC EQ   ·   " + root.bands.count + " BANDS"
                     color: Theme.textDim
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 8
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: 1.15
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 9
+                    font.weight: Font.Medium
+                    font.letterSpacing: 1.35
                 }
                 Text {
                     text: root.sectionLabel
                     color: Theme.text
-                    font.family: Theme.fontFamily
-                    font.pixelSize: Theme.textL
+                    font.family: Theme.displayFamily
+                    font.pixelSize: 14
                     font.weight: Font.DemiBold
                 }
             }
@@ -139,223 +159,213 @@ StudioPanel {
             RowLayout {
                 visible: root.showMicSelector
                 spacing: 7
-                SoftButton {
-                    Layout.preferredWidth: 58
-                    text: "Mic A"
-                    compact: true
-                    checked: root.micChannel === 0
-                    onClicked: root.micChannelRequested(0)
-                }
-                SoftButton {
-                    Layout.preferredWidth: 58
-                    text: "Mic B"
-                    compact: true
-                    checked: root.micChannel === 1
-                    onClicked: root.micChannelRequested(1)
-                }
-                SoftButton {
-                    Layout.preferredWidth: 76
-                    text: "EQ LINK"
-                    compact: true
-                    checked: root.eqLinked
-                    onClicked: root.eqLinkRequested(!root.eqLinked)
-                }
+                SoftButton { Layout.preferredWidth:58; Layout.preferredHeight:27; text:"Mic A"; compact:true; checked:root.micChannel===0; onClicked:root.micChannelRequested(0) }
+                SoftButton { Layout.preferredWidth:58; Layout.preferredHeight:27; text:"Mic B"; compact:true; checked:root.micChannel===1; onClicked:root.micChannelRequested(1) }
+                SoftButton { Layout.preferredWidth:78; Layout.preferredHeight:27; text:"EQ LINK"; compact:true; checked:root.eqLinked; onClicked:root.eqLinkRequested(!root.eqLinked) }
             }
 
             RowLayout {
                 visible: !root.showMicSelector
-                spacing: 6
-                SoftButton { text: "FLAT"; compact: true; onClicked: root.resetAll() }
-                SoftButton { text: "A/B"; compact: true }
+                spacing: 7
+                SoftButton { Layout.preferredWidth:50; text:"FLAT"; compact:true; onClicked:root.resetAll() }
+                SoftButton { Layout.preferredWidth:50; text:"A/B"; compact:true }
             }
         }
 
-        Rectangle {
-            id: graph
+        Rectangle { Layout.fillWidth:true; Layout.preferredHeight:1; color:Theme.borderSoft; opacity:.75 }
+
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.minimumHeight: 300
-            radius: 7
-            color: Theme.recessed
-            border.width: 1
-            border.color: Theme.borderSoft
-            clip: true
+            Layout.margins: 12
+            Layout.bottomMargin: 7
 
             Rectangle {
+                id: graph
                 anchors.fill: parent
-                gradient: Gradient {
-                    GradientStop { position: 0; color: "#070A0D" }
-                    GradientStop { position: 0.55; color: "#040608" }
-                    GradientStop { position: 1; color: "#020304" }
-                }
-            }
+                radius: 10
+                color: "#080B0E"
+                border.width: 1
+                border.color: "#020304"
+                clip: true
 
-            Repeater {
-                model: [20,30,50,70,100,200,500,1000,2000,5000,10000,20000]
-                delegate: Rectangle {
-                    required property var modelData
-                    x: root.xFor(modelData); y: root.topPad; width: 1; height: graph.height-root.topPad-8
-                    color: modelData===1000 ? "#34414B" : "#1B242B"
-                    opacity: modelData===1000 ? 0.70 : 0.46
-                    Text {
-                        y: root.plotBottom-root.topPad+6
-                        anchors.horizontalCenter: parent.horizontalCenter
-                        text: modelData>=1000?(modelData/1000)+"k":modelData
-                        color: Theme.textFaint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
+                Repeater {
+                    model:[20,30,50,70,100,200,500,1000,2000,5000,10000,20000]
+                    delegate: Rectangle {
+                        required property var modelData
+                        x:root.xFor(modelData);y:root.topPad;width:1;height:root.plotBottom-root.topPad
+                        color:"#FFFFFF";opacity:.05
+                        Text {
+                            anchors.horizontalCenter:parent.horizontalCenter
+                            y:root.plotBottom+10
+                            text:root.fmtF(modelData)
+                            color:Theme.textDim
+                            opacity:.82
+                            font.family:Theme.monoFamily
+                            font.pixelSize:9
+                        }
                     }
                 }
-            }
-            Repeater {
-                model: [-24,-18,-12,-6,0,6,12,18,24]
-                delegate: Rectangle {
-                    required property var modelData
-                    x: root.leftPad; y: root.yFor(modelData); width: graph.width-root.leftPad-root.rightPad; height: modelData===0?1.5:1
-                    color: modelData===0?"#60727D":"#1A2229"
-                    opacity: modelData===0?0.72:0.50
-                    Text {
-                        anchors.right: parent.left; anchors.rightMargin: 7; anchors.verticalCenter: parent.verticalCenter
-                        text: modelData>0?"+"+modelData:modelData
-                        color: Theme.textFaint
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 8
+                Repeater {
+                    model:[-24,-18,-12,-6,0,6,12,18,24]
+                    delegate: Rectangle {
+                        required property var modelData
+                        x:root.leftPad;y:root.yFor(modelData);width:graph.width-root.leftPad-root.rightPad;height:modelData===0?1.1:1
+                        color:modelData===0?Theme.accent:"#FFFFFF";opacity:modelData===0?.20:.05
+                        Text {
+                            anchors.right:parent.left;anchors.rightMargin:10;anchors.verticalCenter:parent.verticalCenter
+                            text:modelData>0?"+"+modelData:modelData
+                            color:Theme.textDim
+                            font.family:Theme.monoFamily
+                            font.pixelSize:9
+                        }
                     }
                 }
-            }
 
-            Canvas {
-                id: curve
-                anchors.fill: parent
-                antialiasing: true
-                onWidthChanged: requestPaint()
-                onHeightChanged: requestPaint()
-                onPaint: {
-                    var c=getContext("2d"); c.reset()
-                    var n=Math.max(260,Math.floor(width/3)),i,t,f,x,y
-                    c.beginPath()
-                    for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                    c.globalAlpha=0.78;c.lineWidth=4.2;c.strokeStyle="#020405";c.stroke()
-                    c.globalAlpha=0.07;c.lineWidth=6.2;c.strokeStyle=Theme.accent.toString();c.stroke()
-                    c.globalAlpha=0.95;c.lineWidth=1.8;c.strokeStyle="#60DDD7";c.stroke();c.globalAlpha=1
-                    for(var b=0;b<root.bands.count;++b){
-                        var band=root.bands.get(b); if(Math.abs(band.gain)<0.05)continue
-                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha = b === root.selectedIndex ? 0.64 : 0.18
-                        c.lineWidth = b === root.selectedIndex ? 1.4 : 0.8
-                        c.strokeStyle=root.colorFor(b);c.stroke();c.globalAlpha=1
+                Canvas {
+                    id:curve
+                    anchors.fill:parent
+                    antialiasing:true
+                    onWidthChanged:requestPaint()
+                    onHeightChanged:requestPaint()
+                    onPaint:{
+                        var c=getContext("2d");c.reset()
+                        var n=Math.max(280,Math.floor(width/3)),i,t,f,x,y,zero=root.yFor(0)
+
+                        // Composite fill to the 0 dB datum, same visual hierarchy as the web editor.
+                        c.beginPath()
+                        for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                        c.lineTo(width-root.rightPad,zero);c.lineTo(root.leftPad,zero);c.closePath()
+                        var fill=c.createLinearGradient(0,root.topPad,0,root.plotBottom)
+                        fill.addColorStop(0,"rgba(94,221,212,0.24)");fill.addColorStop(.55,"rgba(94,221,212,0.08)");fill.addColorStop(1,"rgba(94,221,212,0)")
+                        c.fillStyle=fill;c.fill()
+
+                        // Per-band response.
+                        for(var b=0;b<root.bands.count;++b){
+                            var band=root.bands.get(b);if(Math.abs(band.gain)<.05)continue
+                            c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                            c.globalAlpha=b===root.selectedIndex?.65:.13;c.lineWidth=b===root.selectedIndex?1.6:1;c.strokeStyle=b===root.selectedIndex?Theme.amber.toString():Theme.accent.toString();c.stroke()
+                        }
+
+                        // Crossover response under the composite.
+                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.crossDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                        c.globalAlpha=.40;c.lineWidth=1.2;c.strokeStyle=Theme.amber.toString();c.stroke()
+
+                        // Composite: dark separation, cyan glow, cyan→amber→cyan core.
+                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                        c.globalAlpha=.88;c.lineWidth=6.2;c.strokeStyle="#020304";c.stroke()
+                        c.globalAlpha=.18;c.lineWidth=8;c.strokeStyle=Theme.accent.toString();c.stroke()
+                        c.globalAlpha=1;c.lineWidth=3.2
+                        var stroke=c.createLinearGradient(root.leftPad,0,width-root.rightPad,0)
+                        stroke.addColorStop(0,Theme.accent.toString());stroke.addColorStop(.55,Theme.amber.toString());stroke.addColorStop(1,Theme.accent.toString())
+                        c.strokeStyle=stroke;c.stroke();c.globalAlpha=1
                     }
                 }
-            }
 
-            Item {
-                x: root.xFor(root.bands.hpfHz)-10; y: root.topPad; width: 20; height: root.plotBottom-root.topPad
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 1; height: parent.height; color: Theme.amber; opacity: 0.28 }
-                Text { anchors.left: parent.horizontalCenter; anchors.leftMargin: 8; y: 4; text: Math.round(root.bands.hpfHz)+" Hz"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold }
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: root.yFor(0)-root.topPad-9; width: 18; height: 18; radius: 9; color: "#17140B"; border.width: 1; border.color: Theme.amber; Text{anchors.centerIn:parent;text:"HP";color:Theme.amber;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold} }
-            }
-            Item {
-                x: root.xFor(root.bands.lpfHz)-10; y: root.topPad; width: 20; height: root.plotBottom-root.topPad
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; width: 1; height: parent.height; color: Theme.amber; opacity: 0.28 }
-                Text { anchors.right: parent.horizontalCenter; anchors.rightMargin: 8; y: 4; text: root.fmtF(root.bands.lpfHz)+" Hz"; color: Theme.amber; font.family: Theme.fontFamily; font.pixelSize: 8; font.weight: Font.Bold }
-                Rectangle { anchors.horizontalCenter: parent.horizontalCenter; y: root.yFor(0)-root.topPad-9; width: 18; height: 18; radius: 9; color: "#17140B"; border.width: 1; border.color: Theme.amber; Text{anchors.centerIn:parent;text:"LP";color:Theme.amber;font.family:Theme.fontFamily;font.pixelSize:7;font.weight:Font.Bold} }
-            }
-
-            Repeater {
-                model: root.bands
-                delegate: Item {
-                    required property int index
-                    required property real freq
-                    required property real gain
-                    required property real q
-                    required property string typeName
-                    x: root.xFor(freq)-15; y: root.yFor(gain)-15; width: 30; height: 30
+                Item {
+                    x:root.xFor(root.bands.hpfHz)-12;y:root.topPad;width:24;height:root.plotBottom-root.topPad
+                    Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:12;y:index*9;color:Theme.amber;opacity:.35} }
+                    Text { x:24;y:6;text:Math.round(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
                     Rectangle {
-                        anchors.centerIn: parent
-                        width: index===root.selectedIndex?24:20
-                        height: width
-                        radius: width/2
-                        color: index===root.selectedIndex?"#0E171A":"#0A0E11"
-                        border.width: 2
-                        border.color: root.colorFor(index)
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: -5
-                            radius: width/2
-                            color: root.colorFor(index)
-                            opacity: index === root.selectedIndex ? 0.12 : 0.035
-                            z: -1
-                        }
-                        Text { anchors.centerIn: parent; text: index+1; color: index===root.selectedIndex?root.colorFor(index):Theme.textSoft; font.family: Theme.fontFamily; font.pixelSize: 9; font.weight: Font.Bold }
+                        anchors.horizontalCenter:parent.horizontalCenter;y:root.yFor(0)-root.topPad-9;width:18;height:18;radius:9
+                        color:Theme.amber;border.width:1;border.color:"#090805"
+                        Text{anchors.centerIn:parent;text:"HP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
-                    MouseArea {
-                        anchors.fill: parent
-                        cursorShape: Qt.SizeAllCursor
-                        onPressed: root.selectBand(index)
-                        onPositionChanged: function(e){
-                            if(!pressed)return
-                            var p=mapToItem(graph,e.x,e.y)
-                            root.selectedFreq=root.freqForX(p.x)
-                            root.selectedGain=root.gainForY(p.y)
-                            root.updateSelected()
+                    MouseArea { anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}} }
+                }
+                Item {
+                    x:root.xFor(root.bands.lpfHz)-12;y:root.topPad;width:24;height:root.plotBottom-root.topPad
+                    Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:12;y:index*9;color:Theme.amber;opacity:.35} }
+                    Text { anchors.right:parent.horizontalCenter;anchors.rightMargin:12;y:6;text:root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
+                    Rectangle {
+                        anchors.horizontalCenter:parent.horizontalCenter;y:root.yFor(0)-root.topPad-9;width:18;height:18;radius:9
+                        color:Theme.amber;border.width:1;border.color:"#090805"
+                        Text{anchors.centerIn:parent;text:"LP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
+                    }
+                    MouseArea { anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}} }
+                }
+
+                Repeater {
+                    model:root.bands
+                    delegate:Item {
+                        required property int index
+                        required property real freq
+                        required property real gain
+                        required property real q
+                        required property string typeName
+                        x:root.xFor(freq)-18;y:root.yFor(gain)-18;width:36;height:36
+                        Rectangle { anchors.centerIn:parent;width:index===root.selectedIndex?36:26;height:width;radius:width/2;color:index===root.selectedIndex?Theme.accent:Theme.amber;opacity:index===root.selectedIndex?.17:.12 }
+                        Rectangle {
+                            anchors.centerIn:parent;width:index===root.selectedIndex?21:16;height:width;radius:width/2
+                            color:index===root.selectedIndex?Theme.accent:Theme.amber;border.width:1.5;border.color:"#090B0C"
+                            Text{anchors.centerIn:parent;text:index+1;color:"#0A0D0F";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                        }
+                        MouseArea {
+                            anchors.fill:parent;cursorShape:Qt.SizeAllCursor
+                            onPressed:root.selectBand(index)
+                            onPositionChanged:function(e){if(!pressed)return;var p=mapToItem(graph,e.x,e.y);root.selectedFreq=root.freqForX(p.x);root.selectedGain=root.gainForY(p.y);root.updateSelected()}
+                            onDoubleClicked:{root.selectBand(index);root.setSelectedGain(0)}
                         }
                     }
                 }
-            }
 
-            Rectangle {
-                width: inspector.width+12; height: inspector.height+12
-                x: inspector.x-6; y: inspector.y+4
-                radius: inspector.radius+4; color: "#52000000"; opacity: 0.70
-            }
-            BandInspector {
-                id: inspector
-                bandModel: root.bands
-                bandIndex: root.selectedIndex
-                frequency: root.selectedFreq
-                gain: root.selectedGain
-                q: root.selectedQ
-                accentColor: root.colorFor(root.selectedIndex)
-                width: Math.min(500,graph.width-36)
-                height: 64
-                x: root.clamp(root.xFor(root.selectedFreq)-width/2,18,graph.width-width-18)
-                y: graph.height-height-14
-                Behavior on x { SmoothedAnimation { velocity: 1800 } }
-                onFrequencyEdited: function(v){root.setSelectedFrequency(v)}
-                onGainEdited: function(v){root.setSelectedGain(v)}
-                onQEdited: function(v){root.setSelectedQValue(v)}
-                onResetRequested: root.resetSelected()
+                BandInspector {
+                    id:inspector
+                    bandModel:root.bands
+                    bandIndex:root.selectedIndex
+                    frequency:root.selectedFreq
+                    gain:root.selectedGain
+                    q:root.selectedQ
+                    accentColor:root.colorFor(root.selectedIndex)
+                    width:Math.min(320,graph.width-30)
+                    height:86
+                    x:root.clamp(root.xFor(root.selectedFreq)-width/2,15,graph.width-width-15)
+                    readonly property bool placeBelow: root.yFor(root.selectedGain) < graph.height-132
+                    y:placeBelow?Math.min(graph.height-height-12,root.yFor(root.selectedGain)+18):Math.max(12,root.yFor(root.selectedGain)-height-18)
+                    Behavior on x { SmoothedAnimation { velocity:1800 } }
+                    onFrequencyEdited:function(v){root.setSelectedFrequency(v)}
+                    onGainEdited:function(v){root.setSelectedGain(v)}
+                    onQEdited:function(v){root.setSelectedQValue(v)}
+                    onResetRequested:root.resetSelected()
+                }
             }
         }
 
         RowLayout {
-            Layout.fillWidth: true
-            Layout.preferredHeight: 50
-            spacing: 5
+            Layout.fillWidth:true
+            Layout.preferredHeight:55
+            Layout.leftMargin:12
+            Layout.rightMargin:12
+            Layout.bottomMargin:10
+            spacing:6
             Repeater {
-                model: root.bands
-                delegate: Rectangle {
+                model:root.bands
+                delegate:Rectangle {
                     required property int index
                     required property real freq
                     required property real gain
                     required property real q
                     required property string typeName
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 42
-                    radius: 5
-                    color: index===root.selectedIndex?"#141D20":"#080D11"
-                    border.width: index===root.selectedIndex?1:0
-                    border.color: root.colorFor(index)
-                    Column {
-                        anchors.fill: parent; anchors.margins: 6; spacing: 1
-                        Row { spacing: 4
-                            Text { text:"B"+(index+1); color:index===root.selectedIndex?root.colorFor(index):Theme.textDim; font.family:Theme.fontFamily; font.pixelSize:8; font.weight:Font.Bold }
-                            Text { text:typeName==="LOW SHELF"?"LS":typeName==="HIGH SHELF"?"HS":"P"; color:Theme.textFaint; font.family:Theme.fontFamily; font.pixelSize:8 }
-                        }
-                        Text { text:root.fmtF(freq); color:index===root.selectedIndex?Theme.amber:Theme.textSoft; font.family:Theme.fontFamily; font.pixelSize:Theme.textXS; font.weight:Font.DemiBold }
-                        Text { text:(gain>0?"+":"")+gain.toFixed(1); color:Theme.textDim; font.family:Theme.fontFamily; font.pixelSize:8 }
+                    Layout.fillWidth:true;Layout.preferredHeight:43;radius:9
+                    gradient:Gradient {
+                        GradientStop{position:0;color:index===root.selectedIndex?"#17363A":"#11171C"}
+                        GradientStop{position:1;color:index===root.selectedIndex?"#0B171A":"#090D11"}
                     }
-                    MouseArea { anchors.fill:parent; cursorShape:Qt.PointingHandCursor; onClicked:root.selectBand(index) }
+                    border.width:1;border.color:index===root.selectedIndex?Theme.accentSoft:"#242C33"
+                    Column {
+                        anchors.fill:parent;anchors.margins:6;spacing:0
+                        Row { width:parent.width
+                            Text{text:"B"+(index+1);color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8}
+                            Item{width:Math.max(0,parent.width-34);height:1}
+                            Text{text:root.typeShort(typeName);color:index===root.selectedIndex?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                        }
+                        Row { width:parent.width
+                            Text{text:root.fmtF(freq);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                            Item{width:Math.max(0,parent.width-54);height:1}
+                            Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:8}
+                        }
+                    }
+                    MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectBand(index)}
                 }
             }
         }
