@@ -81,8 +81,8 @@ bool K500ResponseParser::selfTest(QString *error)
     const QByteArray scalars(0x40, char(0x19));
     const QByteArray read = responseFrame(0xBF, scalars);
 
-    // Feed a split status frame, then a HID-style padded packet followed by a
-    // complete second response. The parser must recover on 0x55 boundaries.
+    // Feed a split status frame, then padding and a complete second response.
+    // The parser must recover on 0x55 boundaries.
     if (!parser.feed(status.left(2)).isEmpty())
         return fail(QStringLiteral("partial response emitted too early"));
 
@@ -94,6 +94,17 @@ bool K500ResponseParser::selfTest(QString *error)
     if (responses.at(1).rsp != 0xBF || !responses.at(1).checksumOk
         || responses.at(1).data.size() != 0x40)
         return fail(QStringLiteral("readback response mismatch"));
+
+    // A 64-byte scalar response is 69 protocol bytes in total and therefore
+    // crosses the K500's 64-byte USB HID payload boundary. Verify that the
+    // stream parser preserves the incomplete first report until continuation.
+    parser.reset();
+    if (!parser.feed(read.left(64)).isEmpty())
+        return fail(QStringLiteral("multi-report readback emitted before continuation"));
+    responses = parser.feed(read.mid(64));
+    if (responses.size() != 1 || responses.front().rsp != 0xBF
+        || !responses.front().checksumOk || responses.front().data != scalars)
+        return fail(QStringLiteral("multi-report scalar readback parse mismatch"));
 
     QByteArray corrupt = responseFrame(0xE3, {});
     corrupt[corrupt.size() - 1] = char(u8(corrupt.back()) ^ 0x01);
