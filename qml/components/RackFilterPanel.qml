@@ -34,7 +34,7 @@ StudioPanel {
                 font.weight: Font.Bold
                 font.letterSpacing: 1.05
             }
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
 
         RowLayout {
@@ -81,7 +81,7 @@ StudioPanel {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 2
-                    Text { text:"HP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0 }
+                    Text { text:"HP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.letterSpacing:.8 }
                     StudioComboBox {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 30
@@ -94,7 +94,7 @@ StudioPanel {
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 2
-                    Text { text:"LP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0 }
+                    Text { text:"LP TYPE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.letterSpacing:.8 }
                     StudioComboBox {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 30
