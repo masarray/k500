@@ -20,6 +20,10 @@ StudioPanel {
     // instead of treating them as physical Qt pixels.
     readonly property real virtualScaleX: graph.width > 0 ? graph.width / 1040.0 : 1.0
     readonly property real virtualScaleY: graph.height > 0 ? graph.height / 354.0 : 1.0
+    // Node geometry must never inherit the non-uniform SVG stretch. Using one
+    // scalar keeps every PEQ puck a mathematically perfect circle at any DPI
+    // or window aspect ratio.
+    readonly property real nodeScale: Math.min(virtualScaleX, virtualScaleY)
     readonly property real leftPad: 56 * virtualScaleX
     readonly property real rightPad: 22 * virtualScaleX
     readonly property real topPad: 24 * virtualScaleY
@@ -194,10 +198,6 @@ StudioPanel {
                 border.color: "#010203"
                 clip: true
 
-                // Keep grid-line opacity independent from axis-label opacity.
-                // The previous Rectangle delegate set opacity=.05 on the parent,
-                // which also multiplied the Text child opacity and made both
-                // frequency and dB markings almost disappear in Qt.
                 Repeater {
                     model:[20,30,50,70,100,200,500,1000,2000,5000,10000,20000]
                     delegate: Item {
@@ -301,7 +301,7 @@ StudioPanel {
                     Rectangle {
                         anchors.horizontalCenter:parent.horizontalCenter
                         y:root.yFor(0)-root.topPad-height/2
-                        width:18*root.virtualScaleX;height:18*root.virtualScaleY;radius:Math.min(width,height)/2
+                        width:18*root.nodeScale;height:width;radius:width/2
                         color:Theme.amber;border.width:1;border.color:"#090805"
                         Text{anchors.centerIn:parent;text:"HP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
@@ -315,7 +315,7 @@ StudioPanel {
                     Rectangle {
                         anchors.horizontalCenter:parent.horizontalCenter
                         y:root.yFor(0)-root.topPad-height/2
-                        width:18*root.virtualScaleX;height:18*root.virtualScaleY;radius:Math.min(width,height)/2
+                        width:18*root.nodeScale;height:width;radius:width/2
                         color:Theme.amber;border.width:1;border.color:"#090805"
                         Text{anchors.centerIn:parent;text:"LP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
@@ -332,19 +332,19 @@ StudioPanel {
                         required property string typeName
                         readonly property real haloVirtual: index===root.selectedIndex?36:26
                         readonly property real coreVirtual: index===root.selectedIndex?21:16
-                        width:haloVirtual*root.virtualScaleX;height:haloVirtual*root.virtualScaleY
+                        width:haloVirtual*root.nodeScale;height:width
                         x:root.xFor(freq)-width/2;y:root.yFor(gain)-height/2
                         Rectangle {
                             anchors.centerIn:parent
-                            width:parent.haloVirtual*root.virtualScaleX;height:parent.haloVirtual*root.virtualScaleY
-                            radius:Math.min(width,height)/2
+                            width:parent.haloVirtual*root.nodeScale;height:width
+                            radius:width/2
                             color:index===root.selectedIndex?Theme.accent:Theme.amber
                             opacity:index===root.selectedIndex?.17:.12
                         }
                         Rectangle {
                             anchors.centerIn:parent
-                            width:parent.coreVirtual*root.virtualScaleX;height:parent.coreVirtual*root.virtualScaleY
-                            radius:Math.min(width,height)/2
+                            width:parent.coreVirtual*root.nodeScale;height:width
+                            radius:width/2
                             color:index===root.selectedIndex?Theme.accent:Theme.amber;border.width:1.5;border.color:"#07090A"
                             Text{anchors.centerIn:parent;text:index+1;color:"#070A0C";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                         }
@@ -368,9 +368,15 @@ StudioPanel {
                     width:Math.min(320,graph.width-30)
                     height:86
                     x:root.clamp(root.xFor(root.selectedFreq)-width/2,15,graph.width-width-15)
-                    readonly property bool placeBelow: root.yFor(root.selectedGain) < graph.height-132
-                    y:placeBelow?Math.min(graph.height-height-12,root.yFor(root.selectedGain)+18):Math.max(12,root.yFor(root.selectedGain)-height-18)
+                    // Sticky edge placement: when the selected point is in the
+                    // lower half, park the editor at the top; when the point is
+                    // high, park it at the bottom.  The editor still follows X
+                    // but never chases the node vertically through the EQ line.
+                    readonly property bool stickyTop: root.yFor(root.selectedGain) >= (root.topPad + root.plotBottom) / 2
+                    readonly property real edgeGap: 12 * root.nodeScale
+                    y:stickyTop ? root.topPad + edgeGap : root.plotBottom - height - edgeGap
                     Behavior on x { SmoothedAnimation { velocity:1800 } }
+                    Behavior on y { SmoothedAnimation { velocity:1400 } }
                     onFrequencyEdited:function(v){root.setSelectedFrequency(v)}
                     onGainEdited:function(v){root.setSelectedGain(v)}
                     onQEdited:function(v){root.setSelectedQValue(v)}
