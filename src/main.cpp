@@ -1,9 +1,13 @@
+#include <QDebug>
 #include <QFont>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 
 #include "StudioEngine.h"
+#include "k500/K500Controller.h"
+#include "k500/K500Frame.h"
+#include "k500/K500Protocol.h"
 
 int main(int argc, char *argv[])
 {
@@ -20,6 +24,39 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     StudioEngine studioEngine;
+    K500Controller k500Controller;
+
+    // Native architecture boundary:
+    // QML -> StudioEngine canonical path -> K500Controller -> protocol frame.
+    // Transport will subscribe to K500Controller::frameReady in the next phase.
+    QObject::connect(&studioEngine, &StudioEngine::stateEdited,
+                     &k500Controller, &K500Controller::handleStateEdit);
+
+    if (app.arguments().contains(QStringLiteral("--trace-k500"))) {
+        QObject::connect(&k500Controller, &K500Controller::frameReady,
+                         [](const QByteArray &frame, const QString &label) {
+            qInfo().noquote() << "K500 TX" << label << K500Frame::hex(frame);
+        });
+        QObject::connect(&k500Controller, &K500Controller::writeDeferred,
+                         [](const QString &path, const QString &reason) {
+            qInfo().noquote() << "K500 deferred" << path << "-" << reason;
+        });
+        QObject::connect(&k500Controller, &K500Controller::unsupportedPath,
+                         [](const QString &path) {
+            qInfo().noquote() << "K500 unmapped" << path;
+        });
+    }
+
+    if (app.arguments().contains(QStringLiteral("--protocol-self-test"))) {
+        QString error;
+        if (!K500Protocol::selfTest(&error)) {
+            qCritical().noquote() << "K500 protocol self-test failed:" << error;
+            return 3;
+        }
+        qInfo() << "K500 protocol self-test passed";
+        return 0;
+    }
+
     if (app.arguments().contains(QStringLiteral("--engine-self-test"))) {
         studioEngine.setBass(3.5);
         studioEngine.setHpfHz(95.0);
