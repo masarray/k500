@@ -49,7 +49,7 @@ StudioPanel {
                 ColumnLayout {
                     anchors.fill:parent;spacing:4
                     Text { Layout.alignment:Qt.AlignHCenter;text:"MUSIC";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9 }
-                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterMusic;from:0;to:100;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterMusic=v} }
+                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterMusic;from:0;to:84;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterMusic=v} }
                     Rectangle { Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:Math.round(root.engine.masterMusic);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold} }
                 }
             }
@@ -58,7 +58,7 @@ StudioPanel {
                 ColumnLayout {
                     anchors.fill:parent;spacing:4
                     Text { Layout.alignment:Qt.AlignHCenter;text:"MIC";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9 }
-                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterMic;from:0;to:100;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterMic=v} }
+                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterMic;from:0;to:84;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterMic=v} }
                     Rectangle { Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:Math.round(root.engine.masterMic);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold} }
                 }
             }
@@ -67,7 +67,7 @@ StudioPanel {
                 ColumnLayout {
                     anchors.fill:parent;spacing:4
                     Text { Layout.alignment:Qt.AlignHCenter;text:"FX";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9 }
-                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterFx;from:0;to:100;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterFx=v} }
+                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterFx;from:0;to:84;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterFx=v} }
                     Rectangle { Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:Math.round(root.engine.masterFx);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold} }
                 }
             }
