@@ -28,22 +28,15 @@ Item {
             onClicked: root.active = !root.active
         }
 
-        Item { Layout.preferredHeight: 8 }
-
-        Text {
-            Layout.alignment: Qt.AlignHCenter
-            text: root.label
-            color: Theme.textDim
-            font.family: Theme.monoFamily
-            font.pixelSize: 10
-            font.weight: Font.DemiBold
-            font.letterSpacing: .35
-        }
+        // The selector button already names the source.  Do not repeat the
+        // same IN1/BT/UDISK/DIG label below it; that duplicate row was visual
+        // noise and also consumed useful fader travel.
+        Item { Layout.preferredHeight: 4 }
 
         StudioFader {
-            Layout.preferredHeight: 126
-            Layout.minimumHeight: 126
-            Layout.maximumHeight: 126
+            Layout.preferredHeight: 160
+            Layout.minimumHeight: 160
+            Layout.maximumHeight: 160
             Layout.preferredWidth: 48
             Layout.alignment: Qt.AlignHCenter
             value: root.value
