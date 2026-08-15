@@ -4,6 +4,7 @@
 
 #include <QHash>
 #include <QtMath>
+#include <initializer_list>
 
 namespace {
 quint8 byteFromChar(char value)
@@ -63,7 +64,7 @@ int crossoverSelector(const QString &section, const QString &kind)
         : lpf.value(section, -1);
 }
 
-QByteArray expected(std::initializer_list<int> values)
+QByteArray bytes(std::initializer_list<int> values)
 {
     QByteArray out;
     out.reserve(static_cast<qsizetype>(values.size()));
@@ -77,17 +78,17 @@ namespace K500Protocol {
 
 QByteArray heartbeat()
 {
-    return K500Frame::build(QByteArray{char(0x01), char(0x1C)});
+    return K500Frame::build(bytes({0x01, 0x1C}));
 }
 
 QByteArray handshake()
 {
-    return K500Frame::build(QByteArray{char(0x01), char(0x3F)});
+    return K500Frame::build(bytes({0x01, 0x3F}));
 }
 
 QByteArray mute(bool enabled)
 {
-    return K500Frame::build(QByteArray{char(0x03), char(0x15), char(enabled ? 0x01 : 0x00), char(0x00)});
+    return K500Frame::build(bytes({0x03, 0x15, enabled ? 0x01 : 0x00, 0x00}));
 }
 
 QByteArray playerCommand(const QString &command)
@@ -97,7 +98,7 @@ QByteArray playerCommand(const QString &command)
         action = 0x00;
     else if (command.compare(QStringLiteral("forward"), Qt::CaseInsensitive) == 0)
         action = 0x01;
-    return K500Frame::build(QByteArray{char(0x03), char(0x06), char(action), char(0x05)});
+    return K500Frame::build(bytes({0x03, 0x06, action, 0x05}));
 }
 
 QByteArray readBlock(quint16 offset, quint16 length)
@@ -207,9 +208,9 @@ bool selfTest(QString *error)
         return false;
     };
 
-    if (heartbeat() != expected({0xAA, 0x01, 0x1C, 0xE3}))
+    if (heartbeat() != bytes({0xAA, 0x01, 0x1C, 0xE3}))
         return fail(QStringLiteral("heartbeat frame mismatch"));
-    if (K500Frame::toUsbFrame(heartbeat()) != expected({0xAA, 0x01, 0x00, 0x1C, 0xE3}))
+    if (K500Frame::toUsbFrame(heartbeat()) != bytes({0xAA, 0x01, 0x00, 0x1C, 0xE3}))
         return fail(QStringLiteral("USB heartbeat framing mismatch"));
 
     K500EqBand band;
@@ -217,18 +218,18 @@ bool selfTest(QString *error)
     band.gainDb = -11.1;
     band.q = 1.0;
     if (eqWrite(QStringLiteral("music"), 2, band)
-        != expected({0xAA, 0x09, 0x03, 0x02, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x60, 0x33}))
+        != bytes({0xAA, 0x09, 0x03, 0x02, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x60, 0x33}))
         return fail(QStringLiteral("music EQ frame mismatch"));
 
     if (crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0,
                        QStringLiteral("HP Butter 12"), 0x32)
-        != expected({0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}))
+        != bytes({0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}))
         return fail(QStringLiteral("music crossover frame mismatch"));
 
     K500MusicBlockState music;
     if (topMusicBlock(music, {})
-        != expected({0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09,
-                     0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}))
+        != bytes({0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09,
+                  0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}))
         return fail(QStringLiteral("top music block mismatch"));
 
     return true;
