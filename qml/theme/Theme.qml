@@ -3,6 +3,8 @@ import QtQuick
 
 QtObject {
     readonly property string fontFamily: "Segoe UI Variable Text"
+    readonly property string displayFamily: "Segoe UI Variable Display"
+    readonly property string monoFamily: "Cascadia Mono"
 
     readonly property color bg: "#080C10"
     readonly property color chassis: "#0D1217"
