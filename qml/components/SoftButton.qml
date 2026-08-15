@@ -81,7 +81,7 @@ Rectangle {
         color: "transparent"
         border.width: 1
         border.color: root.activeAccent
-                      ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber?.13:.16)
+                      ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber ? .13 : .16)
                       : root.toolbar ? "#0EFFFFFF" : "#12FFFFFF"
     }
 
@@ -95,7 +95,7 @@ Rectangle {
         height: 1
         radius: 1
         color: root.activeAccent ? root.resolvedAccent : "#FFFFFF"
-        opacity: root.activeAccent ? (root.amber?.18:.22) : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
+        opacity: root.activeAccent ? (root.amber ? .18 : .22) : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
     }
 
     Rectangle {
