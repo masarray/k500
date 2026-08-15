@@ -110,7 +110,7 @@ StudioPanel {
                 StudioKnob {
                     Layout.fillWidth: true; compact: true
                     title: "RATIO"; value: root.ratio
-                    from: 1; to: 100; step: 1; decimals: 0; unit: ""
+                    from: 1; to: 100; step: 1; decimals: 0; unit: ""; valuePrefix: "1:"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.ratio=v; graph.requestPaint() }
                 }
