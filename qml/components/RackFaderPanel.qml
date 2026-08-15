@@ -30,7 +30,7 @@ StudioPanel {
                 font.weight: Font.Bold
                 font.letterSpacing: 1.05
             }
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
 
         RowLayout {
@@ -67,8 +67,8 @@ StudioPanel {
                                 text: String(channel.modelData.label || "")
                                 color: Theme.textDim
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 9
-                                font.weight: Font.Medium
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
                                 font.letterSpacing: .45
                             }
                             Text {
@@ -77,7 +77,7 @@ StudioPanel {
                                 text: String(channel.modelData.badge || "")
                                 color: Theme.textFaint
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 7
+                                font.pixelSize: 9
                             }
                         }
 
@@ -98,12 +98,12 @@ StudioPanel {
 
                         Rectangle {
                             Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 48
+                            Layout.preferredWidth: 58
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: "#080C10"
+                            color: "#05080A"
                             border.width: 1
-                            border.color: "#050708"
+                            border.color: "#020304"
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 3
