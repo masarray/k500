@@ -10,19 +10,14 @@ StudioPanel {
     property int micChannel: 0
     property bool eqLinked: false
     property int selectedIndex: 0
+    property string selectedTarget: "band" // band | hpf | lpf
     property real selectedFreq: 80
     property real selectedGain: 0
     property real selectedQ: 1
     readonly property var bands: bandModel
 
-    // The web PEQ is authored in a 1040 × 354 SVG and rendered with
-    // preserveAspectRatio="none". Scale the same virtual PAD values here
-    // instead of treating them as physical Qt pixels.
     readonly property real virtualScaleX: graph.width > 0 ? graph.width / 1040.0 : 1.0
     readonly property real virtualScaleY: graph.height > 0 ? graph.height / 354.0 : 1.0
-    // Node geometry must never inherit the non-uniform SVG stretch. Using one
-    // scalar keeps every PEQ puck a mathematically perfect circle at any DPI
-    // or window aspect ratio.
     readonly property real nodeScale: Math.min(virtualScaleX, virtualScaleY)
     readonly property real leftPad: 56 * virtualScaleX
     readonly property real rightPad: 22 * virtualScaleX
@@ -30,6 +25,7 @@ StudioPanel {
     readonly property real bottomPad: 38 * virtualScaleY
     readonly property real plotBottom: Math.max(topPad + 120 * virtualScaleY, graph.height - bottomPad)
     readonly property var colors: [Theme.accent, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber]
+    readonly property real inspectorFrequency: selectedTarget === "hpf" ? Number(bands.hpfHz) : selectedTarget === "lpf" ? Number(bands.lpfHz) : selectedFreq
 
     signal micChannelRequested(int channel)
     signal eqLinkRequested(bool linked)
@@ -73,7 +69,7 @@ StudioPanel {
             return {b0:A*((A+1)-(A-1)*c+b)/a0,b1:2*A*((A-1)-(A+1)*c)/a0,b2:A*((A+1)-(A-1)*c-b)/a0,a1:-2*((A-1)+(A+1)*c)/a0,a2:((A+1)+(A-1)*c-b)/a0}
         }
         a0=(A+1)-(A-1)*c+b
-        return {b0:A*((A+1)+(A-1)*c+b)/a0,b1:-2*A*((A-1)+(A+1)*c)/a0,b2:A*((A+1)+(A-1)*c-b)/a0,a1:2*((A-1)-(A+1)*c)/a0,a2:((A+1)-(A-1)*c-b)/a0}
+        return {b0:A*((A+1)+(A-1)*c+b)/a0,b1:-2*A*((A-1)+(A+1)*c)/a0,b2:A*((A+1)-(A-1)*c-b)/a0,a1:2*((A-1)-(A+1)*c)/a0,a2:((A+1)-(A-1)*c-b)/a0}
     }
     function mag(c,f){
         var w=2*Math.PI*clamp(f,1,23999)/48000,c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w)
@@ -111,12 +107,18 @@ StudioPanel {
         return d
     }
     function totalDb(f){ var d=crossDb(f); for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f); return clamp(d,-48,48) }
+    function inspectorShouldTop(f){ return totalDb(f) < -1.5 }
 
     function selectBand(i){
         if(!bands||bands.count<1)return
+        selectedTarget="band"
         selectedIndex=clamp(i,0,bands.count-1)
         var b=bands.get(selectedIndex)
         selectedFreq=b.freq;selectedGain=b.gain;selectedQ=b.q
+        curve.requestPaint()
+    }
+    function selectCrossover(which){
+        selectedTarget=which==="lpf"?"lpf":"hpf"
         curve.requestPaint()
     }
     function updateSelected(){ bands.setBand(selectedIndex,selectedFreq,selectedGain,selectedQ);curve.requestPaint() }
@@ -124,11 +126,24 @@ StudioPanel {
     function setSelectedGain(v){selectedGain=clamp(v,-24,24);updateSelected()}
     function setSelectedQValue(v){selectedQ=clamp(v,0.1,30);updateSelected()}
     function resetSelected(){bands.resetBand(selectedIndex);selectBand(selectedIndex)}
+    function resetCrossover(which){
+        if(which==="hpf"){
+            bands.setHpfHz(Number(bands.defaultHpfHz)||20)
+            bands.setHpType(String(bands.defaultHpType||"HP Butter 12"))
+        } else {
+            bands.setLpfHz(Number(bands.defaultLpfHz)||20000)
+            bands.setLpType(String(bands.defaultLpType||"LP Butter 12"))
+        }
+        curve.requestPaint()
+    }
     function resetAll(){bands.resetAll();selectBand(0)}
 
     Connections {
         target: bands
-        function onBandChanged(){root.selectBand(Math.min(root.selectedIndex,root.bands.count-1));curve.requestPaint()}
+        function onBandChanged(){
+            if(root.selectedTarget==="band")root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
+            else curve.requestPaint()
+        }
         function onCrossoverChanged(){curve.requestPaint()}
     }
     onBandModelChanged: Qt.callLater(function(){root.selectBand(0);curve.requestPaint()})
@@ -206,20 +221,12 @@ StudioPanel {
                         y:0
                         width:1
                         height:graph.height
-                        Rectangle {
-                            x:0
-                            y:root.topPad
-                            width:1
-                            height:root.plotBottom-root.topPad
-                            color:"#FFFFFF"
-                            opacity:.06
-                        }
+                        Rectangle { x:0;y:root.topPad;width:1;height:root.plotBottom-root.topPad;color:"#FFFFFF";opacity:.06 }
                         Text {
                             anchors.horizontalCenter:parent.horizontalCenter
                             y:root.plotBottom+10*root.virtualScaleY
                             text:root.fmtF(modelData)
                             color:"#A6B1BA"
-                            opacity:1
                             font.family:Theme.monoFamily
                             font.pixelSize:10
                             font.weight:Font.Medium
@@ -236,8 +243,7 @@ StudioPanel {
                         height:1
                         Rectangle {
                             id:hGridLine
-                            x:root.leftPad
-                            y:0
+                            x:root.leftPad;y:0
                             width:graph.width-root.leftPad-root.rightPad
                             height:modelData===0?1.1:1
                             color:modelData===0?Theme.accent:"#FFFFFF"
@@ -249,7 +255,6 @@ StudioPanel {
                             anchors.verticalCenter:hGridLine.verticalCenter
                             text:modelData>0?"+"+modelData:modelData
                             color:"#A6B1BA"
-                            opacity:1
                             font.family:Theme.monoFamily
                             font.pixelSize:10
                             font.weight:Font.Medium
@@ -276,8 +281,9 @@ StudioPanel {
 
                         for(var b=0;b<root.bands.count;++b){
                             var band=root.bands.get(b);if(Math.abs(band.gain)<.05)continue
+                            var bandSelected=root.selectedTarget==="band"&&b===root.selectedIndex
                             c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                            c.globalAlpha=b===root.selectedIndex?.65:.13;c.lineWidth=b===root.selectedIndex?1.6:1.0;c.strokeStyle=b===root.selectedIndex?Theme.amber.toString():Theme.accent.toString();c.stroke()
+                            c.globalAlpha=bandSelected?.65:.13;c.lineWidth=bandSelected?1.6:1.0;c.strokeStyle=bandSelected?Theme.amber.toString():Theme.accent.toString();c.stroke()
                         }
 
                         c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.crossDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
@@ -294,6 +300,8 @@ StudioPanel {
                 }
 
                 Item {
+                    id:hpfGuide
+                    readonly property bool selected: root.selectedTarget==="hpf"
                     width:24*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
                     Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.35} }
@@ -301,13 +309,22 @@ StudioPanel {
                     Rectangle {
                         anchors.horizontalCenter:parent.horizontalCenter
                         y:root.yFor(0)-root.topPad-height/2
-                        width:18*root.nodeScale;height:width;radius:width/2
-                        color:Theme.amber;border.width:1;border.color:"#090805"
-                        Text{anchors.centerIn:parent;text:"HP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
+                        width:(hpfGuide.selected?24:18)*root.nodeScale;height:width;radius:width/2
+                        color:hpfGuide.selected?Theme.accent:Theme.amber
+                        border.width:1.5;border.color:"#090805"
+                        Rectangle { anchors.centerIn:parent;width:parent.width+10*root.nodeScale;height:width;radius:width/2;color:hpfGuide.selected?Theme.accent:"transparent";opacity:hpfGuide.selected?.14:0;z:-1 }
+                        Text{anchors.centerIn:parent;text:"HP";color:"#071012";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
-                    MouseArea { anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}} }
+                    MouseArea {
+                        anchors.fill:parent;cursorShape:Qt.SizeHorCursor
+                        onPressed:root.selectCrossover("hpf")
+                        onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}}
+                    }
                 }
+
                 Item {
+                    id:lpfGuide
+                    readonly property bool selected: root.selectedTarget==="lpf"
                     width:24*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
                     Repeater { model:Math.max(1,Math.floor(parent.height/9)); delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.35} }
@@ -315,11 +332,17 @@ StudioPanel {
                     Rectangle {
                         anchors.horizontalCenter:parent.horizontalCenter
                         y:root.yFor(0)-root.topPad-height/2
-                        width:18*root.nodeScale;height:width;radius:width/2
-                        color:Theme.amber;border.width:1;border.color:"#090805"
-                        Text{anchors.centerIn:parent;text:"LP";color:"#191204";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
+                        width:(lpfGuide.selected?24:18)*root.nodeScale;height:width;radius:width/2
+                        color:lpfGuide.selected?Theme.accent:Theme.amber
+                        border.width:1.5;border.color:"#090805"
+                        Rectangle { anchors.centerIn:parent;width:parent.width+10*root.nodeScale;height:width;radius:width/2;color:lpfGuide.selected?Theme.accent:"transparent";opacity:lpfGuide.selected?.14:0;z:-1 }
+                        Text{anchors.centerIn:parent;text:"LP";color:"#071012";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
                     }
-                    MouseArea { anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}} }
+                    MouseArea {
+                        anchors.fill:parent;cursorShape:Qt.SizeHorCursor
+                        onPressed:root.selectCrossover("lpf")
+                        onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}}
+                    }
                 }
 
                 Repeater {
@@ -330,22 +353,15 @@ StudioPanel {
                         required property real gain
                         required property real q
                         required property string typeName
-                        readonly property real haloVirtual: index===root.selectedIndex?36:26
-                        readonly property real coreVirtual: index===root.selectedIndex?21:16
+                        readonly property bool selected: root.selectedTarget==="band"&&index===root.selectedIndex
+                        readonly property real haloVirtual: selected?36:26
+                        readonly property real coreVirtual: selected?21:16
                         width:haloVirtual*root.nodeScale;height:width
                         x:root.xFor(freq)-width/2;y:root.yFor(gain)-height/2
+                        Rectangle { anchors.centerIn:parent;width:parent.haloVirtual*root.nodeScale;height:width;radius:width/2;color:parent.selected?Theme.accent:Theme.amber;opacity:parent.selected?.17:.12 }
                         Rectangle {
-                            anchors.centerIn:parent
-                            width:parent.haloVirtual*root.nodeScale;height:width
-                            radius:width/2
-                            color:index===root.selectedIndex?Theme.accent:Theme.amber
-                            opacity:index===root.selectedIndex?.17:.12
-                        }
-                        Rectangle {
-                            anchors.centerIn:parent
-                            width:parent.coreVirtual*root.nodeScale;height:width
-                            radius:width/2
-                            color:index===root.selectedIndex?Theme.accent:Theme.amber;border.width:1.5;border.color:"#07090A"
+                            anchors.centerIn:parent;width:parent.coreVirtual*root.nodeScale;height:width;radius:width/2
+                            color:parent.selected?Theme.accent:Theme.amber;border.width:1.5;border.color:"#07090A"
                             Text{anchors.centerIn:parent;text:index+1;color:"#070A0C";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                         }
                         MouseArea {
@@ -358,7 +374,8 @@ StudioPanel {
                 }
 
                 BandInspector {
-                    id:inspector
+                    id:bandInspector
+                    visible:root.selectedTarget==="band"
                     bandModel:root.bands
                     bandIndex:root.selectedIndex
                     frequency:root.selectedFreq
@@ -368,11 +385,7 @@ StudioPanel {
                     width:Math.min(320,graph.width-30)
                     height:86
                     x:root.clamp(root.xFor(root.selectedFreq)-width/2,15,graph.width-width-15)
-                    // Sticky edge placement: when the selected point is in the
-                    // lower half, park the editor at the top; when the point is
-                    // high, park it at the bottom.  The editor still follows X
-                    // but never chases the node vertically through the EQ line.
-                    readonly property bool stickyTop: root.yFor(root.selectedGain) >= (root.topPad + root.plotBottom) / 2
+                    readonly property bool stickyTop: root.inspectorShouldTop(root.selectedFreq)
                     readonly property real edgeGap: 12 * root.nodeScale
                     y:stickyTop ? root.topPad + edgeGap : root.plotBottom - height - edgeGap
                     Behavior on x { SmoothedAnimation { velocity:1800 } }
@@ -381,6 +394,26 @@ StudioPanel {
                     onGainEdited:function(v){root.setSelectedGain(v)}
                     onQEdited:function(v){root.setSelectedQValue(v)}
                     onResetRequested:root.resetSelected()
+                }
+
+                CrossoverInspector {
+                    id:crossoverInspector
+                    visible:root.selectedTarget!=="band"
+                    mode:root.selectedTarget
+                    frequency:root.inspectorFrequency
+                    filterType:root.selectedTarget==="hpf"?String(root.bands.hpType):String(root.bands.lpType)
+                    accentColor:Theme.amber
+                    width:Math.min(320,graph.width-30)
+                    height:86
+                    x:root.clamp(root.xFor(root.inspectorFrequency)-width/2,15,graph.width-width-15)
+                    readonly property bool stickyTop: root.inspectorShouldTop(root.inspectorFrequency)
+                    readonly property real edgeGap: 12 * root.nodeScale
+                    y:stickyTop ? root.topPad + edgeGap : root.plotBottom - height - edgeGap
+                    Behavior on x { SmoothedAnimation { velocity:1800 } }
+                    Behavior on y { SmoothedAnimation { velocity:1400 } }
+                    onFrequencyEdited:function(v){if(root.selectedTarget==="hpf")root.bands.setHpfHz(v);else root.bands.setLpfHz(v)}
+                    onTypeEdited:function(v){if(root.selectedTarget==="hpf")root.bands.setHpType(v);else root.bands.setLpType(v)}
+                    onResetRequested:root.resetCrossover(root.selectedTarget)
                 }
             }
         }
@@ -400,18 +433,19 @@ StudioPanel {
                     required property real gain
                     required property real q
                     required property string typeName
+                    readonly property bool selected:root.selectedTarget==="band"&&index===root.selectedIndex
                     Layout.fillWidth:true;Layout.preferredHeight:43;radius:10
                     gradient:Gradient {
-                        GradientStop{position:0;color:index===root.selectedIndex?"#103136":"#11171C"}
-                        GradientStop{position:1;color:index===root.selectedIndex?"#081719":"#090D11"}
+                        GradientStop{position:0;color:parent.selected?"#103136":"#11171C"}
+                        GradientStop{position:1;color:parent.selected?"#081719":"#090D11"}
                     }
-                    border.width:1;border.color:index===root.selectedIndex?Theme.accentSoft:"#242C33"
+                    border.width:1;border.color:selected?Theme.accentSoft:"#242C33"
                     Column {
                         anchors.fill:parent;anchors.margins:6;spacing:0
                         Row { width:parent.width
                             Text{text:"B"+(index+1);color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
                             Item{width:Math.max(0,parent.width-34);height:1}
-                            Text{text:root.typeShort(typeName);color:index===root.selectedIndex?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                            Text{text:root.typeShort(typeName);color:selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                         }
                         Row { width:parent.width
                             Text{text:root.fmtF(freq);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
