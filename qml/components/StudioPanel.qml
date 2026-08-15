@@ -7,17 +7,17 @@ Rectangle {
     property bool accentTop: false
     property color accentColor: Theme.accent
 
-    // Web panel-bevel uses 14 px corners and a quiet 8% highlight border.
     radius: 14
     border.width: 1
-    border.color: root.inset ? "#05080A" : "#2A343D"
+    border.color: root.inset ? "#020304" : "#29323A"
 
+    // Approximate the web panel-bevel cascade: a very small top highlight over
+    // surface-raised, falling into the darker panel token.
     gradient: Gradient {
-        GradientStop { position: 0.00; color: root.inset ? "#06090C" : "#252E36" }
-        GradientStop { position: 0.07; color: root.inset ? "#080B0F" : "#212A32" }
-        GradientStop { position: 0.28; color: root.inset ? "#080C10" : "#1B232A" }
-        GradientStop { position: 0.72; color: root.inset ? "#070A0D" : "#151C22" }
-        GradientStop { position: 1.00; color: root.inset ? "#050709" : "#11171D" }
+        GradientStop { position: 0.00; color: root.inset ? "#040507" : "#1D242B" }
+        GradientStop { position: 0.22; color: root.inset ? "#050709" : "#171D24" }
+        GradientStop { position: 0.52; color: root.inset ? "#05080A" : "#141A20" }
+        GradientStop { position: 1.00; color: root.inset ? "#040507" : "#11171D" }
     }
 
     Rectangle {
@@ -30,7 +30,7 @@ Rectangle {
         height: 1
         radius: 1
         color: "#FFFFFF"
-        opacity: root.inset ? 0.028 : 0.075
+        opacity: root.inset ? 0.02 : 0.06
     }
 
     Rectangle {
@@ -39,7 +39,7 @@ Rectangle {
         radius: Math.max(2, parent.radius - 1)
         color: "transparent"
         border.width: 1
-        border.color: root.inset ? "#07000000" : "#0DFFFFFF"
+        border.color: root.inset ? "#12000000" : "#0BFFFFFF"
     }
 
     Rectangle {
@@ -52,6 +52,6 @@ Rectangle {
         height: 1
         radius: 1
         color: "#000000"
-        opacity: root.inset ? 0.28 : 0.38
+        opacity: root.inset ? 0.34 : 0.42
     }
 }
