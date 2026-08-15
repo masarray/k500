@@ -4,30 +4,73 @@ import QtQuick.Layouts
 StudioPanel {
     id: root
     required property var engine
-    implicitHeight: 286
-    accentTop: true
+    implicitHeight: 304
+    accentTop: false
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 11
-        spacing: 7
-        RowLayout {
+        spacing: 0
+
+        Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 16
-            Layout.minimumHeight: 16
-            Layout.maximumHeight: 16
-            Text { text: "MASTER STRIP"; color: Theme.text; font.family: Theme.fontFamily; font.pixelSize: 9; font.weight: Font.Bold; font.letterSpacing: 0.7 }
-            Item { Layout.fillWidth: true }
-            Rectangle { Layout.preferredWidth: 7; Layout.preferredHeight: 7; radius: 4; color: Theme.amber }
+            Layout.preferredHeight: 35
+            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                text: "MASTER STRIP"
+                color: Theme.text
+                font.family: Theme.monoFamily
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                font.letterSpacing: 1.05
+            }
+            Rectangle {
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                width: 8; height: 8; radius: 4
+                color: Theme.amber
+            }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
         }
-        Rectangle { Layout.fillWidth: true; Layout.preferredHeight: 1; Layout.minimumHeight: 1; Layout.maximumHeight: 1; color: Theme.borderSoft }
+
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 0
-            InputFader { Layout.fillWidth: true; Layout.fillHeight: true; label: "MUSIC"; value: root.engine.masterMusic; onValueEdited: function(v) { root.engine.masterMusic = v }; from: 0; to: 100; accentColor: Theme.accent }
-            InputFader { Layout.fillWidth: true; Layout.fillHeight: true; label: "MIC"; value: root.engine.masterMic; onValueEdited: function(v) { root.engine.masterMic = v }; from: 0; to: 100; accentColor: Theme.blue }
-            InputFader { Layout.fillWidth: true; Layout.fillHeight: true; label: "FX"; value: root.engine.masterFx; onValueEdited: function(v) { root.engine.masterFx = v }; from: 0; to: 100; accentColor: Theme.violet }
+            Layout.leftMargin: 7
+            Layout.rightMargin: 7
+            Layout.topMargin: 12
+            Layout.bottomMargin: 10
+            spacing: 1
+
+            Item {
+                Layout.fillWidth:true;Layout.fillHeight:true
+                ColumnLayout {
+                    anchors.fill:parent;spacing:4
+                    Text { Layout.alignment:Qt.AlignHCenter;text:"MUSIC";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9 }
+                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterMusic;from:0;to:100;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterMusic=v} }
+                    Rectangle { Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:Math.round(root.engine.masterMusic);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold} }
+                }
+            }
+            Item {
+                Layout.fillWidth:true;Layout.fillHeight:true
+                ColumnLayout {
+                    anchors.fill:parent;spacing:4
+                    Text { Layout.alignment:Qt.AlignHCenter;text:"MIC";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9 }
+                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterMic;from:0;to:100;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterMic=v} }
+                    Rectangle { Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:Math.round(root.engine.masterMic);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold} }
+                }
+            }
+            Item {
+                Layout.fillWidth:true;Layout.fillHeight:true
+                ColumnLayout {
+                    anchors.fill:parent;spacing:4
+                    Text { Layout.alignment:Qt.AlignHCenter;text:"FX";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9 }
+                    StudioFader { Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:root.engine.masterFx;from:0;to:100;defaultValue:35;step:1;accentColor:Theme.accent;onValueEdited:function(v){root.engine.masterFx=v} }
+                    Rectangle { Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.centerIn:parent;text:Math.round(root.engine.masterFx);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold} }
+                }
+            }
         }
     }
 }
