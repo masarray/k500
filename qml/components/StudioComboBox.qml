@@ -9,8 +9,8 @@ ComboBox {
     signal valueEdited(string newValue)
 
     implicitHeight: 34
-    leftPadding: 8
-    rightPadding: 22
+    leftPadding: 6
+    rightPadding: 21
     topPadding: 0
     bottomPadding: 0
     currentIndex: Math.max(0, control.model.indexOf(control.value))
@@ -27,13 +27,13 @@ ComboBox {
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
         font.family: Theme.monoFamily
-        font.pixelSize: 8
+        font.pixelSize: 9
         font.weight: Font.Bold
         font.letterSpacing: 0
     }
 
     indicator: Item {
-        x: control.width - width - 6
+        x: control.width - width - 5
         y: (control.height - height) / 2
         width: 12
         height: 12
@@ -58,14 +58,14 @@ ComboBox {
             GradientStop { position: 1.0; color: "#050709" }
         }
         Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;height:1;color:control.accentColor;opacity:control.activeFocus||control.popup.visible?.40:.07 }
-        Rectangle { anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.right:parent.right;anchors.rightMargin:19;width:1;color:Theme.borderSoft }
+        Rectangle { anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.right:parent.right;anchors.rightMargin:18;width:1;color:Theme.borderSoft }
     }
 
     delegate: ItemDelegate {
         id: option
         required property var modelData
         required property int index
-        width: control.width - 8
+        width: control.popup.width - 8
         height: 30
         leftPadding: 7
         rightPadding: 6
@@ -75,7 +75,7 @@ ComboBox {
             color: option.highlighted ? control.accentColor : Theme.textSoft
             verticalAlignment: Text.AlignVCenter
             font.family: Theme.monoFamily
-            font.pixelSize: 8
+            font.pixelSize: 9
             font.weight: option.highlighted ? Font.Bold : Font.Medium
         }
         background: Rectangle { radius:5;color:option.highlighted?Theme.amberFaint:"transparent";border.width:option.highlighted?1:0;border.color:Theme.amberSoft }
@@ -83,7 +83,7 @@ ComboBox {
 
     popup: Popup {
         y: control.height + 4
-        width: Math.max(control.width, 112)
+        width: Math.max(control.width, 124)
         implicitHeight: Math.min(contentItem.implicitHeight + 8, 224)
         padding: 4
         z: 50
