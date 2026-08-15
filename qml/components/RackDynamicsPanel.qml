@@ -12,45 +12,60 @@ StudioPanel {
     property real attack: 10
     property real release: 200
     property color accentColor: Theme.accent
+    accentTop: false
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 11
-        spacing: 7
+        spacing: 0
 
-        RowLayout {
+        Item {
             Layout.fillWidth: true
-            ColumnLayout {
-                spacing: 0
-                Text { text:"DYNAMICS"; color:Theme.textDim; font.family:Theme.fontFamily; font.pixelSize:8; font.weight:Font.DemiBold; font.letterSpacing:1.0 }
-                Text { text:root.title.toUpperCase(); color:Theme.text; font.family:Theme.fontFamily; font.pixelSize:10; font.weight:Font.Bold; font.letterSpacing:.3 }
+            Layout.preferredHeight: 35
+            Text {
+                anchors.left: parent.left
+                anchors.leftMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                text: root.title.toUpperCase()
+                color: Theme.text
+                font.family: Theme.monoFamily
+                font.pixelSize: 10
+                font.weight: Font.Bold
+                font.letterSpacing: 1.05
             }
-            Item { Layout.fillWidth:true }
-            Rectangle {
-                Layout.preferredWidth: 72; Layout.preferredHeight: 24; radius:5; color:"#080C10"; border.width:1; border.color:"#3A321A"
-                Text { anchors.centerIn:parent; text:"TH  "+Math.round(root.threshold)+" dB"; color:Theme.amber; font.family:Theme.fontFamily; font.pixelSize:8; font.weight:Font.Bold }
+            RowLayout {
+                anchors.right: parent.right
+                anchors.rightMargin: 10
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 7
+                Rectangle {
+                    Layout.preferredWidth: 72; Layout.preferredHeight: 25; radius:8; color:"#0A0B08"; border.width:1; border.color:"#342A10"
+                    Text { anchors.centerIn:parent; text:"TH  "+Math.round(root.threshold)+" dB"; color:Theme.amber; font.family:Theme.monoFamily; font.pixelSize:9; font.weight:Font.Bold }
+                }
+                Rectangle {
+                    Layout.preferredWidth: 44; Layout.preferredHeight: 25; radius:8; color:"#071113"; border.width:1; border.color:Theme.accentSoft
+                    Text { anchors.centerIn:parent; text:"1:"+Math.round(root.ratio); color:Theme.accent; font.family:Theme.monoFamily; font.pixelSize:9; font.weight:Font.Bold }
+                }
             }
-            Rectangle {
-                Layout.preferredWidth: 42; Layout.preferredHeight: 24; radius:5; color:"#071113"; border.width:1; border.color:Theme.accentSoft
-                Text { anchors.centerIn:parent; text:"1:"+Math.round(root.ratio); color:Theme.accent; font.family:Theme.fontFamily; font.pixelSize:8; font.weight:Font.Bold }
-            }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
         }
-
-        Rectangle { Layout.fillWidth:true; Layout.preferredHeight:1; color:Theme.borderSoft; opacity:.78 }
 
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            spacing: 12
+            Layout.leftMargin: 15
+            Layout.rightMargin: 15
+            Layout.topMargin: 12
+            Layout.bottomMargin: 12
+            spacing: 14
 
             Rectangle {
-                Layout.preferredWidth: 178
-                Layout.preferredHeight: 142
+                Layout.preferredWidth: root.includeGate ? 170 : 122
+                Layout.preferredHeight: 140
                 Layout.alignment: Qt.AlignVCenter
-                radius: 7
+                radius: 8
                 color: "#050709"
                 border.width: 1
-                border.color: Theme.borderSoft
+                border.color: "#020304"
 
                 Canvas {
                     id: graph
@@ -61,13 +76,12 @@ StudioPanel {
                     onHeightChanged: requestPaint()
                     onPaint: {
                         var c=getContext("2d");c.reset()
-                        c.strokeStyle="#182129";c.lineWidth=1;c.globalAlpha=.9
+                        c.strokeStyle="#1B242B";c.lineWidth=1;c.globalAlpha=.75
                         for(var i=1;i<4;i++){c.beginPath();c.moveTo(i*width/4,0);c.lineTo(i*width/4,height);c.stroke();c.beginPath();c.moveTo(0,i*height/4);c.lineTo(width,i*height/4);c.stroke()}
-                        var t=Math.max(0,Math.min(1,(root.threshold+50)/50));
-                        var tx=t*width,ty=height-t*height;
-                        c.globalAlpha=1;c.strokeStyle="#F0B928";c.lineWidth=1.4;c.beginPath();c.moveTo(0,height);c.lineTo(tx,ty);c.lineTo(width,Math.max(8,ty-(width-tx)/Math.max(1,root.ratio)));c.stroke()
-                        c.strokeStyle="#62DED7";c.globalAlpha=.85;c.lineWidth=1;c.beginPath();c.moveTo(0,height);c.lineTo(width,0);c.stroke();c.globalAlpha=1
-                        c.fillStyle="#F0B928";c.beginPath();c.arc(tx,ty,3,0,Math.PI*2);c.fill()
+                        var t=Math.max(0,Math.min(1,(root.threshold+50)/50)),tx=t*width,ty=height-t*height
+                        c.globalAlpha=1;c.strokeStyle=Theme.accent.toString();c.lineWidth=1.2;c.beginPath();c.moveTo(0,height);c.lineTo(width,0);c.stroke()
+                        c.strokeStyle=Theme.amber.toString();c.lineWidth=1.6;c.beginPath();c.moveTo(0,height);c.lineTo(tx,ty);c.lineTo(width,Math.max(8,ty-(width-tx)/Math.max(1,root.ratio)));c.stroke()
+                        c.fillStyle=Theme.amber.toString();c.beginPath();c.arc(tx,ty,3,0,Math.PI*2);c.fill()
                     }
                 }
             }
@@ -75,51 +89,42 @@ StudioPanel {
             RowLayout {
                 Layout.fillWidth: true
                 Layout.alignment: Qt.AlignVCenter
-                spacing: 5
+                spacing: 3
 
                 StudioKnob {
                     visible: root.includeGate
                     Layout.fillWidth: true
                     compact: true
-                    title: "GATE"
-                    value: root.gate
+                    title: "GATE"; value: root.gate
                     from: -80; to: 0; step: 1; decimals: 0; unit: "dB"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.gate=v }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true
-                    compact: true
-                    title: "THRES"
-                    value: root.threshold
+                    Layout.fillWidth: true; compact: true
+                    title: "THRES"; value: root.threshold
                     from: -50; to: 0; step: 1; decimals: 0; unit: "dB"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.threshold=v; graph.requestPaint() }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true
-                    compact: true
-                    title: "RATIO"
-                    value: root.ratio
+                    Layout.fillWidth: true; compact: true
+                    title: "RATIO"; value: root.ratio
                     from: 1; to: 100; step: 1; decimals: 0; unit: ""
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.ratio=v; graph.requestPaint() }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true
-                    compact: true
-                    title: "ATTACK"
-                    value: root.attack
+                    Layout.fillWidth: true; compact: true
+                    title: "ATTACK"; value: root.attack
                     from: 1; to: 100; step: 1; decimals: 0; unit: "ms"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.attack=v }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true
-                    compact: true
-                    title: "RELEASE"
-                    value: root.release
-                    from: 100; to: 5000; step: 100; decimals: 0; unit: "ms"
+                    Layout.fillWidth: true; compact: true
+                    title: "RELEASE"; value: root.release
+                    from: 20; to: 5000; step: 10; decimals: 0; unit: "ms"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.release=v }
                 }
