@@ -13,7 +13,7 @@ Item {
     signal valueEdited(real newValue)
 
     implicitWidth: 48
-    implicitHeight: 182
+    implicitHeight: 160
 
     property real previewValue: value
     property bool dragging: false
@@ -51,8 +51,8 @@ Item {
         Rectangle { anchors.horizontalCenter:parent.horizontalCenter;anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.margins:2;width:2;radius:1;color:"#000000" }
     }
 
-    // Web VerticalFader renders seven quiet ticks on each side. The old Qt
-    // thirteen-tick ruler was visually much denser than the reference.
+    // Seven quiet ticks per side keeps every fader family on the same visual
+    // ruler while the unified 160 px travel makes better use of the rack.
     Repeater {
         model: 7
         delegate: Item {
