@@ -46,6 +46,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/MusicTonePanel.qml
         qml/components/FilterPanel.qml
         qml/components/MasterStripPanel.qml
+        qml/components/SectionWorkspace.qml
 )
 
 set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/sonkupik-logo.png")
