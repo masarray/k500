@@ -31,7 +31,7 @@ QtObject {
     readonly property color accentFaint: "#1F24E9F2"
     readonly property color amber: "#FFB200"
     readonly property color amberSoft: "#66FFB200"
-    readonly property color amberFaint: "#1FFF B200"
+    readonly property color amberFaint: "#1FFFB200"
     readonly property color blue: "#69AEEA"
     readonly property color violet: "#A58AE8"
     readonly property color red: "#F36B6B"
