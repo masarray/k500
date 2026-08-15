@@ -30,7 +30,7 @@ function Resolve-QtRoot {
         }
     }
 
-    # Fast path for the two laptops currently used for this project.
+    # Fast path for the two machines currently used for this project.
     $candidates.Add("C:\Qt\6.8.3\msvc2022_64")
     $candidates.Add("D:\Qt\6.8.3\msvc2022_64")
 
@@ -58,11 +58,31 @@ function Resolve-QtRoot {
     }
 
     if ($found.Count -gt 0) {
-        # Prefer highest lexical version; explicit/6.8.3 candidates above always win first.
         return ($found | Sort-Object Version -Descending | Select-Object -First 1).Path
     }
 
     throw "Qt Desktop MSVC tidak ditemukan. Dicari otomatis di C:\Qt dan D:\Qt. Anda juga bisa menjalankan: .\build-smart.ps1 -QtRoot 'X:\Qt\6.8.3\msvc2022_64'"
+}
+
+function Resolve-CMake([string]$ResolvedQtRoot) {
+    $cmake = Get-Command cmake.exe -ErrorAction SilentlyContinue
+    if ($cmake) { return $cmake.Source }
+
+    $qtBase = Split-Path (Split-Path $ResolvedQtRoot -Parent) -Parent
+    $candidates = @(
+        (Join-Path $qtBase "Tools\CMake_64\bin\cmake.exe"),
+        "C:\Qt\Tools\CMake_64\bin\cmake.exe",
+        "D:\Qt\Tools\CMake_64\bin\cmake.exe",
+        "$env:ProgramFiles\CMake\bin\cmake.exe"
+    )
+
+    $cmakePath = $candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $cmakePath) {
+        throw "cmake.exe tidak ditemukan. Dicari di PATH, Qt Tools pada C:/D:, dan Program Files."
+    }
+
+    $env:PATH = "$(Split-Path $cmakePath -Parent);$env:PATH"
+    return $cmakePath
 }
 
 function Enable-Msvc {
@@ -120,12 +140,11 @@ function Resolve-Generator([string]$ResolvedQtRoot) {
     throw "Tidak menemukan Ninja maupun NMake. Pastikan Visual Studio C++ tools terpasang."
 }
 
-if (-not (Get-Command cmake.exe -ErrorAction SilentlyContinue)) {
-    throw "cmake.exe tidak ditemukan di PATH. Install CMake atau komponen CMake dari Visual Studio/Qt."
-}
-
 $QtRoot = Resolve-QtRoot -ExplicitRoot $QtRoot
 Write-Step "Qt terdeteksi otomatis: $QtRoot"
+
+$CMakeExe = Resolve-CMake -ResolvedQtRoot $QtRoot
+Write-Step "CMake: $CMakeExe"
 
 Enable-Msvc
 $Generator = Resolve-Generator -ResolvedQtRoot $QtRoot
@@ -159,11 +178,11 @@ if ($mustClean -and (Test-Path $BuildDir)) {
 }
 
 Write-Step "Configure"
-& cmake -S $RepoRoot -B $BuildDir -G $Generator -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QtRoot"
+& $CMakeExe -S $RepoRoot -B $BuildDir -G $Generator -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$QtRoot"
 if ($LASTEXITCODE -ne 0) { throw "CMake configure gagal ($LASTEXITCODE)." }
 
 Write-Step "Build Release"
-& cmake --build $BuildDir --config Release
+& $CMakeExe --build $BuildDir --config Release
 if ($LASTEXITCODE -ne 0) { throw "Build gagal ($LASTEXITCODE)." }
 
 $ExePath = Join-Path $BuildDir "SONKUPIK-STUDIO-Native-UI.exe"
