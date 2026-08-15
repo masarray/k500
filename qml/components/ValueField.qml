@@ -40,9 +40,9 @@ Item {
         text:root.title
         color:Theme.textDim
         font.family:Theme.monoFamily
-        font.pixelSize:8
+        font.pixelSize:9
         font.weight:Font.Medium
-        font.letterSpacing:1.0
+        font.letterSpacing:.8
     }
 
     Rectangle {
@@ -51,9 +51,9 @@ Item {
         anchors.bottom:parent.bottom
         height:30
         radius:6
-        color:pointer.pressed?"#0F151A":pointer.containsMouse?"#0C1217":"#080C10"
+        color:pointer.pressed?"#0A0E11":pointer.containsMouse?"#080D10":"#04070A"
         border.width:1
-        border.color:root.activeFocus?Theme.focus:pointer.containsMouse?Theme.highlight:Theme.borderSoft
+        border.color:root.activeFocus?Theme.focus:pointer.containsMouse?Theme.highlight:"#11181E"
         Behavior on border.color { ColorAnimation { duration:80 } }
 
         Row {
