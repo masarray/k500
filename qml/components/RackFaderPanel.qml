@@ -9,6 +9,7 @@ StudioPanel {
     property var channels: []
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
+    property int selectedFader: -1
     readonly property real faderHeight: 160
     accentTop: false
 
@@ -46,20 +47,19 @@ StudioPanel {
                 model: root.channels
                 delegate: Item {
                     id: channel
+                    required property int index
                     required property var modelData
                     Layout.fillWidth: !root.compactCluster
                     Layout.preferredWidth: root.compactCluster ? 62 : -1
                     Layout.minimumWidth: root.compactCluster ? 62 : 48
                     Layout.fillHeight: true
                     property real localValue: Number(modelData.value)
+                    readonly property bool selected: root.selectedFader === channel.index
 
                     ColumnLayout {
                         anchors.fill: parent
                         spacing: 4
 
-                        // Reserve exactly the same top control slot used by
-                        // MusicInputPanel. This keeps every fader track on the
-                        // same vertical datum throughout the lower rack.
                         Item {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: Math.max(48,channel.width-4)
@@ -70,7 +70,7 @@ StudioPanel {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: String(channel.modelData.label || "")
-                                    color: Theme.textDim
+                                    color: channel.selected ? Theme.text : Theme.textDim
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 9
                                     font.weight: Font.DemiBold
@@ -80,7 +80,7 @@ StudioPanel {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     visible: String(channel.modelData.badge || "").length > 0
                                     text: String(channel.modelData.badge || "")
-                                    color: Theme.textFaint
+                                    color: channel.selected ? Theme.textDim : Theme.textFaint
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 8
                                 }
@@ -101,6 +101,8 @@ StudioPanel {
                             step: Number(channel.modelData.step || 1)
                             defaultValue: Number(channel.modelData.value)
                             accentColor: root.accentColor
+                            selected: channel.selected
+                            onActivated: root.selectedFader = channel.index
                             onValueEdited: function(v) { channel.localValue = v }
                         }
 
@@ -109,9 +111,9 @@ StudioPanel {
                             Layout.preferredWidth: 58
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: "#05080A"
+                            color: channel.selected ? "#081013" : "#05080A"
                             border.width: 1
-                            border.color: "#020304"
+                            border.color: channel.selected ? root.accentColor : "#020304"
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 3
@@ -131,6 +133,7 @@ StudioPanel {
                                     anchors.baseline: parent.children[0].baseline
                                 }
                             }
+                            Behavior on border.color { ColorAnimation { duration: 75 } }
                         }
 
                         Item { Layout.fillHeight: true }
