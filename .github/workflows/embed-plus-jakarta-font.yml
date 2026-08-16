@@ -23,14 +23,18 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p resources/fonts
-          curl --fail --location --retry 3 \
-            'https://raw.githubusercontent.com/tokotype/PlusJakartaSans/2.7.1/fonts/variable/PlusJakartaSans%5Bwght%5D.ttf' \
-            --output 'resources/fonts/PlusJakartaSans-wght.ttf'
+          base='https://raw.githubusercontent.com/tokotype/PlusJakartaSans/2.7.1/fonts/ttf'
+          for weight in Regular Medium SemiBold Bold; do
+            curl --fail --location --retry 3 \
+              "$base/PlusJakartaSans-$weight.ttf" \
+              --output "resources/fonts/PlusJakartaSans-$weight.ttf"
+            test -s "resources/fonts/PlusJakartaSans-$weight.ttf"
+          done
           curl --fail --location --retry 3 \
             'https://raw.githubusercontent.com/tokotype/PlusJakartaSans/2.7.1/OFL.txt' \
             --output 'resources/fonts/OFL-PlusJakartaSans.txt'
-          test -s 'resources/fonts/PlusJakartaSans-wght.ttf'
           test -s 'resources/fonts/OFL-PlusJakartaSans.txt'
+          rm -f 'resources/fonts/PlusJakartaSans-wght.ttf'
 
       - name: Commit font assets to branch
         shell: bash
@@ -38,10 +42,10 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add resources/fonts/PlusJakartaSans-wght.ttf resources/fonts/OFL-PlusJakartaSans.txt
+          git add -A resources/fonts
           if git diff --cached --quiet; then
             echo 'Font assets already present.'
             exit 0
           fi
-          git commit -m 'Embed Plus Jakarta Sans 2.7.1 font assets'
+          git commit -m 'Embed static Plus Jakarta Sans 2.7.1 weights'
           git push origin HEAD:agent/embed-plus-jakarta-font
