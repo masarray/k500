@@ -61,6 +61,32 @@ jobs:
             throw "Master Strip regression: stable liveValue binding is missing"
           }
 
+      - name: Guard control caption awareness
+        shell: pwsh
+        run: |
+          $knob = Get-Content "qml/components/StudioKnob.qml" -Raw
+          $slider = Get-Content "qml/components/ParameterSlider.qml" -Raw
+          $rack = Get-Content "qml/components/RackFaderPanel.qml" -Raw
+          $master = Get-Content "qml/components/MasterStripPanel.qml" -Raw
+          $input = Get-Content "qml/components/InputFader.qml" -Raw
+          $system = Get-Content "qml/components/SystemWorkspace.qml" -Raw
+          $requiredCore = @(
+            "CONTROL_CAPTION_AWARENESS_V1",
+            "readonly property bool highlighted",
+            "Text.Outline",
+            "styleColor"
+          )
+          foreach ($token in $requiredCore) {
+            if (-not $knob.Contains($token)) { throw "Knob caption awareness regression: missing '$token'" }
+            if (-not $slider.Contains($token)) { throw "Slider caption awareness regression: missing '$token'" }
+          }
+          if (-not $rack.Contains('rackFader.highlighted')) { throw "Rack fader caption awareness regression" }
+          if (-not $master.Contains('masterFader.highlighted')) { throw "Master fader caption awareness regression" }
+          if (-not $input.Contains('contextHighlighted: inputFader.highlighted')) { throw "Input fader caption awareness regression" }
+          if (-not $system.Contains('recFader.highlighted') -or -not $system.Contains('triggerFader.highlighted')) {
+            throw "System direct fader caption awareness regression"
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:

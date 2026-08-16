@@ -63,12 +63,16 @@ Item {
             Text {
                 Layout.fillWidth: true
                 text: root.channelName
-                color: root.selected ? Theme.text : Theme.textSoft
+                color: channelFader.highlighted ? root.accentColor : root.selected ? Theme.text : Theme.textSoft
+                style: channelFader.highlighted ? Text.Outline : Text.Normal
+                styleColor: channelFader.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textS
-                font.weight: Font.DemiBold
+                font.weight: channelFader.highlighted ? Font.Bold : Font.DemiBold
                 font.letterSpacing: 0.4
                 elide: Text.ElideRight
+                Behavior on color { ColorAnimation { duration:75 } }
+                Behavior on styleColor { ColorAnimation { duration:75 } }
             }
 
             Rectangle {
@@ -112,6 +116,7 @@ Item {
             }
 
             StudioFader {
+                id: channelFader
                 Layout.preferredWidth: 64
                 Layout.fillHeight: true
                 value: root.faderValue
@@ -131,15 +136,17 @@ Item {
             radius: 4
             color: "#080C10"
             border.width: 1
-            border.color: root.selected ? root.accentColor : Theme.borderSoft
+            border.color: channelFader.highlighted ? root.accentColor : Theme.borderSoft
+            Behavior on border.color { ColorAnimation { duration:75 } }
 
             Text {
                 anchors.centerIn: parent
                 text: root.faderValue <= -59.5 ? "-∞ dB" : root.faderValue.toFixed(1) + " dB"
-                color: root.selected ? Theme.text : Theme.textSoft
+                color: channelFader.highlighted ? Theme.text : Theme.textSoft
                 font.family: Theme.fontFamily
                 font.pixelSize: Theme.textXS
                 font.weight: Font.DemiBold
+                Behavior on color { ColorAnimation { duration:75 } }
             }
         }
 

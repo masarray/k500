@@ -70,19 +70,25 @@ StudioPanel {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: String(channel.modelData.label || "")
-                                    color: channel.selected ? Theme.text : Theme.textDim
+                                    color: rackFader.highlighted ? rackFader.accentColor : Theme.textDim
+                                    style: rackFader.highlighted ? Text.Outline : Text.Normal
+                                    styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 9
-                                    font.weight: Font.DemiBold
+                                    font.weight: rackFader.highlighted ? Font.Bold : Font.DemiBold
                                     font.letterSpacing: .35
+                                    Behavior on color { ColorAnimation { duration:75 } }
+                                    Behavior on styleColor { ColorAnimation { duration:75 } }
                                 }
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     visible: String(channel.modelData.badge || "").length > 0
                                     text: String(channel.modelData.badge || "")
-                                    color: channel.selected ? Theme.textDim : Theme.textFaint
+                                    color: rackFader.highlighted ? rackFader.accentColor : Theme.textFaint
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 8
+                                    font.weight: rackFader.highlighted ? Font.DemiBold : Font.Normal
+                                    Behavior on color { ColorAnimation { duration:75 } }
                                 }
                             }
                         }
@@ -90,6 +96,7 @@ StudioPanel {
                         Item { Layout.preferredHeight: 4 }
 
                         StudioFader {
+                            id: rackFader
                             Layout.preferredHeight: root.faderHeight
                             Layout.minimumHeight: root.faderHeight
                             Layout.maximumHeight: root.faderHeight
@@ -111,9 +118,9 @@ StudioPanel {
                             Layout.preferredWidth: 58
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: channel.selected ? "#081013" : "#05080A"
+                            color: rackFader.highlighted ? "#081013" : "#05080A"
                             border.width: 1
-                            border.color: channel.selected ? root.accentColor : "#020304"
+                            border.color: rackFader.highlighted ? root.accentColor : "#020304"
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 3
@@ -127,10 +134,11 @@ StudioPanel {
                                 Text {
                                     visible: String(channel.modelData.unit || "").length > 0
                                     text: String(channel.modelData.unit || "")
-                                    color: Theme.textDim
+                                    color: rackFader.highlighted ? Theme.textSoft : Theme.textDim
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 7
                                     anchors.baseline: parent.children[0].baseline
+                                    Behavior on color { ColorAnimation { duration:75 } }
                                 }
                             }
                             Behavior on border.color { ColorAnimation { duration: 75 } }

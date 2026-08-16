@@ -25,6 +25,7 @@ Item {
     property bool hovered: pointer.containsMouse
     property real pressY: 0
     property real pressNorm: 0
+    readonly property bool highlighted: hovered || dragging || activeFocus
 
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
     function valueToNorm(v){
@@ -48,16 +49,21 @@ Item {
     onPreviewValueChanged: dial.requestPaint()
     onAccentColorChanged: dial.requestPaint()
 
+    // CONTROL_CAPTION_AWARENESS_V1: captions follow the control under the pointer.
     Text {
         id:titleLabel
         anchors.top:parent.top
         anchors.horizontalCenter:parent.horizontalCenter
         text:root.title
-        color:Theme.textDim
+        color:root.highlighted ? root.accentColor : Theme.textDim
+        style:root.highlighted ? Text.Outline : Text.Normal
+        styleColor:root.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
         font.family:Theme.monoFamily
         font.pixelSize:9
-        font.weight:Font.Medium
+        font.weight:root.highlighted ? Font.DemiBold : Font.Medium
         font.letterSpacing:.75
+        Behavior on color { ColorAnimation { duration:75 } }
+        Behavior on styleColor { ColorAnimation { duration:75 } }
     }
 
     Item {
@@ -74,8 +80,6 @@ Item {
             antialiasing:true
             onPaint:{
                 var ctx=getContext("2d");ctx.reset()
-                // One shared visual centre for the arc, metal cap and pointer.
-                // The previous faceCy=.64 made the cap visibly sag below the cyan arc.
                 var cx=width/2,cy=height*.50,norm=root.valueToNorm(root.previewValue)
                 var start=Math.PI*.75,sweep=Math.PI*1.5,end=start+sweep,activeEnd=start+sweep*norm
                 var arcR=width*.36
@@ -135,7 +139,8 @@ Item {
         radius:7
         color:"#05080A"
         border.width:1
-        border.color:root.dragging?root.accentColor:root.activeFocus?Theme.focus:"#020304"
+        border.color:root.dragging||root.hovered?root.accentColor:root.activeFocus?Theme.focus:"#020304"
+        Behavior on border.color { ColorAnimation { duration:75 } }
 
         Text {
             anchors.centerIn:parent
