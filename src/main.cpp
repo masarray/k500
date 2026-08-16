@@ -1,8 +1,10 @@
 #include <QDebug>
 #include <QFont>
+#include <QFontDatabase>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QStringList>
 
 #include "StudioEngine.h"
 #include "k500/K500Controller.h"
@@ -11,16 +13,58 @@
 #include "k500/K500Protocol.h"
 #include "k500/K500ResponseParser.h"
 
+namespace {
+const QString kUiFontFamily = QStringLiteral("Plus Jakarta Sans");
+
+bool registerEmbeddedFonts()
+{
+    const QStringList fontResources = {
+        QStringLiteral(":/fonts/PlusJakartaSans-Regular.ttf"),
+        QStringLiteral(":/fonts/PlusJakartaSans-Medium.ttf"),
+        QStringLiteral(":/fonts/PlusJakartaSans-SemiBold.ttf"),
+        QStringLiteral(":/fonts/PlusJakartaSans-Bold.ttf"),
+    };
+
+    bool familyFound = false;
+    for (const QString &resource : fontResources) {
+        const int fontId = QFontDatabase::addApplicationFont(resource);
+        if (fontId < 0) {
+            qCritical().noquote() << "Failed to register embedded font:" << resource;
+            return false;
+        }
+        const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
+        familyFound = familyFound || families.contains(kUiFontFamily);
+    }
+    return familyFound;
+}
+}
+
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("SONKUPIK STUDIO Native UI"));
     app.setOrganizationName(QStringLiteral("MasArray"));
 
-    // Match the current web product while using the native Windows variable font.
-    QFont appFont(QStringLiteral("Segoe UI Variable Text"));
+    if (!registerEmbeddedFonts()) {
+        qCritical() << "Plus Jakarta Sans embedded font family is unavailable";
+        return 5;
+    }
+
+    // One embedded type family for every native/QML text role.
+    QFont appFont(kUiFontFamily);
     appFont.setStyleStrategy(QFont::PreferAntialias);
     app.setFont(appFont);
+
+    if (app.arguments().contains(QStringLiteral("--font-self-test"))) {
+        const bool ok = QFontDatabase::families().contains(kUiFontFamily)
+                     && app.font().family() == kUiFontFamily;
+        if (!ok) {
+            qCritical() << "Embedded Plus Jakarta Sans self-test failed";
+            return 6;
+        }
+        qInfo() << "Embedded Plus Jakarta Sans self-test passed";
+        return 0;
+    }
 
     // Basic removes platform-heavy styling so every visible control is ours.
     QQuickStyle::setStyle(QStringLiteral("Basic"));

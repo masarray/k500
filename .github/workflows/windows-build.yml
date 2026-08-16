@@ -87,6 +87,36 @@ jobs:
             throw "System direct fader caption awareness regression"
           }
 
+      - name: Guard single embedded typography family
+        shell: pwsh
+        run: |
+          $theme = Get-Content "qml/theme/Theme.qml" -Raw
+          $main = Get-Content "src/main.cpp" -Raw
+          $cmake = Get-Content "CMakeLists.txt" -Raw
+          $fontFiles = @(
+            "resources/fonts/PlusJakartaSans-Regular.ttf",
+            "resources/fonts/PlusJakartaSans-Medium.ttf",
+            "resources/fonts/PlusJakartaSans-SemiBold.ttf",
+            "resources/fonts/PlusJakartaSans-Bold.ttf",
+            "resources/fonts/OFL-PlusJakartaSans.txt"
+          )
+          foreach ($fontFile in $fontFiles) {
+            if (-not (Test-Path $fontFile)) { throw "Embedded typography regression: missing $fontFile" }
+          }
+          if (-not $theme.Contains('TYPOGRAPHY_SINGLE_FAMILY_V1')) { throw "Typography guard marker missing" }
+          if (($theme | Select-String -Pattern 'Plus Jakarta Sans' -AllMatches).Matches.Count -lt 3) {
+            throw "Theme typography aliases are not all Plus Jakarta Sans"
+          }
+          if (-not $main.Contains('QFontDatabase::addApplicationFont')) { throw "Embedded font registration missing" }
+          if (-not $cmake.Contains('PlusJakartaSans-Regular.ttf') -or -not $cmake.Contains('embedded_fonts')) {
+            throw "Qt resource font bundle missing"
+          }
+          $legacy = Get-ChildItem qml,src -Recurse -File | Where-Object { $_.Extension -in '.qml','.cpp','.h' } | Select-String -Pattern 'Segoe UI Variable|Cascadia Mono'
+          if ($legacy) {
+            $legacy | ForEach-Object { Write-Host $_ }
+            throw "Legacy font family reference remains"
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -113,6 +143,12 @@ jobs:
           New-Item -ItemType Directory -Force -Path package | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
           windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
+
+      - name: Embedded font self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--font-self-test" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Embedded Plus Jakarta Sans self-test failed with exit code $($p.ExitCode)" }
 
       - name: K500 protocol and RX parser self-test
         shell: pwsh
