@@ -32,6 +32,35 @@ jobs:
             }
           }
 
+      - name: Guard fader interaction parity
+        shell: pwsh
+        run: |
+          $fader = Get-Content "qml/components/StudioFader.qml" -Raw
+          $master = Get-Content "qml/components/MasterStripPanel.qml" -Raw
+          $required = @(
+            "FADER_INTERACTION_PARITY_V1",
+            "signal activated()",
+            "preventStealing: true",
+            "dragRawValue",
+            "sensitivity=fine?0.20:1.0",
+            "onWheel:function(e)",
+            "Qt.ShiftModifier",
+            "enabled: !root.dragging"
+          )
+          foreach ($token in $required) {
+            if (-not $fader.Contains($token)) {
+              throw "Fader interaction regression: missing '$token'"
+            }
+          }
+          if ($master.Contains('value:root.engine.masterMusic') -or
+              $master.Contains('value:root.engine.masterMic') -or
+              $master.Contains('value:root.engine.masterFx')) {
+            throw "Master Strip regression: live engine values must not be embedded in Repeater.model"
+          }
+          if (-not $master.Contains('readonly property real liveValue')) {
+            throw "Master Strip regression: stable liveValue binding is missing"
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
