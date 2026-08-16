@@ -50,9 +50,6 @@ StudioPanel {
             spacing: 1
 
             Repeater {
-                // Keep the model structural and stable. Live values must not be
-                // embedded here: rebuilding delegates while the pointer is down
-                // was the root cause of the difficult Master Strip drag.
                 model: [
                     {label:"MUSIC", field:"music"},
                     {label:"MIC", field:"mic"},
@@ -79,17 +76,22 @@ StudioPanel {
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData.label
-                                color: root.selectedFader === channel.index ? Theme.text : Theme.textDim
+                                color: masterFader.highlighted ? masterFader.accentColor : Theme.textDim
+                                style: masterFader.highlighted ? Text.Outline : Text.Normal
+                                styleColor: masterFader.highlighted ? Qt.rgba(masterFader.accentColor.r,masterFader.accentColor.g,masterFader.accentColor.b,.34) : "transparent"
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 9
-                                font.weight: Font.DemiBold
+                                font.weight: masterFader.highlighted ? Font.Bold : Font.DemiBold
                                 font.letterSpacing: .35
+                                Behavior on color { ColorAnimation { duration:75 } }
+                                Behavior on styleColor { ColorAnimation { duration:75 } }
                             }
                         }
 
                         Item { Layout.preferredHeight: 4 }
 
                         StudioFader {
+                            id: masterFader
                             Layout.preferredHeight: 160
                             Layout.minimumHeight: 160
                             Layout.maximumHeight: 160
@@ -115,9 +117,9 @@ StudioPanel {
                             Layout.preferredWidth: 54
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: root.selectedFader === channel.index ? "#081013" : "#05080A"
+                            color: masterFader.highlighted ? "#081013" : "#05080A"
                             border.width: 1
-                            border.color: root.selectedFader === channel.index ? Theme.accentSoft : "#020304"
+                            border.color: masterFader.highlighted ? Theme.accentSoft : "#020304"
                             Text {
                                 anchors.centerIn: parent
                                 text: Math.round(channel.liveValue)
