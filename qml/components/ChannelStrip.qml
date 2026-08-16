@@ -11,6 +11,7 @@ Item {
     property real meterLevel: 0.5
     property bool muted: false
     property bool selected: false
+    signal selectedRequested()
 
     implicitWidth: 132
     implicitHeight: 260
@@ -116,6 +117,7 @@ Item {
                 value: root.faderValue
                 accentColor: root.accentColor
                 selected: root.selected
+                onActivated: root.selectedRequested()
                 onValueEdited: function(v) { root.faderValue = v }
             }
 
