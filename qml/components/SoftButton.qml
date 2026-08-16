@@ -15,11 +15,13 @@ Rectangle {
     property bool transport: false
     property bool accentIcon: false
     property bool toolbar: false
+    property bool contextHighlighted: false
     signal clicked()
 
     readonly property bool activeAccent: root.checked || root.neonAccent
     readonly property color resolvedAccent: root.amber ? Theme.amber : Theme.accent
     readonly property real activeBorderAlpha: root.amber ? .44 : .54
+    readonly property bool labelHighlighted: root.contextHighlighted || root.activeAccent || root.activeFocus
 
     activeFocusOnTab: true
     clip: false
@@ -61,7 +63,6 @@ Rectangle {
         GradientStop { position: 1; color: root.danger ? "#070507" : "#080C10" }
     }
 
-    // Tight external rim: enough to separate active hardware without a gamer-like glow.
     Rectangle {
         visible: root.toolbar && root.activeAccent
         anchors.fill: parent
@@ -73,7 +74,6 @@ Rectangle {
         opacity: root.amber ? .055 : .075
     }
 
-    // Inner bevel is intentionally dimmer than P1 so the face reads machined rather than glossy.
     Rectangle {
         anchors.fill: parent
         anchors.margins: 1
@@ -137,8 +137,6 @@ Rectangle {
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
                  : root.toolbar ? "#C3CFD5" : "#D5DDE1"
             strokeWidth: root.transport ? 1.75 : root.toolbar ? 1.70 : 1.75
-            // Toolbar glyphs are always canonical Lucide stroke icons. Filled paths were
-            // the source of the heavy/broken-looking transport symbols in P1.
             filled: root.toolbar ? false : root.iconFilled
         }
 
@@ -147,13 +145,18 @@ Rectangle {
             visible: !root.iconOnly && text.length > 0
             anchors.verticalCenter: parent.verticalCenter
             color: root.danger ? "#FFD8D8"
+                 : root.contextHighlighted ? root.resolvedAccent
                  : root.amber && root.activeAccent ? Theme.amber
                  : root.checked ? "#EEF5F6"
                  : root.activeAccent ? "#DDF9F6" : root.toolbar ? "#D2DADF" : "#D8DFE4"
+            style: root.contextHighlighted ? Text.Outline : Text.Normal
+            styleColor: root.contextHighlighted ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.32) : "transparent"
             font.family: Theme.fontFamily
             font.pixelSize: root.compact ? Theme.textXS : Theme.textS
-            font.weight: root.activeAccent ? Font.DemiBold : Font.Medium
+            font.weight: root.labelHighlighted ? Font.DemiBold : Font.Medium
             font.letterSpacing: .12
+            Behavior on color { ColorAnimation { duration:75 } }
+            Behavior on styleColor { ColorAnimation { duration:75 } }
         }
     }
 
