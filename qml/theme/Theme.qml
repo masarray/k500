@@ -2,9 +2,11 @@ pragma Singleton
 import QtQuick
 
 QtObject {
-    readonly property string fontFamily: "Segoe UI Variable Text"
-    readonly property string displayFamily: "Segoe UI Variable Display"
-    readonly property string monoFamily: "Cascadia Mono"
+    // TYPOGRAPHY_SINGLE_FAMILY_V1
+    // Every UI role intentionally resolves to the same embedded application font.
+    readonly property string fontFamily: "Plus Jakarta Sans"
+    readonly property string displayFamily: "Plus Jakarta Sans"
+    readonly property string monoFamily: "Plus Jakarta Sans"
 
     // Exact sRGB equivalents of the current web console OKLCH tokens.
     readonly property color bg: "#060A0E"
