@@ -4,6 +4,7 @@ import QtQuick.Layouts
 StudioPanel {
     id: root
     required property var engine
+    property int selectedFader: -1
     implicitWidth: 188
     implicitHeight: 304
     Layout.minimumWidth: 188
@@ -49,13 +50,21 @@ StudioPanel {
             spacing: 1
 
             Repeater {
+                // Keep the model structural and stable. Live values must not be
+                // embedded here: rebuilding delegates while the pointer is down
+                // was the root cause of the difficult Master Strip drag.
                 model: [
-                    {label:"MUSIC", value:root.engine.masterMusic, field:"music"},
-                    {label:"MIC", value:root.engine.masterMic, field:"mic"},
-                    {label:"FX", value:root.engine.masterFx, field:"fx"}
+                    {label:"MUSIC", field:"music"},
+                    {label:"MIC", field:"mic"},
+                    {label:"FX", field:"fx"}
                 ]
                 delegate: Item {
+                    id: channel
+                    required property int index
                     required property var modelData
+                    readonly property real liveValue: modelData.field === "music" ? Number(root.engine.masterMusic)
+                                                    : modelData.field === "mic" ? Number(root.engine.masterMic)
+                                                    : Number(root.engine.masterFx)
                     Layout.fillWidth: true
                     Layout.fillHeight: true
 
@@ -70,7 +79,7 @@ StudioPanel {
                             Text {
                                 anchors.centerIn: parent
                                 text: modelData.label
-                                color: Theme.textDim
+                                color: root.selectedFader === channel.index ? Theme.text : Theme.textDim
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 9
                                 font.weight: Font.DemiBold
@@ -86,12 +95,14 @@ StudioPanel {
                             Layout.maximumHeight: 160
                             Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
-                            value: Number(modelData.value)
+                            value: channel.liveValue
                             from: 0
                             to: 84
                             defaultValue: 35
                             step: 1
                             accentColor: Theme.accent
+                            selected: root.selectedFader === channel.index
+                            onActivated: root.selectedFader = channel.index
                             onValueEdited: function(v) {
                                 if (modelData.field === "music") root.engine.masterMusic = v
                                 else if (modelData.field === "mic") root.engine.masterMic = v
@@ -104,10 +115,18 @@ StudioPanel {
                             Layout.preferredWidth: 54
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: "#05080A"
+                            color: root.selectedFader === channel.index ? "#081013" : "#05080A"
                             border.width: 1
-                            border.color: "#020304"
-                            Text { anchors.centerIn:parent;text:Math.round(Number(modelData.value));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold }
+                            border.color: root.selectedFader === channel.index ? Theme.accentSoft : "#020304"
+                            Text {
+                                anchors.centerIn: parent
+                                text: Math.round(channel.liveValue)
+                                color: Theme.amber
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                            }
+                            Behavior on border.color { ColorAnimation { duration: 75 } }
                         }
 
                         Item { Layout.fillHeight: true }
