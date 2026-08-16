@@ -77,6 +77,21 @@ qt_add_resources(sonkupik_studio_native brand_assets
     FILES "${SONKUPIK_LOGO}"
 )
 
+set(SONKUPIK_FONT_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/PlusJakartaSans-Regular.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/PlusJakartaSans-Medium.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/PlusJakartaSans-SemiBold.ttf"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/PlusJakartaSans-Bold.ttf"
+)
+foreach(FONT_FILE IN LISTS SONKUPIK_FONT_FILES)
+    get_filename_component(FONT_NAME "${FONT_FILE}" NAME)
+    set_source_files_properties("${FONT_FILE}" PROPERTIES QT_RESOURCE_ALIAS "fonts/${FONT_NAME}")
+endforeach()
+qt_add_resources(sonkupik_studio_native embedded_fonts
+    PREFIX "/"
+    FILES ${SONKUPIK_FONT_FILES}
+)
+
 target_link_libraries(sonkupik_studio_native
     PRIVATE
         Qt6::Quick
