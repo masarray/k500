@@ -9,7 +9,9 @@ Item {
     property real to: 12
     property color accentColor: Theme.accent
     property bool active: false
+    property bool selected: false
     signal valueEdited(real newValue)
+    signal activated()
 
     implicitWidth: 76
     implicitHeight: 238
@@ -25,12 +27,12 @@ Item {
             text: root.label
             compact: true
             checked: root.active
-            onClicked: root.active = !root.active
+            onClicked: {
+                root.active = !root.active
+                root.activated()
+            }
         }
 
-        // The selector button already names the source.  Do not repeat the
-        // same IN1/BT/UDISK/DIG label below it; that duplicate row was visual
-        // noise and also consumed useful fader travel.
         Item { Layout.preferredHeight: 4 }
 
         StudioFader {
@@ -45,7 +47,8 @@ Item {
             defaultValue: 0
             step: 0.5
             accentColor: root.accentColor
-            selected: root.active
+            selected: root.selected
+            onActivated: root.activated()
             onValueEdited: function(v) { root.valueEdited(v) }
         }
 
@@ -54,9 +57,9 @@ Item {
             Layout.preferredWidth: 58
             Layout.preferredHeight: 23
             radius: 8
-            color: "#05080A"
+            color: root.selected ? "#081013" : "#05080A"
             border.width: 1
-            border.color: "#020304"
+            border.color: root.selected ? root.accentColor : "#020304"
             Row {
                 anchors.centerIn: parent
                 spacing: 3
@@ -76,6 +79,7 @@ Item {
                     anchors.baseline: parent.children[0].baseline
                 }
             }
+            Behavior on border.color { ColorAnimation { duration: 75 } }
         }
 
         Item { Layout.fillHeight: true }
