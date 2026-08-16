@@ -1,0 +1,47 @@
+name: Embed Plus Jakarta Sans source asset
+
+on:
+  push:
+    branches:
+      - agent/embed-plus-jakarta-font
+    paths:
+      - '.github/workflows/embed-plus-jakarta-font.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  embed-font:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/embed-plus-jakarta-font
+
+      - name: Download pinned Plus Jakarta Sans 2.7.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p resources/fonts
+          curl --fail --location --retry 3 \
+            'https://raw.githubusercontent.com/tokotype/PlusJakartaSans/2.7.1/fonts/variable/PlusJakartaSans%5Bwght%5D.ttf' \
+            --output 'resources/fonts/PlusJakartaSans-wght.ttf'
+          curl --fail --location --retry 3 \
+            'https://raw.githubusercontent.com/tokotype/PlusJakartaSans/2.7.1/OFL.txt' \
+            --output 'resources/fonts/OFL-PlusJakartaSans.txt'
+          test -s 'resources/fonts/PlusJakartaSans-wght.ttf'
+          test -s 'resources/fonts/OFL-PlusJakartaSans.txt'
+
+      - name: Commit font assets to branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add resources/fonts/PlusJakartaSans-wght.ttf resources/fonts/OFL-PlusJakartaSans.txt
+          if git diff --cached --quiet; then
+            echo 'Font assets already present.'
+            exit 0
+          fi
+          git commit -m 'Embed Plus Jakarta Sans 2.7.1 font assets'
+          git push origin HEAD:agent/embed-plus-jakarta-font
