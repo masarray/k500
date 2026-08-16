@@ -14,7 +14,7 @@
 #include "k500/K500ResponseParser.h"
 
 namespace {
-constexpr auto kUiFontFamily = "Plus Jakarta Sans";
+const QString kUiFontFamily = QStringLiteral("Plus Jakarta Sans");
 
 bool registerEmbeddedFonts()
 {
@@ -33,7 +33,7 @@ bool registerEmbeddedFonts()
             return false;
         }
         const QStringList families = QFontDatabase::applicationFontFamilies(fontId);
-        familyFound = familyFound || families.contains(QStringLiteral(kUiFontFamily));
+        familyFound = familyFound || families.contains(kUiFontFamily);
     }
     return familyFound;
 }
@@ -51,13 +51,13 @@ int main(int argc, char *argv[])
     }
 
     // One embedded type family for every native/QML text role.
-    QFont appFont(QStringLiteral(kUiFontFamily));
+    QFont appFont(kUiFontFamily);
     appFont.setStyleStrategy(QFont::PreferAntialias);
     app.setFont(appFont);
 
     if (app.arguments().contains(QStringLiteral("--font-self-test"))) {
-        const bool ok = QFontDatabase::families().contains(QStringLiteral(kUiFontFamily))
-                     && app.font().family() == QStringLiteral(kUiFontFamily);
+        const bool ok = QFontDatabase::families().contains(kUiFontFamily)
+                     && app.font().family() == kUiFontFamily;
         if (!ok) {
             qCritical() << "Embedded Plus Jakarta Sans self-test failed";
             return 6;
