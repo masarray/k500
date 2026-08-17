@@ -7,20 +7,34 @@ Item {
     required property var engine
     property int sectionIndex: 1
     property int micChannel: 0
-    property bool micEqLinked: false
+    property bool micEqLinked: Boolean(groupValue("mic", "eqLink", false))
     readonly property int lowerRackHeight: 304
     readonly property int masterWidth: 188
 
+    // K500_DEVICE_STATE_BINDINGS_V1
+    function groupValue(group, key, fallback) {
+        var state = engine && engine.deviceState ? engine.deviceState : null
+        var object = state ? state[group] : null
+        var value = object ? object[key] : undefined
+        return value === undefined || value === null ? fallback : value
+    }
+    function nestedValue(group, section, key, fallback) {
+        var state = engine && engine.deviceState ? engine.deviceState : null
+        var parent = state ? state[group] : null
+        var object = parent ? parent[section] : null
+        var value = object ? object[key] : undefined
+        return value === undefined || value === null ? fallback : value
+    }
     function activeEqModel() {
         switch (sectionIndex) {
-        case 1: return micChannel === 0 ? micAModel : micBModel
-        case 2: return reverbModel
-        case 3: return echoModel
-        case 4: return mainModel
-        case 5: return surroundModel
-        case 6: return centerModel
-        case 7: return subModel
-        default: return micAModel
+        case 1: return micChannel === 0 ? engine.micAEqBands : engine.micBEqBands
+        case 2: return engine.reverbEqBands
+        case 3: return engine.echoEqBands
+        case 4: return engine.mainEqBands
+        case 5: return engine.surroundEqBands
+        case 6: return engine.centerEqBands
+        case 7: return engine.subEqBands
+        default: return engine.micAEqBands
         }
     }
     function activeEqLabel() {
@@ -35,15 +49,6 @@ Item {
         default: return "Mic A"
         }
     }
-
-    LocalEqModel { id: micAModel; bandCount:10; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP LR 24"; defaultLpType:"LP LR 24" }
-    LocalEqModel { id: micBModel; bandCount:10; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP LR 24"; defaultLpType:"LP LR 24" }
-    LocalEqModel { id: reverbModel; bandCount:5; defaultHpfHz:217; defaultLpfHz:12000; defaultHpType:"HP Butter 12"; defaultLpType:"LP Butter 12" }
-    LocalEqModel { id: echoModel; bandCount:5; defaultHpfHz:700; defaultLpfHz:4400; defaultHpType:"HP Butter 12"; defaultLpType:"LP Butter 12" }
-    LocalEqModel { id: mainModel; bandCount:7; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP Butter 12"; defaultLpType:"LP Butter 12" }
-    LocalEqModel { id: surroundModel; bandCount:5; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP Bessel 12"; defaultLpType:"LP Bessel 12" }
-    LocalEqModel { id: centerModel; bandCount:5; defaultHpfHz:20; defaultLpfHz:20000; defaultHpType:"HP Butter 12"; defaultLpType:"LP Butter 12" }
-    LocalEqModel { id: subModel; bandCount:5; defaultHpfHz:40; defaultLpfHz:95; defaultHpType:"HP Butter 24"; defaultLpType:"LP Butter 24" }
 
     StackLayout {
         anchors.fill: parent
@@ -80,7 +85,6 @@ Item {
                         Layout.fillHeight: true
                         currentIndex: Math.max(0, Math.min(6, root.sectionIndex - 1))
 
-                        // Final web CSS at this viewport: .82fr / 1.72fr / 158 px.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
@@ -93,9 +97,9 @@ Item {
                                     Layout.minimumWidth: 248
                                     title: "Mic Inputs"
                                     channels: [
-                                        {label:"MIC A",value:96,from:0,to:100,step:1,unit:"",decimals:0},
-                                        {label:"MIC B",value:96,from:0,to:100,step:1,unit:"",decimals:0},
-                                        {label:"FBX",badge:"A+B",value:7,from:0,to:20,step:1,unit:"",decimals:0}
+                                        {label:"MIC A",value:Number(root.groupValue("mic","micAVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
+                                        {label:"MIC B",value:Number(root.groupValue("mic","micBVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
+                                        {label:"FBX",badge:"A+B",value:Number(root.groupValue("mic","fbxLevel",7)),from:0,to:20,step:1,unit:"",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {
@@ -105,7 +109,11 @@ Item {
                                     Layout.minimumWidth: 390
                                     title: "Vocal Dynamics"
                                     includeGate: true
-                                    gate: -70; threshold: -12; ratio: 3; attack: 10; release: 200
+                                    gate: Number(root.groupValue("mic","noiseGateDb",-70))
+                                    threshold: Number(root.groupValue("mic","compThresholdDb",-12))
+                                    ratio: Number(root.groupValue("mic","compRatio",3))
+                                    attack: Number(root.groupValue("mic","attackMs",10))
+                                    release: Number(root.groupValue("mic","releaseSec",0.2)) * 1000
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth: 158
@@ -126,7 +134,6 @@ Item {
                             }
                         }
 
-                        // Final web effect grid: wide engine + 214 px Tone.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
@@ -137,9 +144,9 @@ Item {
                                     Layout.minimumWidth: 380
                                     title: "Reverb"
                                     channels: [
-                                        {label:"LEVEL",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"DECAY",value:1575,from:100,to:5000,step:5,unit:"ms",decimals:0},
-                                        {label:"PRE",value:25,from:0,to:300,step:1,unit:"ms",decimals:0}
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0}
                                     ]
                                 }
                                 RackFilterPanel {
@@ -149,14 +156,14 @@ Item {
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
-                                        {label:"HPF",value:reverbModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:reverbModel.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType: reverbModel.hpType
-                                    lpType: reverbModel.lpType
-                                    onFieldEdited: function(index,value){ if(index===0)reverbModel.setHpfHz(value);else reverbModel.setLpfHz(value) }
-                                    onHpTypeEdited: function(value){ reverbModel.setHpType(value) }
-                                    onLpTypeEdited: function(value){ reverbModel.setLpType(value) }
+                                    hpType: root.engine.reverbEqBands.hpType
+                                    lpType: root.engine.reverbEqBands.lpType
+                                    onFieldEdited: function(index,value){ if(index===0)root.engine.reverbEqBands.setHpfHz(value);else root.engine.reverbEqBands.setLpfHz(value) }
+                                    onHpTypeEdited: function(value){ root.engine.reverbEqBands.setHpType(value) }
+                                    onLpTypeEdited: function(value){ root.engine.reverbEqBands.setLpType(value) }
                                 }
                             }
                         }
@@ -171,9 +178,9 @@ Item {
                                     Layout.minimumWidth: 380
                                     title: "Echo"
                                     channels: [
-                                        {label:"LEVEL",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REPEAT",value:12,from:0,to:100,step:1,unit:"",decimals:0},
-                                        {label:"DELAY",value:400,from:0,to:1000,step:1,unit:"ms",decimals:0}
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","echo","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",12)),from:0,to:100,step:1,unit:"",decimals:0},
+                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",400)),from:0,to:1000,step:1,unit:"ms",decimals:0}
                                     ]
                                 }
                                 RackFilterPanel {
@@ -183,19 +190,18 @@ Item {
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
-                                        {label:"HPF",value:echoModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:echoModel.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.echoEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.echoEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType: echoModel.hpType
-                                    lpType: echoModel.lpType
-                                    onFieldEdited: function(index,value){ if(index===0)echoModel.setHpfHz(value);else echoModel.setLpfHz(value) }
-                                    onHpTypeEdited: function(value){ echoModel.setHpType(value) }
-                                    onLpTypeEdited: function(value){ echoModel.setLpType(value) }
+                                    hpType: root.engine.echoEqBands.hpType
+                                    lpType: root.engine.echoEqBands.lpType
+                                    onFieldEdited: function(index,value){ if(index===0)root.engine.echoEqBands.setHpfHz(value);else root.engine.echoEqBands.setLpfHz(value) }
+                                    onHpTypeEdited: function(value){ root.engine.echoEqBands.setHpType(value) }
+                                    onLpTypeEdited: function(value){ root.engine.echoEqBands.setLpType(value) }
                                 }
                             }
                         }
 
-                        // Final web output grid: 1.22fr / 1.55fr / 212 px.
                         Item {
                             RowLayout {
                                 anchors.fill: parent
@@ -204,29 +210,33 @@ Item {
                                     Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 371; Layout.minimumWidth: 320
                                     title: "Main Bus"
                                     channels: [
-                                        {label:"L",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
-                                        {label:"R",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
-                                        {label:"MIC",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"MUSIC",value:100,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REV",value:90,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"ECHO",value:95,from:0,to:100,step:1,unit:"%",decimals:0}
+                                        {label:"L",value:Number(root.nestedValue("outputs","main","lVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"R",value:Number(root.nestedValue("outputs","main","rVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:Number(root.nestedValue("outputs","main","micDirect",100)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:Number(root.nestedValue("outputs","main","musicLevel",100)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:Number(root.nestedValue("outputs","main","reverbLevel",90)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:Number(root.nestedValue("outputs","main","echoLevel",95)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {
                                     Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 471; Layout.minimumWidth: 360
-                                    title: "Output Compressor"; threshold:-3; ratio:18; attack:7; release:100
+                                    title: "Output Compressor"
+                                    threshold:Number(root.nestedValue("outputs","main","compThresholdDb",-3))
+                                    ratio:Number(root.nestedValue("outputs","main","compRatio",18))
+                                    attack:Number(root.nestedValue("outputs","main","attackMs",7))
+                                    release:Number(root.nestedValue("outputs","main","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title: "Band Limits / Delay"
                                     fields:[
-                                        {label:"HPF",value:mainModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:mainModel.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.mainEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.mainEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType:mainModel.hpType; lpType:mainModel.lpType
-                                    onFieldEdited:function(index,value){if(index===0)mainModel.setHpfHz(value);else mainModel.setLpfHz(value)}
-                                    onHpTypeEdited:function(value){mainModel.setHpType(value)}
-                                    onLpTypeEdited:function(value){mainModel.setLpType(value)}
+                                    hpType:root.engine.mainEqBands.hpType; lpType:root.engine.mainEqBands.lpType
+                                    onFieldEdited:function(index,value){if(index===0)root.engine.mainEqBands.setHpfHz(value);else root.engine.mainEqBands.setLpfHz(value)}
+                                    onHpTypeEdited:function(value){root.engine.mainEqBands.setHpType(value)}
+                                    onLpTypeEdited:function(value){root.engine.mainEqBands.setLpType(value)}
                                 }
                             }
                         }
@@ -239,31 +249,35 @@ Item {
                                     Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
                                     title:"Surround Bus"
                                     channels:[
-                                        {label:"L",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
-                                        {label:"R",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
-                                        {label:"MIC",value:87,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"MUSIC",value:85,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REV",value:80,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"ECHO",value:75,from:0,to:100,step:1,unit:"%",decimals:0}
+                                        {label:"L",value:Number(root.nestedValue("outputs","surround","lVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"R",value:Number(root.nestedValue("outputs","surround","rVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:Number(root.nestedValue("outputs","surround","micDirect",87)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:Number(root.nestedValue("outputs","surround","musicLevel",85)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:Number(root.nestedValue("outputs","surround","reverbLevel",80)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:Number(root.nestedValue("outputs","surround","echoLevel",75)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {
                                     Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
-                                    title:"Output Compressor"; threshold:-20; ratio:100; attack:1; release:100
+                                    title:"Output Compressor"
+                                    threshold:Number(root.nestedValue("outputs","surround","compThresholdDb",-20))
+                                    ratio:Number(root.nestedValue("outputs","surround","compRatio",100))
+                                    attack:Number(root.nestedValue("outputs","surround","attackMs",1))
+                                    release:Number(root.nestedValue("outputs","surround","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
-                                        {label:"L DELAY",value:3,from:0,to:50,step:1,unit:"ms",decimals:0},
-                                        {label:"R DELAY",value:4,from:0,to:50,step:1,unit:"ms",decimals:0},
-                                        {label:"HPF",value:surroundModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:surroundModel.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"L DELAY",value:Number(root.nestedValue("outputs","surround","lDelayMs",3)),from:0,to:50,step:1,unit:"ms",decimals:0},
+                                        {label:"R DELAY",value:Number(root.nestedValue("outputs","surround","rDelayMs",4)),from:0,to:50,step:1,unit:"ms",decimals:0},
+                                        {label:"HPF",value:root.engine.surroundEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.surroundEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType:surroundModel.hpType; lpType:surroundModel.lpType
-                                    onFieldEdited:function(index,value){if(index===2)surroundModel.setHpfHz(value);else if(index===3)surroundModel.setLpfHz(value)}
-                                    onHpTypeEdited:function(value){surroundModel.setHpType(value)}
-                                    onLpTypeEdited:function(value){surroundModel.setLpType(value)}
+                                    hpType:root.engine.surroundEqBands.hpType; lpType:root.engine.surroundEqBands.lpType
+                                    onFieldEdited:function(index,value){if(index===2)root.engine.surroundEqBands.setHpfHz(value);else if(index===3)root.engine.surroundEqBands.setLpfHz(value)}
+                                    onHpTypeEdited:function(value){root.engine.surroundEqBands.setHpType(value)}
+                                    onLpTypeEdited:function(value){root.engine.surroundEqBands.setLpType(value)}
                                 }
                             }
                         }
@@ -276,28 +290,32 @@ Item {
                                     Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
                                     title:"Center Bus"
                                     channels:[
-                                        {label:"CTR",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
-                                        {label:"MIC",value:88,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"MUSIC",value:85,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REV",value:87,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"ECHO",value:85,from:0,to:100,step:1,unit:"%",decimals:0}
+                                        {label:"CTR",value:Number(root.nestedValue("outputs","center","outputVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:Number(root.nestedValue("outputs","center","micDirect",88)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:Number(root.nestedValue("outputs","center","musicLevel",85)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:Number(root.nestedValue("outputs","center","reverbLevel",87)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:Number(root.nestedValue("outputs","center","echoLevel",85)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {
                                     Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
-                                    title:"Output Compressor"; threshold:-20; ratio:100; attack:1; release:100
+                                    title:"Output Compressor"
+                                    threshold:Number(root.nestedValue("outputs","center","compThresholdDb",-20))
+                                    ratio:Number(root.nestedValue("outputs","center","compRatio",100))
+                                    attack:Number(root.nestedValue("outputs","center","attackMs",1))
+                                    release:Number(root.nestedValue("outputs","center","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
-                                        {label:"HPF",value:centerModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:centerModel.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.centerEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.centerEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType:centerModel.hpType; lpType:centerModel.lpType
-                                    onFieldEdited:function(index,value){if(index===0)centerModel.setHpfHz(value);else centerModel.setLpfHz(value)}
-                                    onHpTypeEdited:function(value){centerModel.setHpType(value)}
-                                    onLpTypeEdited:function(value){centerModel.setLpType(value)}
+                                    hpType:root.engine.centerEqBands.hpType; lpType:root.engine.centerEqBands.lpType
+                                    onFieldEdited:function(index,value){if(index===0)root.engine.centerEqBands.setHpfHz(value);else root.engine.centerEqBands.setLpfHz(value)}
+                                    onHpTypeEdited:function(value){root.engine.centerEqBands.setHpType(value)}
+                                    onLpTypeEdited:function(value){root.engine.centerEqBands.setLpType(value)}
                                 }
                             }
                         }
@@ -310,28 +328,32 @@ Item {
                                     Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
                                     title:"Subwoofer Bus"
                                     channels:[
-                                        {label:"SUB",value:12,from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
-                                        {label:"MIC",value:0,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"MUSIC",value:88,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REV",value:0,from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"ECHO",value:0,from:0,to:100,step:1,unit:"%",decimals:0}
+                                        {label:"SUB",value:Number(root.nestedValue("outputs","sub","outputVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
+                                        {label:"MIC",value:Number(root.nestedValue("outputs","sub","micDirect",0)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"MUSIC",value:Number(root.nestedValue("outputs","sub","musicLevel",88)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"REV",value:Number(root.nestedValue("outputs","sub","reverbLevel",0)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"ECHO",value:Number(root.nestedValue("outputs","sub","echoLevel",0)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {
                                     Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
-                                    title:"Output Compressor"; threshold:-20; ratio:100; attack:25; release:100
+                                    title:"Output Compressor"
+                                    threshold:Number(root.nestedValue("outputs","sub","compThresholdDb",-20))
+                                    ratio:Number(root.nestedValue("outputs","sub","compRatio",100))
+                                    attack:Number(root.nestedValue("outputs","sub","attackMs",25))
+                                    release:Number(root.nestedValue("outputs","sub","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
-                                        {label:"HPF",value:subModel.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:subModel.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.subEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.subEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType:subModel.hpType; lpType:subModel.lpType
-                                    onFieldEdited:function(index,value){if(index===0)subModel.setHpfHz(value);else subModel.setLpfHz(value)}
-                                    onHpTypeEdited:function(value){subModel.setHpType(value)}
-                                    onLpTypeEdited:function(value){subModel.setLpType(value)}
+                                    hpType:root.engine.subEqBands.hpType; lpType:root.engine.subEqBands.lpType
+                                    onFieldEdited:function(index,value){if(index===0)root.engine.subEqBands.setHpfHz(value);else root.engine.subEqBands.setLpfHz(value)}
+                                    onHpTypeEdited:function(value){root.engine.subEqBands.setHpType(value)}
+                                    onLpTypeEdited:function(value){root.engine.subEqBands.setLpType(value)}
                                 }
                             }
                         }
