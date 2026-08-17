@@ -1,0 +1,229 @@
+name: Cross-platform Package
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'qml/**'
+      - 'assets/**'
+      - 'resources/**'
+      - 'packaging/**'
+      - '.github/workflows/cross-platform-package.yml'
+
+jobs:
+  windows-packages:
+    name: Windows installer + portable
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+          cmake --build build --config Release
+
+      - name: Deploy Qt runtime
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package,dist | Out-Null
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
+          windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
+
+      - name: Runtime self-tests
+        shell: pwsh
+        run: |
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath 'package/SONKUPIK-STUDIO-Native-UI.exe' -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
+          }
+
+      - name: Build unsigned per-user installer and portable single EXE
+        shell: pwsh
+        run: |
+          $makensis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe'
+          if (-not (Test-Path $makensis)) {
+            choco install nsis -y --no-progress
+          }
+          $makensis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe'
+          if (-not (Test-Path $makensis)) { throw 'makensis.exe not found' }
+          $appDir = (Resolve-Path package).Path
+          $distDir = (Resolve-Path dist).Path
+          & $makensis "/DAPP_DIR=$appDir" "/DOUT_FILE=$distDir\SONKUPIK-STUDIO-v0.1.1-Windows-Setup.exe" "/DAPP_VERSION=0.1.1" packaging/windows/installer.nsi
+          if ($LASTEXITCODE -ne 0) { throw 'Installer packaging failed' }
+          & $makensis "/DAPP_DIR=$appDir" "/DOUT_FILE=$distDir\SONKUPIK-STUDIO-v0.1.1-Windows-Portable.exe" "/DAPP_VERSION=0.1.1" packaging/windows/portable.nsi
+          if ($LASTEXITCODE -ne 0) { throw 'Portable packaging failed' }
+          Compress-Archive -Path package/* -DestinationPath dist/SONKUPIK-STUDIO-v0.1.1-Windows-Folder.zip -CompressionLevel Optimal
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: dist/*
+          if-no-files-found: error
+
+  macos-arm64:
+    name: macOS Apple Silicon
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'clang_64'
+          cache: true
+
+      - name: Configure and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Deploy unsigned app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='build/SONKUPIK-STUDIO-Native-UI.app'
+          test -d "$APP"
+          macdeployqt "$APP" -qmldir=qml -no-codesign -always-overwrite -verbose=1
+          "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --font-self-test
+          "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --protocol-self-test
+          "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --engine-self-test
+
+      - name: Create DMG and ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist dmgroot
+          cp -R build/SONKUPIK-STUDIO-Native-UI.app dmgroot/'SONKUPIK STUDIO.app'
+          ln -s /Applications dmgroot/Applications
+          hdiutil create -volname 'SONKUPIK STUDIO' -srcfolder dmgroot -ov -format UDZO dist/SONKUPIK-STUDIO-v0.1.1-macOS-Apple-Silicon.dmg
+          ditto -c -k --sequesterRsrc --keepParent build/SONKUPIK-STUDIO-Native-UI.app dist/SONKUPIK-STUDIO-v0.1.1-macOS-Apple-Silicon.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-arm64
+          path: dist/*
+          if-no-files-found: error
+
+  macos-intel:
+    name: macOS Intel
+    runs-on: macos-15-intel
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'clang_64'
+          cache: true
+
+      - name: Configure and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+
+      - name: Deploy unsigned app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='build/SONKUPIK-STUDIO-Native-UI.app'
+          test -d "$APP"
+          macdeployqt "$APP" -qmldir=qml -no-codesign -always-overwrite -verbose=1
+          "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --font-self-test
+          "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --protocol-self-test
+          "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --engine-self-test
+
+      - name: Create DMG and ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist dmgroot
+          cp -R build/SONKUPIK-STUDIO-Native-UI.app dmgroot/'SONKUPIK STUDIO.app'
+          ln -s /Applications dmgroot/Applications
+          hdiutil create -volname 'SONKUPIK STUDIO' -srcfolder dmgroot -ov -format UDZO dist/SONKUPIK-STUDIO-v0.1.1-macOS-Intel.dmg
+          ditto -c -k --sequesterRsrc --keepParent build/SONKUPIK-STUDIO-Native-UI.app dist/SONKUPIK-STUDIO-v0.1.1-macOS-Intel.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macos-intel
+          path: dist/*
+          if-no-files-found: error
+
+  linux-x86_64:
+    name: Linux x86_64 AppImage
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux runtime/build helpers
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgl1-mesa-dev libxcb-cursor0 libxkbcommon-x11-0 libfuse2 patchelf
+
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'linux_gcc_64'
+          cache: true
+
+      - name: Configure and build
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+          QT_QPA_PLATFORM=offscreen build/SONKUPIK-STUDIO-Native-UI --font-self-test
+          QT_QPA_PLATFORM=offscreen build/SONKUPIK-STUDIO-Native-UI --protocol-self-test
+          QT_QPA_PLATFORM=offscreen build/SONKUPIK-STUDIO-Native-UI --engine-self-test
+
+      - name: Create self-contained AppDir and AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p AppDir/usr/bin AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/512x512/apps dist
+          cp build/SONKUPIK-STUDIO-Native-UI AppDir/usr/bin/
+          cp packaging/linux/sonkupik-studio.desktop AppDir/usr/share/applications/
+          cp assets/sonkupik-logo.png AppDir/usr/share/icons/hicolor/512x512/apps/sonkupik-studio.png
+          cp packaging/linux/sonkupik-studio.desktop AppDir/sonkupik-studio.desktop
+          cp assets/sonkupik-logo.png AppDir/sonkupik-studio.png
+
+          curl -L --fail --retry 3 -o linuxdeploy.AppImage https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          curl -L --fail --retry 3 -o linuxdeploy-plugin-qt.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy.AppImage linuxdeploy-plugin-qt.AppImage
+
+          export LINUXDEPLOY_PLUGIN_QT=linuxdeploy-plugin-qt.AppImage
+          export QML_SOURCES_PATHS="$GITHUB_WORKSPACE/qml"
+          export OUTPUT="$GITHUB_WORKSPACE/dist/SONKUPIK-STUDIO-v0.1.1-Linux-x86_64.AppImage"
+          ./linuxdeploy.AppImage \
+            --appdir AppDir \
+            --executable AppDir/usr/bin/SONKUPIK-STUDIO-Native-UI \
+            --desktop-file AppDir/sonkupik-studio.desktop \
+            --icon-file AppDir/sonkupik-studio.png \
+            --plugin qt \
+            --output appimage
+          test -s "$OUTPUT"
+          chmod +x "$OUTPUT"
+          tar -C AppDir -czf dist/SONKUPIK-STUDIO-v0.1.1-Linux-x86_64-portable.tar.gz .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux-x86_64
+          path: dist/*
+          if-no-files-found: error
