@@ -284,10 +284,11 @@ void K500DeviceManager::requestNextMemoryBlock()
 
     m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_memoryReadOffset);
     const int offset = m_memoryReadOffset;
+    const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
     setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
                      .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
     if (!writeFrame(K500Protocol::readBlock(static_cast<quint16>(offset),
-                                             static_cast<quint16>(m_pendingReadLength)),
+                                             static_cast<quint16>(m_pendingReadLength), mode),
                     QStringLiteral("Read 0x%1 len %2")
                         .arg(offset, 4, 16, QLatin1Char('0')).arg(m_pendingReadLength))) {
         return;
@@ -319,8 +320,6 @@ void K500DeviceManager::acceptMemoryBlock(const QByteArray &data)
         return;
     }
 
-    // Match donor web/native pacing so USB HID and Bluetooth firmware both get
-    // a short gap between CMD 0x40 reads instead of being flooded.
     QTimer::singleShot(ActiveMemoryInterBlockMs, this,
                        &K500DeviceManager::requestNextMemoryBlock);
 }
@@ -386,9 +385,6 @@ void K500DeviceManager::connectionTimeout()
     }
 
     if (m_stage == Stage::AwaitHandshake) {
-        // Some firmware revisions do not surface 0xC0 reliably even though
-        // direct active-memory read is valid. Fall through to the same safe
-        // full readback instead of enabling LIVE prematurely.
         requestActiveMemoryReadback();
         return;
     }
