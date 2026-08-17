@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 0.1.0 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 0.1.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -108,5 +108,17 @@ endif()
 set_target_properties(sonkupik_studio_native PROPERTIES
     OUTPUT_NAME "SONKUPIK-STUDIO-Native-UI"
 )
+
+if(APPLE)
+    # macOS must ship as a Finder application bundle. Signing/notarization is
+    # intentionally left to the distributor; CI produces unsigned bundles.
+    set_target_properties(sonkupik_studio_native PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER "com.masarray.sonkupikstudio"
+        MACOSX_BUNDLE_BUNDLE_NAME "SONKUPIK STUDIO"
+        MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
+        MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}"
+    )
+endif()
 
 qt_import_qml_plugins(sonkupik_studio_native)
