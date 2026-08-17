@@ -5,6 +5,8 @@ SilentInstall silent
 AutoCloseWindow true
 ShowInstDetails nevershow
 
+!include "FileFunc.nsh"
+
 !ifndef APP_DIR
   !error "APP_DIR define is required"
 !endif
@@ -26,6 +28,7 @@ Section
   # $PLUGINSDIR is a unique per-launch temporary folder managed by NSIS.
   # This keeps the portable build single-file on disk, requires no admin
   # privileges and removes extracted runtime files when the app exits.
-  ExecWait '"$PLUGINSDIR\SONKUPIK-STUDIO\SONKUPIK-STUDIO-Native-UI.exe"' $0
+  ${GetParameters} $R0
+  ExecWait '"$PLUGINSDIR\SONKUPIK-STUDIO\SONKUPIK-STUDIO-Native-UI.exe" $R0' $0
   SetErrorLevel $0
 SectionEnd
