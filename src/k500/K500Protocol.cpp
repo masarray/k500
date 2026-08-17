@@ -101,7 +101,7 @@ QByteArray playerCommand(const QString &command)
     return K500Frame::build(bytes({0x03, 0x06, action, 0x05}));
 }
 
-QByteArray readBlock(quint16 offset, quint16 length)
+QByteArray readBlock(quint16 offset, quint16 length, quint8 mode)
 {
     QByteArray body;
     body.reserve(7);
@@ -109,7 +109,7 @@ QByteArray readBlock(quint16 offset, quint16 length)
     body.append(char(0x40));
     appendU16Le(body, offset);
     appendU16Le(body, length);
-    body.append(char(0x63));
+    body.append(char(mode));
     return K500Frame::build(body);
 }
 
@@ -212,6 +212,13 @@ bool selfTest(QString *error)
         return fail(QStringLiteral("heartbeat frame mismatch"));
     if (K500Frame::toUsbFrame(heartbeat()) != bytes({0xAA, 0x01, 0x00, 0x1C, 0xE3}))
         return fail(QStringLiteral("USB heartbeat framing mismatch"));
+
+    if (readBlock(0x0000, 0x003A, 0x63)
+        != bytes({0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x63, 0x1D}))
+        return fail(QStringLiteral("Bluetooth read-block framing mismatch"));
+    if (readBlock(0x0000, 0x003A, 0x00)
+        != bytes({0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80}))
+        return fail(QStringLiteral("USB read-block framing mismatch"));
 
     K500EqBand band;
     band.frequencyHz = 355.0;
