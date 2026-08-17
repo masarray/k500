@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=SONKUPIK STUDIO
+Comment=Native K500 audio processor control studio
+Exec=SONKUPIK-STUDIO-Native-UI
+Icon=sonkupik-studio
+Terminal=false
+Categories=AudioVideo;Audio;
+StartupNotify=true
