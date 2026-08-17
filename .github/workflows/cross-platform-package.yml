@@ -67,6 +67,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Portable packaging failed' }
           Compress-Archive -Path package/* -DestinationPath dist/SONKUPIK-STUDIO-v0.1.1-Windows-Folder.zip -CompressionLevel Optimal
 
+      - name: Portable single-EXE self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath 'dist/SONKUPIK-STUDIO-v0.1.1-Windows-Portable.exe' -ArgumentList '--font-self-test' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Portable wrapper self-test failed with exit code $($p.ExitCode)" }
+
       - uses: actions/upload-artifact@v4
         with:
           name: release-windows
@@ -92,13 +98,15 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
 
-      - name: Deploy unsigned app bundle
+      - name: Deploy non-Developer-ID app bundle
         shell: bash
         run: |
           set -euo pipefail
           APP='build/SONKUPIK-STUDIO-Native-UI.app'
           test -d "$APP"
-          macdeployqt "$APP" -qmldir=qml -no-codesign -always-overwrite -verbose=1
+          # Qt 6.8 macdeployqt performs free ad-hoc signing as part of deployment.
+          # No Apple Developer ID certificate, hardened runtime or notarization is used.
+          macdeployqt "$APP" -qmldir=qml -always-overwrite -verbose=1
           "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --font-self-test
           "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --protocol-self-test
           "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --engine-self-test
@@ -138,13 +146,15 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
           cmake --build build --config Release
 
-      - name: Deploy unsigned app bundle
+      - name: Deploy non-Developer-ID app bundle
         shell: bash
         run: |
           set -euo pipefail
           APP='build/SONKUPIK-STUDIO-Native-UI.app'
           test -d "$APP"
-          macdeployqt "$APP" -qmldir=qml -no-codesign -always-overwrite -verbose=1
+          # Qt 6.8 macdeployqt performs free ad-hoc signing as part of deployment.
+          # No Apple Developer ID certificate, hardened runtime or notarization is used.
+          macdeployqt "$APP" -qmldir=qml -always-overwrite -verbose=1
           "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --font-self-test
           "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --protocol-self-test
           "$APP/Contents/MacOS/SONKUPIK-STUDIO-Native-UI" --engine-self-test
