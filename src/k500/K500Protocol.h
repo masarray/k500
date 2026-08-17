@@ -32,7 +32,7 @@ QByteArray heartbeat();
 QByteArray handshake();
 QByteArray mute(bool enabled);
 QByteArray playerCommand(const QString &command);
-QByteArray readBlock(quint16 offset, quint16 length);
+QByteArray readBlock(quint16 offset, quint16 length, quint8 mode = 0x63);
 QByteArray eqWrite(const QString &section, int bandIndexZeroBased, const K500EqBand &band);
 QByteArray crossoverWrite(const QString &section,
                           const QString &kind,

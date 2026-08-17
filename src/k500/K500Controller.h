@@ -24,6 +24,7 @@ public:
 public slots:
     void setLiveEnabled(bool enabled);
     void setDeviceScalars(const QByteArray &scalars);
+    void hydrateFromDeviceMemory(const QByteArray &memory);
     void clearDeviceState();
     void handleStateEdit(const QString &path, const QVariant &value);
 

@@ -14,6 +14,11 @@ constexpr int ProbeTimeoutMs = 1350;
 constexpr int HandshakeTimeoutMs = 2200;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int ConnectionWatchdogMs = 12000;
+
+// Exact donor/native active-memory readback used by the web editor.
+constexpr int ActiveMemorySize = 0x03AB;       // 0x0000..0x03AA = 939 bytes
+constexpr int ActiveMemoryBlockSize = 0x003A;  // 58-byte CMD 0x40 chunks
+constexpr int ActiveMemoryInterBlockMs = 35;
 }
 
 K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent)
@@ -39,6 +44,8 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
                 this, &K500DeviceManager::sendLiveFrame);
         connect(this, &K500DeviceManager::deviceScalarsReady,
                 m_controller, &K500Controller::setDeviceScalars);
+        connect(this, &K500DeviceManager::activeMemoryReady,
+                m_controller, &K500Controller::hydrateFromDeviceMemory);
     }
 
     QSettings settings;
@@ -165,7 +172,6 @@ void K500DeviceManager::beginBluetoothScan()
         return;
     }
 
-    // Native reconnect path: try the last protocol-verified K500 COM port first.
     if (!m_lastKnownSerialPort.isEmpty()) {
         const int index = m_serialCandidates.indexOf(m_lastKnownSerialPort);
         if (index > 0)
@@ -206,7 +212,6 @@ void K500DeviceManager::openNextBluetoothCandidate()
 
     m_stage = Stage::ProbeBluetooth;
     m_probeAttempt = 0;
-    // Bluetooth RFCOMM can need a short warm-up after the COM handle opens.
     m_probeDelayTimer.start(m_currentSerialPort == m_lastKnownSerialPort ? 500 : 250);
 }
 
@@ -257,21 +262,73 @@ void K500DeviceManager::beginSync()
     m_responseTimer.start(HandshakeTimeoutMs);
 }
 
-void K500DeviceManager::requestScalarReadback()
+void K500DeviceManager::requestActiveMemoryReadback()
 {
     m_responseTimer.stop();
-    m_stage = Stage::AwaitScalars;
-    setPortLabel(QStringLiteral("%1 · reading device").arg(m_io.label()));
-    if (!writeFrame(K500Protocol::readBlock(0x0000, 0x0040),
-                    QStringLiteral("Read scalars 0x00..0x3F")))
+    m_stage = Stage::AwaitMemoryBlock;
+    m_activeMemory = QByteArray(ActiveMemorySize, char(0));
+    m_memoryReadOffset = 0;
+    m_pendingReadLength = 0;
+    setPortLabel(QStringLiteral("%1 · reading KTV 0/%2").arg(m_io.label()).arg(ActiveMemorySize));
+    requestNextMemoryBlock();
+}
+
+void K500DeviceManager::requestNextMemoryBlock()
+{
+    if (m_stage != Stage::AwaitMemoryBlock)
         return;
+    if (m_memoryReadOffset >= ActiveMemorySize) {
+        finishConnected();
+        return;
+    }
+
+    m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_memoryReadOffset);
+    const int offset = m_memoryReadOffset;
+    const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
+    setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
+                     .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
+    if (!writeFrame(K500Protocol::readBlock(static_cast<quint16>(offset),
+                                             static_cast<quint16>(m_pendingReadLength), mode),
+                    QStringLiteral("Read 0x%1 len %2")
+                        .arg(offset, 4, 16, QLatin1Char('0')).arg(m_pendingReadLength))) {
+        return;
+    }
     m_responseTimer.start(ReadbackTimeoutMs);
 }
 
-void K500DeviceManager::finishConnected(const QByteArray &scalars)
+void K500DeviceManager::acceptMemoryBlock(const QByteArray &data)
 {
-    if (scalars.size() < 0x40) {
-        setError(QStringLiteral("K500 scalar readback terlalu pendek (%1 byte).").arg(scalars.size()));
+    m_responseTimer.stop();
+    if (m_stage != Stage::AwaitMemoryBlock)
+        return;
+    if (m_pendingReadLength <= 0 || data.size() < m_pendingReadLength) {
+        setError(QStringLiteral("K500 readback block 0x%1 terlalu pendek: %2/%3 byte.")
+                     .arg(m_memoryReadOffset, 4, 16, QLatin1Char('0'))
+                     .arg(data.size()).arg(m_pendingReadLength));
+        resetConnectionState(true);
+        setStatus(QStringLiteral("error"));
+        return;
+    }
+
+    m_activeMemory.replace(m_memoryReadOffset, m_pendingReadLength,
+                           data.left(m_pendingReadLength));
+    m_memoryReadOffset += m_pendingReadLength;
+    m_pendingReadLength = 0;
+
+    if (m_memoryReadOffset >= ActiveMemorySize) {
+        finishConnected();
+        return;
+    }
+
+    QTimer::singleShot(ActiveMemoryInterBlockMs, this,
+                       &K500DeviceManager::requestNextMemoryBlock);
+}
+
+void K500DeviceManager::finishConnected()
+{
+    if (m_activeMemory.size() < ActiveMemorySize || m_memoryReadOffset < ActiveMemorySize) {
+        setError(QStringLiteral("K500 active-memory readback tidak lengkap (%1/%2 byte).")
+                     .arg(m_memoryReadOffset).arg(ActiveMemorySize));
         resetConnectionState(true);
         setStatus(QStringLiteral("error"));
         return;
@@ -279,10 +336,18 @@ void K500DeviceManager::finishConnected(const QByteArray &scalars)
 
     m_responseTimer.stop();
     m_stage = Stage::Ready;
-    emit deviceScalarsReady(scalars.left(0x40));
+
+    // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.
+    // Only after the complete 939-byte snapshot has propagated do edits become
+    // eligible to transmit back to the K500.
+    emit deviceScalarsReady(m_activeMemory.left(0x40));
+    emit activeMemoryReady(m_activeMemory);
     setLiveEnabled(true);
     setError({});
     setStatus(QStringLiteral("connected"));
+
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),
+                 QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));
 
     if (m_io.kind() == K500WinIo::Kind::Serial) {
         m_lastKnownSerialPort = m_currentSerialPort;
@@ -320,15 +385,13 @@ void K500DeviceManager::connectionTimeout()
     }
 
     if (m_stage == Stage::AwaitHandshake) {
-        // Some firmware revisions do not surface the 0xC0 handshake response
-        // reliably even though direct block read is valid. Use the same safe
-        // scalar read as a fallback rather than enabling LIVE prematurely.
-        requestScalarReadback();
+        requestActiveMemoryReadback();
         return;
     }
 
-    if (m_stage == Stage::AwaitScalars) {
-        setError(QStringLiteral("Timeout membaca scalar K500 0x00..0x3F. LIVE tetap OFF untuk mencegah overwrite state device."));
+    if (m_stage == Stage::AwaitMemoryBlock) {
+        setError(QStringLiteral("Timeout membaca active memory K500 di 0x%1. LIVE tetap OFF agar state device tidak tertimpa.")
+                     .arg(m_memoryReadOffset, 4, 16, QLatin1Char('0')));
         resetConnectionState(true);
         setStatus(QStringLiteral("error"));
     }
@@ -377,16 +440,15 @@ void K500DeviceManager::handleResponse(const K500Response &response)
     }
 
     if (m_stage == Stage::AwaitHandshake && response.rsp == 0xC0) {
-        requestScalarReadback();
+        requestActiveMemoryReadback();
         return;
     }
 
-    if (m_stage == Stage::AwaitScalars && response.rsp == 0xBF) {
-        finishConnected(response.data);
+    if (m_stage == Stage::AwaitMemoryBlock && response.rsp == 0xBF) {
+        acceptMemoryBlock(response.data);
         return;
     }
 
-    // During steady state heartbeat/status replies only refresh liveness.
     if (m_stage == Stage::Ready && response.rsp == 0xE3)
         return;
 }
@@ -397,8 +459,6 @@ void K500DeviceManager::onIoError(const QString &message)
         return;
 
     if (m_stage == Stage::ProbeBluetooth) {
-        // A Windows COM entry can be incoming-only, stale or disappear while
-        // scanning. Treat that as a rejected candidate, not a fatal K500 error.
         setError({});
         openNextBluetoothCandidate();
         return;
@@ -418,7 +478,6 @@ bool K500DeviceManager::writeFrame(const QByteArray &frame, const QString &label
     if (!m_io.writeProtocolFrame(frame, &error)) {
         setError(error);
         if (m_stage == Stage::ProbeBluetooth) {
-            // Preserve probe stage so the caller can move to the next COM port.
             m_io.close();
             return false;
         }
@@ -446,6 +505,9 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     setLiveEnabled(false);
     if (m_controller)
         m_controller->clearDeviceState();
+    m_activeMemory.clear();
+    m_memoryReadOffset = 0;
+    m_pendingReadLength = 0;
     m_muted = false;
     emit mutedChanged();
     if (!keepError)

@@ -5,13 +5,29 @@ Item {
     id: root
     required property var engine
 
-    property int selectedDeviceSlot: 3
-    property var deviceSlots: [
+    readonly property var defaultDeviceSlots: [
         "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
         "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
         "MC CERAMAH GEN 3", "ADZAN MEKAH GEN3"
     ]
+    function systemValue(key, fallback) {
+        var state = engine && engine.deviceState ? engine.deviceState : null
+        var system = state ? state.system : null
+        var value = system ? system[key] : undefined
+        return value === undefined || value === null || value === "" ? fallback : value
+    }
+    readonly property int activeDeviceSlot: Math.max(0, Math.min(9, Number(systemValue("deviceModeIndex", 4)) - 1))
+    property int selectedDeviceSlot: 3
+    property var deviceSlots: {
+        var names = systemValue("deviceModeNames", root.defaultDeviceSlots)
+        return names && names.length === 10 ? names : root.defaultDeviceSlots
+    }
     readonly property int lowerRackHeight: 304
+
+    Connections {
+        target: root.engine
+        function onDeviceStateChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -109,7 +125,7 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth:true
-                            Text{Layout.fillWidth:true;text:"4 · KARAOKE ARTIST";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:12;font.weight:Font.Bold}
+                            Text{Layout.fillWidth:true;text:(root.activeDeviceSlot+1)+" · "+String(root.deviceSlots[root.activeDeviceSlot] || "K500 DEVICE");color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:12;font.weight:Font.Bold}
                             Rectangle{width:52;height:24;radius:12;color:"#0B1715";border.width:1;border.color:"#31584E";Text{anchors.centerIn:parent;text:"ACTIVE";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}}
                         }
 
@@ -134,7 +150,7 @@ Item {
                                         width:parent.width
                                         height:27
                                         radius:6
-                                        readonly property bool active:index===3
+                                        readonly property bool active:index===root.activeDeviceSlot
                                         readonly property bool selected:index===root.selectedDeviceSlot
                                         color:selected?"#151B20":"#0D1115"
                                         border.width:1
@@ -187,9 +203,9 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:12;spacing:8
                             Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
-                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"KTV_BT_00AB12";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
+                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:String(root.systemValue("btName","KTV_BT_00AB12"));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
                             Text{text:"BLE NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
-                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"KTV_BLE_00AB12";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
+                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:String(root.systemValue("bleName","KTV_BLE_00AB12"));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
                             Item{Layout.fillHeight:true}
                             RowLayout{Layout.fillWidth:true;spacing:8;SoftButton{Layout.fillWidth:true;text:"Modify";compact:true}SoftButton{Layout.fillWidth:true;text:"Reset";compact:true}}
                         }
@@ -250,11 +266,11 @@ Item {
                 Layout.preferredWidth:466
                 title:"Startup Limits"
                 channels:[
-                    {label:"MUSIC INIT",value:25,from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"MUSIC MAX",value:84,from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"MIC INIT",value:25,from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"MIC MAX",value:84,from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"EFFECT INIT",value:25,from:0,to:84,step:1,unit:"",decimals:0}
+                    {label:"MUSIC INIT",value:Number(root.systemValue("musicInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MUSIC MAX",value:Number(root.systemValue("musicMaxVol",84)),from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MIC INIT",value:Number(root.systemValue("micInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MIC MAX",value:Number(root.systemValue("micMaxVol",84)),from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"EFFECT INIT",value:Number(root.systemValue("effectInitLevel",25)),from:0,to:84,step:1,unit:"",decimals:0}
                 ]
             }
 
@@ -277,7 +293,10 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
-                                        model:[{label:"UDISK REC",value:4,from:1,to:6},{label:"USB REC",value:4,from:1,to:6}]
+                                        model:[
+                                            {label:"UDISK REC",value:Number(root.systemValue("uDiskRecordVol",4)),from:1,to:6},
+                                            {label:"USB REC",value:Number(root.systemValue("usbRecordVol",4)),from:1,to:6}
+                                        ]
                                         delegate:ColumnLayout {
                                             id: recChannel
                                             required property var modelData

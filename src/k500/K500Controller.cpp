@@ -5,6 +5,38 @@
 #include <QRegularExpression>
 #include <QtMath>
 
+namespace {
+quint8 byteAt(const QByteArray &bytes, int offset, quint8 fallback = 0)
+{
+    if (offset < 0 || offset >= bytes.size())
+        return fallback;
+    return static_cast<quint8>(static_cast<unsigned char>(bytes.at(offset)));
+}
+
+int liveOffsetForFileScalar(int fileOffset)
+{
+    if (fileOffset >= 0x0008 && fileOffset <= 0x0096)
+        return fileOffset - 0x08;
+    if (fileOffset >= 0x0098 && fileOffset <= 0x00EF)
+        return fileOffset - 0x09;
+    return -1;
+}
+
+quint8 fileU8(const QByteArray &memory, int fileOffset, quint8 fallback = 0)
+{
+    return byteAt(memory, liveOffsetForFileScalar(fileOffset), fallback);
+}
+
+quint16 fileU16(const QByteArray &memory, int fileOffset, quint16 fallback = 0)
+{
+    const int offset = liveOffsetForFileScalar(fileOffset);
+    if (offset < 0 || offset + 1 >= memory.size())
+        return fallback;
+    return static_cast<quint16>(byteAt(memory, offset)
+        | (static_cast<quint16>(byteAt(memory, offset + 1)) << 8));
+}
+}
+
 K500Controller::K500Controller(QObject *parent)
     : QObject(parent)
 {
@@ -36,6 +68,30 @@ void K500Controller::setDeviceScalars(const QByteArray &scalars)
         emit deviceReadbackReadyChanged();
 }
 
+void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)
+{
+    if (memory.size() < 0x40)
+        return;
+
+    // Seed every value that participates in a mirrored Top Music write before
+    // LIVE is enabled. Otherwise editing one fader could send stale defaults
+    // for its neighbouring fields and silently overwrite current K500 state.
+    setDeviceScalars(memory.left(0x40));
+    m_music.topMusicVol = fileU8(memory, 0x0008, 35);
+    m_music.musicInitVol = fileU8(memory, 0x000B, 25);
+    m_music.sourceRaw = fileU8(memory, 0x000E, 2);
+    m_music.key = static_cast<int>(fileU8(memory, 0x0011, 7)) - 7;
+    m_music.input1GainDb = static_cast<int>(fileU8(memory, 0x001E, 9)) - 12;
+    m_music.input2GainDb = static_cast<int>(fileU8(memory, 0x001F, 9)) - 12;
+    m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, 0x0020, 9)) - 12;
+    m_music.uDiskGainDb = static_cast<int>(fileU8(memory, 0x0021, 8)) - 12;
+    m_music.digitalGainDb = static_cast<int>(fileU8(memory, 0x0022, 8)) - 12;
+    if (memory.size() >= 0x0097) {
+        m_musicHpfHz = fileU16(memory, 0x009C, 20);
+        m_musicLpfHz = fileU16(memory, 0x009E, 20000);
+    }
+}
+
 void K500Controller::clearDeviceState()
 {
     const bool wasReady = deviceReadbackReady();
@@ -50,27 +106,31 @@ void K500Controller::clearDeviceState()
 
 void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
 {
-    static const QRegularExpression musicBandPath(
-        QStringLiteral(R"(^eq\.music\.bands\.(\d+)$)"));
+    static const QRegularExpression eqBandPath(
+        QStringLiteral(R"(^eq\.([^.]+)\.bands\.(\d+)$)"));
 
-    if (const auto match = musicBandPath.match(path); match.hasMatch()) {
+    if (const auto match = eqBandPath.match(path); match.hasMatch()) {
         if (!m_liveEnabled)
             return;
+        const QString section = match.captured(1);
         const QVariantMap map = value.toMap();
         K500EqBand band;
         band.frequencyHz = map.value(QStringLiteral("frequency"), 1000.0).toDouble();
         band.gainDb = map.value(QStringLiteral("gain"), 0.0).toDouble();
         band.q = map.value(QStringLiteral("q"), 1.0).toDouble();
         band.type = map.value(QStringLiteral("type"), QStringLiteral("BELL")).toString();
-        const int index = match.captured(1).toInt();
-        const QByteArray frame = K500Protocol::eqWrite(QStringLiteral("music"), index, band);
+        const int index = match.captured(2).toInt();
+        const QByteArray frame = K500Protocol::eqWrite(section, index, band);
         if (!frame.isEmpty()) {
-            queueEqFrame(QStringLiteral("music:%1").arg(index), frame,
-                         QStringLiteral("Music EQ B%1 · %2Hz %3dB Q%4")
+            queueEqFrame(QStringLiteral("%1:%2").arg(section).arg(index), frame,
+                         QStringLiteral("%1 EQ B%2 · %3Hz %4dB Q%5")
+                             .arg(section)
                              .arg(index + 1)
                              .arg(qRound(band.frequencyHz))
                              .arg(band.gainDb, 0, 'f', 1)
                              .arg(band.q, 0, 'f', 1));
+        } else {
+            emit unsupportedPath(path);
         }
         return;
     }
@@ -119,9 +179,8 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         return;
     }
 
-    // These controls exist in the new QML but their native live command is not
-    // yet sufficiently verified in the donor repository. Keep them editable in
-    // the model, but never guess a hardware write.
+    // Controls without a byte-verified native write remain editable in the UI,
+    // but are never guessed onto the hardware bus.
     emit unsupportedPath(path);
 }
 
