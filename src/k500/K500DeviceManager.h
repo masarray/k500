@@ -58,6 +58,7 @@ signals:
     void liveEnabledChanged();
     void mutedChanged();
     void deviceScalarsReady(const QByteArray &scalars);
+    void activeMemoryReady(const QByteArray &memory);
     void logLine(const QString &direction, const QString &label, const QString &hex);
 
 private:
@@ -66,7 +67,7 @@ private:
         ProbeBluetooth,
         ProbeUsb,
         AwaitHandshake,
-        AwaitScalars,
+        AwaitMemoryBlock,
         Ready,
     };
 
@@ -80,8 +81,10 @@ private:
     void sendProbeHeartbeat();
     void beginUsbProbe();
     void beginSync();
-    void requestScalarReadback();
-    void finishConnected(const QByteArray &scalars);
+    void requestActiveMemoryReadback();
+    void requestNextMemoryBlock();
+    void acceptMemoryBlock(const QByteArray &data);
+    void finishConnected();
     void connectionTimeout();
     void heartbeatTick();
 
@@ -110,6 +113,10 @@ private:
     QString m_currentSerialPort;
     QString m_lastKnownSerialPort;
     int m_probeAttempt = 0;
+
+    QByteArray m_activeMemory;
+    int m_memoryReadOffset = 0;
+    int m_pendingReadLength = 0;
 
     QTimer m_responseTimer;
     QTimer m_probeDelayTimer;
