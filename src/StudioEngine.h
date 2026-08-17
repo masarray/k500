@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QAbstractListModel>
+#include <QByteArray>
+#include <QList>
 #include <QObject>
 #include <QStringList>
 #include <QVariantMap>
@@ -40,15 +42,21 @@ public:
     Q_INVOKABLE void resetAll();
     Q_INVOKABLE void setHpfHz(double value);
     Q_INVOKABLE void setLpfHz(double value);
+    Q_INVOKABLE void setHpType(const QString &value);
+    Q_INVOKABLE void setLpType(const QString &value);
 
+    // Device-hydration helpers intentionally do not emit edit-request signals.
+    void configure(int bandCount, const QList<double> &defaultFrequencies,
+                   double hpfHz, double lpfHz,
+                   const QString &hpType, const QString &lpType);
+    void syncBand(int index, double frequency, double gain, double q, const QString &typeName);
     void syncCrossover(double hpfHz, double lpfHz,
                        const QString &hpType, const QString &lpType);
 
 signals:
     void bandChanged(int index, double frequency, double gain, double q, const QString &typeName);
     void crossoverChanged();
-    void hpfEditRequested(double value);
-    void lpfEditRequested(double value);
+    void crossoverEditRequested(const QString &field, const QVariant &value);
 
 private:
     struct Band {
@@ -58,6 +66,7 @@ private:
         QString typeName;
     };
     QList<Band> m_bands;
+    QList<double> m_defaultFrequencies{80, 160, 315, 630, 1300, 2500, 8000};
     double m_hpfHz = 20.0;
     double m_lpfHz = 20000.0;
     QString m_hpType = QStringLiteral("HP Butter 12");
@@ -68,6 +77,16 @@ class StudioEngine final : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(EqBandModel *musicEqBands READ musicEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *micAEqBands READ micAEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *micBEqBands READ micBEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *reverbEqBands READ reverbEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *echoEqBands READ echoEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *mainEqBands READ mainEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *surroundEqBands READ surroundEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *centerEqBands READ centerEqBands CONSTANT)
+    Q_PROPERTY(EqBandModel *subEqBands READ subEqBands CONSTANT)
+    Q_PROPERTY(QVariantMap deviceState READ deviceState NOTIFY deviceStateChanged)
+    Q_PROPERTY(bool deviceStateReady READ deviceStateReady NOTIFY deviceStateChanged)
     Q_PROPERTY(int musicKey READ musicKey WRITE setMusicKey NOTIFY musicKeyChanged)
     Q_PROPERTY(double noiseGate READ noiseGate WRITE setNoiseGate NOTIFY noiseGateChanged)
     Q_PROPERTY(double bass READ bass WRITE setBass NOTIFY bassChanged)
@@ -92,6 +111,17 @@ public:
     explicit StudioEngine(QObject *parent = nullptr);
 
     EqBandModel *musicEqBands() { return &m_musicEqBands; }
+    EqBandModel *micAEqBands() { return &m_micAEqBands; }
+    EqBandModel *micBEqBands() { return &m_micBEqBands; }
+    EqBandModel *reverbEqBands() { return &m_reverbEqBands; }
+    EqBandModel *echoEqBands() { return &m_echoEqBands; }
+    EqBandModel *mainEqBands() { return &m_mainEqBands; }
+    EqBandModel *surroundEqBands() { return &m_surroundEqBands; }
+    EqBandModel *centerEqBands() { return &m_centerEqBands; }
+    EqBandModel *subEqBands() { return &m_subEqBands; }
+    QVariantMap deviceState() const { return m_deviceState; }
+    bool deviceStateReady() const { return m_deviceStateReady; }
+
     int musicKey() const { return m_musicKey; }
     double noiseGate() const { return m_noiseGate; }
     double bass() const { return m_bass; }
@@ -113,6 +143,9 @@ public:
     QString lastChangedPath() const { return m_lastChangedPath; }
 
 public slots:
+    void hydrateFromDeviceMemory(const QByteArray &memory);
+    void clearDeviceState();
+
     void setMusicKey(int value);
     void setNoiseGate(double value);
     void setBass(double value);
@@ -133,6 +166,7 @@ public slots:
     void setMasterFx(double value);
 
 signals:
+    void deviceStateChanged();
     void musicKeyChanged();
     void noiseGateChanged();
     void bassChanged();
@@ -165,9 +199,22 @@ private:
         return true;
     }
 
+    void connectEqModel(EqBandModel *model, const QString &key);
     void syncMusicCrossoverModel();
 
     EqBandModel m_musicEqBands;
+    EqBandModel m_micAEqBands;
+    EqBandModel m_micBEqBands;
+    EqBandModel m_reverbEqBands;
+    EqBandModel m_echoEqBands;
+    EqBandModel m_mainEqBands;
+    EqBandModel m_surroundEqBands;
+    EqBandModel m_centerEqBands;
+    EqBandModel m_subEqBands;
+
+    QVariantMap m_deviceState;
+    bool m_deviceStateReady = false;
+
     int m_musicKey = 0;
     double m_noiseGate = -70.0;
     double m_bass = 0.0;
