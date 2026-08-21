@@ -203,41 +203,133 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
 
 bool selfTest(QString *error)
 {
+    // P0_PROTOCOL_GOLDEN_VECTORS_V1
     const auto fail = [error](const QString &message) {
         if (error) *error = message;
         return false;
     };
+    const auto expect = [&fail](const QByteArray &actual, std::initializer_list<int> expected,
+                                const QString &label) {
+        if (actual != bytes(expected))
+            return fail(label + QStringLiteral(" frame mismatch"));
+        return true;
+    };
 
-    if (heartbeat() != bytes({0xAA, 0x01, 0x1C, 0xE3}))
-        return fail(QStringLiteral("heartbeat frame mismatch"));
-    if (K500Frame::toUsbFrame(heartbeat()) != bytes({0xAA, 0x01, 0x00, 0x1C, 0xE3}))
-        return fail(QStringLiteral("USB heartbeat framing mismatch"));
+    if (!expect(heartbeat(), {0xAA, 0x01, 0x1C, 0xE3}, QStringLiteral("heartbeat")))
+        return false;
+    if (!expect(K500Frame::toUsbFrame(heartbeat()),
+                {0xAA, 0x01, 0x00, 0x1C, 0xE3}, QStringLiteral("USB heartbeat")))
+        return false;
+    if (!expect(handshake(), {0xAA, 0x01, 0x3F, 0xC0}, QStringLiteral("handshake")))
+        return false;
 
-    if (readBlock(0x0000, 0x003A, 0x63)
-        != bytes({0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x63, 0x1D}))
-        return fail(QStringLiteral("Bluetooth read-block framing mismatch"));
-    if (readBlock(0x0000, 0x003A, 0x00)
-        != bytes({0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80}))
-        return fail(QStringLiteral("USB read-block framing mismatch"));
+    if (!expect(mute(false), {0xAA, 0x03, 0x15, 0x00, 0x00, 0xE8}, QStringLiteral("mute off")))
+        return false;
+    if (!expect(mute(true), {0xAA, 0x03, 0x15, 0x01, 0x00, 0xE7}, QStringLiteral("mute on")))
+        return false;
+    if (!expect(playerCommand(QStringLiteral("rewind")),
+                {0xAA, 0x03, 0x06, 0x00, 0x05, 0xF2}, QStringLiteral("rewind")))
+        return false;
+    if (!expect(playerCommand(QStringLiteral("forward")),
+                {0xAA, 0x03, 0x06, 0x01, 0x05, 0xF1}, QStringLiteral("forward")))
+        return false;
+    if (!expect(playerCommand(QStringLiteral("playPause")),
+                {0xAA, 0x03, 0x06, 0x02, 0x05, 0xF0}, QStringLiteral("play/pause")))
+        return false;
+
+    if (!expect(readBlock(0x0000, 0x003A, 0x63),
+                {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x63, 0x1D},
+                QStringLiteral("Bluetooth read-block")))
+        return false;
+    if (!expect(readBlock(0x0000, 0x003A, 0x00),
+                {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80},
+                QStringLiteral("USB read-block")))
+        return false;
+    // 0x03AB bytes = sixteen 0x3A-byte reads followed by 0x0B bytes at 0x03A0.
+    if (!expect(readBlock(0x03A0, 0x000B, 0x63),
+                {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x63, 0xA9},
+                QStringLiteral("Bluetooth final read-block")))
+        return false;
+    if (!expect(readBlock(0x03A0, 0x000B, 0x00),
+                {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x00, 0x0C},
+                QStringLiteral("USB final read-block")))
+        return false;
 
     K500EqBand band;
     band.frequencyHz = 355.0;
     band.gainDb = -11.1;
     band.q = 1.0;
-    if (eqWrite(QStringLiteral("music"), 2, band)
-        != bytes({0xAA, 0x09, 0x03, 0x02, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x60, 0x33}))
-        return fail(QStringLiteral("music EQ frame mismatch"));
+    if (!expect(eqWrite(QStringLiteral("music"), 2, band),
+                {0xAA, 0x09, 0x03, 0x02, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x60, 0x33},
+                QStringLiteral("music EQ")))
+        return false;
+    if (!expect(eqWrite(QStringLiteral("micA"), 2, band),
+                {0xAA, 0x09, 0x03, 0x00, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x00, 0x95},
+                QStringLiteral("mic A EQ")))
+        return false;
+    if (!expect(eqWrite(QStringLiteral("sub"), 2, band),
+                {0xAA, 0x09, 0x03, 0x08, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x00, 0x8D},
+                QStringLiteral("sub EQ")))
+        return false;
+    if (!eqWrite(QStringLiteral("unknown"), 0, band).isEmpty())
+        return fail(QStringLiteral("unsupported EQ section must not produce a frame"));
 
-    if (crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0,
-                       QStringLiteral("HP Butter 12"), 0x32)
-        != bytes({0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}))
-        return fail(QStringLiteral("music crossover frame mismatch"));
+    if (!expect(crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0,
+                               QStringLiteral("HP Butter 12"), 0x32),
+                {0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54},
+                QStringLiteral("music crossover")))
+        return false;
+    // Directly captured selector values from the donor protocol documentation.
+    if (!expect(crossoverWrite(QStringLiteral("main"), QStringLiteral("lpf"), 1000.0,
+                               QStringLiteral("LP Butter 12")),
+                {0xAA, 0x06, 0x11, 0x05, 0x02, 0xE8, 0x03, 0x00, 0xF7},
+                QStringLiteral("main LPF selector")))
+        return false;
+    if (!expect(crossoverWrite(QStringLiteral("surround"), QStringLiteral("lpf"), 1000.0,
+                               QStringLiteral("LP Butter 12")),
+                {0xAA, 0x06, 0x11, 0x09, 0x02, 0xE8, 0x03, 0x00, 0xF3},
+                QStringLiteral("surround LPF selector")))
+        return false;
+    if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1000.0,
+                               QStringLiteral("LP Butter 12")),
+                {0xAA, 0x06, 0x11, 0x0D, 0x02, 0xE8, 0x03, 0x00, 0xEF},
+                QStringLiteral("center LPF selector")))
+        return false;
+    if (!expect(crossoverWrite(QStringLiteral("sub"), QStringLiteral("lpf"), 1000.0,
+                               QStringLiteral("LP Butter 12")),
+                {0xAA, 0x06, 0x11, 0x0F, 0x02, 0xE8, 0x03, 0x00, 0xED},
+                QStringLiteral("sub LPF selector")))
+        return false;
+    if (!crossoverWrite(QStringLiteral("unknown"), QStringLiteral("hpf"), 1000.0,
+                        QStringLiteral("HP Butter 12")).isEmpty())
+        return fail(QStringLiteral("unsupported crossover section must not produce a frame"));
 
     K500MusicBlockState music;
-    if (topMusicBlock(music, {})
-        != bytes({0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09,
-                  0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}))
-        return fail(QStringLiteral("top music block mismatch"));
+    if (!expect(topMusicBlock(music, {}),
+                {0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09,
+                 0x08, 0x08, 0x07, 0x00, 0x02, 0x2B},
+                QStringLiteral("top music default")))
+        return false;
+
+    // The block must preserve device-mirrored neighbours instead of sending stale UI defaults.
+    QByteArray scalars(0x40, char(0));
+    scalars[0x03] = char(0x31); // music init
+    scalars[0x04] = char(0x52); // music max
+    scalars[0x1B] = char(0x0B); // gate/state neighbour
+    scalars[0x07] = char(0x06); // device filter/type neighbour
+    music.topMusicVol = 70;
+    music.sourceRaw = 4;
+    music.input1GainDb = 3.0;
+    music.input2GainDb = -1.0;
+    music.bluetoothGainDb = 5.0;
+    music.uDiskGainDb = -3.0;
+    music.digitalGainDb = -4.0;
+    music.key = 3;
+    if (!expect(topMusicBlock(music, scalars),
+                {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11,
+                 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD},
+                QStringLiteral("top music mirrored scalar")))
+        return false;
 
     return true;
 }
