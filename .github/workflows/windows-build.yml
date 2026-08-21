@@ -117,6 +117,45 @@ jobs:
             throw "Legacy font family reference remains"
           }
 
+      - name: Guard P0 regression fortress
+        shell: pwsh
+        run: |
+          $requiredDocs = @(
+            'docs/PORTING_PARITY_MATRIX.md',
+            'docs/PROTOCOL_GOLDEN_VECTORS.md',
+            'docs/HARDWARE_ACCEPTANCE_CHECKLIST.md'
+          )
+          foreach ($path in $requiredDocs) {
+            if (-not (Test-Path $path)) { throw "P0 regression: missing $path" }
+          }
+
+          $matrix = Get-Content 'docs/PORTING_PARITY_MATRIX.md' -Raw
+          $main = Get-Content 'src/main.cpp' -Raw
+          $protocol = Get-Content 'src/k500/K500Protocol.cpp' -Raw
+          $manager = Get-Content 'src/k500/K500DeviceManager.cpp' -Raw
+          $controller = Get-Content 'src/k500/K500Controller.cpp' -Raw
+
+          foreach ($token in @('P0 non-negotiable invariants','0x03AB','hydration must emit **zero**','unsupportedPath')) {
+            if (-not $matrix.Contains($token)) { throw "P0 parity contract regression: missing '$token'" }
+          }
+          foreach ($token in @('P0_NATIVE_ARCHITECTURE_V1','P0_FULL_MEMORY_HYDRATION_V1','hydrationEdits == 0','K500DeviceManager::activeMemoryReady','StudioEngine::hydrateFromDeviceMemory')) {
+            if (-not $main.Contains($token)) { throw "P0 engine/architecture regression: missing '$token'" }
+          }
+          foreach ($token in @('P0_PROTOCOL_GOLDEN_VECTORS_V1','Bluetooth final read-block','USB final read-block','top music mirrored scalar')) {
+            if (-not $protocol.Contains($token)) { throw "P0 protocol regression: missing '$token'" }
+          }
+          foreach ($token in @('ActiveMemorySize = 0x03AB','ActiveMemoryBlockSize = 0x003A','ActiveMemoryInterBlockMs = 35','emit activeMemoryReady(m_activeMemory);','setLiveEnabled(true);')) {
+            if (-not $manager.Contains($token)) { throw "P0 device sync regression: missing '$token'" }
+          }
+          $hydratePos = $manager.IndexOf('emit activeMemoryReady(m_activeMemory);')
+          $livePos = $manager.IndexOf('setLiveEnabled(true);')
+          if ($hydratePos -lt 0 -or $livePos -lt 0 -or $hydratePos -ge $livePos) {
+            throw 'P0 device sync regression: LIVE must be enabled only after full-memory hydration is emitted'
+          }
+          if (-not $controller.Contains('emit unsupportedPath(path);')) {
+            throw 'P0 safety regression: unsupported paths must remain non-destructive'
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
