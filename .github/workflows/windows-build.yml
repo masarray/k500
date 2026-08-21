@@ -188,7 +188,7 @@ jobs:
             'queueOutput',
             'queueCrossover',
             'mic.eqLink',
-            'outputs.surround.lDelayMs'
+            'updateOutputState'
           )) {
             if (-not $controller.Contains($token)) { throw "P1 controller regression: missing '$token'" }
           }
@@ -203,6 +203,9 @@ jobs:
             @($mainQml,'P1_MIC_EQ_LINK_UI_BRIDGE_V1')
           )) {
             if (-not $pair[0].Contains($pair[1])) { throw "P1 QML bridge regression: missing '$($pair[1])'" }
+          }
+          if (-not $filter.Contains('outputs.surround.lDelayMs') -or -not $filter.Contains('outputs.surround.rDelayMs')) {
+            throw 'P1 Surround delay bridge regression'
           }
           foreach ($token in @('Top Mic `CMD 0x05` | DONOR ONLY 🟨 | IMPLEMENTED ⚠️','CODE COMPLETE, HARDWARE GATE PENDING','do not guess')) {
             if (-not $matrix.Contains($token)) { throw "P1 parity matrix regression: missing '$token'" }
