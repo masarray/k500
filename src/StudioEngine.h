@@ -45,7 +45,6 @@ public:
     Q_INVOKABLE void setHpType(const QString &value);
     Q_INVOKABLE void setLpType(const QString &value);
 
-    // Device-hydration helpers intentionally do not emit edit-request signals.
     void configure(int bandCount, const QList<double> &defaultFrequencies,
                    double hpfHz, double lpfHz,
                    const QString &hpType, const QString &lpType);
@@ -145,6 +144,16 @@ public:
 public slots:
     void hydrateFromDeviceMemory(const QByteArray &memory);
     void clearDeviceState();
+
+    // P1_CANONICAL_DEVICE_EDIT_V1 — rack controls still enter through
+    // StudioEngine; QML never bypasses the architecture boundary to Controller/I/O.
+    void editDevicePath(const QString &path, const QVariant &value)
+    {
+        if (path.isEmpty())
+            return;
+        m_lastChangedPath = path;
+        emit stateEdited(path, value);
+    }
 
     void setMusicKey(int value);
     void setNoiseGate(double value);
