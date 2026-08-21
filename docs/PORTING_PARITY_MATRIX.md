@@ -18,7 +18,7 @@ These are the golden baseline and must not regress in any later phase:
 2. Native path stays `QML -> StudioEngine -> K500Controller -> K500DeviceManager -> K500WinIo`.
 3. On connect, the device is source of truth.
 4. Connect order remains heartbeat -> handshake -> full `0x03AB` (939-byte) active-memory readback -> hydrate editor while LIVE is OFF -> LIVE ON.
-5. Hydration must emit **zero** `stateEdited` writes.
+5. hydration must emit **zero** `stateEdited` writes.
 6. Bluetooth CMD `0x40` read mode remains `0x63`; USB HID mode remains `0x00`.
 7. USB remains VID/PID `10C4:0321`, report ID 0, 64-byte HID reports.
 8. Verified protocol bytes are never changed without a new golden vector and an explicit donor/capture justification.
