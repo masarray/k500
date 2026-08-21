@@ -5,8 +5,8 @@
 ## Status legend
 
 - `LOCKED ✅` — implemented and protected by automated regression tests; hardware-facing behavior is already part of the accepted baseline.
-- `IMPLEMENTED ⚠️` — code exists, but parity/hardware acceptance is incomplete.
-- `READ ONLY 🟦` — current K500 value is decoded/hydrated, but native Qt does not yet have a verified write path.
+- `IMPLEMENTED ⚠️` — code exists and automated parity guards pass, but physical USB/BT hardware acceptance is still required.
+- `READ ONLY 🟦` — current K500 value is decoded/hydrated, but no verified donor/capture live-write command exists yet.
 - `NOT PORTED ❌` — donor capability still needs a native Qt implementation.
 - `DONOR ONLY 🟨` — proven in `masarray/ktv-studio-mixer-pro`; donor is the specification until native parity is complete.
 
@@ -39,19 +39,22 @@ These are the golden baseline and must not regress in any later phase:
 | Music master/input/key block | DONOR ONLY 🟨 | LOCKED ✅ | mirrored-scalar golden vector |
 | PEQ writes: Mic A/B, Music, Main, Surround, Center, Sub, Reverb, Echo | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | hardware acceptance matrix |
 | Music crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | hardware acceptance matrix |
-| Mic crossover live write | DONOR ONLY 🟨 | READ ONLY 🟦 | controller routing + tests + hardware |
-| Main crossover live write | DONOR ONLY 🟨 | READ ONLY 🟦 | controller routing + tests + hardware |
-| Surround crossover live write | DONOR ONLY 🟨 | READ ONLY 🟦 | controller routing + tests + hardware |
-| Center crossover live write | DONOR ONLY 🟨 | READ ONLY 🟦 | controller routing + tests + hardware |
-| Sub crossover live write | DONOR ONLY 🟨 | READ ONLY 🟦 | controller routing + tests + hardware |
-| Reverb/Echo crossover live write | DONOR ONLY 🟨 | READ ONLY 🟦 | controller routing + tests + hardware |
-| Top Mic `CMD 0x05` | DONOR ONLY 🟨 | NOT PORTED ❌ | exact donor vector + mirrored scalar safety + hardware |
-| Top Effect `CMD 0x09` | DONOR ONLY 🟨 | NOT PORTED ❌ | exact donor vector + mirrored scalar safety + hardware |
-| Mic EQ Link | DONOR ONLY 🟨 | NOT PORTED ❌ | exact donor vector + UI mirror + hardware |
-| Main output block | DONOR ONLY 🟨 | READ ONLY 🟦 | exact donor vector + raw-block preservation + hardware |
-| Surround output block | DONOR ONLY 🟨 | READ ONLY 🟦 | exact donor vector + raw-block preservation + hardware |
-| Center output block | DONOR ONLY 🟨 | READ ONLY 🟦 | exact donor vector + raw-block preservation + hardware |
-| Sub output block | DONOR ONLY 🟨 | READ ONLY 🟦 | exact donor vector + raw-block preservation + hardware |
+| Mic crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | shared selector routing + hardware |
+| Main crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | selector golden vector + hardware |
+| Surround crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | selector golden vector + hardware |
+| Center crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | selector golden vector + hardware |
+| Sub crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | selector golden vector + hardware |
+| Reverb/Echo crossover live write | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | selector golden vectors + hardware |
+| Top Mic `CMD 0x05` | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + mirrored scalar safety + hardware |
+| Top Effect `CMD 0x09` | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + mirrored init safety + hardware |
+| Mic EQ Link | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + UI bridge + hardware |
+| Main output block | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + raw-block preservation + hardware |
+| Surround output block + L/R delay | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + raw-block preservation + hardware |
+| Center output block | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + raw-block preservation + hardware |
+| Sub output block | DONOR ONLY 🟨 | IMPLEMENTED ⚠️ | exact donor vector + raw-block preservation + hardware |
+| Reverb detail: level/decay/predelay | file/editor only | READ ONLY 🟦 | requires a verified live command/capture; do not guess |
+| Echo detail: level/repeat/delay | file/editor only | READ ONLY 🟦 | requires a verified live command/capture; do not guess |
+| Mic gate live write | file/editor only | READ ONLY 🟦 | requires a verified live command/capture; do not guess |
 | Recall Equipment Mode 1-10 | DONOR ONLY 🟨 | NOT PORTED ❌ | transactional recall + full resync + hardware |
 | Use Init Volume | DONOR ONLY 🟨 | NOT PORTED ❌ | exact donor vector + hardware |
 | Permanent Store Begin/Chunk/Commit | DONOR ONLY 🟨 | NOT PORTED ❌ | transactional store + verification + power-cycle test |
@@ -61,9 +64,15 @@ These are the golden baseline and must not regress in any later phase:
 | `.k500` import/export | DONOR ONLY 🟨 | NOT PORTED ❌ | codec + checksum + whitelist tests |
 | Preset library | DONOR ONLY 🟨 | NOT PORTED ❌ | codec must be LOCKED first |
 
+## P1 implementation boundary
+
+P1 means **full parity with the donor's verified live-command surface**, not guessed support for every visible editor field. The donor has proven commands for Top Music, Top Mic, Top Effect master, PEQ, all documented crossover selectors, Mic EQ Link and Main/Surround/Center/Sub output blocks. It does not currently provide a verified live command for Mic gate or the detailed Reverb/Echo timing/level fields. Those controls remain safely read-only for hardware until a capture proves their command semantics.
+
+P1 output writes obey a stronger native rule than a naive reconstruction: all 35 output data bytes are seeded from the current device readback and only donor-verified fields are patched. Unknown/reserved bytes remain device truth.
+
 ## Phase gates
 
-### P0 — Regression Fortress
+### P0 — Regression Fortress — COMPLETE
 
 - parity matrix committed;
 - current protocol vectors frozen;
@@ -71,9 +80,16 @@ These are the golden baseline and must not regress in any later phase:
 - CI checks P0 invariants;
 - hardware acceptance checklist committed.
 
-### P1 — Full LIVE parity
+### P1 — Full verified LIVE parity — CODE COMPLETE, HARDWARE GATE PENDING
 
-Top Mic, Top Effect, all output blocks, all crossover routing, Mic EQ Link, then USB/BT hardware qualification.
+- Top Mic protocol + routing;
+- Top Effect protocol + routing;
+- Main/Surround/Center/Sub output block protocol + routing;
+- all donor-verified crossover routing;
+- Mic EQ Link protocol + UI routing;
+- QML rack controls enter only through `StudioEngine.editDevicePath()`;
+- protocol golden vectors and CI guards required;
+- physical USB and Bluetooth hardware qualification must pass before these rows become `LOCKED ✅`.
 
 ### P2 — Device preset management
 
