@@ -1,0 +1,85 @@
+name: Guard P4.2 batch preset library
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500PresetBatchBridge.cpp'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/P42BatchTestMain.cpp'
+      - 'src/k500/K500PresetManager.*'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'tests/fixtures/*.k500'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p4-2-batch-library.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500PresetBatchBridge.cpp'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/P42BatchTestMain.cpp'
+      - 'src/k500/K500PresetManager.*'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'tests/fixtures/*.k500'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p4-2-batch-library.yml'
+
+jobs:
+  p4-2:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard P4.2 batch contract
+        shell: pwsh
+        run: |
+          $batch = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
+          $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $manager = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
+          $test = Get-Content 'src/k500/P42BatchTestMain.cpp' -Raw
+          foreach ($token in @('P4_2_PRESET_BATCH_LIBRARY_V1','document.checksumOk','buildDeviceSlotImage','QString::compare','startSlot + urls.size() - 1 > 10')) {
+            if (-not $batch.Contains($token)) { throw "P4.2 batch safety contract missing '$token'" }
+          }
+          if (-not $header.Contains('buildMassUploadEntries')) { throw 'P4.2 batch API missing' }
+          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled:root.massUploadReady')) {
+            if (-not $system.Contains($token)) { throw "P4.2 UI contract missing '$token'" }
+          }
+          foreach ($token in @('std::sort(m_massEntries.begin(), m_massEntries.end()','return a.slot > b.slot','AwaitMassBeginAck')) {
+            if (-not $manager.Contains($token)) { throw "P4.2 P2 mass-chain regression missing '$token'" }
+          }
+          foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch')) {
+            if (-not $test.Contains($token)) { throw "P4.2 donor batch test missing '$token'" }
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build native app and tests
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Run donor batch library test
+        shell: pwsh
+        run: '& build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500'
+
+      - name: Re-run permanent Store and Mass Upload protocol self-test
+        shell: pwsh
+        run: '& build/k500_p2_selftest.exe'
+
+      - name: Re-run P3.4 donor persistence
+        shell: pwsh
+        run: '& build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500'
