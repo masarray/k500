@@ -143,8 +143,9 @@ void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &la
 QByteArray K500DeviceManager::supportReportJson() const
 {
     // P5_SUPPORT_DIAGNOSTICS_V1
-    // Deliberately omit active memory, preset bytes and PC preset paths. The
-    // report is intended to be safe to attach to a public hardware bug report.
+    // Deliberately omit active memory, preset bytes and PC preset paths. Raw
+    // lastRx/lastTx are for the local live UI only; the exported values below
+    // are populated exclusively by appendDiagnosticLine() after redaction.
     QJsonObject root;
     root.insert(QStringLiteral("schema"), QStringLiteral("sonkupik-k500-support-report-v1"));
     root.insert(QStringLiteral("generatedUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
@@ -168,8 +169,8 @@ QByteArray K500DeviceManager::supportReportJson() const
     device.insert(QStringLiteral("liveEnabled"), m_liveEnabled);
     device.insert(QStringLiteral("muted"), m_muted);
     device.insert(QStringLiteral("lastError"), m_lastError);
-    device.insert(QStringLiteral("lastTx"), m_lastTx);
-    device.insert(QStringLiteral("lastRx"), m_lastRx);
+    device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic);
+    device.insert(QStringLiteral("lastRx"), m_lastRxDiagnostic);
     root.insert(QStringLiteral("device"), device);
 
     QJsonObject presetOperation;
@@ -198,6 +199,8 @@ QByteArray K500DeviceManager::supportReportJson() const
     privacy.insert(QStringLiteral("activeMemoryIncluded"), false);
     privacy.insert(QStringLiteral("presetBytesIncluded"), false);
     privacy.insert(QStringLiteral("presetPathsIncluded"), false);
+    privacy.insert(QStringLiteral("payloadRedaction"),
+                   QStringLiteral("RSP 0xBF active-memory payloads and Store TX payloads are redacted"));
     privacy.insert(QStringLiteral("maxProtocolLogLines"), DiagnosticLogLimit);
     root.insert(QStringLiteral("privacy"), privacy);
 
@@ -233,11 +236,33 @@ void K500DeviceManager::appendDiagnosticLine(const QString &direction,
                                              const QString &label,
                                              const QString &hex)
 {
+    const QString normalizedDirection = direction.trimmed().toUpper();
+    const QString normalizedLabel = label.trimmed();
+    QString safePayload = hex.trimmed();
+
+    // P5_SUPPORT_REPORT_REDACTION_V1
+    // RSP 0xBF is the read-block response carrying active-memory bytes. Every
+    // Store-labelled TX frame may contain all or part of a permanent 0x0290
+    // preset image. Keep raw frames in m_lastRx/m_lastTx for the local UI and
+    // --trace-k500 only; never persist those payloads in an exportable report.
+    if (normalizedDirection == QStringLiteral("RX")
+        && normalizedLabel.startsWith(QStringLiteral("RSP 0xBF"), Qt::CaseInsensitive)) {
+        safePayload = QStringLiteral("[REDACTED ACTIVE MEMORY]");
+    } else if (normalizedDirection == QStringLiteral("TX")
+               && normalizedLabel.startsWith(QStringLiteral("Store "), Qt::CaseInsensitive)) {
+        safePayload = QStringLiteral("[REDACTED PRESET PAYLOAD]");
+    }
+
+    if (normalizedDirection == QStringLiteral("RX"))
+        m_lastRxDiagnostic = safePayload;
+    else if (normalizedDirection == QStringLiteral("TX"))
+        m_lastTxDiagnostic = safePayload;
+
     QString line = QStringLiteral("[%1] %2 %3")
                        .arg(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs),
-                            direction.trimmed().toUpper(), label.trimmed());
-    if (!hex.trimmed().isEmpty())
-        line += QStringLiteral(" | ") + hex.trimmed();
+                            normalizedDirection, normalizedLabel);
+    if (!safePayload.isEmpty())
+        line += QStringLiteral(" | ") + safePayload;
     m_diagnosticLog.append(line);
     while (m_diagnosticLog.size() > DiagnosticLogLimit)
         m_diagnosticLog.removeFirst();
