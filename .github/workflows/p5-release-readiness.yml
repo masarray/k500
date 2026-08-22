@@ -73,11 +73,29 @@ jobs:
             if (-not $matrix.Contains($token)) { throw "P5 parity matrix regression: missing '$token'" }
           }
 
-          foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport')) {
+          foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
             if (-not $deviceHeader.Contains($token)) { throw "P5 diagnostics API missing '$token'" }
           }
-          foreach ($token in @('DiagnosticLogLimit = 240','activeMemoryIncluded','presetBytesIncluded','presetPathsIncluded','QSaveFile','protocolLog')) {
+          foreach ($token in @(
+            'DiagnosticLogLimit = 240',
+            'activeMemoryIncluded',
+            'presetBytesIncluded',
+            'presetPathsIncluded',
+            'QSaveFile',
+            'protocolLog',
+            'P5_SUPPORT_REPORT_REDACTION_V1',
+            '[REDACTED ACTIVE MEMORY]',
+            '[REDACTED PRESET PAYLOAD]',
+            'startsWith(QStringLiteral("RSP 0xBF"), Qt::CaseInsensitive)',
+            'startsWith(QStringLiteral("Store "), Qt::CaseInsensitive)',
+            'device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic)',
+            'device.insert(QStringLiteral("lastRx"), m_lastRxDiagnostic)'
+          )) {
             if (-not $device.Contains($token)) { throw "P5 diagnostics privacy/schema regression: missing '$token'" }
+          }
+          if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or
+              $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
+            throw 'P5 privacy regression: exported support report must never reference raw lastTx/lastRx'
           }
           foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
             if (-not $topbar.Contains($token)) { throw "P5 Support UI regression: missing '$token'" }
