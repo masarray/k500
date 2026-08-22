@@ -1,0 +1,82 @@
+name: Guard P3.4 controlled edit persistence
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500PresetEditMapper.*'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/P34EditPersistenceTestMain.cpp'
+      - 'src/k500/K500PresetCodec.*'
+      - 'tests/fixtures/*.k500'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-4-edit-persistence.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500PresetEditMapper.*'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/P34EditPersistenceTestMain.cpp'
+      - 'src/k500/K500PresetCodec.*'
+      - 'tests/fixtures/*.k500'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-4-edit-persistence.yml'
+
+jobs:
+  p3-4:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard P3.4 contract
+        shell: pwsh
+        run: |
+          $mapper = Get-Content 'src/k500/K500PresetEditMapper.cpp' -Raw
+          $bridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
+          $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
+          $test = Get-Content 'src/k500/P34EditPersistenceTestMain.cpp' -Raw
+          foreach ($token in @('applyEngineEdit','applyWhitelistedPatches','PrimaryEq','peqTypeRaw','filterTypeRaw')) {
+            if (-not $mapper.Contains($token)) { throw "P3.4 mapper contract missing '$token'" }
+          }
+          foreach ($token in @('P3_4_CONTROLLED_EDIT_PERSISTENCE_V1','K500PresetEditMapper::applyEngineEdit','validateChecksum(edit.patch.bytes)','P3_4_EDITED_EXPORT_V1')) {
+            if (-not $bridge.Contains($token)) { throw "P3.4 bridge contract missing '$token'" }
+          }
+          foreach ($token in @('dirty READ dirty','changedByteCount','persistedEdit','persistenceRejected')) {
+            if (-not $header.Contains($token)) { throw "P3.4 observable state missing '$token'" }
+          }
+          foreach ($token in @('PEQ raw Bell alias preservation regressed','Music crossover scalar/footer mirror regressed','unsupported path became destructive')) {
+            if (-not $test.Contains($token)) { throw "P3.4 donor regression test missing '$token'" }
+          }
+          if (-not (Test-Path 'tests/fixtures/donor-sample.k500')) { throw 'P3.4 donor fixture missing' }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build native app and P3.4 test
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Run donor controlled-edit persistence test
+        shell: pwsh
+        run: '& build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500'
+
+      - name: Re-run P3 donor corpus
+        shell: pwsh
+        run: '& build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500'
+
+      - name: Re-run P3 codec test
+        shell: pwsh
+        run: '& build/k500_p3_selftest.exe'
