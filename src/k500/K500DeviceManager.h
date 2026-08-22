@@ -9,6 +9,7 @@
 #include <QString>
 #include <QStringList>
 #include <QTimer>
+#include <QUrl>
 
 class K500Controller;
 class K500PresetManager;
@@ -50,6 +51,12 @@ public:
     Q_INVOKABLE void sendPlayerCommand(const QString &command);
     Q_INVOKABLE void toggleMute();
 
+    // P5_SUPPORT_DIAGNOSTICS_V1
+    // The support report deliberately excludes preset contents and active-memory
+    // bytes. It contains only runtime/build metadata and a bounded protocol log.
+    Q_INVOKABLE QByteArray supportReportJson() const;
+    Q_INVOKABLE bool saveSupportReport(const QUrl &url);
+
 public slots:
     void sendLiveFrame(const QByteArray &frame, const QString &label);
 
@@ -82,6 +89,7 @@ private:
     void setPortLabel(const QString &label);
     void setError(const QString &message);
     void setLiveEnabled(bool enabled);
+    void appendDiagnosticLine(const QString &direction, const QString &label, const QString &hex);
 
     void beginBluetoothScan();
     void openNextBluetoothCandidate();
@@ -113,6 +121,7 @@ private:
     QString m_lastError;
     QString m_lastRx;
     QString m_lastTx;
+    QStringList m_diagnosticLog;
     bool m_liveEnabled = false;
     bool m_muted = false;
 
