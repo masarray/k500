@@ -73,6 +73,20 @@ add_executable(k500_p34_edit_persistence_test
 )
 target_link_libraries(k500_p34_edit_persistence_test PRIVATE Qt6::Core)
 
+add_executable(k500_p42_batch_test
+    src/k500/P42BatchTestMain.cpp
+    src/k500/K500PresetBatchBridge.cpp
+    src/k500/K500PresetFileBridge.cpp
+    src/k500/K500PresetFileBridge.h
+    src/k500/K500PresetEditMapper.cpp
+    src/k500/K500PresetEditMapper.h
+    src/k500/K500PresetCodec.cpp
+    src/k500/K500PresetCodec.h
+    src/StudioEngine.cpp
+    src/StudioEngine.h
+)
+target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core)
+
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
