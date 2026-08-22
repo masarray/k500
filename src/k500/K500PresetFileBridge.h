@@ -4,14 +4,16 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
-#include <QtQml/qqmlregistration.h>
 
 class StudioEngine;
 
+// P3_2_FILE_BRIDGE_V1
+// Backend-first boundary: compile and validate file I/O + codec/corpus before
+// exposing this type to QML. UI registration is intentionally deferred until
+// the backend gate is green so a presentation-layer issue cannot weaken P3.2.
 class K500PresetFileBridge final : public QObject
 {
     Q_OBJECT
-    QML_ELEMENT
 
     Q_PROPERTY(QObject *engine READ engine WRITE setEngine NOTIFY engineChanged)
     Q_PROPERTY(bool loaded READ loaded NOTIFY sourceChanged)
