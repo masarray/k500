@@ -90,12 +90,15 @@ int main(int argc, char **argv)
     if (changedSet(edit.patch).contains(micAFirstBand) || changedSet(edit.patch).contains(micAFirstBand + 1))
         return fail(QStringLiteral("PEQ alias bytes changed despite Bell->Bell edit"));
 
-    // Music HPF must patch both proven scalar and section-footer mirror.
+    // Music HPF must patch both proven scalar and section-footer mirror. The
+    // real donor stores 20 Hz as 14 00; changing to 91 Hz (5B 00) therefore
+    // changes only each low byte plus checksum. High bytes remaining 00 are
+    // deliberately absent from changedOffsets although they are whitelisted.
     constexpr int musicFooter = 0x01B0 + 2 + 7 * 8;
     edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("eq.music.crossover.hpfHz"), 91);
     if (!accepted(edit) || u16(edit.patch.bytes, 0x009C) != 91 || u16(edit.patch.bytes, musicFooter + 10) != 91)
         return fail(QStringLiteral("Music crossover scalar/footer mirror regressed"));
-    if (!onlyChanged(edit.patch, QSet<int>{0x009C,0x009D,musicFooter+10,musicFooter+11,K500PresetCodec::ChecksumOffset}))
+    if (!onlyChanged(edit.patch, QSet<int>{0x009C,musicFooter+10,K500PresetCodec::ChecksumOffset}))
         return fail(QStringLiteral("Music crossover changed unexpected bytes"));
 
     // Mic shared crossover must update one scalar plus both proven EQ footer copies.
