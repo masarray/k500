@@ -156,6 +156,71 @@ jobs:
             throw 'P0 safety regression: unsupported paths must remain non-destructive'
           }
 
+      - name: Guard P1 full verified live parity
+        shell: pwsh
+        run: |
+          $protocol = Get-Content 'src/k500/K500Protocol.cpp' -Raw
+          $controller = Get-Content 'src/k500/K500Controller.cpp' -Raw
+          $engine = Get-Content 'src/StudioEngine.h' -Raw
+          $rack = Get-Content 'qml/components/RackFaderPanel.qml' -Raw
+          $dynamics = Get-Content 'qml/components/RackDynamicsPanel.qml' -Raw
+          $filter = Get-Content 'qml/components/RackFilterPanel.qml' -Raw
+          $mainQml = Get-Content 'qml/Main.qml' -Raw
+          $matrix = Get-Content 'docs/PORTING_PARITY_MATRIX.md' -Raw
+          $vectors = Get-Content 'docs/PROTOCOL_GOLDEN_VECTORS.md' -Raw
+
+          foreach ($token in @(
+            'P1_PROTOCOL_GOLDEN_VECTORS_V1',
+            'P1_TOP_MIC_VERIFIED_V1',
+            'P1_TOP_EFFECT_VERIFIED_V1',
+            'P1_OUTPUT_BLOCK_VERIFIED_V1',
+            'P1_MIC_EQ_LINK_VERIFIED_V1',
+            'output block must preserve unknown device bytes'
+          )) {
+            if (-not $protocol.Contains($token)) { throw "P1 protocol regression: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'P1_CONTROLLER_DEVICE_SEED_V1',
+            'P1_FULL_LIVE_ROUTING_V1',
+            'queueTopMic',
+            'queueTopEffect',
+            'queueOutput',
+            'queueCrossover',
+            'mic.eqLink',
+            'updateOutputState'
+          )) {
+            if (-not $controller.Contains($token)) { throw "P1 controller regression: missing '$token'" }
+          }
+
+          if (-not $engine.Contains('P1_CANONICAL_DEVICE_EDIT_V1') -or -not $engine.Contains('editDevicePath')) {
+            throw 'P1 StudioEngine canonical edit bridge missing'
+          }
+          foreach ($pair in @(
+            @($rack,'P1_RACK_FADER_LIVE_BRIDGE_V1'),
+            @($dynamics,'P1_RACK_DYNAMICS_LIVE_BRIDGE_V1'),
+            @($filter,'P1_RACK_FILTER_LIVE_BRIDGE_V1'),
+            @($mainQml,'P1_MIC_EQ_LINK_UI_BRIDGE_V1')
+          )) {
+            if (-not $pair[0].Contains($pair[1])) { throw "P1 QML bridge regression: missing '$($pair[1])'" }
+          }
+          if (-not $filter.Contains('outputs.surround.lDelayMs') -or -not $filter.Contains('outputs.surround.rDelayMs')) {
+            throw 'P1 Surround delay bridge regression'
+          }
+          foreach ($token in @('Top Mic `CMD 0x05` | DONOR ONLY 🟨 | IMPLEMENTED ⚠️','CODE COMPLETE, HARDWARE GATE PENDING','do not guess')) {
+            if (-not $matrix.Contains($token)) { throw "P1 parity matrix regression: missing '$token'" }
+          }
+          foreach ($token in @('P1 Top Mic CMD 0x05','P1 Top Effect CMD 0x09','P1 Mic EQ Link','P1 output blocks CMD 0x0E')) {
+            if (-not $vectors.Contains($token)) { throw "P1 golden-vector documentation regression: missing '$token'" }
+          }
+
+          # Architecture safety: no QML may acquire a direct Controller/DeviceManager/WinIo reference.
+          $directIo = Get-ChildItem qml -Recurse -File -Filter '*.qml' | Select-String -Pattern 'K500Controller|K500DeviceManager|K500WinIo'
+          if ($directIo) {
+            $directIo | ForEach-Object { Write-Host $_ }
+            throw 'P1 architecture regression: QML references native device I/O directly'
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:

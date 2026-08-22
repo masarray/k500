@@ -13,6 +13,48 @@ StudioPanel {
     readonly property real faderHeight: 160
     accentTop: false
 
+    // P1_RACK_FADER_LIVE_BRIDGE_V1
+    // Reusable rack panels resolve the owning StudioEngine through the visual
+    // parent chain. They never reference Controller/DeviceManager/I/O directly.
+    function studioEngine() {
+        var p = root
+        while (p) {
+            if (p.engine && typeof p.engine.editDevicePath === "function") return p.engine
+            p = p.parent
+        }
+        return null
+    }
+    function livePathFor(label) {
+        var t = String(root.title || "")
+        var l = String(label || "").toUpperCase()
+        if (t === "Mic Inputs") {
+            if (l === "MIC A") return "mic.micAVol"
+            if (l === "MIC B") return "mic.micBVol"
+            if (l === "FBX") return "mic.fbxLevel"
+            return ""
+        }
+        var section = ""
+        if (t === "Main Bus") section = "main"
+        else if (t === "Surround Bus") section = "surround"
+        else if (t === "Center Bus") section = "center"
+        else if (t === "Subwoofer Bus") section = "sub"
+        if (!section.length) return "" // Reverb/Echo detail writes are not verified.
+
+        if (l === "L") return "outputs." + section + ".lVolDb"
+        if (l === "R") return "outputs." + section + ".rVolDb"
+        if (l === "CTR" || l === "SUB") return "outputs." + section + ".outputVolDb"
+        if (l === "MIC") return "outputs." + section + ".micDirect"
+        if (l === "MUSIC") return "outputs." + section + ".musicLevel"
+        if (l === "REV") return "outputs." + section + ".reverbLevel"
+        if (l === "ECHO") return "outputs." + section + ".echoLevel"
+        return ""
+    }
+    function dispatchLive(label, value) {
+        var path = livePathFor(label)
+        var engine = studioEngine()
+        if (path.length && engine) engine.editDevicePath(path, value)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -110,7 +152,10 @@ StudioPanel {
                             accentColor: root.accentColor
                             selected: channel.selected
                             onActivated: root.selectedFader = channel.index
-                            onValueEdited: function(v) { channel.localValue = v }
+                            onValueEdited: function(v) {
+                                channel.localValue = v
+                                root.dispatchLive(channel.modelData.label, v)
+                            }
                         }
 
                         Rectangle {

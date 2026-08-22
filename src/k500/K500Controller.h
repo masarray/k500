@@ -41,23 +41,38 @@ private:
         QString label;
     };
 
+    struct CrossoverState {
+        double hpfHz = 20.0;
+        double lpfHz = 20000.0;
+        QString hpType = QStringLiteral("HP Butter 12");
+        QString lpType = QStringLiteral("LP Butter 12");
+    };
+
     void queueEqFrame(const QString &key, const QByteArray &frame, const QString &label);
     void queueBlockFrame(const QString &key, const QByteArray &frame, const QString &label);
     void flushEqFrames();
     void flushBlockFrames();
+
     void queueTopMusic(const QString &path);
-    void queueMusicCrossover(const QString &path, const QString &kind);
+    void queueTopMic(const QString &path);
+    void queueTopEffect(const QString &path);
+    void queueOutput(const QString &section, const QString &path);
+    void queueCrossover(const QString &section, const QString &path, const QString &kind);
+    bool updateOutputState(const QString &section, const QString &field, const QVariant &value);
 
     static constexpr int EqSendIntervalMs = 45;
     static constexpr int BlockSendIntervalMs = 55;
 
     bool m_liveEnabled = false;
     QByteArray m_deviceScalars;
+    QByteArray m_activeMemory;
+
     K500MusicBlockState m_music;
-    double m_musicHpfHz = 20.0;
-    double m_musicLpfHz = 20000.0;
-    QString m_musicHpType = QStringLiteral("HP Butter 12");
-    QString m_musicLpType = QStringLiteral("LP Butter 12");
+    K500MicBlockState m_mic;
+    K500EffectBlockState m_effect;
+    QHash<QString, K500OutputBlockState> m_outputs;
+    QHash<QString, QByteArray> m_outputRaw;
+    QHash<QString, CrossoverState> m_crossovers;
 
     QHash<QString, PendingFrame> m_pendingEqFrames;
     QHash<QString, PendingFrame> m_pendingBlockFrames;

@@ -14,6 +14,42 @@ StudioPanel {
     property color accentColor: Theme.accent
     accentTop: false
 
+    // P1_RACK_DYNAMICS_LIVE_BRIDGE_V1
+    function studioContext() {
+        var p = root
+        while (p) {
+            if (p.engine && typeof p.engine.editDevicePath === "function")
+                return { engine:p.engine, sectionIndex:Number(p.sectionIndex) }
+            p = p.parent
+        }
+        return null
+    }
+    function dispatchLive(field, value) {
+        var ctx = studioContext()
+        if (!ctx) return
+        var path = ""
+        if (root.title === "Vocal Dynamics") {
+            // Donor has no verified Mic gate write; leave gate safely local/read-only.
+            if (field === "threshold") path = "mic.compThresholdDb"
+            else if (field === "ratio") path = "mic.compRatio"
+            else if (field === "attack") path = "mic.attackMs"
+            else if (field === "release") path = "mic.releaseSec"
+        } else if (root.title === "Output Compressor") {
+            var section = ctx.sectionIndex === 4 ? "main"
+                        : ctx.sectionIndex === 5 ? "surround"
+                        : ctx.sectionIndex === 6 ? "center"
+                        : ctx.sectionIndex === 7 ? "sub" : ""
+            if (section.length) {
+                if (field === "threshold") path = "outputs." + section + ".compThresholdDb"
+                else if (field === "ratio") path = "outputs." + section + ".compRatio"
+                else if (field === "attack") path = "outputs." + section + ".attackMs"
+                else if (field === "release") path = "outputs." + section + ".releaseSec"
+            }
+        }
+        if (!path.length) return
+        ctx.engine.editDevicePath(path, field === "release" ? Number(value) / 1000.0 : value)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -144,28 +180,28 @@ StudioPanel {
                     title: "THRES"; value: root.threshold
                     from: -50; to: 0; step: 1; decimals: 0; unit: "dB"
                     accentColor: root.accentColor
-                    onValueEdited: function(v){ root.threshold=v; graph.requestPaint() }
+                    onValueEdited: function(v){ root.threshold=v; root.dispatchLive("threshold",v); graph.requestPaint() }
                 }
                 StudioKnob {
                     Layout.fillWidth: true; compact: true
                     title: "RATIO"; value: root.ratio
                     from: 1; to: 100; step: 1; decimals: 0; unit: ""; valuePrefix: "1:"
                     accentColor: root.accentColor
-                    onValueEdited: function(v){ root.ratio=v; graph.requestPaint() }
+                    onValueEdited: function(v){ root.ratio=v; root.dispatchLive("ratio",v); graph.requestPaint() }
                 }
                 StudioKnob {
                     Layout.fillWidth: true; compact: true
                     title: "ATTACK"; value: root.attack
                     from: 1; to: 100; step: 1; decimals: 0; unit: "ms"
                     accentColor: root.accentColor
-                    onValueEdited: function(v){ root.attack=v }
+                    onValueEdited: function(v){ root.attack=v; root.dispatchLive("attack",v) }
                 }
                 StudioKnob {
                     Layout.fillWidth: true; compact: true
                     title: "RELEASE"; value: root.release
                     from: 20; to: 5000; step: 10; decimals: 0; unit: "ms"
                     accentColor: root.accentColor
-                    onValueEdited: function(v){ root.release=v }
+                    onValueEdited: function(v){ root.release=v; root.dispatchLive("release",v) }
                 }
             }
 

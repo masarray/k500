@@ -18,6 +18,27 @@ StudioPanel {
     signal lpTypeEdited(string value)
     accentTop: false
 
+    // P1_RACK_FILTER_LIVE_BRIDGE_V1
+    // HPF/LPF continue through EqBandModel. Only donor-verified Surround delay
+    // fields need an additional canonical StudioEngine path here.
+    function studioContext() {
+        var p = root
+        while (p) {
+            if (p.engine && typeof p.engine.editDevicePath === "function")
+                return { engine:p.engine, sectionIndex:Number(p.sectionIndex) }
+            p = p.parent
+        }
+        return null
+    }
+    function dispatchVerifiedAux(index, value) {
+        if (index < 0 || index >= root.fields.length) return
+        var label = String(root.fields[index].label || "").toUpperCase()
+        if (label !== "L DELAY" && label !== "R DELAY") return
+        var ctx = studioContext()
+        if (!ctx || ctx.sectionIndex !== 5) return
+        ctx.engine.editDevicePath(label === "L DELAY" ? "outputs.surround.lDelayMs" : "outputs.surround.rDelayMs", value)
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -39,8 +60,6 @@ StudioPanel {
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
 
-        // Mic Band Limits follows the web crossover-control-stack: compact
-        // numeric field, full-width type selector, then LPF + selector.
         ColumnLayout {
             visible: root.stackedControls
             Layout.fillWidth: true
@@ -64,7 +83,7 @@ StudioPanel {
                 unit: ""
                 defaultValue: value
                 accentColor: Theme.amber
-                onValueEdited: function(v) { if (root.fields.length > 0) root.fieldEdited(0, v) }
+                onValueEdited: function(v) { if (root.fields.length > 0) { root.fieldEdited(0, v); root.dispatchVerifiedAux(0, v) } }
             }
 
             ColumnLayout {
@@ -95,7 +114,7 @@ StudioPanel {
                 unit: ""
                 defaultValue: value
                 accentColor: Theme.amber
-                onValueEdited: function(v) { if (root.fields.length > 1) root.fieldEdited(1, v) }
+                onValueEdited: function(v) { if (root.fields.length > 1) { root.fieldEdited(1, v); root.dispatchVerifiedAux(1, v) } }
             }
 
             ColumnLayout {
@@ -115,8 +134,6 @@ StudioPanel {
             Item { Layout.fillHeight: true }
         }
 
-        // Effect/output rails use the web two-column cascade. The numeric
-        // side stays narrow so the type labels receive the larger column.
         RowLayout {
             visible: !root.stackedControls
             Layout.fillWidth: true
@@ -149,7 +166,7 @@ StudioPanel {
                         unit: ""
                         defaultValue: Number(modelData.value)
                         accentColor: Theme.amber
-                        onValueEdited: function(v) { root.fieldEdited(index, v) }
+                        onValueEdited: function(v) { root.fieldEdited(index, v); root.dispatchVerifiedAux(index, v) }
                     }
                 }
                 Item { Layout.fillHeight: true }
