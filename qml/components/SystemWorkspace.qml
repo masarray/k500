@@ -33,6 +33,12 @@ Item {
                                           && !!root.presetManager
                                           && root.presetManager.usbStoreAvailable
                                           && !root.presetManager.busy
+    // P4_2_PRESET_BATCH_UI_V1 — batch files are validated only after the user
+    // selects them; before that we require only the safe USB transaction gate.
+    readonly property bool massUploadReady: !!root.fileBridge
+                                            && !!root.presetManager
+                                            && root.presetManager.usbStoreAvailable
+                                            && !root.presetManager.busy
     readonly property var defaultDeviceSlots: [
         "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
         "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
@@ -54,6 +60,14 @@ Item {
         // Backend performs exact 0x0290 validation again before any Store frame.
         root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1,
                                            root.fileBridge.deviceSlotImage())
+    }
+    function massUploadFiles(files) {
+        if (!root.massUploadReady)
+            return
+        var entries = root.fileBridge.buildMassUploadEntries(files,
+                                                              root.selectedDeviceSlot + 1)
+        if (entries && entries.length > 0)
+            root.presetManager.massUploadSlotImages(entries)
     }
     readonly property int activeDeviceSlot: {
         if (root.presetManager && Number(root.presetManager.activeSlot) > 0)
@@ -101,6 +115,14 @@ Item {
             if (root.fileBridge)
                 root.fileBridge.saveFile(selectedFile)
         }
+    }
+
+    FileDialog {
+        id: massPresetDialog
+        title: "Mass Upload K500 presets — start slot " + String(root.selectedDeviceSlot + 1)
+        fileMode: FileDialog.OpenFiles
+        nameFilters: ["K500 preset (*.k500)"]
+        onAccepted: root.massUploadFiles(selectedFiles)
     }
 
     ColumnLayout {
@@ -184,7 +206,9 @@ Item {
                                        ?("Verified edit · "+String(root.fileBridge.changedByteCount)+" changed byte(s) incl. checksum")
                                        :(root.pcUploadReady
                                          ?("Ready · upload to selected slot "+String(root.selectedDeviceSlot+1))
-                                         :(root.offlineFileMode?"Safe preview · validated source bytes":"USB connection required for PC preset upload")))
+                                         :(root.massUploadReady
+                                           ?("Mass ready · filename order → slots "+String(root.selectedDeviceSlot+1)+"…10")
+                                           :(root.offlineFileMode?"Safe preview · validated source bytes":"USB connection required for PC preset upload"))))
                                 color:root.fileBridge&&String(root.fileBridge.lastError||"").length>0?Theme.amber:Theme.textDim
                                 font.family:Theme.monoFamily;font.pixelSize:8;elide:Text.ElideRight
                             }
@@ -205,7 +229,13 @@ Item {
                                 enabled:root.pcUploadReady
                                 onClicked:root.uploadLoadedPreset()
                             }
-                            SoftButton { Layout.fillWidth:true;text:"Mass upload";compact:true;enabled:false }
+                            SoftButton {
+                                Layout.fillWidth:true
+                                text:root.presetManager&&root.presetManager.storeBusy?"Uploading…":"Mass upload"
+                                compact:true
+                                enabled:root.massUploadReady
+                                onClicked:massPresetDialog.open()
+                            }
                         }
                     }
                 }
