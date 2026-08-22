@@ -45,7 +45,7 @@ jobs:
           foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled:root.massUploadReady')) {
             if (-not $system.Contains($token)) { throw "P4.2 UI contract missing '$token'" }
           }
-          foreach ($token in @('std::sort(m_massEntries.begin(), m_massEntries.end()','return a.slot > b.slot','AwaitMassBeginAck')) {
+          foreach ($token in @('std::sort(normalized.begin(), normalized.end()','return a.slot > b.slot','m_massEntries = normalized','AwaitMassBeginAck')) {
             if (-not $manager.Contains($token)) { throw "P4.2 P2 mass-chain regression missing '$token'" }
           }
           foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch')) {
