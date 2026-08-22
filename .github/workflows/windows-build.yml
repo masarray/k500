@@ -221,6 +221,67 @@ jobs:
             throw 'P1 architecture regression: QML references native device I/O directly'
           }
 
+      - name: Guard P2 transactional preset management
+        shell: pwsh
+        run: |
+          $protocol = Get-Content 'src/k500/K500PresetProtocol.cpp' -Raw
+          $preset = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
+          $bridge = Get-Content 'src/k500/K500PresetManagerBridge.cpp' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $matrix = Get-Content 'docs/PORTING_PARITY_MATRIX.md' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+
+          foreach ($token in @(
+            'P2_PRESET_PROTOCOL_GOLDEN_VECTORS_V1',
+            'recallMode(1)',
+            'recallHandshake()',
+            'useInitVolume(false)',
+            'storeBegin(zeroImage)',
+            'storeCommit(1, zeroImage)',
+            'mass-upload chain derivation mismatch'
+          )) {
+            if (-not $protocol.Contains($token)) { throw "P2 protocol regression: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'P2_TRANSACTION_COORDINATOR_V1',
+            'P2_SAVE_FROM_DEVICE_TRUTH_V1',
+            'RecallSettleMs = 80',
+            'response.rsp == 0xC0',
+            'response.rsp == 0xED',
+            'response.rsp == 0xBE',
+            'response.rsp == 0xBD',
+            'response.rsp == 0xBC',
+            'resetConnectionState(true)',
+            'm_manager->setLiveEnabled(false)'
+          )) {
+            if (-not $preset.Contains($token)) { throw "P2 transaction regression: missing '$token'" }
+          }
+
+          foreach ($token in @('deviceScalarsReady(memory.left(0x40))','activeMemoryReady(memory)')) {
+            if (-not $bridge.Contains($token)) { throw "P2 hydration bridge regression: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'P2_DEVICE_PRESET_UI_V1',
+            'recallMode(root.selectedDeviceSlot+1)',
+            'saveCurrentToSlot(root.selectedDeviceSlot+1)',
+            'setUseInitVolume(!root.presetManager.useInitVolume)',
+            'root.presetManager.usbStoreAvailable'
+          )) {
+            if (-not $system.Contains($token)) { throw "P2 System UI regression: missing '$token'" }
+          }
+          if (-not $system.Contains('text:"Mass upload";compact:true;enabled:false')) {
+            throw 'P2 dependency safety regression: preset-library Mass Upload must remain disabled until P3/P4 supplies raw slot images'
+          }
+
+          foreach ($token in @('P2 implementation boundary','CODE COMPLETE, CI/HARDWARE GATE PENDING','fails closed','0x0290')) {
+            if (-not $matrix.Contains($token)) { throw "P2 parity matrix regression: missing '$token'" }
+          }
+          if (-not $cmake.Contains('k500_p2_selftest') -or -not $cmake.Contains('K500PresetManager.cpp')) {
+            throw 'P2 build regression: transaction/self-test targets missing from CMake'
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -240,6 +301,12 @@ jobs:
       - name: Build
         shell: pwsh
         run: cmake --build build --config Release
+
+      - name: K500 P2 preset protocol self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath "build/k500_p2_selftest.exe" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "K500 P2 preset protocol self-test failed with exit code $($p.ExitCode)" }
 
       - name: Deploy Qt runtime
         shell: pwsh
