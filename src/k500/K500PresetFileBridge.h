@@ -2,7 +2,6 @@
 
 #include <QByteArray>
 #include <QObject>
-#include <QPointer>
 #include <QString>
 #include <QUrl>
 #include <QtQml/qqmlregistration.h>
@@ -51,7 +50,7 @@ private:
     void setError(const QString &message);
     QString localPath(const QUrl &url, bool appendExtension) const;
 
-    QPointer<StudioEngine> m_engine;
+    StudioEngine *m_engine = nullptr;
     QByteArray m_sourceBytes;
     QString m_sourcePath;
     QString m_sourceName;
