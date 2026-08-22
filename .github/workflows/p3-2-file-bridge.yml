@@ -38,9 +38,10 @@ jobs:
           foreach ($token in @('P3_2_OFFLINE_HYDRATION_V1','P3_2_NOOP_EXPORT_V1','buildDeviceSlotImage','hydrateFromDeviceMemory','QSaveFile')) {
             if (-not $bridge.Contains($token)) { throw "P3.2 bridge regression: missing '$token'" }
           }
-          foreach ($token in @('QML_ELEMENT','loadFile','saveFile','deviceSlotImage')) {
-            if (-not $header.Contains($token)) { throw "P3.2 QML contract regression: missing '$token'" }
+          foreach ($token in @('P3_2_FILE_BRIDGE_V1','loadFile','saveFile','deviceSlotImage')) {
+            if (-not $header.Contains($token)) { throw "P3.2 backend contract regression: missing '$token'" }
           }
+          if ($header.Contains('QML_ELEMENT')) { throw 'P3.2 backend gate must not depend on QML auto-registration' }
           foreach ($token in @('real donor no-op round trip changed bytes','low scalar +8 mapping regressed','high scalar +9 mapping regressed','real donor compact PEQ mapping regressed','converter degraded to raw .k500 slicing')) {
             if (-not $test.Contains($token)) { throw "P3.2 corpus regression: missing '$token'" }
           }
