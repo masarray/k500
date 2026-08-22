@@ -69,7 +69,7 @@ jobs:
           foreach ($token in @('PC preset permanent Upload — P4','Multi-file Mass Upload — P4.2','P5 release-candidate package acceptance','Unplug USB during Mass Upload')) {
             if (-not $hardware.Contains($token)) { throw "P5 hardware runbook regression: missing '$token'" }
           }
-          foreach ($token in @('P3 — Bit-perfect `.k500` engine — SOFTWARE COMPLETE','P4 / P4.2 — PC preset upload and batch library — SOFTWARE COMPLETE, HARDWARE GATE PENDING','P5 — Release candidate hardening — IN PROGRESS')) {
+          foreach ($token in @('P3 — Bit-perfect `.k500` engine — SOFTWARE COMPLETE','P4 / P4.2 — PC preset upload and batch library — SOFTWARE COMPLETE, HARDWARE GATE PENDING','P5 — Release candidate hardening')) {
             if (-not $matrix.Contains($token)) { throw "P5 parity matrix regression: missing '$token'" }
           }
 
