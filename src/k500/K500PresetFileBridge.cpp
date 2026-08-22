@@ -21,7 +21,7 @@ K500PresetFileBridge::K500PresetFileBridge(QObject *parent)
 
 QObject *K500PresetFileBridge::engine() const
 {
-    return m_engine.data();
+    return m_engine;
 }
 
 void K500PresetFileBridge::setEngine(QObject *engineObject)
