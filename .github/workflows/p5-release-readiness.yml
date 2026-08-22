@@ -76,8 +76,8 @@ jobs:
           foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport')) {
             if (-not $deviceHeader.Contains($token)) { throw "P5 diagnostics API missing '$token'" }
           }
-          foreach ($token in @('DiagnosticLogLimit = 240','activeMemoryIncluded'),('presetBytesIncluded'),('presetPathsIncluded'),('QSaveFile'),('protocolLog')) {
-            if (-not $device.Contains([string]$token)) { throw "P5 diagnostics privacy/schema regression: missing '$token'" }
+          foreach ($token in @('DiagnosticLogLimit = 240','activeMemoryIncluded','presetBytesIncluded','presetPathsIncluded','QSaveFile','protocolLog')) {
+            if (-not $device.Contains($token)) { throw "P5 diagnostics privacy/schema regression: missing '$token'" }
           }
           foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
             if (-not $topbar.Contains($token)) { throw "P5 Support UI regression: missing '$token'" }
