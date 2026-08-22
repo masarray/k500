@@ -50,6 +50,13 @@ add_executable(k500_p3_selftest
 )
 target_link_libraries(k500_p3_selftest PRIVATE Qt6::Core)
 
+add_executable(k500_p32_corpus_test
+    src/k500/P32CorpusTestMain.cpp
+    src/k500/K500PresetCodec.cpp
+    src/k500/K500PresetCodec.h
+)
+target_link_libraries(k500_p32_corpus_test PRIVATE Qt6::Core)
+
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
@@ -91,6 +98,9 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/RackFilterPanel.qml
         qml/components/SystemWorkspace.qml
         qml/components/SectionWorkspace.qml
+    SOURCES
+        src/k500/K500PresetFileBridge.cpp
+        src/k500/K500PresetFileBridge.h
 )
 
 set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/sonkupik-logo.png")
