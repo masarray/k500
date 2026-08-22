@@ -23,6 +23,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500PresetCodec.h
     src/k500/K500PresetFileBridge.cpp
     src/k500/K500PresetFileBridge.h
+    src/k500/K500PresetFileBridgeAccess.cpp
     src/k500/K500PresetManager.cpp
     src/k500/K500PresetManager.h
     src/k500/K500PresetManagerBridge.cpp

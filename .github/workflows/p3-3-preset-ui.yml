@@ -1,0 +1,59 @@
+name: Guard P3.3 preset file UI
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500DeviceManager.h'
+      - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-3-preset-ui.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500DeviceManager.h'
+      - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-3-preset-ui.yml'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard P3.3 architecture and safety
+        shell: pwsh
+        run: |
+          $manager = Get-Content 'src/k500/K500DeviceManager.h' -Raw
+          $bridge = Get-Content 'src/k500/K500PresetFileBridgeAccess.cpp' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+
+          foreach ($token in @('presetFileBridge READ presetFileBridge CONSTANT','QObject *presetFileBridge() const','m_presetFileBridge')) {
+            if (-not $manager.Contains($token)) { throw "P3.3 DeviceManager bridge regression: missing '$token'" }
+          }
+          foreach ($token in @('P3_3_FILE_BRIDGE_QML_ACCESS_V1','new K500PresetFileBridge(self)')) {
+            if (-not $bridge.Contains($token)) { throw "P3.3 access bridge regression: missing '$token'" }
+          }
+          foreach ($token in @('P3_3_PRESET_FILE_UI_V1','import QtQuick.Dialogs','FileDialog.OpenFile','FileDialog.SaveFile','root.fileBridge.loadFile(selectedFile)','root.fileBridge.saveFile(selectedFile)','CHECKSUM OK','Disconnect K500 to preview a PC preset')) {
+            if (-not $system.Contains($token)) { throw "P3.3 System UI regression: missing '$token'" }
+          }
+          if (-not $system.Contains('readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected')) {
+            throw 'P3.3 safety regression: PC preview must remain offline-only'
+          }
+          if (-not $system.Contains('text:"Upload to device";compact:true;enabled:false')) {
+            throw 'P3.3 safety regression: Upload must remain disabled until edit-persistence/P4 gate'
+          }
+          if (-not $system.Contains('text:"Mass upload";compact:true;enabled:false')) {
+            throw 'P3.3 safety regression: Mass Upload must remain disabled until P4 gate'
+          }
+          if (-not $cmake.Contains('K500PresetFileBridgeAccess.cpp')) {
+            throw 'P3.3 CMake access adapter registration missing'
+          }
+
+          $directIo = Get-ChildItem qml -Recurse -File -Filter '*.qml' | Select-String -Pattern 'K500Controller|K500WinIo'
+          if ($directIo) {
+            $directIo | ForEach-Object { Write-Host $_ }
+            throw 'P3.3 architecture regression: QML must not reference Controller/WinIo directly'
+          }

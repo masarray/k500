@@ -26,6 +26,7 @@ class K500DeviceManager final : public QObject
     Q_PROPERTY(bool liveEnabled READ liveEnabled NOTIFY liveEnabledChanged)
     Q_PROPERTY(bool muted READ muted NOTIFY mutedChanged)
     Q_PROPERTY(QObject *presetManager READ presetManager CONSTANT)
+    Q_PROPERTY(QObject *presetFileBridge READ presetFileBridge CONSTANT)
 
 public:
     explicit K500DeviceManager(K500Controller *controller, QObject *parent = nullptr);
@@ -40,6 +41,7 @@ public:
     bool liveEnabled() const { return m_liveEnabled; }
     bool muted() const { return m_muted; }
     QObject *presetManager() const;
+    QObject *presetFileBridge() const;
 
     Q_INVOKABLE void setTransportMode(const QString &mode);
     Q_INVOKABLE void toggleConnection();
@@ -103,6 +105,7 @@ private:
     K500WinIo m_io;
     K500ResponseParser m_parser;
     QObject *m_presetManager = nullptr;
+    QObject *m_presetFileBridge = nullptr;
 
     QString m_transportMode = QStringLiteral("bt");
     QString m_status = QStringLiteral("disconnected");
