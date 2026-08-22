@@ -6,6 +6,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <algorithm>
 
 namespace {
 constexpr int ActiveMemorySize = 0x03AB;
