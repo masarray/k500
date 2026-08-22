@@ -126,14 +126,14 @@ Recall, Use Init, permanent current-device Save and the native Mass Upload trans
 - validated entries feed the existing native descending Mass Upload chain;
 - physical single-slot and multi-slot power-cycle qualification remains pending.
 
-### P5 — Release candidate hardening — IN PROGRESS
+### P5 — Release candidate hardening — SOFTWARE RC COMPLETE, HARDWARE ACCEPTANCE PENDING
 
-- current public documentation and licensing;
-- bounded support diagnostics;
-- release-candidate version metadata;
-- installer/portable + SHA-256 + machine-readable release manifest;
-- expanded physical hardware acceptance evidence;
-- no stable `v1.0` until physical qualification is recorded.
+- public documentation and GPL-3.0-or-later licensing are committed;
+- bounded support diagnostics redact active-memory and preset payloads;
+- release-candidate version metadata is `0.5.0`;
+- installer/portable packaging, SHA-256 and machine-readable release manifest passed CI;
+- full P0–P4.2 regression fortress and runtime smoke tests passed on the P5 merge gate;
+- stable `v1.0` remains blocked until physical USB/BT/persistence qualification is recorded.
 
 ## Merge rule
 
