@@ -35,7 +35,7 @@ jobs:
           $cmake = Get-Content 'CMakeLists.txt' -Raw
           if (-not (Test-Path 'tests/fixtures/donor-sample.k500')) { throw 'Real donor fixture missing' }
           if ((Get-Item 'tests/fixtures/donor-sample.k500').Length -ne 1144) { throw 'Donor fixture must remain 1144 bytes' }
-          foreach ($token in @('P3_2_OFFLINE_HYDRATION_V1','P3_2_NOOP_EXPORT_V1','buildDeviceSlotImage','hydrateFromDeviceMemory','QSaveFile')) {
+          foreach ($token in @('P3_2_OFFLINE_HYDRATION_V1','P3_4_EDITED_EXPORT_V1','No-op Save As is still byte-identical','buildDeviceSlotImage','hydrateFromDeviceMemory','QSaveFile','m_savedBytes = m_sourceBytes')) {
             if (-not $bridge.Contains($token)) { throw "P3.2 bridge regression: missing '$token'" }
           }
           foreach ($token in @('P3_2_FILE_BRIDGE_V1','loadFile','saveFile','deviceSlotImage')) {
