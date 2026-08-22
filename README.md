@@ -1,181 +1,184 @@
-# SONKUPIK STUDIO Native K500
+# SONKUPIK STUDIO — Native K500
 
-This repository is the **Qt 6 / QML native SONKUPIK STUDIO editor for K500**. The premium mixer GUI is now wired to a native C++ K500 control stack; Electron, Web Serial, WebHID and the localhost Node bridge are not required by this build.
+Native **Qt 6 / QML** editor and control application for the K500 karaoke processor.
 
-## Current native architecture
+The project ports the verified K500 behavior from the earlier Web/Electron donor into a Windows-native C++ stack. Normal operation does **not** require Electron, Node.js, Web Serial, WebHID, a browser, or a localhost bridge.
+
+> **Release status:** P5 release-candidate hardening. The software regression suite is automated; physical K500 qualification is still required before hardware-facing features are promoted to `LOCKED ✅` or the project is tagged stable `v1.0`.
+
+## Architecture
 
 ```text
 QML controls
   -> StudioEngine canonical paths
-  -> K500Controller live router / coalescing
-  -> K500Protocol frame builders
-  -> K500DeviceManager connection + readback state machine
-  -> Win32 Bluetooth SPP COM or USB HID
+  -> K500Controller live routing / coalescing
+  -> K500DeviceManager
+  -> K500WinIo
+  -> Win32 Bluetooth SPP or USB HID
   -> K500 hardware
 ```
 
-Incoming device data follows the reverse direction through `K500ResponseParser`. LIVE writes remain disabled until the selected transport answers the K500 heartbeat and a verified scalar readback of device bytes `0x00..0x3F` has completed.
+Preset transactions use one deliberate sibling coordinator:
 
-## Native K500 transport
+```text
+System UI
+  -> K500PresetManager
+  -> K500DeviceManager
+  -> K500WinIo
+```
 
-### Bluetooth SPP
+No QML component owns a raw transport handle.
 
-- Native Win32 COM transport; no QtSerialPort dependency.
-- `115200 8N1`, matching the verified donor implementation.
-- COM ports are protocol-probed with heartbeat `AA 01 1C E3`; a port is accepted only after a valid K500 `0xE3` response.
-- The last verified K500 COM port is remembered and tried first on the next launch.
+## Implemented software surface
 
-Pair `KTV_BT` in Windows first so its Bluetooth SPP COM port exists, then choose **BT** and **CONNECT** in the toolbar.
+### Native device connection
 
-### USB HID
+- Windows USB HID, VID/PID `10C4:0321`, report ID 0, 64-byte HID reports.
+- Windows Bluetooth SPP COM probing at `115200 8N1`.
+- Heartbeat and handshake validation before LIVE is allowed.
+- Full active-memory synchronization: `0x03AB` / **939 bytes**.
+- Readback in verified `0x003A` blocks with 35 ms pacing.
+- Device state hydrates the editor while LIVE is OFF; hydration emits zero echo writes.
+- Heartbeat watchdog fails closed and disables LIVE on a stale connection.
 
-- Native Windows HID transport using SetupAPI / HID APIs.
-- Device identity: **VID `0x10C4`, PID `0x0321`** (`USB HID DSP AUDIO`).
-- Shared BT-style commands are converted at the transport boundary to USB `AA len16LE ... checksum` framing.
-- HID writes use report id `0` plus the captured 64-byte payload size, with multi-report splitting for larger frames.
-- USB read-block mode is converted from BT `0x63` to the verified USB `0x00` value.
+### Verified live-command surface
 
-Choose **USB** and **CONNECT**. Close the manufacturer's K500 application first if it already owns the HID interface.
+The native router implements the donor-verified commands for:
 
-## Safe connection sequence
+- Music master, inputs and key.
+- Top Mic and Top Effect blocks.
+- Mic A/B, Music, Main, Surround, Center, Sub, Reverb and Echo PEQ.
+- Verified HPF/LPF selectors.
+- Mic EQ Link.
+- Main / Surround / Center / Sub output blocks while preserving unknown device-owned bytes.
+- Surround L/R delay.
+- Mute and media transport.
 
-The app deliberately does **not** enable live parameter transmission just because the OS handle opened. The native connection sequence is:
+Fields for which no verified live command exists remain non-destructive rather than guessing protocol bytes. See `docs/PORTING_PARITY_MATRIX.md` for the exact boundary.
 
-1. Open the selected BT COM or USB HID transport.
-2. Probe with heartbeat and require K500 response `0xE3`.
-3. Send handshake `0x3F`.
-4. Read scalar block `0x0000..0x003F` and require response `0xBF` with at least 64 bytes.
-5. Mirror device-owned bytes into `K500Controller`.
-6. Enable LIVE writes.
-7. Send keep-alive heartbeat every 3.2 s; stop live writes if the connection becomes stale.
+### Device preset management
 
-This protects fields in the Music/crossover command blocks that must be mirrored from current device state rather than guessed from GUI defaults.
+- Equipment Mode Recall 1–10 with authoritative full 939-byte resync before LIVE resumes.
+- Use Init Volume transaction with verified ACK handling.
+- USB-only permanent Save from fresh device RAM.
+- Native Store Begin / Chunk / Commit transaction handling.
+- Fail-closed behavior on uncertain destructive transactions.
+- Native Mass Upload engine with verified descending slot order and store-chain handling.
 
-## Currently wired live controls
+### `.k500` file workflow
 
-The first native engine pass wires the Music controls already backed by `StudioEngine`:
+- Exact 1144-byte (`0x0478`) file validation.
+- Additive checksum validation and update.
+- Byte-identical no-edit round trip.
+- Unknown/reserved-byte preservation.
+- Raw PEQ type alias preservation.
+- Controlled edits through explicit verified byte whitelists.
+- Atomic Save As.
+- Verified `.k500` -> native 656-byte (`0x0290`) slot-image conversion.
+- Single PC preset permanent upload to the selected K500 slot.
+- Deterministic multi-file Mass Upload: filename sort -> sequential selected slots -> native descending device transaction.
+- Whole batch aborts before device writes if any member is invalid.
 
-- Music PEQ live band writes.
-- Music HPF / LPF crossover frequency and filter type.
-- Music master volume.
-- Music key.
-- Input 1 / Input 2 / Bluetooth / U-Disk / Digital gains.
-- Media previous / play-pause / next.
-- Device mute.
+**Important:** a K500 permanent slot image is not the first `0x0290` bytes of a `.k500` file. The native codec performs the verified scalar split and compact EQ conversion.
 
-High-rate edits are coalesced before transport: Music PEQ at 45 ms and block-style writes at 55 ms.
+## Safety model
 
-Controls whose protocol mapping has not yet been verified remain editable in the GUI but are intentionally **not guessed onto hardware**.
+The project follows four non-negotiable rules:
 
-## Visual direction
+1. **Device truth on connect.** Current K500 state is read before LIVE is enabled.
+2. **No guessed hardware writes.** Unsupported paths are intentionally non-destructive.
+3. **Preserve neighboring bytes.** Block writes are seeded from device truth or verified file bytes and patch only proven fields.
+4. **Fail closed.** A destructive preset transaction with uncertain state drops the transport and requires a fresh reconnect/readback.
 
-- PEQ is the dominant hero control, with direct draggable bands and a compact selected-band control strip.
-- Faders and rotary controls use restrained depth, fine highlights and small active accents rather than heavy skeuomorphism.
-- Compressor behavior is visible through a live transfer curve.
-- Music key remains a first-class operator control.
-- Level meters use smooth motion plus peak hold and only introduce warm warning colors near headroom.
-- No dashboard cards, onboarding copy, large explanatory text, mono fonts, particles or decorative animation.
+## Windows build
 
-## Font
+Requirements:
 
-The app uses **Segoe UI Variable Text**, matching the current web product's Windows typography while avoiding a bundled font payload.
-
-## Requirements
-
-- Windows 10/11.
-- Qt 6.8 or newer (Desktop MSVC kit).
-- Qt Quick + Qt Quick Controls 2.
+- Windows 10/11 x64.
+- Qt 6.8+ Desktop MSVC kit.
+- Visual Studio / MSVC C++ toolchain.
 - CMake 3.21+.
-- Visual Studio with Desktop development with C++ / MSVC.
-- Ninja is optional; the smart builder falls back to NMake automatically.
 
-No `QtSerialPort`, `hidapi`, Node.js, Electron or browser runtime is required for K500 device I/O.
-
-## Smart Windows build
-
-The repository is drive-agnostic. It can live in either:
-
-```text
-C:\Git\k500
-D:\Git\k500
-```
-
-and Qt can live in either:
-
-```text
-C:\Qt\6.8.3\msvc2022_64
-D:\Qt\6.8.3\msvc2022_64
-```
-
-No hard-coded C: or D: repository path is required. `build-smart.ps1` uses its own repository location (`$PSScriptRoot`) and automatically detects Qt on C: or D:.
-
-From Command Prompt or PowerShell, the normal one-command build is:
+Normal local build:
 
 ```bat
 build-windows.cmd
 ```
 
-To build, deploy Qt runtime, and immediately launch the app:
+Build, deploy Qt runtime and launch:
 
 ```bat
 build-windows.cmd -Run
 ```
 
-To force a clean rebuild:
+Clean rebuild:
 
 ```bat
 build-windows.cmd -Clean
 ```
 
-If Qt is ever installed somewhere else, override detection explicitly:
+The smart builder detects the repository and Qt installation without requiring a hard-coded C: or D: path.
 
-```bat
-build-windows.cmd -QtRoot "E:\Qt\6.8.3\msvc2022_64"
-```
+## Automated regression fortress
 
-The smart builder performs these steps automatically:
+The Windows CI build protects the complete software stack, including:
 
-1. Uses the folder containing the script as the repository root, whether that is on C: or D:.
-2. Detects a valid Qt Desktop MSVC installation from `QT_ROOT`, `CMAKE_PREFIX_PATH`, `C:\Qt`, or `D:\Qt`.
-3. Finds Visual Studio using `vswhere.exe` and activates the MSVC x64 Developer Shell when needed.
-4. Uses Ninja when available, otherwise falls back to `NMake Makefiles`.
-5. Detects incompatible CMake cache when the generator or Qt path changes and cleans it automatically.
-6. Builds Release.
-7. Runs `windeployqt` and creates a runnable `package\SONKUPIK-STUDIO-Native-UI.exe`.
+- UI interaction and embedded Plus Jakarta Sans typography invariants.
+- P0 connection/hydration architecture.
+- P1 donor-verified live routing.
+- P2 permanent preset protocol vectors.
+- P3 synthetic bit-perfect codec tests.
+- P3.2 real donor `.k500` corpus tests.
+- P3.4 controlled-edit persistence tests.
+- P4.2 donor batch-library tests.
+- deployed runtime font, protocol/RX and StudioEngine self-tests.
 
-## Diagnostics
+Later milestones may extend this fortress, but must not weaken earlier invariants to make a new feature pass.
 
-Trace protocol TX/RX while testing real hardware:
+## Support diagnostics
+
+Use the **Support** action in the top toolbar to save a JSON report for hardware acceptance or bug reports.
+
+The report contains build/runtime metadata, transport/status, last error, last TX/RX and a bounded protocol event history. It deliberately excludes:
+
+- the 939-byte active-memory image;
+- `.k500` preset bytes;
+- local preset paths.
+
+For live console tracing:
 
 ```bat
 SONKUPIK-STUDIO-Native-UI.exe --trace-k500
 ```
 
-Run protocol frame and RX parser golden tests:
+Built-in runtime tests:
 
 ```bat
+SONKUPIK-STUDIO-Native-UI.exe --font-self-test
 SONKUPIK-STUDIO-Native-UI.exe --protocol-self-test
-```
-
-The existing StudioEngine model test remains available:
-
-```bat
 SONKUPIK-STUDIO-Native-UI.exe --engine-self-test
 ```
 
-## Native control behavior
+## Windows packages
 
-- Point at a PEQ graph and scroll to adjust the selected band's Q. Hold Shift for fine steps.
-- Drag a PEQ node for frequency/gain; hold Shift for surgical movement.
-- Hold Ctrl while dragging a PEQ node vertically to adjust Q.
-- Scroll knobs, faders, value fields and sliders to change values; hold Shift for fine steps.
-- Use arrow keys after focusing a control. Home resets knobs, faders and value fields.
-- Double-click a knob, fader, value field or slider to reset it.
+CI builds two separate artifacts:
 
-## Next engine phases
+- `SONKUPIK-STUDIO-v<version>-Windows-Setup.exe`
+- `SONKUPIK-STUDIO-v<version>-Windows-Portable-Single.exe`
 
-1. Expand canonical state/readback mapping beyond the currently wired Music controls.
-2. Port Mic / Reverb / Echo / Main / Surround / Center / Sub live blocks whose donor mappings are already verified.
-3. Port Equipment Mode recall, permanent Save and Mass Upload.
-4. Hydrate the GUI from full device readback after connect/recall rather than only preserving device-owned scalar safety bytes.
-5. Replace mock meter input with K500 telemetry if/when a verified meter protocol is available.
+`SHA256SUMS.txt` is generated for release verification. P5 also adds a machine-readable release manifest that explicitly records whether physical hardware acceptance is complete.
+
+## Hardware acceptance
+
+Software CI cannot prove electrical/device persistence behavior. Before stable `v1.0`, test the exact release candidate against a physical K500 using:
+
+- `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
+- `docs/P5_RELEASE_READINESS.md`
+
+USB and Bluetooth must be qualified independently. Permanent Save, PC Upload and Mass Upload must survive reconnect and power cycle with non-target slots preserved.
+
+## License
+
+SONKUPIK STUDIO Native K500 is released under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See `LICENSE`.
+
+Qt and other third-party components remain subject to their respective licenses.

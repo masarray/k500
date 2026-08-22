@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Dialogs
 import QtQuick.Layouts
 
 StudioPanel {
@@ -15,6 +16,15 @@ StudioPanel {
                                                 : deviceManager.status === "syncing" ? "SYNC"
                                                 : deviceManager.status === "error" ? "ERROR"
                                                 : "OFFLINE"
+
+    FileDialog {
+        id: supportReportDialog
+        title: "Save K500 support report"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["JSON support report (*.json)"]
+        currentFile: "SONKUPIK-K500-support-report.json"
+        onAccepted: root.deviceManager.saveSupportReport(selectedFile)
+    }
 
     Connections {
         target: root.deviceManager
@@ -176,10 +186,18 @@ StudioPanel {
 
         Item { Layout.fillWidth:true }
 
-        RowLayout {
-            spacing: 7
-            SoftButton { Layout.preferredWidth:80;Layout.preferredHeight:30;text:"Import";iconName:"upload";compact:true;toolbar:true }
-            SoftButton { Layout.preferredWidth:80;Layout.preferredHeight:30;text:"Export";iconName:"download";compact:true;toolbar:true;checked:true }
+        SoftButton {
+            Layout.preferredWidth: 94
+            Layout.preferredHeight: 30
+            text: "Support"
+            iconName: "file-down"
+            compact: true
+            toolbar: true
+            onClicked: supportReportDialog.open()
+            ToolTip.visible: supportHover.containsMouse
+            ToolTip.text: "Export bounded K500 diagnostics"
+            ToolTip.delay: 350
+            MouseArea { id:supportHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton }
         }
     }
 }
