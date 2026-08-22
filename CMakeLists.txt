@@ -19,6 +19,9 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500Protocol.h
     src/k500/K500PresetProtocol.cpp
     src/k500/K500PresetProtocol.h
+    src/k500/K500PresetManager.cpp
+    src/k500/K500PresetManager.h
+    src/k500/K500PresetManagerBridge.cpp
     src/k500/K500Controller.cpp
     src/k500/K500Controller.h
     src/k500/K500ResponseParser.cpp
