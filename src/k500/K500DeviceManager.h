@@ -53,7 +53,8 @@ public:
 
     // P5_SUPPORT_DIAGNOSTICS_V1
     // The support report deliberately excludes preset contents and active-memory
-    // bytes. It contains only runtime/build metadata and a bounded protocol log.
+    // bytes. It contains only runtime/build metadata and a bounded, redacted
+    // protocol history. Raw lastRx/lastTx remain available only in the live UI.
     Q_INVOKABLE QByteArray supportReportJson() const;
     Q_INVOKABLE bool saveSupportReport(const QUrl &url);
 
@@ -121,6 +122,8 @@ private:
     QString m_lastError;
     QString m_lastRx;
     QString m_lastTx;
+    QString m_lastRxDiagnostic;
+    QString m_lastTxDiagnostic;
     QStringList m_diagnosticLog;
     bool m_liveEnabled = false;
     bool m_muted = false;
