@@ -39,8 +39,14 @@ public:
     Q_INVOKABLE void setUseInitVolume(bool enabled);
     Q_INVOKABLE void saveCurrentToSlot(int slotOneBased);
 
-    // P2 mass-upload engine accepts pre-built 0x0290 slot images. P3/P4 will
-    // supply these from the bit-perfect .k500 codec / preset library.
+    // P4_PC_PRESET_UPLOAD_V1 — a validated 0x0290 image produced by the P3
+    // codec can be stored directly without replacing it with fresh device
+    // readback. Internally it intentionally reuses the proven single-slot Save
+    // transaction state because donor savePresetToSlot uses the same chain.
+    Q_INVOKABLE void uploadSlotImage(int slotOneBased, const QByteArray &image);
+
+    // P2 mass-upload engine accepts pre-built 0x0290 slot images. P4 preset
+    // library feeds this after every file passes the same P3 validation path.
     Q_INVOKABLE void massUploadSlotImages(const QVariantList &entries);
 
 signals:
