@@ -4,7 +4,14 @@
 #include "K500Frame.h"
 #include "K500Protocol.h"
 
+#include <QCoreApplication>
+#include <QDateTime>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QSaveFile>
 #include <QSettings>
+#include <QSysInfo>
 
 namespace {
 constexpr quint16 K500UsbVendorId = 0x10C4;
@@ -14,6 +21,7 @@ constexpr int ProbeTimeoutMs = 1350;
 constexpr int HandshakeTimeoutMs = 2200;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int ConnectionWatchdogMs = 12000;
+constexpr int DiagnosticLogLimit = 240;
 
 // Exact donor/native active-memory readback used by the web editor.
 constexpr int ActiveMemorySize = 0x03AB;       // 0x0000..0x03AA = 939 bytes
@@ -38,6 +46,10 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
             this, &K500DeviceManager::sendProbeHeartbeat);
     connect(&m_heartbeatTimer, &QTimer::timeout,
             this, &K500DeviceManager::heartbeatTick);
+    connect(this, &K500DeviceManager::logLine, this,
+            [this](const QString &direction, const QString &label, const QString &hex) {
+        appendDiagnosticLine(direction, label, hex);
+    });
 
     if (m_controller) {
         connect(m_controller, &K500Controller::frameReady,
@@ -128,12 +140,141 @@ void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &la
     writeFrame(frame, label);
 }
 
+QByteArray K500DeviceManager::supportReportJson() const
+{
+    // P5_SUPPORT_DIAGNOSTICS_V1
+    // Deliberately omit active memory, preset bytes and PC preset paths. Raw
+    // lastRx/lastTx are for the local live UI only; the exported values below
+    // are populated exclusively by appendDiagnosticLine() after redaction.
+    QJsonObject root;
+    root.insert(QStringLiteral("schema"), QStringLiteral("sonkupik-k500-support-report-v1"));
+    root.insert(QStringLiteral("generatedUtc"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    root.insert(QStringLiteral("application"), QCoreApplication::applicationName());
+    root.insert(QStringLiteral("version"), QCoreApplication::applicationVersion());
+    root.insert(QStringLiteral("qtVersion"), QString::fromLatin1(qVersion()));
+
+    QJsonObject platform;
+    platform.insert(QStringLiteral("os"), QSysInfo::prettyProductName());
+    platform.insert(QStringLiteral("kernelType"), QSysInfo::kernelType());
+    platform.insert(QStringLiteral("kernelVersion"), QSysInfo::kernelVersion());
+    platform.insert(QStringLiteral("cpuArchitecture"), QSysInfo::currentCpuArchitecture());
+    platform.insert(QStringLiteral("buildCpuArchitecture"), QSysInfo::buildCpuArchitecture());
+    root.insert(QStringLiteral("platform"), platform);
+
+    QJsonObject device;
+    device.insert(QStringLiteral("transport"), m_transportMode);
+    device.insert(QStringLiteral("status"), m_status);
+    device.insert(QStringLiteral("portLabel"), m_portLabel);
+    device.insert(QStringLiteral("connected"), connected());
+    device.insert(QStringLiteral("liveEnabled"), m_liveEnabled);
+    device.insert(QStringLiteral("muted"), m_muted);
+    device.insert(QStringLiteral("lastError"), m_lastError);
+    device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic);
+    device.insert(QStringLiteral("lastRx"), m_lastRxDiagnostic);
+    root.insert(QStringLiteral("device"), device);
+
+    QJsonObject presetOperation;
+    if (m_presetManager) {
+        presetOperation.insert(QStringLiteral("busy"), m_presetManager->property("busy").toBool());
+        presetOperation.insert(QStringLiteral("activeSlot"), m_presetManager->property("activeSlot").toInt());
+        presetOperation.insert(QStringLiteral("progress"), m_presetManager->property("progress").toString());
+    }
+    root.insert(QStringLiteral("presetOperation"), presetOperation);
+
+    QJsonObject presetFile;
+    if (m_presetFileBridge) {
+        presetFile.insert(QStringLiteral("loaded"), m_presetFileBridge->property("loaded").toBool());
+        presetFile.insert(QStringLiteral("checksumOk"), m_presetFileBridge->property("checksumOk").toBool());
+        presetFile.insert(QStringLiteral("dirty"), m_presetFileBridge->property("dirty").toBool());
+        presetFile.insert(QStringLiteral("changedByteCount"), m_presetFileBridge->property("changedByteCount").toInt());
+    }
+    root.insert(QStringLiteral("presetFile"), presetFile);
+
+    QJsonArray log;
+    for (const QString &line : m_diagnosticLog)
+        log.append(line);
+    root.insert(QStringLiteral("protocolLog"), log);
+
+    QJsonObject privacy;
+    privacy.insert(QStringLiteral("activeMemoryIncluded"), false);
+    privacy.insert(QStringLiteral("presetBytesIncluded"), false);
+    privacy.insert(QStringLiteral("presetPathsIncluded"), false);
+    privacy.insert(QStringLiteral("payloadRedaction"),
+                   QStringLiteral("RSP 0xBF active-memory payloads and Store TX payloads are redacted"));
+    privacy.insert(QStringLiteral("maxProtocolLogLines"), DiagnosticLogLimit);
+    root.insert(QStringLiteral("privacy"), privacy);
+
+    return QJsonDocument(root).toJson(QJsonDocument::Indented);
+}
+
+bool K500DeviceManager::saveSupportReport(const QUrl &url)
+{
+    QString path = url.isLocalFile() ? url.toLocalFile() : url.toString(QUrl::PreferLocalFile);
+    path = QUrl::fromPercentEncoding(path.toUtf8());
+    if (path.isEmpty()) {
+        setError(QStringLiteral("Lokasi support report tidak valid."));
+        return false;
+    }
+    if (!path.endsWith(QStringLiteral(".json"), Qt::CaseInsensitive))
+        path += QStringLiteral(".json");
+
+    QSaveFile file(path);
+    if (!file.open(QIODevice::WriteOnly)) {
+        setError(QStringLiteral("Tidak dapat membuat support report: %1").arg(path));
+        return false;
+    }
+    const QByteArray report = supportReportJson();
+    if (file.write(report) != report.size() || !file.commit()) {
+        setError(QStringLiteral("Gagal menyimpan support report secara atomik: %1").arg(path));
+        return false;
+    }
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("support report saved"), QString{});
+    return true;
+}
+
+void K500DeviceManager::appendDiagnosticLine(const QString &direction,
+                                             const QString &label,
+                                             const QString &hex)
+{
+    const QString normalizedDirection = direction.trimmed().toUpper();
+    const QString normalizedLabel = label.trimmed();
+    QString safePayload = hex.trimmed();
+
+    // P5_SUPPORT_REPORT_REDACTION_V1
+    // RSP 0xBF is the read-block response carrying active-memory bytes. Every
+    // Store-labelled TX frame may contain all or part of a permanent 0x0290
+    // preset image. Keep raw frames in m_lastRx/m_lastTx for the local UI and
+    // --trace-k500 only; never persist those payloads in an exportable report.
+    if (normalizedDirection == QStringLiteral("RX")
+        && normalizedLabel.startsWith(QStringLiteral("RSP 0xBF"), Qt::CaseInsensitive)) {
+        safePayload = QStringLiteral("[REDACTED ACTIVE MEMORY]");
+    } else if (normalizedDirection == QStringLiteral("TX")
+               && normalizedLabel.startsWith(QStringLiteral("Store "), Qt::CaseInsensitive)) {
+        safePayload = QStringLiteral("[REDACTED PRESET PAYLOAD]");
+    }
+
+    if (normalizedDirection == QStringLiteral("RX"))
+        m_lastRxDiagnostic = safePayload;
+    else if (normalizedDirection == QStringLiteral("TX"))
+        m_lastTxDiagnostic = safePayload;
+
+    QString line = QStringLiteral("[%1] %2 %3")
+                       .arg(QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs),
+                            normalizedDirection, normalizedLabel);
+    if (!safePayload.isEmpty())
+        line += QStringLiteral(" | ") + safePayload;
+    m_diagnosticLog.append(line);
+    while (m_diagnosticLog.size() > DiagnosticLogLimit)
+        m_diagnosticLog.removeFirst();
+}
+
 void K500DeviceManager::setStatus(const QString &status)
 {
     if (m_status == status)
         return;
     m_status = status;
     emit statusChanged();
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("status"), status);
 }
 
 void K500DeviceManager::setPortLabel(const QString &label)
@@ -150,6 +291,8 @@ void K500DeviceManager::setError(const QString &message)
         return;
     m_lastError = message;
     emit lastErrorChanged();
+    if (!message.isEmpty())
+        emit logLine(QStringLiteral("ERR"), QStringLiteral("device error"), message);
 }
 
 void K500DeviceManager::setLiveEnabled(bool enabled)

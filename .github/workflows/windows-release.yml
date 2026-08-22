@@ -5,22 +5,34 @@ on:
   pull_request:
     paths:
       - 'CMakeLists.txt'
+      - 'src/AppVersionInit.cpp'
+      - 'src/k500/K500DeviceManager.*'
+      - 'qml/components/TopBar.qml'
       - 'packaging/windows/**'
+      - 'docs/P5_RELEASE_READINESS.md'
       - '.github/workflows/windows-release.yml'
   push:
     branches:
       - main
     paths:
       - 'CMakeLists.txt'
+      - 'src/AppVersionInit.cpp'
+      - 'src/k500/K500DeviceManager.*'
+      - 'qml/components/TopBar.qml'
       - 'packaging/windows/**'
+      - 'docs/P5_RELEASE_READINESS.md'
       - '.github/workflows/windows-release.yml'
 
 permissions:
   contents: write
 
+env:
+  QT_VERSION: '6.8.3'
+  HARDWARE_ACCEPTANCE: pending
+
 jobs:
   package-windows:
-    name: Installer + true portable single EXE
+    name: RC installer + portable single EXE
     runs-on: windows-2022
 
     steps:
@@ -38,12 +50,23 @@ jobs:
           $version = $Matches[1]
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=v$version" >> $env:GITHUB_OUTPUT
-          Write-Host "Packaging SONKUPIK STUDIO v$version"
+          Write-Host "Packaging SONKUPIK STUDIO v$version release candidate"
+
+      - name: Guard release-candidate truth
+        shell: pwsh
+        run: |
+          if ($env:HARDWARE_ACCEPTANCE -ne 'pending') {
+            throw 'P5 CI is not authorized to declare hardware acceptance complete.'
+          }
+          $readiness = Get-Content 'docs/P5_RELEASE_READINESS.md' -Raw
+          foreach ($token in @('physical K500 acceptance pending','stable `v1.0`','release-manifest.json')) {
+            if (-not $readiness.Contains($token)) { throw "P5 readiness contract missing '$token'" }
+          }
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.3'
+          version: ${{ env.QT_VERSION }}
           arch: 'win64_msvc2022_64'
           cache: true
 
@@ -58,11 +81,26 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
           cmake --build build --config Release
 
+      - name: Run full preset regression suite
+        shell: pwsh
+        run: |
+          & build/k500_p2_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
+          & build/k500_p3_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
+          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
+          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.4 donor persistence failed' }
+          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
+
       - name: Deploy Qt runtime
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package,dist | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
+          if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
           windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
 
       - name: Validate deployed application
@@ -108,35 +146,70 @@ jobs:
             if ($p.ExitCode -ne 0) { throw "Portable $arg failed with exit code $($p.ExitCode)" }
           }
 
-      - name: Generate SHA-256 checksums
+      - name: Generate hashes and release manifest
         shell: pwsh
         run: |
+          $version = '${{ steps.meta.outputs.version }}'
+          $artifacts = @()
           Get-ChildItem dist/*.exe | Sort-Object Name | ForEach-Object {
             $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  $($_.Name)"
-          } | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+            "$hash  $($_.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
+            $artifacts += [ordered]@{ file = $_.Name; sha256 = $hash; bytes = $_.Length }
+          }
+
+          $manifest = [ordered]@{
+            schema = 'sonkupik-k500-release-manifest-v1'
+            product = 'SONKUPIK STUDIO Native K500'
+            version = $version
+            commit = $env:GITHUB_SHA
+            generatedUtc = [DateTime]::UtcNow.ToString('o')
+            target = 'windows-x64'
+            qtVersion = $env:QT_VERSION
+            hardwareAcceptance = $env:HARDWARE_ACCEPTANCE
+            stableReleaseEligible = $false
+            regressionSuite = @('P0/P1 architecture','P2 preset protocol','P3 codec','P3.2 donor corpus','P3.4 edit persistence','P4.2 donor batch','runtime self-tests')
+            artifacts = $artifacts
+          }
+          $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/release-manifest.json
           Get-Content dist/SHA256SUMS.txt
+          Get-Content dist/release-manifest.json
+
+      - name: Validate release manifest
+        shell: pwsh
+        run: |
+          $manifest = Get-Content dist/release-manifest.json -Raw | ConvertFrom-Json
+          if ($manifest.version -ne '${{ steps.meta.outputs.version }}') { throw 'Manifest version mismatch' }
+          if ($manifest.commit -ne $env:GITHUB_SHA) { throw 'Manifest commit mismatch' }
+          if ($manifest.hardwareAcceptance -ne 'pending') { throw 'P5 manifest must remain hardware-pending' }
+          if ($manifest.stableReleaseEligible -ne $false) { throw 'P5 must not advertise stable release eligibility' }
+          if ($manifest.artifacts.Count -ne 2) { throw 'Manifest must describe installer and portable artifacts' }
 
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SONKUPIK-STUDIO-Windows-${{ steps.meta.outputs.version }}
+          name: SONKUPIK-STUDIO-Windows-${{ steps.meta.outputs.version }}-RC
           path: |
             dist/*.exe
             dist/SHA256SUMS.txt
+            dist/release-manifest.json
           if-no-files-found: error
 
-      - name: Publish GitHub Release
+      - name: Publish GitHub prerelease
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: SONKUPIK STUDIO ${{ steps.meta.outputs.tag }}
+          name: SONKUPIK STUDIO ${{ steps.meta.outputs.tag }} RC
+          prerelease: true
           generate_release_notes: true
+          body: |
+            Release candidate. Automated software gates passed, but physical K500 hardware acceptance is still pending.
+            Do not treat hardware-facing features as fully qualified until the repository hardware acceptance checklist is completed for this exact commit.
           files: |
             dist/SONKUPIK-STUDIO-v${{ steps.meta.outputs.version }}-Windows-Setup.exe
             dist/SONKUPIK-STUDIO-v${{ steps.meta.outputs.version }}-Windows-Portable-Single.exe
             dist/SHA256SUMS.txt
+            dist/release-manifest.json
           fail_on_unmatched_files: true
           overwrite_files: true

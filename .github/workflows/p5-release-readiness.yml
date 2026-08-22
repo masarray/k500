@@ -1,0 +1,154 @@
+name: Guard P5 release readiness
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'README.md'
+      - 'LICENSE'
+      - 'SECURITY.md'
+      - 'CONTRIBUTING.md'
+      - 'docs/P5_RELEASE_READINESS.md'
+      - 'docs/HARDWARE_ACCEPTANCE_CHECKLIST.md'
+      - 'docs/PORTING_PARITY_MATRIX.md'
+      - 'src/AppVersionInit.cpp'
+      - 'src/k500/K500DeviceManager.*'
+      - 'qml/components/TopBar.qml'
+      - 'CMakeLists.txt'
+      - '.github/workflows/windows-release.yml'
+      - '.github/workflows/p5-release-readiness.yml'
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'LICENSE'
+      - 'SECURITY.md'
+      - 'CONTRIBUTING.md'
+      - 'docs/P5_RELEASE_READINESS.md'
+      - 'docs/HARDWARE_ACCEPTANCE_CHECKLIST.md'
+      - 'docs/PORTING_PARITY_MATRIX.md'
+      - 'src/AppVersionInit.cpp'
+      - 'src/k500/K500DeviceManager.*'
+      - 'qml/components/TopBar.qml'
+      - 'CMakeLists.txt'
+      - '.github/workflows/windows-release.yml'
+      - '.github/workflows/p5-release-readiness.yml'
+
+jobs:
+  p5-readiness:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard P5 public and release contracts
+        shell: pwsh
+        run: |
+          $readme = Get-Content README.md -Raw
+          $license = Get-Content LICENSE -Raw
+          $readiness = Get-Content docs/P5_RELEASE_READINESS.md -Raw
+          $hardware = Get-Content docs/HARDWARE_ACCEPTANCE_CHECKLIST.md -Raw
+          $matrix = Get-Content docs/PORTING_PARITY_MATRIX.md -Raw
+          $deviceHeader = Get-Content src/k500/K500DeviceManager.h -Raw
+          $device = Get-Content src/k500/K500DeviceManager.cpp -Raw
+          $topbar = Get-Content qml/components/TopBar.qml -Raw
+          $cmake = Get-Content CMakeLists.txt -Raw
+          $release = Get-Content .github/workflows/windows-release.yml -Raw
+
+          foreach ($token in @('GNU GENERAL PUBLIC LICENSE','Version 3, 29 June 2007','END OF TERMS AND CONDITIONS')) {
+            if (-not $license.Contains($token)) { throw "GPL-3 license text regression: missing '$token'" }
+          }
+          foreach ($token in @('P5 release-candidate hardening','P4.2 donor batch-library tests','Support diagnostics','GPL-3.0-or-later')) {
+            if (-not $readme.Contains($token)) { throw "P5 README regression: missing '$token'" }
+          }
+          if ($readme.Contains('Segoe UI Variable Text') -or $readme.Contains('Currently wired live controls')) {
+            throw 'P5 README regressed to obsolete porting status'
+          }
+          foreach ($token in @('physical K500 acceptance pending','stable `v1.0`','release-manifest.json')) {
+            if (-not $readiness.Contains($token)) { throw "P5 readiness contract missing '$token'" }
+          }
+          foreach ($token in @('PC preset permanent Upload — P4','Multi-file Mass Upload — P4.2','P5 release-candidate package acceptance','Unplug USB during Mass Upload')) {
+            if (-not $hardware.Contains($token)) { throw "P5 hardware runbook regression: missing '$token'" }
+          }
+          foreach ($token in @('P3 — Bit-perfect `.k500` engine — SOFTWARE COMPLETE','P4 / P4.2 — PC preset upload and batch library — SOFTWARE COMPLETE, HARDWARE GATE PENDING','P5 — Release candidate hardening — IN PROGRESS')) {
+            if (-not $matrix.Contains($token)) { throw "P5 parity matrix regression: missing '$token'" }
+          }
+
+          foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
+            if (-not $deviceHeader.Contains($token)) { throw "P5 diagnostics API missing '$token'" }
+          }
+          foreach ($token in @(
+            'DiagnosticLogLimit = 240',
+            'activeMemoryIncluded',
+            'presetBytesIncluded',
+            'presetPathsIncluded',
+            'QSaveFile',
+            'protocolLog',
+            'P5_SUPPORT_REPORT_REDACTION_V1',
+            '[REDACTED ACTIVE MEMORY]',
+            '[REDACTED PRESET PAYLOAD]',
+            'startsWith(QStringLiteral("RSP 0xBF"), Qt::CaseInsensitive)',
+            'startsWith(QStringLiteral("Store "), Qt::CaseInsensitive)',
+            'device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic)',
+            'device.insert(QStringLiteral("lastRx"), m_lastRxDiagnostic)'
+          )) {
+            if (-not $device.Contains($token)) { throw "P5 diagnostics privacy/schema regression: missing '$token'" }
+          }
+          if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or
+              $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
+            throw 'P5 privacy regression: exported support report must never reference raw lastTx/lastRx'
+          }
+          foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
+            if (-not $topbar.Contains($token)) { throw "P5 Support UI regression: missing '$token'" }
+          }
+          foreach ($token in @('VERSION 0.5.0','src/AppVersionInit.cpp','SONKUPIK_VERSION')) {
+            if (-not $cmake.Contains($token)) { throw "P5 version metadata regression: missing '$token'" }
+          }
+          foreach ($token in @('HARDWARE_ACCEPTANCE: pending','release-manifest.json','stableReleaseEligible = $false','prerelease: true','Run full preset regression suite')) {
+            if (-not $release.Contains($token)) { throw "P5 release pipeline regression: missing '$token'" }
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build full native app and tests
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Run P0-P4.2 preset regression suite
+        shell: pwsh
+        run: |
+          & build/k500_p2_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
+          & build/k500_p3_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
+          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
+          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.4 donor persistence failed' }
+          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
+
+      - name: Deploy and run runtime smoke tests
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
+          Copy-Item LICENSE package/
+          windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath 'package/SONKUPIK-STUDIO-Native-UI.exe' -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Runtime $arg failed with exit code $($p.ExitCode)" }
+          }
