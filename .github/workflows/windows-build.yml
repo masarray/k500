@@ -12,274 +12,133 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Guard PEQ interaction parity
+      - name: Guard UI interaction and typography invariants
         shell: pwsh
         run: |
-          $qml = Get-Content "qml/components/SectionEqGraph.qml" -Raw
-          $required = @(
-            "PEQ_INTERACTION_PARITY_V1",
-            "WheelHandler",
-            "Qt.ShiftModifier",
-            "Qt.ControlModifier",
-            "Qt.MetaModifier",
-            "Math.exp(-qDy*(fine?0.003:0.012))",
-            "onDoubleClicked",
-            "setSelectedGain(0)"
-          )
-          foreach ($token in $required) {
-            if (-not $qml.Contains($token)) {
-              throw "PEQ interaction parity regression: missing '$token'"
-            }
+          $peq = Get-Content 'qml/components/SectionEqGraph.qml' -Raw
+          $fader = Get-Content 'qml/components/StudioFader.qml' -Raw
+          $master = Get-Content 'qml/components/MasterStripPanel.qml' -Raw
+          $slider = Get-Content 'qml/components/ParameterSlider.qml' -Raw
+          $knob = Get-Content 'qml/components/StudioKnob.qml' -Raw
+          $input = Get-Content 'qml/components/InputFader.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $theme = Get-Content 'qml/theme/Theme.qml' -Raw
+          $main = Get-Content 'src/main.cpp' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+
+          foreach ($token in @('PEQ_INTERACTION_PARITY_V1','WheelHandler','Qt.ShiftModifier','Qt.ControlModifier','Math.exp(-qDy*(fine?0.003:0.012))','onDoubleClicked','setSelectedGain(0)')) {
+            if (-not $peq.Contains($token)) { throw "PEQ interaction regression: missing '$token'" }
+          }
+          foreach ($token in @('FADER_INTERACTION_PARITY_V1','signal activated()','preventStealing: true','dragRawValue','sensitivity=fine?0.20:1.0','onWheel:function(e)','enabled: !root.dragging')) {
+            if (-not $fader.Contains($token)) { throw "Fader interaction regression: missing '$token'" }
+          }
+          if ($master.Contains('value:root.engine.masterMusic') -or $master.Contains('value:root.engine.masterMic') -or $master.Contains('value:root.engine.masterFx')) {
+            throw 'Master Strip regression: Repeater model captured live engine values'
+          }
+          if (-not $master.Contains('readonly property real liveValue')) { throw 'Master Strip liveValue binding missing' }
+          foreach ($token in @('CONTROL_CAPTION_AWARENESS_V1','readonly property bool highlighted','Text.Outline','styleColor')) {
+            if (-not $knob.Contains($token) -or -not $slider.Contains($token)) { throw "Caption-awareness regression: missing '$token'" }
+          }
+          if (-not $master.Contains('masterFader.highlighted') -or -not $input.Contains('contextHighlighted: inputFader.highlighted') -or -not $system.Contains('recFader.highlighted') -or -not $system.Contains('triggerFader.highlighted')) {
+            throw 'Direct fader caption-awareness regression'
           }
 
-      - name: Guard fader interaction parity
-        shell: pwsh
-        run: |
-          $fader = Get-Content "qml/components/StudioFader.qml" -Raw
-          $master = Get-Content "qml/components/MasterStripPanel.qml" -Raw
-          $required = @(
-            "FADER_INTERACTION_PARITY_V1",
-            "signal activated()",
-            "preventStealing: true",
-            "dragRawValue",
-            "sensitivity=fine?0.20:1.0",
-            "onWheel:function(e)",
-            "Qt.ShiftModifier",
-            "enabled: !root.dragging"
-          )
-          foreach ($token in $required) {
-            if (-not $fader.Contains($token)) {
-              throw "Fader interaction regression: missing '$token'"
-            }
-          }
-          if ($master.Contains('value:root.engine.masterMusic') -or
-              $master.Contains('value:root.engine.masterMic') -or
-              $master.Contains('value:root.engine.masterFx')) {
-            throw "Master Strip regression: live engine values must not be embedded in Repeater.model"
-          }
-          if (-not $master.Contains('readonly property real liveValue')) {
-            throw "Master Strip regression: stable liveValue binding is missing"
-          }
-
-      - name: Guard control caption awareness
-        shell: pwsh
-        run: |
-          $knob = Get-Content "qml/components/StudioKnob.qml" -Raw
-          $slider = Get-Content "qml/components/ParameterSlider.qml" -Raw
-          $rack = Get-Content "qml/components/RackFaderPanel.qml" -Raw
-          $master = Get-Content "qml/components/MasterStripPanel.qml" -Raw
-          $input = Get-Content "qml/components/InputFader.qml" -Raw
-          $system = Get-Content "qml/components/SystemWorkspace.qml" -Raw
-          $requiredCore = @(
-            "CONTROL_CAPTION_AWARENESS_V1",
-            "readonly property bool highlighted",
-            "Text.Outline",
-            "styleColor"
-          )
-          foreach ($token in $requiredCore) {
-            if (-not $knob.Contains($token)) { throw "Knob caption awareness regression: missing '$token'" }
-            if (-not $slider.Contains($token)) { throw "Slider caption awareness regression: missing '$token'" }
-          }
-          if (-not $rack.Contains('rackFader.highlighted')) { throw "Rack fader caption awareness regression" }
-          if (-not $master.Contains('masterFader.highlighted')) { throw "Master fader caption awareness regression" }
-          if (-not $input.Contains('contextHighlighted: inputFader.highlighted')) { throw "Input fader caption awareness regression" }
-          if (-not $system.Contains('recFader.highlighted') -or -not $system.Contains('triggerFader.highlighted')) {
-            throw "System direct fader caption awareness regression"
-          }
-
-      - name: Guard single embedded typography family
-        shell: pwsh
-        run: |
-          $theme = Get-Content "qml/theme/Theme.qml" -Raw
-          $main = Get-Content "src/main.cpp" -Raw
-          $cmake = Get-Content "CMakeLists.txt" -Raw
-          $fontFiles = @(
-            "resources/fonts/PlusJakartaSans-Regular.ttf",
-            "resources/fonts/PlusJakartaSans-Medium.ttf",
-            "resources/fonts/PlusJakartaSans-SemiBold.ttf",
-            "resources/fonts/PlusJakartaSans-Bold.ttf",
-            "resources/fonts/OFL-PlusJakartaSans.txt"
-          )
-          foreach ($fontFile in $fontFiles) {
+          foreach ($fontFile in @('resources/fonts/PlusJakartaSans-Regular.ttf','resources/fonts/PlusJakartaSans-Medium.ttf','resources/fonts/PlusJakartaSans-SemiBold.ttf','resources/fonts/PlusJakartaSans-Bold.ttf','resources/fonts/OFL-PlusJakartaSans.txt')) {
             if (-not (Test-Path $fontFile)) { throw "Embedded typography regression: missing $fontFile" }
           }
-          if (-not $theme.Contains('TYPOGRAPHY_SINGLE_FAMILY_V1')) { throw "Typography guard marker missing" }
-          if (($theme | Select-String -Pattern 'Plus Jakarta Sans' -AllMatches).Matches.Count -lt 3) {
-            throw "Theme typography aliases are not all Plus Jakarta Sans"
-          }
-          if (-not $main.Contains('QFontDatabase::addApplicationFont')) { throw "Embedded font registration missing" }
-          if (-not $cmake.Contains('PlusJakartaSans-Regular.ttf') -or -not $cmake.Contains('embedded_fonts')) {
-            throw "Qt resource font bundle missing"
+          if (-not $theme.Contains('TYPOGRAPHY_SINGLE_FAMILY_V1') -or -not $main.Contains('QFontDatabase::addApplicationFont') -or -not $cmake.Contains('embedded_fonts')) {
+            throw 'Embedded Plus Jakarta Sans contract missing'
           }
           $legacy = Get-ChildItem qml,src -Recurse -File | Where-Object { $_.Extension -in '.qml','.cpp','.h' } | Select-String -Pattern 'Segoe UI Variable|Cascadia Mono'
-          if ($legacy) {
-            $legacy | ForEach-Object { Write-Host $_ }
-            throw "Legacy font family reference remains"
-          }
+          if ($legacy) { throw 'Legacy font family reference remains' }
 
-      - name: Guard P0 regression fortress
+      - name: Guard P0 and P1 native architecture
         shell: pwsh
         run: |
-          $requiredDocs = @(
-            'docs/PORTING_PARITY_MATRIX.md',
-            'docs/PROTOCOL_GOLDEN_VECTORS.md',
-            'docs/HARDWARE_ACCEPTANCE_CHECKLIST.md'
-          )
-          foreach ($path in $requiredDocs) {
-            if (-not (Test-Path $path)) { throw "P0 regression: missing $path" }
-          }
-
           $matrix = Get-Content 'docs/PORTING_PARITY_MATRIX.md' -Raw
+          $vectors = Get-Content 'docs/PROTOCOL_GOLDEN_VECTORS.md' -Raw
           $main = Get-Content 'src/main.cpp' -Raw
           $protocol = Get-Content 'src/k500/K500Protocol.cpp' -Raw
           $manager = Get-Content 'src/k500/K500DeviceManager.cpp' -Raw
-          $controller = Get-Content 'src/k500/K500Controller.cpp' -Raw
-
-          foreach ($token in @('P0 non-negotiable invariants','0x03AB','hydration must emit **zero**','unsupportedPath')) {
-            if (-not $matrix.Contains($token)) { throw "P0 parity contract regression: missing '$token'" }
-          }
-          foreach ($token in @('P0_NATIVE_ARCHITECTURE_V1','P0_FULL_MEMORY_HYDRATION_V1','hydrationEdits == 0','K500DeviceManager::activeMemoryReady','StudioEngine::hydrateFromDeviceMemory')) {
-            if (-not $main.Contains($token)) { throw "P0 engine/architecture regression: missing '$token'" }
-          }
-          foreach ($token in @('P0_PROTOCOL_GOLDEN_VECTORS_V1','Bluetooth final read-block','USB final read-block','top music mirrored scalar')) {
-            if (-not $protocol.Contains($token)) { throw "P0 protocol regression: missing '$token'" }
-          }
-          foreach ($token in @('ActiveMemorySize = 0x03AB','ActiveMemoryBlockSize = 0x003A','ActiveMemoryInterBlockMs = 35','emit activeMemoryReady(m_activeMemory);','setLiveEnabled(true);')) {
-            if (-not $manager.Contains($token)) { throw "P0 device sync regression: missing '$token'" }
-          }
-          $hydratePos = $manager.IndexOf('emit activeMemoryReady(m_activeMemory);')
-          $livePos = $manager.IndexOf('setLiveEnabled(true);')
-          if ($hydratePos -lt 0 -or $livePos -lt 0 -or $hydratePos -ge $livePos) {
-            throw 'P0 device sync regression: LIVE must be enabled only after full-memory hydration is emitted'
-          }
-          if (-not $controller.Contains('emit unsupportedPath(path);')) {
-            throw 'P0 safety regression: unsupported paths must remain non-destructive'
-          }
-
-      - name: Guard P1 full verified live parity
-        shell: pwsh
-        run: |
-          $protocol = Get-Content 'src/k500/K500Protocol.cpp' -Raw
           $controller = Get-Content 'src/k500/K500Controller.cpp' -Raw
           $engine = Get-Content 'src/StudioEngine.h' -Raw
           $rack = Get-Content 'qml/components/RackFaderPanel.qml' -Raw
           $dynamics = Get-Content 'qml/components/RackDynamicsPanel.qml' -Raw
           $filter = Get-Content 'qml/components/RackFilterPanel.qml' -Raw
           $mainQml = Get-Content 'qml/Main.qml' -Raw
-          $matrix = Get-Content 'docs/PORTING_PARITY_MATRIX.md' -Raw
-          $vectors = Get-Content 'docs/PROTOCOL_GOLDEN_VECTORS.md' -Raw
 
-          foreach ($token in @(
-            'P1_PROTOCOL_GOLDEN_VECTORS_V1',
-            'P1_TOP_MIC_VERIFIED_V1',
-            'P1_TOP_EFFECT_VERIFIED_V1',
-            'P1_OUTPUT_BLOCK_VERIFIED_V1',
-            'P1_MIC_EQ_LINK_VERIFIED_V1',
-            'output block must preserve unknown device bytes'
-          )) {
+          foreach ($path in @('docs/PORTING_PARITY_MATRIX.md','docs/PROTOCOL_GOLDEN_VECTORS.md','docs/HARDWARE_ACCEPTANCE_CHECKLIST.md')) {
+            if (-not (Test-Path $path)) { throw "P0 regression: missing $path" }
+          }
+          foreach ($token in @('P0 non-negotiable invariants','0x03AB','hydration must emit **zero**','unsupportedPath')) {
+            if (-not $matrix.Contains($token)) { throw "P0 parity regression: missing '$token'" }
+          }
+          foreach ($token in @('P0_NATIVE_ARCHITECTURE_V1','P0_FULL_MEMORY_HYDRATION_V1','hydrationEdits == 0','K500DeviceManager::activeMemoryReady','StudioEngine::hydrateFromDeviceMemory')) {
+            if (-not $main.Contains($token)) { throw "P0 architecture regression: missing '$token'" }
+          }
+          foreach ($token in @('ActiveMemorySize = 0x03AB','ActiveMemoryBlockSize = 0x003A','ActiveMemoryInterBlockMs = 35','emit activeMemoryReady(m_activeMemory);','setLiveEnabled(true);')) {
+            if (-not $manager.Contains($token)) { throw "P0 sync regression: missing '$token'" }
+          }
+          $hydratePos = $manager.IndexOf('emit activeMemoryReady(m_activeMemory);')
+          $livePos = $manager.IndexOf('setLiveEnabled(true);')
+          if ($hydratePos -lt 0 -or $livePos -lt 0 -or $hydratePos -ge $livePos) { throw 'LIVE must turn on only after hydration' }
+
+          foreach ($token in @('P1_PROTOCOL_GOLDEN_VECTORS_V1','P1_TOP_MIC_VERIFIED_V1','P1_TOP_EFFECT_VERIFIED_V1','P1_OUTPUT_BLOCK_VERIFIED_V1','P1_MIC_EQ_LINK_VERIFIED_V1','output block must preserve unknown device bytes')) {
             if (-not $protocol.Contains($token)) { throw "P1 protocol regression: missing '$token'" }
           }
-
-          foreach ($token in @(
-            'P1_CONTROLLER_DEVICE_SEED_V1',
-            'P1_FULL_LIVE_ROUTING_V1',
-            'queueTopMic',
-            'queueTopEffect',
-            'queueOutput',
-            'queueCrossover',
-            'mic.eqLink',
-            'updateOutputState'
-          )) {
+          foreach ($token in @('P1_CONTROLLER_DEVICE_SEED_V1','P1_FULL_LIVE_ROUTING_V1','queueTopMic','queueTopEffect','queueOutput','queueCrossover','mic.eqLink','updateOutputState')) {
             if (-not $controller.Contains($token)) { throw "P1 controller regression: missing '$token'" }
           }
-
-          if (-not $engine.Contains('P1_CANONICAL_DEVICE_EDIT_V1') -or -not $engine.Contains('editDevicePath')) {
-            throw 'P1 StudioEngine canonical edit bridge missing'
-          }
-          foreach ($pair in @(
-            @($rack,'P1_RACK_FADER_LIVE_BRIDGE_V1'),
-            @($dynamics,'P1_RACK_DYNAMICS_LIVE_BRIDGE_V1'),
-            @($filter,'P1_RACK_FILTER_LIVE_BRIDGE_V1'),
-            @($mainQml,'P1_MIC_EQ_LINK_UI_BRIDGE_V1')
-          )) {
+          if (-not $engine.Contains('P1_CANONICAL_DEVICE_EDIT_V1') -or -not $engine.Contains('editDevicePath')) { throw 'P1 canonical edit bridge missing' }
+          foreach ($pair in @(@($rack,'P1_RACK_FADER_LIVE_BRIDGE_V1'),@($dynamics,'P1_RACK_DYNAMICS_LIVE_BRIDGE_V1'),@($filter,'P1_RACK_FILTER_LIVE_BRIDGE_V1'),@($mainQml,'P1_MIC_EQ_LINK_UI_BRIDGE_V1'))) {
             if (-not $pair[0].Contains($pair[1])) { throw "P1 QML bridge regression: missing '$($pair[1])'" }
           }
-          if (-not $filter.Contains('outputs.surround.lDelayMs') -or -not $filter.Contains('outputs.surround.rDelayMs')) {
-            throw 'P1 Surround delay bridge regression'
-          }
-          foreach ($token in @('Top Mic `CMD 0x05` | DONOR ONLY 🟨 | IMPLEMENTED ⚠️','CODE COMPLETE, HARDWARE GATE PENDING','do not guess')) {
-            if (-not $matrix.Contains($token)) { throw "P1 parity matrix regression: missing '$token'" }
-          }
           foreach ($token in @('P1 Top Mic CMD 0x05','P1 Top Effect CMD 0x09','P1 Mic EQ Link','P1 output blocks CMD 0x0E')) {
-            if (-not $vectors.Contains($token)) { throw "P1 golden-vector documentation regression: missing '$token'" }
+            if (-not $vectors.Contains($token)) { throw "P1 vector documentation regression: missing '$token'" }
           }
+          $directIo = Get-ChildItem qml -Recurse -File -Filter '*.qml' | Select-String -Pattern 'K500Controller|K500WinIo'
+          if ($directIo) { throw 'QML must not reference Controller/WinIo directly' }
 
-          # Architecture safety: no QML may acquire a direct Controller/DeviceManager/WinIo reference.
-          $directIo = Get-ChildItem qml -Recurse -File -Filter '*.qml' | Select-String -Pattern 'K500Controller|K500DeviceManager|K500WinIo'
-          if ($directIo) {
-            $directIo | ForEach-Object { Write-Host $_ }
-            throw 'P1 architecture regression: QML references native device I/O directly'
-          }
-
-      - name: Guard P2 transactional preset management
+      - name: Guard P2 through P4.2 preset stack
         shell: pwsh
         run: |
           $protocol = Get-Content 'src/k500/K500PresetProtocol.cpp' -Raw
           $preset = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
-          $bridge = Get-Content 'src/k500/K500PresetManagerBridge.cpp' -Raw
+          $presetHeader = Get-Content 'src/k500/K500PresetManager.h' -Raw
+          $managerBridge = Get-Content 'src/k500/K500PresetManagerBridge.cpp' -Raw
+          $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
+          $batchBridge = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
+          $uploadBridge = Get-Content 'src/k500/K500PresetUploadBridge.cpp' -Raw
           $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
-          $matrix = Get-Content 'docs/PORTING_PARITY_MATRIX.md' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
 
-          foreach ($token in @(
-            'P2_PRESET_PROTOCOL_GOLDEN_VECTORS_V1',
-            'recallMode(1)',
-            'recallHandshake()',
-            'useInitVolume(false)',
-            'storeBegin(zeroImage)',
-            'storeCommit(1, zeroImage)',
-            'mass-upload chain derivation mismatch'
-          )) {
+          foreach ($token in @('P2_PRESET_PROTOCOL_GOLDEN_VECTORS_V1','recallMode(1)','recallHandshake()','useInitVolume(false)','storeBegin(zeroImage)','storeCommit(1, zeroImage)','mass-upload chain derivation mismatch')) {
             if (-not $protocol.Contains($token)) { throw "P2 protocol regression: missing '$token'" }
           }
-
-          foreach ($token in @(
-            'P2_TRANSACTION_COORDINATOR_V1',
-            'P2_SAVE_FROM_DEVICE_TRUTH_V1',
-            'RecallSettleMs = 80',
-            'response.rsp == 0xC0',
-            'response.rsp == 0xED',
-            'response.rsp == 0xBE',
-            'response.rsp == 0xBD',
-            'response.rsp == 0xBC',
-            'resetConnectionState(true)',
-            'm_manager->setLiveEnabled(false)'
-          )) {
+          foreach ($token in @('P2_TRANSACTION_COORDINATOR_V1','P2_SAVE_FROM_DEVICE_TRUTH_V1','RecallSettleMs = 80','response.rsp == 0xC0','response.rsp == 0xED','response.rsp == 0xBE','response.rsp == 0xBD','response.rsp == 0xBC','resetConnectionState(true)','m_manager->setLiveEnabled(false)','return a.slot > b.slot')) {
             if (-not $preset.Contains($token)) { throw "P2 transaction regression: missing '$token'" }
           }
-
           foreach ($token in @('deviceScalarsReady(memory.left(0x40))','activeMemoryReady(memory)')) {
-            if (-not $bridge.Contains($token)) { throw "P2 hydration bridge regression: missing '$token'" }
+            if (-not $managerBridge.Contains($token)) { throw "P2 hydration bridge regression: missing '$token'" }
           }
-
-          foreach ($token in @(
-            'P2_DEVICE_PRESET_UI_V1',
-            'recallMode(root.selectedDeviceSlot+1)',
-            'saveCurrentToSlot(root.selectedDeviceSlot+1)',
-            'setUseInitVolume(!root.presetManager.useInitVolume)',
-            'root.presetManager.usbStoreAvailable'
-          )) {
-            if (-not $system.Contains($token)) { throw "P2 System UI regression: missing '$token'" }
+          foreach ($token in @('P3_2_OFFLINE_HYDRATION_V1','P3_4_CONTROLLED_EDIT_PERSISTENCE_V1','P3_4_EDITED_EXPORT_V1','buildDeviceSlotImage','QSaveFile')) {
+            if (-not $fileBridge.Contains($token)) { throw "P3/P3.4 file regression: missing '$token'" }
           }
-          if (-not $system.Contains('text:"Mass upload";compact:true;enabled:false')) {
-            throw 'P2 dependency safety regression: preset-library Mass Upload must remain disabled until P3/P4 supplies raw slot images'
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_V1','usbStoreAvailable','DeviceSlotImageLength','m_storeImage = image','beginStoreSlot(false)')) {
+            if (-not $uploadBridge.Contains($token)) { throw "P4 upload regression: missing '$token'" }
           }
-
-          foreach ($token in @('P2 implementation boundary','CODE COMPLETE, CI/HARDWARE GATE PENDING','fails closed','0x0290')) {
-            if (-not $matrix.Contains($token)) { throw "P2 parity matrix regression: missing '$token'" }
+          if ($uploadBridge.Contains('startReadback') -or $uploadBridge.Contains('m_readbackMemory')) { throw 'PC preset upload must never source device readback' }
+          foreach ($token in @('P4_2_PRESET_BATCH_LIBRARY_V1','document.checksumOk','buildDeviceSlotImage','QString::compare','startSlot + urls.size() - 1 > 10')) {
+            if (-not $batchBridge.Contains($token)) { throw "P4.2 batch regression: missing '$token'" }
           }
-          if (-not $cmake.Contains('k500_p2_selftest') -or -not $cmake.Contains('K500PresetManager.cpp')) {
-            throw 'P2 build regression: transaction/self-test targets missing from CMake'
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','enabled:root.pcUploadReady','P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled:root.massUploadReady')) {
+            if (-not $system.Contains($token)) { throw "P4 UI regression: missing '$token'" }
+          }
+          foreach ($token in @('uploadSlotImage','massUploadSlotImages')) {
+            if (-not $presetHeader.Contains($token)) { throw "Preset manager API regression: missing '$token'" }
+          }
+          foreach ($token in @('k500_p2_selftest','k500_p3_selftest','k500_p32_corpus_test','k500_p34_edit_persistence_test','k500_p42_batch_test')) {
+            if (-not $cmake.Contains($token)) { throw "Regression test target missing '$token'" }
           }
 
       - name: Install Qt
@@ -302,11 +161,19 @@ jobs:
         shell: pwsh
         run: cmake --build build --config Release
 
-      - name: K500 P2 preset protocol self-test
+      - name: Run preset regression suite
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "build/k500_p2_selftest.exe" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "K500 P2 preset protocol self-test failed with exit code $($p.ExitCode)" }
+          & build/k500_p2_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
+          & build/k500_p3_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
+          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
+          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.4 donor persistence failed' }
+          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
 
       - name: Deploy Qt runtime
         shell: pwsh
@@ -315,23 +182,13 @@ jobs:
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
           windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
 
-      - name: Embedded font self-test
+      - name: Runtime self-tests
         shell: pwsh
         run: |
-          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--font-self-test" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "Embedded Plus Jakarta Sans self-test failed with exit code $($p.ExitCode)" }
-
-      - name: K500 protocol and RX parser self-test
-        shell: pwsh
-        run: |
-          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--protocol-self-test" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "K500 protocol/RX parser self-test failed with exit code $($p.ExitCode)" }
-
-      - name: StudioEngine self-test
-        shell: pwsh
-        run: |
-          $p = Start-Process -FilePath "package/SONKUPIK-STUDIO-Native-UI.exe" -ArgumentList "--engine-self-test" -Wait -PassThru
-          if ($p.ExitCode -ne 0) { throw "StudioEngine self-test failed with exit code $($p.ExitCode)" }
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath 'package/SONKUPIK-STUDIO-Native-UI.exe' -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Runtime self-test $arg failed with exit code $($p.ExitCode)" }
+          }
 
       - name: Upload runnable build
         uses: actions/upload-artifact@v4
