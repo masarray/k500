@@ -1,0 +1,99 @@
+name: K500 hardware acceptance
+about: Record reproducible physical USB/BT qualification evidence for a specific commit
+labels: [hardware-acceptance]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this only for tests performed on a real K500. CI-only results are not hardware acceptance.
+
+  - type: input
+    id: commit
+    attributes:
+      label: SONKUPIK STUDIO commit SHA
+      placeholder: 40-character commit SHA
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: SONKUPIK STUDIO version
+      placeholder: 0.5.0 RC
+    validations:
+      required: true
+
+  - type: input
+    id: firmware
+    attributes:
+      label: K500 firmware/version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: transport
+    attributes:
+      label: Transport
+      options:
+        - USB HID
+        - Bluetooth SPP
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+    validations:
+      required: true
+
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Acceptance scope
+      options:
+        - P0 connect / reconnect / hydration
+        - P1 live controls
+        - P2 Recall / Use Init
+        - P2 current-device permanent Save
+        - P4 PC preset Upload
+        - P4.2 Mass Upload
+        - P5 installer / portable package
+        - Failure / recovery injection
+    validations:
+      required: true
+
+  - type: textarea
+    id: procedure
+    attributes:
+      label: Exact test procedure
+      description: Include source/destination slots and changed values for destructive tests.
+    validations:
+      required: true
+
+  - type: textarea
+    id: result
+    attributes:
+      label: Result and non-target preservation
+      description: State what changed, what remained unchanged, reconnect result and power-cycle result where applicable.
+    validations:
+      required: true
+
+  - type: input
+    id: report
+    attributes:
+      label: Support Report / trace / capture reference
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: evidence
+    attributes:
+      label: Evidence declaration
+      options:
+        - label: I tested this on a physical K500 using the commit and transport above.
+          required: true
+        - label: I did not mark a permanent-storage test PASS without reconnect and power-cycle verification.
+          required: true
+        - label: I checked non-target values/slots for unintended changes where applicable.
+          required: true
