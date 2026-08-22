@@ -21,6 +21,8 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500PresetProtocol.h
     src/k500/K500PresetCodec.cpp
     src/k500/K500PresetCodec.h
+    src/k500/K500PresetFileBridge.cpp
+    src/k500/K500PresetFileBridge.h
     src/k500/K500PresetManager.cpp
     src/k500/K500PresetManager.h
     src/k500/K500PresetManagerBridge.cpp
@@ -98,9 +100,6 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/RackFilterPanel.qml
         qml/components/SystemWorkspace.qml
         qml/components/SectionWorkspace.qml
-    SOURCES
-        src/k500/K500PresetFileBridge.cpp
-        src/k500/K500PresetFileBridge.h
 )
 
 set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/sonkupik-logo.png")
