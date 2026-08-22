@@ -11,6 +11,7 @@
 #include <QTimer>
 
 class K500Controller;
+class K500PresetManager;
 
 class K500DeviceManager final : public QObject
 {
@@ -24,6 +25,7 @@ class K500DeviceManager final : public QObject
     Q_PROPERTY(bool connected READ connected NOTIFY statusChanged)
     Q_PROPERTY(bool liveEnabled READ liveEnabled NOTIFY liveEnabledChanged)
     Q_PROPERTY(bool muted READ muted NOTIFY mutedChanged)
+    Q_PROPERTY(QObject *presetManager READ presetManager CONSTANT)
 
 public:
     explicit K500DeviceManager(K500Controller *controller, QObject *parent = nullptr);
@@ -37,6 +39,7 @@ public:
     bool connected() const { return m_status == QStringLiteral("connected"); }
     bool liveEnabled() const { return m_liveEnabled; }
     bool muted() const { return m_muted; }
+    QObject *presetManager() const;
 
     Q_INVOKABLE void setTransportMode(const QString &mode);
     Q_INVOKABLE void toggleConnection();
@@ -62,6 +65,8 @@ signals:
     void logLine(const QString &direction, const QString &label, const QString &hex);
 
 private:
+    friend class K500PresetManager;
+
     enum class Stage {
         Idle,
         ProbeBluetooth,
@@ -97,6 +102,7 @@ private:
     K500Controller *m_controller = nullptr;
     K500WinIo m_io;
     K500ResponseParser m_parser;
+    QObject *m_presetManager = nullptr;
 
     QString m_transportMode = QStringLiteral("bt");
     QString m_status = QStringLiteral("disconnected");

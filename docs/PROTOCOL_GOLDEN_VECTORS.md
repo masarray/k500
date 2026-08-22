@@ -1,6 +1,6 @@
 # K500 Protocol Golden Vectors
 
-These vectors freeze the accepted native Qt protocol behavior. They are enforced by `K500Protocol::selfTest()`. P0 vectors protect connection/readback and the existing Music path; P1 adds only commands already verified in the donor/captures.
+These vectors freeze the accepted native Qt protocol behavior. P0/P1 live vectors are enforced by `K500Protocol::selfTest()`; P2 preset-management vectors are enforced independently by `K500PresetProtocol::selfTest()` so transactional protocol work cannot weaken the live-control baseline.
 
 ## Frame rules
 
@@ -138,9 +138,84 @@ AA 25 0E 05 5D 00 00 00 46 00 5A 00 3C 00 32 00 28 08 04 03 00 00 00 00 00 00 00
 
 The self-test also seeds all unknown bytes with `0x5A` and verifies an untouched position remains `0x5A` after a Main edit. This is the destructive-write regression guard.
 
+## P2 Recall / Use Init Volume
+
+The route byte is a **device destination mask**, not the current physical PC cable. Donor/native captures use `0x03` (USB + BT destinations) for Recall and Use Init.
+
+Shared/BT-style builders:
+
+```text
+Recall slot 1, mask 03       AA 03 01 00 03 F9
+Recall refresh handshake     AA 03 3F 00 03 BB
+Use Init OFF, mask 03        AA 03 12 00 03 E8
+Use Init ON,  mask 03        AA 03 12 01 03 E7
+```
+
+USB framing inserts the 16-bit length high byte. Example captured-equivalent Recall slot 4 to USB destination:
+
+```text
+AA 03 00 01 03 01 F8
+```
+
+Recall is transactional: send `CMD 0x01`, wait 80 ms, send `CMD 0x3F`, require `RSP 0xC0`, then re-read all 939 active-memory bytes before LIVE returns.
+
+Use Init Volume requires `RSP 0xED`.
+
+## P2 permanent Store
+
+Native slot image length is `0x0290` = **656 bytes**. Chunk length is `0x003C` = **60 bytes**, so each slot uses ten 60-byte chunks plus one final 56-byte chunk.
+
+Single-slot Save uses:
+
+```text
+CMD 0x41 begin
+CMD 0x42 chunk x11, each requires RSP 0xBD
+CMD 0x43 commit, requires RSP 0xBC
+```
+
+The native single-slot capture does **not** wait for a `0xBE` begin ACK; it waits 80 ms after `CMD 0x41` and starts chunks. Mass Upload does wait for `RSP 0xBE` for every slot begin.
+
+Zero-image reference vectors:
+
+```text
+Store begin, 656-byte zero image
+AA 08 41 90 02 00 00 00 00 00 25
+
+First 60-byte zero chunk, offset 0000
+AA 45 42 00 00 3C 00 [60x00] 00 00 00 00 3D
+
+Final 56-byte zero chunk, offset 0258
+AA 41 42 58 02 38 00 [56x00] 00 00 00 00 EB
+
+Commit slot 1, zero image
+AA 07 43 00 00 38 00 00 00 7E
+```
+
+Mass-upload chain regression vector uses final slot-image bytes `12 34`. For a chain input `12 34 56`, the begin frame must be:
+
+```text
+AA 08 41 90 02 BA 00 12 34 56 CF
+```
+
+and the slot-1 commit is:
+
+```text
+AA 07 43 00 00 38 00 12 34 38
+```
+
+The next native chain becomes `[12, 34, 38]`: final image byte 0, final image byte 1, previous commit checksum.
+
+### P2 source-of-truth rule
+
+Single-slot Save does not serialize an editor model. Immediately before Store, Qt re-reads active K500 memory and takes bytes `0x0000..0x028F` directly as the slot image. Therefore permanent Save cannot accidentally introduce stale `.k500` defaults while P3 codec work is still pending.
+
+Mass Upload accepts already-built 656-byte images; P3/P4 will supply those images from the bit-perfect codec/preset library.
+
 ## Explicit non-support boundary
 
 P1 does **not** invent commands for fields for which the donor has no verified live mapping. Mic gate and detailed Reverb/Echo level/timing parameters remain hardware read-only until packet evidence exists.
+
+P2 does **not** invent a `.k500` serializer or fake PC-preset Mass Upload. Those remain P3/P4 dependencies.
 
 ## Change policy
 

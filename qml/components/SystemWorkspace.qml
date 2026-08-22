@@ -1,10 +1,20 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
 
 Item {
     id: root
     required property var engine
 
+    // P2_DEVICE_PRESET_UI_V1
+    // Main.qml already owns the high-level DeviceManager used by TopBar. Resolve
+    // its preset coordinator through the containing window without exposing raw
+    // transport/I/O objects to this workspace.
+    readonly property var presetManager: {
+        var w = root.Window.window
+        var dm = w ? w["deviceManager"] : null
+        return dm ? dm.presetManager : null
+    }
     readonly property var defaultDeviceSlots: [
         "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
         "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
@@ -16,7 +26,11 @@ Item {
         var value = system ? system[key] : undefined
         return value === undefined || value === null || value === "" ? fallback : value
     }
-    readonly property int activeDeviceSlot: Math.max(0, Math.min(9, Number(systemValue("deviceModeIndex", 4)) - 1))
+    readonly property int activeDeviceSlot: {
+        if (root.presetManager && Number(root.presetManager.activeSlot) > 0)
+            return Math.max(0, Math.min(9, Number(root.presetManager.activeSlot) - 1))
+        return Math.max(0, Math.min(9, Number(systemValue("deviceModeIndex", 4)) - 1))
+    }
     property int selectedDeviceSlot: 3
     property var deviceSlots: {
         var names = systemValue("deviceModeNames", root.defaultDeviceSlots)
@@ -27,6 +41,11 @@ Item {
     Connections {
         target: root.engine
         function onDeviceStateChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
+    }
+    Connections {
+        target: root.presetManager
+        enabled: !!root.presetManager
+        function onActiveSlotChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
     }
 
     ColumnLayout {
@@ -64,7 +83,7 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             Text { Layout.fillWidth:true;text:"D:\\Documents\\SONKUPIK STUDIO Presets";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideMiddle }
-                            SoftButton { Layout.preferredWidth:62;text:"Refresh";compact:true;checked:true }
+                            SoftButton { Layout.preferredWidth:62;text:"Refresh";compact:true;checked:true;enabled:false }
                         }
 
                         Rectangle {
@@ -84,7 +103,7 @@ Item {
                                     anchors.fill:parent;anchors.leftMargin:10;anchors.rightMargin:10;spacing:8
                                     Text{text:"1";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                                     Text{Layout.fillWidth:true;text:"KARAOKE ARTIST LUXURY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideRight}
-                                    Text{text:"FACTORY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                    Text{text:"P3/P4";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
                                 }
                             }
                         }
@@ -92,9 +111,9 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            SoftButton { Layout.fillWidth:true;text:"Save to PC";compact:true }
-                            SoftButton { Layout.fillWidth:true;text:"Upload to device";compact:true }
-                            SoftButton { Layout.fillWidth:true;text:"Mass upload";compact:true }
+                            SoftButton { Layout.fillWidth:true;text:"Save to PC";compact:true;enabled:false }
+                            SoftButton { Layout.fillWidth:true;text:"Upload to device";compact:true;enabled:false }
+                            SoftButton { Layout.fillWidth:true;text:"Mass upload";compact:true;enabled:false }
                         }
                     }
                 }
@@ -161,7 +180,7 @@ Item {
                                             Text{Layout.fillWidth:true;text:modelData;color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold;elide:Text.ElideRight}
                                             Text{text:active?"ACTIVE":"";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
                                         }
-                                        MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectedDeviceSlot=index}
+                                        MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;enabled:!root.presetManager||!root.presetManager.busy;onClicked:root.selectedDeviceSlot=index}
                                     }
                                 }
                             }
@@ -170,17 +189,46 @@ Item {
                         RowLayout {
                             Layout.fillWidth:true
                             spacing:5
-                            Rectangle{width:13;height:13;radius:2;color:"#4A5055";border.width:1;border.color:"#60676C"}
+                            Rectangle{
+                                id:initVolumeCheck
+                                width:13;height:13;radius:2
+                                color:root.presetManager&&root.presetManager.useInitVolume?Theme.accent:"#4A5055"
+                                border.width:1
+                                border.color:root.presetManager&&root.presetManager.useInitVolume?Theme.accentSoft:"#60676C"
+                                Text{anchors.centerIn:parent;visible:root.presetManager&&root.presetManager.useInitVolume;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
+                                MouseArea{
+                                    anchors.fill:parent
+                                    cursorShape:Qt.PointingHandCursor
+                                    enabled:root.presetManager&&root.presetManager.connected&&!root.presetManager.busy
+                                    onClicked:root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
+                                }
+                            }
                             Text{text:"Use init volume";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
                             Item{Layout.fillWidth:true}
+                            Text{
+                                visible:root.presetManager&&String(root.presetManager.progress||"").length>0
+                                text:String(root.presetManager?root.presetManager.progress:"")
+                                color:root.presetManager&&root.presetManager.busy?Theme.amber:Theme.textDim
+                                font.family:Theme.monoFamily;font.pixelSize:8
+                                elide:Text.ElideRight
+                                Layout.maximumWidth:180
+                            }
                         }
 
                         RowLayout {
                             Layout.fillWidth:true
                             spacing:8
-                            SoftButton{Layout.fillWidth:true;text:"Recall";compact:true}
-                            SoftButton{Layout.fillWidth:true;text:"Save";compact:true}
-                            SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true}
+                            SoftButton{
+                                Layout.fillWidth:true;text:root.presetManager&&root.presetManager.recallBusy?"Recalling…":"Recall";compact:true
+                                enabled:root.presetManager&&root.presetManager.connected&&!root.presetManager.busy
+                                onClicked:root.presetManager.recallMode(root.selectedDeviceSlot+1)
+                            }
+                            SoftButton{
+                                Layout.fillWidth:true;text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Save";compact:true
+                                enabled:root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
+                                onClicked:root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)
+                            }
+                            SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true;enabled:false}
                         }
                     }
                 }

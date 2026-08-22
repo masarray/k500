@@ -17,6 +17,11 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500Frame.h
     src/k500/K500Protocol.cpp
     src/k500/K500Protocol.h
+    src/k500/K500PresetProtocol.cpp
+    src/k500/K500PresetProtocol.h
+    src/k500/K500PresetManager.cpp
+    src/k500/K500PresetManager.h
+    src/k500/K500PresetManagerBridge.cpp
     src/k500/K500Controller.cpp
     src/k500/K500Controller.h
     src/k500/K500ResponseParser.cpp
@@ -26,6 +31,15 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500DeviceManager.cpp
     src/k500/K500DeviceManager.h
 )
+
+add_executable(k500_p2_selftest
+    src/k500/P2SelfTestMain.cpp
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
+    src/k500/K500PresetProtocol.cpp
+    src/k500/K500PresetProtocol.h
+)
+target_link_libraries(k500_p2_selftest PRIVATE Qt6::Core)
 
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
