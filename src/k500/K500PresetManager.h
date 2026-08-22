@@ -29,7 +29,7 @@ public:
     bool connected() const;
     bool busy() const { return m_operation != Operation::None; }
     bool recallBusy() const { return m_operation == Operation::Recall; }
-    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
+    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::MassUpload; }
     bool useInitVolume() const { return m_useInitVolume; }
     bool usbStoreAvailable() const;
     int activeSlot() const { return m_activeSlot; }
@@ -40,9 +40,9 @@ public:
     Q_INVOKABLE void saveCurrentToSlot(int slotOneBased);
 
     // P4_PC_PRESET_UPLOAD_V1 — a validated 0x0290 image produced by the P3
-    // codec can be stored directly without first replacing it with a device
-    // readback. This follows the donor single-preset Store chain (begin delay,
-    // chunks with ACK, commit with ACK) and remains USB-only/fail-closed.
+    // codec can be stored directly without replacing it with fresh device
+    // readback. Internally it intentionally reuses the proven single-slot Save
+    // transaction state because donor savePresetToSlot uses the same chain.
     Q_INVOKABLE void uploadSlotImage(int slotOneBased, const QByteArray &image);
 
     // P2 mass-upload engine accepts pre-built 0x0290 slot images. P4 preset
@@ -60,7 +60,7 @@ signals:
     void operationFailed(const QString &kind, const QString &message);
 
 private:
-    enum class Operation { None, Recall, UseInit, Save, Upload, MassUpload };
+    enum class Operation { None, Recall, UseInit, Save, MassUpload };
     enum class Step {
         Idle,
         RecallDelay,
