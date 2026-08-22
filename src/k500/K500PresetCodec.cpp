@@ -2,6 +2,7 @@
 
 #include <QtEndian>
 #include <algorithm>
+#include <iterator>
 
 namespace K500PresetCodec {
 namespace {
@@ -36,12 +37,6 @@ quint16 readU16(const QByteArray &bytes, int offset)
 qint16 readI16(const QByteArray &bytes, int offset)
 {
     return static_cast<qint16>(readU16(bytes, offset));
-}
-
-void writeU16(QByteArray &bytes, int offset, quint16 value)
-{
-    if (!inRange(bytes, offset, 2)) return;
-    qToLittleEndian<quint16>(value, reinterpret_cast<uchar *>(bytes.data() + offset));
 }
 
 quint8 compactTypeNibble(quint16 typeRaw)
@@ -82,7 +77,7 @@ QVector<EqSection> Document::eqSections() const
 {
     QVector<EqSection> out;
     if (!validSize()) return out;
-    out.reserve(std::size(EqMap));
+    out.reserve(static_cast<qsizetype>(std::size(EqMap)));
     for (const auto &d : EqMap) {
         EqSection s;
         s.key = QString::fromLatin1(d.key);
@@ -194,7 +189,7 @@ QByteArray buildDeviceSlotImage(const QByteArray &presetFile, QString *error)
             const qint16 gainRaw = readI16(presetFile, src + 6);
             live[dst] = static_cast<char>(freq & 0xff);
             live[dst + 1] = static_cast<char>((freq >> 8) & 0xff);
-            live[dst + 2] = static_cast<char>(std::min<quint16>(qRaw, 0xff));
+            live[dst + 2] = static_cast<char>(std::clamp<int>(qRaw, 1, 0xff));
             live[dst + 3] = static_cast<char>(compactTypeNibble(typeRaw) | (gainRaw < 0 ? 0x80 : 0x00));
             const int magnitude = std::min<int>(std::abs(static_cast<int>(gainRaw)), 0xff);
             live[dst + 4] = static_cast<char>(magnitude);
