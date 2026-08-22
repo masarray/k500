@@ -6,6 +6,7 @@
 #include <QString>
 #include <QUrl>
 #include <QVariant>
+#include <QVariantList>
 
 class StudioEngine;
 
@@ -48,6 +49,12 @@ public:
     Q_INVOKABLE bool saveFile(const QUrl &url);
     Q_INVOKABLE void clear();
     Q_INVOKABLE QByteArray deviceSlotImage() const;
+
+    // P4_2_PRESET_BATCH_LIBRARY_V1 — validate/convert a deterministic batch of
+    // local .k500 files for the already-proven P2 Mass Upload engine. Files are
+    // sorted by filename and mapped sequentially from startSlotOneBased.
+    Q_INVOKABLE QVariantList buildMassUploadEntries(const QVariantList &urls,
+                                                     int startSlotOneBased);
 
 signals:
     void engineChanged();
