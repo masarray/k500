@@ -1,0 +1,78 @@
+name: Guard P4 PC preset upload
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500PresetUploadBridge.cpp'
+      - 'src/k500/K500PresetManager.*'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500PresetCodec.*'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p4-pc-preset-upload.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500PresetUploadBridge.cpp'
+      - 'src/k500/K500PresetManager.*'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500PresetCodec.*'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p4-pc-preset-upload.yml'
+
+jobs:
+  p4-upload:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard P4 upload safety contract
+        shell: pwsh
+        run: |
+          $upload = Get-Content 'src/k500/K500PresetUploadBridge.cpp' -Raw
+          $header = Get-Content 'src/k500/K500PresetManager.h' -Raw
+          $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_V1','usbStoreAvailable','DeviceSlotImageLength','m_storeImage = image','beginStoreSlot(false)')) {
+            if (-not $upload.Contains($token)) { throw "P4 upload contract missing '$token'" }
+          }
+          if ($upload.Contains('startReadback') -or $upload.Contains('m_readbackMemory')) {
+            throw 'P4 regression: PC preset upload must never replace its file image with device readback'
+          }
+          if (-not $header.Contains('uploadSlotImage')) { throw 'P4 QML upload entry point missing' }
+          if (-not $fileBridge.Contains('return K500PresetCodec::buildDeviceSlotImage(m_sourceBytes)')) {
+            throw 'P4 regression: file bridge no longer exposes current verified edited slot image'
+          }
+          if (-not $cmake.Contains('K500PresetUploadBridge.cpp')) { throw 'P4 upload bridge missing from native build' }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build native app and tests
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Re-run permanent Store protocol self-test
+        shell: pwsh
+        run: '& build/k500_p2_selftest.exe'
+
+      - name: Re-run P3.4 donor persistence
+        shell: pwsh
+        run: '& build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500'
+
+      - name: Re-run P3 donor corpus
+        shell: pwsh
+        run: '& build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500'
