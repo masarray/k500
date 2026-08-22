@@ -1,8 +1,26 @@
 # P5 Release Candidate Readiness
 
-> Status: **software hardening in progress · physical K500 acceptance pending**.
+> Status: **software RC complete · physical K500 acceptance pending**.
 >
 > P5 may produce a public release candidate, but it must not promote hardware-facing rows to `LOCKED ✅` or publish a stable `v1.0` until reproducible physical USB/BT evidence is recorded.
+
+## Software RC checkpoint
+
+The P5 merge gate completed successfully before this publish checkpoint:
+
+- P5 PR head: `1673bee8dbb602eda931eee66adc84a07d4b1da4`;
+- P5 merge commit: `30d3f198ffaddcf9c4f2797bc05badee21ebe83a`;
+- P3 codec guard: PASS;
+- P3.2 donor file/corpus guard: PASS;
+- P3.3 preset-file UI/architecture guard: PASS;
+- P3.4 controlled-edit persistence guard: PASS;
+- P4 single PC preset upload guard: PASS;
+- P4.2 deterministic batch/Mass Upload guard: PASS;
+- P5 release-readiness build/regression/runtime gate: PASS;
+- full Qt Windows fortress: PASS;
+- Windows RC packaging including installer, true portable, portable end-to-end tests, hashes and manifest validation: PASS.
+
+The publish workflow is required to rerun the complete package regression suite from the exact `main` checkpoint that creates the RC. Its `release-manifest.json` is the authoritative record of the packaged commit.
 
 ## Purpose
 
@@ -62,11 +80,11 @@ A checked box without the exact commit and transport evidence is not sufficient.
 
 - Current project README and parity matrix.
 - GPL-3.0 project licensing metadata/text.
-- Support diagnostics export with bounded protocol history.
+- Support diagnostics export with bounded protocol history and active-memory/preset-payload redaction.
 - Expanded P4/P5 physical acceptance runbook.
-- Release-candidate version metadata.
+- Release-candidate version metadata (`0.5.0`).
 - Installer + portable single EXE + SHA256SUMS.
-- `release-manifest.json` recording version, commit, Qt/runtime target and hardware-acceptance status.
+- `release-manifest.json` recording version, exact packaged commit, Qt/runtime target and hardware-acceptance status.
 - CI gate that refuses an RC package when any software regression suite fails.
 
 ## Stable v1.0 gate
