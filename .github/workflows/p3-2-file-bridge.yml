@@ -1,0 +1,75 @@
+name: Guard P3.2 preset file bridge
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/P32CorpusTestMain.cpp'
+      - 'src/k500/K500PresetCodec.*'
+      - 'tests/fixtures/*.k500'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-2-file-bridge.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/P32CorpusTestMain.cpp'
+      - 'src/k500/K500PresetCodec.*'
+      - 'tests/fixtures/*.k500'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-2-file-bridge.yml'
+
+jobs:
+  p3-2:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard P3.2 contract
+        shell: pwsh
+        run: |
+          $bridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
+          $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
+          $test = Get-Content 'src/k500/P32CorpusTestMain.cpp' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          if (-not (Test-Path 'tests/fixtures/donor-sample.k500')) { throw 'Real donor fixture missing' }
+          if ((Get-Item 'tests/fixtures/donor-sample.k500').Length -ne 1144) { throw 'Donor fixture must remain 1144 bytes' }
+          foreach ($token in @('P3_2_OFFLINE_HYDRATION_V1','P3_2_NOOP_EXPORT_V1','buildDeviceSlotImage','hydrateFromDeviceMemory','QSaveFile')) {
+            if (-not $bridge.Contains($token)) { throw "P3.2 bridge regression: missing '$token'" }
+          }
+          foreach ($token in @('QML_ELEMENT','loadFile','saveFile','deviceSlotImage')) {
+            if (-not $header.Contains($token)) { throw "P3.2 QML contract regression: missing '$token'" }
+          }
+          foreach ($token in @('real donor no-op round trip changed bytes','low scalar +8 mapping regressed','high scalar +9 mapping regressed','real donor compact PEQ mapping regressed','converter degraded to raw .k500 slicing')) {
+            if (-not $test.Contains($token)) { throw "P3.2 corpus regression: missing '$token'" }
+          }
+          if (-not $cmake.Contains('k500_p32_corpus_test') -or -not $cmake.Contains('K500PresetFileBridge.cpp')) { throw 'P3.2 CMake registration missing' }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build native app and tests
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Run real donor corpus test
+        shell: pwsh
+        run: '& build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500'
+
+      - name: Re-run P3 synthetic codec test
+        shell: pwsh
+        run: '& build/k500_p3_selftest.exe'
