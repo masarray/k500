@@ -39,7 +39,7 @@ public:
     bool connected() const { return m_status == QStringLiteral("connected"); }
     bool liveEnabled() const { return m_liveEnabled; }
     bool muted() const { return m_muted; }
-    QObject *presetManager() const { return m_presetManager; }
+    QObject *presetManager() const;
 
     Q_INVOKABLE void setTransportMode(const QString &mode);
     Q_INVOKABLE void toggleConnection();
