@@ -25,6 +25,14 @@ Item {
         return dm ? dm.presetFileBridge : null
     }
     readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected
+    // P4_PC_PRESET_UPLOAD_UI_V1 — permanent write remains fail-closed unless
+    // the P3 working document is valid and P2 confirms USB store availability.
+    readonly property bool pcUploadReady: !!root.fileBridge
+                                          && root.fileBridge.loaded
+                                          && root.fileBridge.checksumOk
+                                          && !!root.presetManager
+                                          && root.presetManager.usbStoreAvailable
+                                          && !root.presetManager.busy
     readonly property var defaultDeviceSlots: [
         "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
         "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
@@ -39,6 +47,13 @@ Item {
     function bindFileBridgeEngine() {
         if (root.fileBridge)
             root.fileBridge.engine = root.engine
+    }
+    function uploadLoadedPreset() {
+        if (!root.pcUploadReady)
+            return
+        // Backend performs exact 0x0290 validation again before any Store frame.
+        root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1,
+                                           root.fileBridge.deviceSlotImage())
     }
     readonly property int activeDeviceSlot: {
         if (root.presetManager && Number(root.presetManager.activeSlot) > 0)
@@ -152,14 +167,24 @@ Item {
                                     anchors.fill:parent;anchors.leftMargin:10;anchors.rightMargin:10;spacing:8
                                     Text{text:"PC";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
                                     Text{Layout.fillWidth:true;text:root.fileBridge&&root.fileBridge.loaded?String(root.fileBridge.presetName):"OPEN A K500 PRESET";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideRight}
-                                    Text{text:root.fileBridge&&root.fileBridge.checksumOk?"CHECKSUM OK":"NO FILE";color:root.fileBridge&&root.fileBridge.checksumOk?Theme.accent:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                    Text{
+                                        text:root.fileBridge&&root.fileBridge.checksumOk?(root.fileBridge.dirty?"EDITED OK":"CHECKSUM OK"):"NO FILE"
+                                        color:root.fileBridge&&root.fileBridge.checksumOk?Theme.accent:Theme.textDim
+                                        font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold
+                                    }
                                 }
                             }
 
                             Text {
                                 anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
                                 anchors.leftMargin:10;anchors.rightMargin:10;anchors.bottomMargin:9
-                                text:root.fileBridge&&String(root.fileBridge.lastError||"").length>0?String(root.fileBridge.lastError):(root.offlineFileMode?"Safe preview · Save As preserves source bytes":"Disconnect K500 to preview a PC preset")
+                                text:root.fileBridge&&String(root.fileBridge.lastError||"").length>0
+                                     ?String(root.fileBridge.lastError)
+                                     :(root.fileBridge&&root.fileBridge.loaded&&root.fileBridge.dirty
+                                       ?("Verified edit · "+String(root.fileBridge.changedByteCount)+" changed byte(s) incl. checksum")
+                                       :(root.pcUploadReady
+                                         ?("Ready · upload to selected slot "+String(root.selectedDeviceSlot+1))
+                                         :(root.offlineFileMode?"Safe preview · validated source bytes":"USB connection required for PC preset upload")))
                                 color:root.fileBridge&&String(root.fileBridge.lastError||"").length>0?Theme.amber:Theme.textDim
                                 font.family:Theme.monoFamily;font.pixelSize:8;elide:Text.ElideRight
                             }
@@ -173,7 +198,13 @@ Item {
                                 enabled:root.fileBridge&&root.fileBridge.loaded
                                 onClicked:savePresetDialog.open()
                             }
-                            SoftButton { Layout.fillWidth:true;text:"Upload to device";compact:true;enabled:false }
+                            SoftButton {
+                                Layout.fillWidth:true
+                                text:root.presetManager&&root.presetManager.storeBusy?"Uploading…":"Upload to device"
+                                compact:true
+                                enabled:root.pcUploadReady
+                                onClicked:root.uploadLoadedPreset()
+                            }
                             SoftButton { Layout.fillWidth:true;text:"Mass upload";compact:true;enabled:false }
                         }
                     }
