@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QUrl>
+#include <QVector>
 #include <algorithm>
 
 QVariantList K500PresetFileBridge::buildMassUploadEntries(const QVariantList &urls,
