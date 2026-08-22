@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
+import QtQuick.Dialogs
 
 Item {
     id: root
@@ -15,6 +16,15 @@ Item {
         var dm = w ? w["deviceManager"] : null
         return dm ? dm.presetManager : null
     }
+    // P3_3_PRESET_FILE_UI_V1
+    // Resolve the validated P3.2 file bridge through the same high-level
+    // DeviceManager boundary. It never exposes Controller/WinIo to QML.
+    readonly property var fileBridge: {
+        var w = root.Window.window
+        var dm = w ? w["deviceManager"] : null
+        return dm ? dm.presetFileBridge : null
+    }
+    readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected
     readonly property var defaultDeviceSlots: [
         "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
         "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
@@ -25,6 +35,10 @@ Item {
         var system = state ? state.system : null
         var value = system ? system[key] : undefined
         return value === undefined || value === null || value === "" ? fallback : value
+    }
+    function bindFileBridgeEngine() {
+        if (root.fileBridge)
+            root.fileBridge.engine = root.engine
     }
     readonly property int activeDeviceSlot: {
         if (root.presetManager && Number(root.presetManager.activeSlot) > 0)
@@ -38,6 +52,9 @@ Item {
     }
     readonly property int lowerRackHeight: 304
 
+    Component.onCompleted: root.bindFileBridgeEngine()
+    onFileBridgeChanged: root.bindFileBridgeEngine()
+
     Connections {
         target: root.engine
         function onDeviceStateChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
@@ -46,6 +63,29 @@ Item {
         target: root.presetManager
         enabled: !!root.presetManager
         function onActiveSlotChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
+    }
+
+    FileDialog {
+        id: openPresetDialog
+        title: "Open K500 preset"
+        fileMode: FileDialog.OpenFile
+        nameFilters: ["K500 preset (*.k500)"]
+        onAccepted: {
+            root.bindFileBridgeEngine()
+            if (root.fileBridge)
+                root.fileBridge.loadFile(selectedFile)
+        }
+    }
+
+    FileDialog {
+        id: savePresetDialog
+        title: "Save K500 preset copy"
+        fileMode: FileDialog.SaveFile
+        nameFilters: ["K500 preset (*.k500)"]
+        onAccepted: {
+            if (root.fileBridge)
+                root.fileBridge.saveFile(selectedFile)
+        }
     }
 
     ColumnLayout {
@@ -82,8 +122,17 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { Layout.fillWidth:true;text:"D:\\Documents\\SONKUPIK STUDIO Presets";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideMiddle }
-                            SoftButton { Layout.preferredWidth:62;text:"Refresh";compact:true;checked:true;enabled:false }
+                            Text {
+                                Layout.fillWidth:true
+                                text:root.fileBridge&&root.fileBridge.loaded?String(root.fileBridge.sourcePath):"No .k500 preset loaded"
+                                color:root.fileBridge&&root.fileBridge.loaded?Theme.accent:Theme.textDim
+                                font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideMiddle
+                            }
+                            SoftButton {
+                                Layout.preferredWidth:62;text:"Open";compact:true
+                                enabled:root.offlineFileMode&&!!root.fileBridge
+                                onClicked:openPresetDialog.open()
+                            }
                         }
 
                         Rectangle {
@@ -98,20 +147,32 @@ Item {
                                 anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top
                                 anchors.margins:9;height:36;radius:7
                                 gradient: Gradient { GradientStop{position:0;color:"#151A1F"} GradientStop{position:1;color:"#0B0F13"} }
-                                border.width:1;border.color:"#242C33"
+                                border.width:1;border.color:root.fileBridge&&root.fileBridge.loaded?Theme.accentSoft:"#242C33"
                                 RowLayout {
                                     anchors.fill:parent;anchors.leftMargin:10;anchors.rightMargin:10;spacing:8
-                                    Text{text:"1";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:"KARAOKE ARTIST LUXURY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideRight}
-                                    Text{text:"P3/P4";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                    Text{text:"PC";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
+                                    Text{Layout.fillWidth:true;text:root.fileBridge&&root.fileBridge.loaded?String(root.fileBridge.presetName):"OPEN A K500 PRESET";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideRight}
+                                    Text{text:root.fileBridge&&root.fileBridge.checksumOk?"CHECKSUM OK":"NO FILE";color:root.fileBridge&&root.fileBridge.checksumOk?Theme.accent:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
                                 }
+                            }
+
+                            Text {
+                                anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
+                                anchors.leftMargin:10;anchors.rightMargin:10;anchors.bottomMargin:9
+                                text:root.fileBridge&&String(root.fileBridge.lastError||"").length>0?String(root.fileBridge.lastError):(root.offlineFileMode?"Safe preview · Save As preserves source bytes":"Disconnect K500 to preview a PC preset")
+                                color:root.fileBridge&&String(root.fileBridge.lastError||"").length>0?Theme.amber:Theme.textDim
+                                font.family:Theme.monoFamily;font.pixelSize:8;elide:Text.ElideRight
                             }
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 8
-                            SoftButton { Layout.fillWidth:true;text:"Save to PC";compact:true;enabled:false }
+                            SoftButton {
+                                Layout.fillWidth:true;text:"Save as";compact:true
+                                enabled:root.fileBridge&&root.fileBridge.loaded
+                                onClicked:savePresetDialog.open()
+                            }
                             SoftButton { Layout.fillWidth:true;text:"Upload to device";compact:true;enabled:false }
                             SoftButton { Layout.fillWidth:true;text:"Mass upload";compact:true;enabled:false }
                         }
