@@ -36,18 +36,30 @@ jobs:
           foreach ($token in @('P3_3_FILE_BRIDGE_QML_ACCESS_V1','new K500PresetFileBridge(self)')) {
             if (-not $bridge.Contains($token)) { throw "P3.3 access bridge regression: missing '$token'" }
           }
-          foreach ($token in @('P3_3_PRESET_FILE_UI_V1','import QtQuick.Dialogs','FileDialog.OpenFile','FileDialog.SaveFile','root.fileBridge.loadFile(selectedFile)','root.fileBridge.saveFile(selectedFile)','CHECKSUM OK','Disconnect K500 to preview a PC preset')) {
+          foreach ($token in @('P3_3_PRESET_FILE_UI_V1','import QtQuick.Dialogs','FileDialog.OpenFile','FileDialog.SaveFile','root.fileBridge.loadFile(selectedFile)','root.fileBridge.saveFile(selectedFile)','CHECKSUM OK')) {
             if (-not $system.Contains($token)) { throw "P3.3 System UI regression: missing '$token'" }
           }
-          if (-not $system.Contains('readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected')) {
-            throw 'P3.3 safety regression: PC preview must remain offline-only'
+          if (-not $system.Contains('readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected') -or
+              -not $system.Contains('enabled:root.offlineFileMode&&!!root.fileBridge')) {
+            throw 'P3.3 safety regression: PC file open/preview must remain offline-only'
           }
-          if (-not $system.Contains('text:"Upload to device";compact:true;enabled:false')) {
-            throw 'P3.3 safety regression: Upload must remain disabled until edit-persistence/P4 gate'
+
+          if ($system.Contains('P4_PC_PRESET_UPLOAD_UI_V1')) {
+            foreach ($token in @('enabled:root.pcUploadReady','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','root.fileBridge.checksumOk','root.presetManager.usbStoreAvailable')) {
+              if (-not $system.Contains($token)) { throw "P4-gated upload regression: missing '$token'" }
+            }
+          } elseif (-not $system.Contains('text:"Upload to device";compact:true;enabled:false')) {
+            throw 'P3.3 dependency safety regression: Upload must be disabled before P4 validation exists'
           }
-          if (-not $system.Contains('text:"Mass upload";compact:true;enabled:false')) {
-            throw 'P3.3 safety regression: Mass Upload must remain disabled until P4 gate'
+
+          if ($system.Contains('P4_2_PRESET_BATCH_UI_V1')) {
+            foreach ($token in @('FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled:root.massUploadReady')) {
+              if (-not $system.Contains($token)) { throw "P4.2-gated Mass Upload regression: missing '$token'" }
+            }
+          } elseif (-not $system.Contains('text:"Mass upload";compact:true;enabled:false')) {
+            throw 'P3.3 dependency safety regression: Mass Upload must be disabled before P4.2 validation exists'
           }
+
           if (-not $cmake.Contains('K500PresetFileBridgeAccess.cpp')) {
             throw 'P3.3 CMake access adapter registration missing'
           }
