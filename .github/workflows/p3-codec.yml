@@ -1,0 +1,71 @@
+name: Guard P3 K500 codec
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500PresetCodec.*'
+      - 'src/k500/P3SelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-codec.yml'
+      - 'docs/P3_K500_CODEC.md'
+  pull_request:
+    paths:
+      - 'src/k500/K500PresetCodec.*'
+      - 'src/k500/P3SelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p3-codec.yml'
+      - 'docs/P3_K500_CODEC.md'
+
+jobs:
+  p3-codec:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard P3 source contract
+        shell: pwsh
+        run: |
+          $codec = Get-Content 'src/k500/K500PresetCodec.cpp' -Raw
+          $header = Get-Content 'src/k500/K500PresetCodec.h' -Raw
+          $test = Get-Content 'src/k500/P3SelfTestMain.cpp' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          foreach ($token in @('PresetFileLength = 0x0478','ChecksumOffset = 0x0475','NameOffset = 0x0454','DeviceSlotImageLength = 0x0290','serializeNoop','applyWhitelistedPatches','buildDeviceSlotImage')) {
+            if (-not $header.Contains($token)) { throw "P3 header contract regression: missing '$token'" }
+          }
+          foreach ($token in @('0x00f0, 0x00e7, 10','0x0150, 0x0119, 10','0x01b0, 0x014b, 7','0x0410, 0x0263, 5','0x027c','0x0280')) {
+            if (-not $codec.Contains($token)) { throw "P3 converter regression: missing '$token'" }
+          }
+          foreach ($token in @('no-op parse/serialize changed bytes','non-whitelisted byte patch was accepted','converter accidentally degraded to raw file slicing')) {
+            if (-not $test.Contains($token)) { throw "P3 regression self-test missing '$token'" }
+          }
+          if (-not $cmake.Contains('k500_p3_selftest') -or -not $cmake.Contains('K500PresetCodec.cpp')) {
+            throw 'P3 build target missing from CMake'
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build P3 self-test
+        shell: pwsh
+        run: cmake --build build --target k500_p3_selftest --config Release
+
+      - name: Run P3 bit-perfect self-test
+        shell: pwsh
+        run: |
+          $p = Start-Process -FilePath 'build/k500_p3_selftest.exe' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "K500 P3 codec self-test failed with exit code $($p.ExitCode)" }
