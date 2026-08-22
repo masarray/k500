@@ -5,6 +5,7 @@
 #include <QObject>
 #include <QString>
 #include <QUrl>
+#include <QVariant>
 
 class StudioEngine;
 
