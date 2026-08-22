@@ -6,7 +6,7 @@ P3.2 connects the P3 byte-preserving codec to the Qt application without weakeni
 
 ## Added
 
-- `K500PresetFileBridge` as a QML-registrable backend type;
+- `K500PresetFileBridge` as a native Qt backend prepared for later QML wiring;
 - safe `.k500` import from a local file URL;
 - strict `0x0478` size validation;
 - strict additive checksum validation before hydration;
@@ -20,11 +20,14 @@ P3.2 connects the P3 byte-preserving codec to the Qt application without weakeni
 
 ## Safety boundary
 
-P3.2 does **not** yet serialize arbitrary UI edits back into the source file. Until an edit is routed through the P3 explicit whitelist patcher, Save As remains source-byte exact.
+P3.2 deliberately validates the backend before exposing it to QML. The first CI run showed that Qt auto type registration itself could fail independently of the codec/file logic, so QML registration and FileDialog UI are deferred to P3.3 after this backend/corpus gate is green.
 
-This deliberately separates two guarantees:
+P3.2 also does **not** yet serialize arbitrary UI edits back into the source file. Until an edit is routed through the P3 explicit whitelist patcher, Save As remains source-byte exact.
+
+This deliberately separates three guarantees:
 
 1. **Load/preview/export safety** — implemented here.
-2. **Editable file persistence** — next step, requiring per-parameter whitelist patch coverage.
+2. **QML FileDialog/UI wiring** — P3.3, after backend acceptance.
+3. **Editable file persistence** — requires per-parameter whitelist patch coverage before P4 device upload uses edited files.
 
-The System page buttons remain disabled until this backend and real corpus gate pass CI. P4 will then connect the validated slot image to P2 permanent Store/Mass Upload.
+The System page Upload/Mass Upload buttons remain disabled. P4 will connect the validated slot image to the existing P2 permanent Store/Mass Upload transaction engine only after file editing and UI paths are proven.
