@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 0.1.1 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 0.5.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -40,6 +40,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500DeviceManager.cpp
     src/k500/K500DeviceManager.h
 )
+target_compile_definitions(sonkupik_studio_native PRIVATE SONKUPIK_VERSION=\"${PROJECT_VERSION}\")
 
 add_executable(k500_p2_selftest
     src/k500/P2SelfTestMain.cpp
