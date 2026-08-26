@@ -154,6 +154,30 @@ qt_add_resources(sonkupik_studio_native embedded_fonts
     FILES ${SONKUPIK_FONT_FILES}
 )
 
+# P6_PC_PRESET_LIBRARY_V1 — curated PC-side presets ship as application
+# resources. They are never written into K500 device slots automatically;
+# loading only hydrates the existing validated PC working document.
+set(SONKUPIK_PRESET_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ALL_GENRE.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BROADCAST.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_SUPREME.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_ROCK.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANGAN.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_QORI_SHOLAWAT.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_BLUES.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ACOUSTIC.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_REGGAE.k500"
+)
+foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
+    get_filename_component(PRESET_NAME "${PRESET_FILE}" NAME)
+    set_source_files_properties("${PRESET_FILE}" PROPERTIES QT_RESOURCE_ALIAS "presets/${PRESET_NAME}")
+endforeach()
+qt_add_resources(sonkupik_studio_native built_in_presets
+    PREFIX "/"
+    FILES ${SONKUPIK_PRESET_FILES}
+)
+
 target_link_libraries(sonkupik_studio_native
     PRIVATE
         Qt6::Quick
