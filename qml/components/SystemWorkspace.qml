@@ -39,11 +39,16 @@ Item {
                                             && !!root.presetManager
                                             && root.presetManager.usbStoreAvailable
                                             && !root.presetManager.busy
+
+    // P6_PC_PRESET_LIBRARY_UI_V1 — device slots are never populated from the
+    // PC library. When the K500 has not supplied names yet, show neutral slot
+    // labels instead of pretending that application presets already live there.
     readonly property var defaultDeviceSlots: [
-        "ARTIST GEN3 ARI", "PODCAST REBORN", "DANGDUT GEN3 ARI", "KARAOKE ARTIST",
-        "AKUSTIK GEN3 ARI", "IMAM QORI GEN 3", "JAZZ GEN3 ARI", "ROCK GEN3 ARI",
-        "MC CERAMAH GEN 3", "ADZAN MEKAH GEN3"
+        "SLOT 01", "SLOT 02", "SLOT 03", "SLOT 04", "SLOT 05",
+        "SLOT 06", "SLOT 07", "SLOT 08", "SLOT 09", "SLOT 10"
     ]
+    property int pcLibraryTab: 0 // 0 = built-in, 1 = local folder
+
     function systemValue(key, fallback) {
         var state = engine && engine.deviceState ? engine.deviceState : null
         var system = state ? state.system : null
@@ -69,6 +74,16 @@ Item {
         if (entries && entries.length > 0)
             root.presetManager.massUploadSlotImages(entries)
     }
+    function loadPcLibraryEntry(index) {
+        if (!root.fileBridge)
+            return
+        root.bindFileBridgeEngine()
+        if (root.pcLibraryTab === 0)
+            root.fileBridge.loadBuiltInPreset(index)
+        else
+            root.fileBridge.loadFolderPreset(index)
+    }
+
     readonly property int activeDeviceSlot: {
         if (root.presetManager && Number(root.presetManager.activeSlot) > 0)
             return Math.max(0, Math.min(9, Number(root.presetManager.activeSlot) - 1))
@@ -103,6 +118,16 @@ Item {
             root.bindFileBridgeEngine()
             if (root.fileBridge)
                 root.fileBridge.loadFile(selectedFile)
+        }
+    }
+
+    FolderDialog {
+        id: presetFolderDialog
+        title: "Select folder containing K500 presets"
+        onAccepted: {
+            root.bindFileBridgeEngine()
+            if (root.fileBridge)
+                root.fileBridge.setPresetFolder(selectedFolder)
         }
     }
 
@@ -147,94 +172,228 @@ Item {
                     Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 35
-                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PRESET FILES";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05 }
+                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC PRESET LIBRARY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05 }
                         Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft }
                     }
 
                     ColumnLayout {
                         Layout.fillWidth: true
                         Layout.fillHeight: true
-                        Layout.margins: 12
-                        spacing: 9
+                        Layout.margins: 10
+                        spacing: 7
 
                         RowLayout {
                             Layout.fillWidth: true
+                            spacing: 6
+
+                            Repeater {
+                                model: ["SONKUPIK BANK", "LOCAL FOLDER"]
+                                delegate: Rectangle {
+                                    required property int index
+                                    required property string modelData
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 28
+                                    radius: 6
+                                    color: root.pcLibraryTab === index ? "#15252A" : "#0B0F13"
+                                    border.width: 1
+                                    border.color: root.pcLibraryTab === index ? Theme.accentSoft : Theme.borderSoft
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: modelData
+                                        color: root.pcLibraryTab === index ? Theme.accent : Theme.textDim
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
+                                        font.weight: Font.Bold
+                                    }
+                                    MouseArea {
+                                        anchors.fill: parent
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: root.pcLibraryTab = index
+                                    }
+                                }
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth: true
+                            visible: root.pcLibraryTab === 1
+                            spacing: 6
                             Text {
-                                Layout.fillWidth:true
-                                text:root.fileBridge&&root.fileBridge.loaded?String(root.fileBridge.sourcePath):"No .k500 preset loaded"
-                                color:root.fileBridge&&root.fileBridge.loaded?Theme.accent:Theme.textDim
-                                font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideMiddle
+                                Layout.fillWidth: true
+                                text: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0
+                                      ? String(root.fileBridge.presetFolder)
+                                      : "Choose a folder containing .k500 files"
+                                color: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0 ? Theme.textSoft : Theme.textDim
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 8
+                                elide: Text.ElideMiddle
                             }
-                            SoftButton {
-                                Layout.preferredWidth:62;text:"Open";compact:true
-                                enabled:root.offlineFileMode&&!!root.fileBridge
-                                onClicked:openPresetDialog.open()
-                            }
+                            SoftButton { Layout.preferredWidth: 62; text: "Folder"; compact: true; enabled: !!root.fileBridge; onClicked: presetFolderDialog.open() }
+                            SoftButton { Layout.preferredWidth: 58; text: "Refresh"; compact: true; enabled: !!root.fileBridge; onClicked: root.fileBridge.refreshPresetFolder() }
                         }
 
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: 10
+                            radius: 9
                             color: "#090D11"
                             border.width: 1
                             border.color: "#050708"
+                            clip: true
 
-                            Rectangle {
-                                anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top
-                                anchors.margins:9;height:36;radius:7
-                                gradient: Gradient { GradientStop{position:0;color:"#151A1F"} GradientStop{position:1;color:"#0B0F13"} }
-                                border.width:1;border.color:root.fileBridge&&root.fileBridge.loaded?Theme.accentSoft:"#242C33"
-                                RowLayout {
-                                    anchors.fill:parent;anchors.leftMargin:10;anchors.rightMargin:10;spacing:8
-                                    Text{text:"PC";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:root.fileBridge&&root.fileBridge.loaded?String(root.fileBridge.presetName):"OPEN A K500 PRESET";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;elide:Text.ElideRight}
-                                    Text{
-                                        text:root.fileBridge&&root.fileBridge.checksumOk?(root.fileBridge.dirty?"EDITED OK":"CHECKSUM OK"):"NO FILE"
-                                        color:root.fileBridge&&root.fileBridge.checksumOk?Theme.accent:Theme.textDim
-                                        font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold
+                            ListView {
+                                id: pcPresetList
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 3
+                                clip: true
+                                model: root.fileBridge
+                                       ? (root.pcLibraryTab === 0 ? root.fileBridge.builtInPresets : root.fileBridge.folderPresets)
+                                       : []
+
+                                delegate: Rectangle {
+                                    required property int index
+                                    required property var modelData
+                                    width: pcPresetList.width
+                                    height: root.pcLibraryTab === 0 ? 40 : 34
+                                    radius: 6
+                                    readonly property bool validPreset: Boolean(modelData.valid)
+                                    readonly property bool loadedPreset: root.fileBridge
+                                                                        && root.fileBridge.loaded
+                                                                        && (String(root.fileBridge.sourceName) === String(modelData.fileName))
+                                    color: loadedPreset ? "#142328" : presetMouse.containsMouse ? "#12181D" : "#0D1115"
+                                    border.width: 1
+                                    border.color: loadedPreset ? Theme.accentSoft : validPreset ? "#252D34" : "#553A32"
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.leftMargin: 8
+                                        anchors.rightMargin: 8
+                                        spacing: 8
+
+                                        Text {
+                                            text: String(index + 1).padStart(2, "0")
+                                            color: validPreset ? Theme.amber : Theme.textDim
+                                            font.family: Theme.monoFamily
+                                            font.pixelSize: 8
+                                            font.weight: Font.Bold
+                                        }
+                                        ColumnLayout {
+                                            Layout.fillWidth: true
+                                            spacing: -1
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: String(modelData.displayName || modelData.fileName || "K500 PRESET")
+                                                color: validPreset ? Theme.text : Theme.textDim
+                                                font.family: Theme.monoFamily
+                                                font.pixelSize: 9
+                                                font.weight: Font.Bold
+                                                elide: Text.ElideRight
+                                            }
+                                            Text {
+                                                visible: root.pcLibraryTab === 0
+                                                Layout.fillWidth: true
+                                                text: String(modelData.description || modelData.presetName || "")
+                                                color: Theme.textDim
+                                                font.family: Theme.fontFamily
+                                                font.pixelSize: 8
+                                                elide: Text.ElideRight
+                                            }
+                                        }
+                                        Text {
+                                            text: loadedPreset ? "LOADED" : validPreset ? "LOAD" : "INVALID"
+                                            color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
+                                            font.family: Theme.monoFamily
+                                            font.pixelSize: 7
+                                            font.weight: Font.Bold
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: presetMouse
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: validPreset ? Qt.PointingHandCursor : Qt.ArrowCursor
+                                        enabled: validPreset
+                                        onClicked: root.loadPcLibraryEntry(index)
                                     }
                                 }
-                            }
 
-                            Text {
-                                anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom
-                                anchors.leftMargin:10;anchors.rightMargin:10;anchors.bottomMargin:9
-                                text:root.fileBridge&&String(root.fileBridge.lastError||"").length>0
-                                     ?String(root.fileBridge.lastError)
-                                     :(root.fileBridge&&root.fileBridge.loaded&&root.fileBridge.dirty
-                                       ?("Verified edit · "+String(root.fileBridge.changedByteCount)+" changed byte(s) incl. checksum")
-                                       :(root.pcUploadReady
-                                         ?("Ready · upload to selected slot "+String(root.selectedDeviceSlot+1))
-                                         :(root.massUploadReady
-                                           ?("Mass ready · filename order → slots "+String(root.selectedDeviceSlot+1)+"…10")
-                                           :(root.offlineFileMode?"Safe preview · validated source bytes":"USB connection required for PC preset upload"))))
-                                color:root.fileBridge&&String(root.fileBridge.lastError||"").length>0?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily;font.pixelSize:8;elide:Text.ElideRight
+                                Text {
+                                    anchors.centerIn: parent
+                                    visible: pcPresetList.count === 0
+                                    text: root.pcLibraryTab === 0 ? "Built-in preset bank unavailable" : "No .k500 files in selected folder"
+                                    color: Theme.textDim
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 9
+                                }
                             }
+                        }
+
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 34
+                            radius: 7
+                            color: "#0B0F13"
+                            border.width: 1
+                            border.color: root.fileBridge && root.fileBridge.loaded ? Theme.accentSoft : Theme.borderSoft
+                            RowLayout {
+                                anchors.fill: parent
+                                anchors.leftMargin: 8
+                                anchors.rightMargin: 8
+                                spacing: 7
+                                Text { text: "PC"; color: Theme.amber; font.family: Theme.monoFamily; font.pixelSize: 8; font.weight: Font.Bold }
+                                Text {
+                                    Layout.fillWidth: true
+                                    text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET LOADED"
+                                    color: root.fileBridge && root.fileBridge.loaded ? Theme.text : Theme.textDim
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 9
+                                    font.weight: Font.Bold
+                                    elide: Text.ElideRight
+                                }
+                                Text {
+                                    text: root.fileBridge && root.fileBridge.checksumOk ? (root.fileBridge.dirty ? "EDITED" : "VALID") : ""
+                                    color: Theme.accent
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 7
+                                    font.weight: Font.Bold
+                                }
+                            }
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
+                                  ? String(root.fileBridge.lastError)
+                                  : (root.fileBridge && root.fileBridge.loaded && root.fileBridge.dirty
+                                     ? ("Verified edit · " + String(root.fileBridge.changedByteCount) + " changed byte(s) incl. checksum")
+                                     : (root.pcUploadReady
+                                        ? ("PC preset ready · explicit upload to hardware slot " + String(root.selectedDeviceSlot + 1))
+                                        : "PC library is separate from the 10 hardware slots"))
+                            color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
+                            font.family: Theme.monoFamily
+                            font.pixelSize: 8
+                            elide: Text.ElideRight
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
-                            spacing: 8
+                            spacing: 6
+                            SoftButton { Layout.fillWidth: true; text: "Open file"; compact: true; enabled: root.offlineFileMode && !!root.fileBridge; onClicked: openPresetDialog.open() }
+                            SoftButton { Layout.fillWidth: true; text: "Save as"; compact: true; enabled: root.fileBridge && root.fileBridge.loaded; onClicked: savePresetDialog.open() }
                             SoftButton {
-                                Layout.fillWidth:true;text:"Save as";compact:true
-                                enabled:root.fileBridge&&root.fileBridge.loaded
-                                onClicked:savePresetDialog.open()
+                                Layout.fillWidth: true
+                                text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload"
+                                compact: true
+                                enabled: root.pcUploadReady
+                                onClicked: root.uploadLoadedPreset()
                             }
                             SoftButton {
-                                Layout.fillWidth:true
-                                text:root.presetManager&&root.presetManager.storeBusy?"Uploading…":"Upload to device"
-                                compact:true
-                                enabled:root.pcUploadReady
-                                onClicked:root.uploadLoadedPreset()
-                            }
-                            SoftButton {
-                                Layout.fillWidth:true
-                                text:root.presetManager&&root.presetManager.storeBusy?"Uploading…":"Mass upload"
-                                compact:true
-                                enabled:root.massUploadReady
-                                onClicked:massPresetDialog.open()
+                                Layout.fillWidth: true
+                                text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass"
+                                compact: true
+                                enabled: root.massUploadReady
+                                onClicked: massPresetDialog.open()
                             }
                         }
                     }
