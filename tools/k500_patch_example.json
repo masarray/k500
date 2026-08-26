@@ -1,0 +1,36 @@
+{
+  "name": "LAB EXAMPLE V1",
+  "scalars": {
+    "mic.comp.threshold_db": -11,
+    "mic.comp.ratio": 3,
+    "mic.comp.attack_ms": 10,
+    "mic.comp.release_s": 0.2,
+    "main.mic": 94,
+    "main.reverb": 84,
+    "main.echo": 42,
+    "reverb.decay_ms": 1450,
+    "reverb.predelay_ms": 20,
+    "echo.delay_ms": 300,
+    "echo.repeat": 2
+  },
+  "eq": {
+    "micA": {
+      "bands": {
+        "4": {"gain_db": -1.8}
+      }
+    },
+    "micB": {
+      "bands": {
+        "4": {"gain_db": -1.8}
+      }
+    },
+    "music": {
+      "bands": {
+        "2": {"gain_db": 1.8}
+      }
+    }
+  },
+  "crossovers": {
+    "music": {"hpf_hz": 60}
+  }
+}
