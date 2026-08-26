@@ -99,7 +99,7 @@ jobs:
           $directIo = Get-ChildItem qml -Recurse -File -Filter '*.qml' | Select-String -Pattern 'K500Controller|K500WinIo'
           if ($directIo) { throw 'QML must not reference Controller/WinIo directly' }
 
-      - name: Guard P2 through P4.2 preset stack
+      - name: Guard P2 through P6 preset stack
         shell: pwsh
         run: |
           $protocol = Get-Content 'src/k500/K500PresetProtocol.cpp' -Raw
@@ -107,6 +107,7 @@ jobs:
           $presetHeader = Get-Content 'src/k500/K500PresetManager.h' -Raw
           $managerBridge = Get-Content 'src/k500/K500PresetManagerBridge.cpp' -Raw
           $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
+          $fileHeader = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
           $batchBridge = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
           $uploadBridge = Get-Content 'src/k500/K500PresetUploadBridge.cpp' -Raw
           $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
@@ -131,15 +132,36 @@ jobs:
           foreach ($token in @('P4_2_PRESET_BATCH_LIBRARY_V1','document.checksumOk','buildDeviceSlotImage','QString::compare','startSlot + urls.size() - 1 > 10')) {
             if (-not $batchBridge.Contains($token)) { throw "P4.2 batch regression: missing '$token'" }
           }
-          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','enabled:root.pcUploadReady','P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled:root.massUploadReady')) {
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)')) {
             if (-not $system.Contains($token)) { throw "P4 UI regression: missing '$token'" }
           }
+          if ($system -notmatch 'enabled:\s*root\.pcUploadReady') { throw 'P4 UI regression: PC upload gate missing' }
+          if ($system -notmatch 'enabled:\s*root\.massUploadReady') { throw 'P4.2 UI regression: Mass Upload gate missing' }
           foreach ($token in @('uploadSlotImage','massUploadSlotImages')) {
             if (-not $presetHeader.Contains($token)) { throw "Preset manager API regression: missing '$token'" }
           }
           foreach ($token in @('k500_p2_selftest','k500_p3_selftest','k500_p32_corpus_test','k500_p34_edit_persistence_test','k500_p42_batch_test')) {
             if (-not $cmake.Contains($token)) { throw "Regression test target missing '$token'" }
           }
+
+          foreach ($token in @('P6_PC_PRESET_LIBRARY_V1','setPresetFolder','refreshPresetFolder','loadFolderPreset','loadBuiltInPreset')) {
+            if (-not $fileHeader.Contains($token) -and -not $fileBridge.Contains($token)) { throw "P6 backend regression: missing '$token'" }
+          }
+          foreach ($token in @('P6_PC_PRESET_LIBRARY_UI_V1','PC PRESET LIBRARY','DEVICE PRESET SLOTS','root.fileBridge.builtInPresets','root.fileBridge.folderPresets','root.fileBridge.loadBuiltInPreset(index)','root.fileBridge.loadFolderPreset(index)')) {
+            if (-not $system.Contains($token)) { throw "P6 UI regression: missing '$token'" }
+          }
+          $builtIns = @(Get-ChildItem 'resources/presets' -Filter '*.k500' -File)
+          if ($builtIns.Count -ne 10) { throw "P6 built-in preset count must be 10, found $($builtIns.Count)" }
+          foreach ($file in $builtIns) {
+            $bytes = [IO.File]::ReadAllBytes($file.FullName)
+            if ($bytes.Length -ne 1144) { throw "$($file.Name) is not 1144 bytes" }
+            $sum = 0
+            foreach ($b in $bytes) { $sum += [int]$b }
+            if (($sum % 256) -ne 0) { throw "$($file.Name) checksum invalid" }
+            $name = [Text.Encoding]::ASCII.GetString($bytes[0x454..0x474]).Trim([char]0).Trim()
+            if ($name.Length -gt 16) { throw "$($file.Name) internal name exceeds the 16-character K500 loader limit: '$name'" }
+          }
+          if (-not $cmake.Contains('built_in_presets')) { throw 'P6 preset resources missing from CMake' }
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
