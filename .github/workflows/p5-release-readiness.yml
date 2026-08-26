@@ -100,7 +100,10 @@ jobs:
           foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
             if (-not $topbar.Contains($token)) { throw "P5 Support UI regression: missing '$token'" }
           }
-          foreach ($token in @('VERSION 0.5.0','src/AppVersionInit.cpp','SONKUPIK_VERSION')) {
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION [0-9]+\.[0-9]+\.[0-9]+ LANGUAGES CXX\)') {
+            throw 'P5 version metadata regression: semantic project VERSION missing'
+          }
+          foreach ($token in @('src/AppVersionInit.cpp','SONKUPIK_VERSION')) {
             if (-not $cmake.Contains($token)) { throw "P5 version metadata regression: missing '$token'" }
           }
           foreach ($token in @('HARDWARE_ACCEPTANCE: pending','release-manifest.json','stableReleaseEligible = $false','prerelease: true','Run full preset regression suite')) {
