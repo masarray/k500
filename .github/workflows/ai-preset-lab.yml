@@ -1,0 +1,85 @@
+name: Guard AI K500 preset engineering lab
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AGENTS.md'
+      - 'docs/K500_AI_PRESET_ENGINEERING_PLAYBOOK.md'
+      - 'docs/K500_BIT_PERFECT_AI_PRESET_GUIDE.md'
+      - 'docs/K500_PRESET_NAME_LIMIT.md'
+      - 'tools/k500_preset_lab.py'
+      - 'tools/k500_patch_example.json'
+      - 'tools/requirements-preset-lab.txt'
+      - 'resources/presets/*.k500'
+      - '.github/workflows/ai-preset-lab.yml'
+  pull_request:
+    paths:
+      - 'AGENTS.md'
+      - 'docs/K500_AI_PRESET_ENGINEERING_PLAYBOOK.md'
+      - 'docs/K500_BIT_PERFECT_AI_PRESET_GUIDE.md'
+      - 'docs/K500_PRESET_NAME_LIMIT.md'
+      - 'tools/k500_preset_lab.py'
+      - 'tools/k500_patch_example.json'
+      - 'tools/requirements-preset-lab.txt'
+      - 'resources/presets/*.k500'
+      - '.github/workflows/ai-preset-lab.yml'
+
+jobs:
+  preset-lab:
+    runs-on: ubuntu-latest
+    env:
+      MPLBACKEND: Agg
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install preset-lab dependencies
+        run: python -m pip install -r tools/requirements-preset-lab.txt
+
+      - name: Validate curated built-in bank
+        shell: bash
+        run: |
+          set -euo pipefail
+          count=0
+          for preset in resources/presets/*.k500; do
+            python tools/k500_preset_lab.py validate "$preset"
+            count=$((count+1))
+          done
+          test "$count" -eq 10
+
+      - name: Decode proven K500 fields
+        run: |
+          mkdir -p artifacts
+          python tools/k500_preset_lab.py inspect resources/presets/03_DANGDUT_SUPREME.k500 --json artifacts/dangdut.json > /dev/null
+          test -s artifacts/dangdut.json
+
+      - name: Prove donor-based surgical patch path
+        run: |
+          python tools/k500_preset_lab.py patch \
+            resources/presets/01_ALL_GENRE.k500 \
+            tools/k500_patch_example.json \
+            artifacts/lab-example.k500
+          python tools/k500_preset_lab.py validate artifacts/lab-example.k500
+          test -s artifacts/lab-example.audit.json
+
+      - name: Generate graphical response research artifacts
+        run: |
+          python tools/k500_preset_lab.py plot resources/presets/03_DANGDUT_SUPREME.k500 --out-dir artifacts/plot > /dev/null
+          python tools/k500_preset_lab.py compare resources/presets/01_ALL_GENRE.k500 artifacts/lab-example.k500 --out-dir artifacts/compare > /dev/null
+          test -s artifacts/plot/03_DANGDUT_SUPREME_inputs.png
+          test -s artifacts/plot/03_DANGDUT_SUPREME_vocal_fx.png
+          test -s artifacts/plot/03_DANGDUT_SUPREME_outputs.png
+          test -s artifacts/plot/03_DANGDUT_SUPREME_curves.csv
+          test -s artifacts/plot/03_DANGDUT_SUPREME_report.json
+          test -s artifacts/compare/comparison_delta.png
+          test -s artifacts/compare/comparison_report.json
+
+      - name: Upload research proof
+        uses: actions/upload-artifact@v4
+        with:
+          name: k500-ai-preset-lab-proof
+          path: artifacts
