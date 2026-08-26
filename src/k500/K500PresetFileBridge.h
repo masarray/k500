@@ -7,6 +7,7 @@
 #include <QUrl>
 #include <QVariant>
 #include <QVariantList>
+#include <QVariantMap>
 
 class StudioEngine;
 
@@ -14,6 +15,11 @@ class StudioEngine;
 // Native backend boundary for validated .k500 import/export. P3.4 extends this
 // object with controlled edit persistence, but every mutation still goes through
 // K500PresetEditMapper -> K500PresetCodec explicit byte whitelists.
+//
+// P6_PC_PRESET_LIBRARY_V1 adds a read-only PC-side preset catalog. It never
+// mutates device slots implicitly: built-in and folder presets first hydrate the
+// validated PC working document, and the existing explicit Upload/Save actions
+// remain the only paths that write to K500 hardware.
 class K500PresetFileBridge final : public QObject
 {
     Q_OBJECT
@@ -28,6 +34,10 @@ class K500PresetFileBridge final : public QObject
     Q_PROPERTY(bool checksumOk READ checksumOk NOTIFY sourceChanged)
     Q_PROPERTY(int changedByteCount READ changedByteCount NOTIFY sourceChanged)
     Q_PROPERTY(QString lastError READ lastError NOTIFY errorChanged)
+
+    Q_PROPERTY(QString presetFolder READ presetFolder NOTIFY libraryChanged)
+    Q_PROPERTY(QVariantList folderPresets READ folderPresets NOTIFY libraryChanged)
+    Q_PROPERTY(QVariantList builtInPresets READ builtInPresets CONSTANT)
 
 public:
     explicit K500PresetFileBridge(QObject *parent = nullptr);
@@ -45,10 +55,22 @@ public:
     int changedByteCount() const;
     QString lastError() const { return m_lastError; }
 
+    QString presetFolder() const { return m_presetFolder; }
+    QVariantList folderPresets() const { return m_folderPresets; }
+    QVariantList builtInPresets() const { return m_builtInPresets; }
+
     Q_INVOKABLE bool loadFile(const QUrl &url);
     Q_INVOKABLE bool saveFile(const QUrl &url);
     Q_INVOKABLE void clear();
     Q_INVOKABLE QByteArray deviceSlotImage() const;
+
+    // P6_PC_PRESET_LIBRARY_V1 — folder discovery is intentionally local-only
+    // and read-only. Invalid files stay visible with valid=false so users can
+    // diagnose a bad preset without risking hydration or device writes.
+    Q_INVOKABLE bool setPresetFolder(const QUrl &url);
+    Q_INVOKABLE void refreshPresetFolder();
+    Q_INVOKABLE bool loadFolderPreset(int index);
+    Q_INVOKABLE bool loadBuiltInPreset(int index);
 
     // P4_2_PRESET_BATCH_LIBRARY_V1 — validate/convert a deterministic batch of
     // local .k500 files for the already-proven P2 Mass Upload engine. Files are
@@ -60,6 +82,7 @@ signals:
     void engineChanged();
     void sourceChanged();
     void errorChanged();
+    void libraryChanged();
     void loadedFile(const QString &path, const QString &presetName);
     void savedFile(const QString &path);
     void persistedEdit(const QString &path, int changedByteCount);
@@ -71,6 +94,18 @@ private:
     void onEngineEdit(const QString &path, const QVariant &value);
     void refreshDocumentMetadata();
 
+    bool loadValidatedBytes(const QByteArray &bytes,
+                            const QString &sourcePath,
+                            const QString &sourceName);
+    QVariantMap describePreset(const QByteArray &bytes,
+                               const QString &displayName,
+                               const QString &fileName,
+                               const QString &path,
+                               const QString &source,
+                               int index) const;
+    void rebuildBuiltInPresets();
+    void rebuildFolderPresets();
+
     StudioEngine *m_engine = nullptr;
     QMetaObject::Connection m_engineEditConnection;
     QByteArray m_sourceBytes; // current working document, always checksum-valid
@@ -80,4 +115,8 @@ private:
     QString m_presetName;
     bool m_checksumOk = false;
     QString m_lastError;
+
+    QString m_presetFolder;
+    QVariantList m_folderPresets;
+    QVariantList m_builtInPresets;
 };
