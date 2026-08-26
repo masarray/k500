@@ -42,7 +42,7 @@ jobs:
             if (-not $batch.Contains($token)) { throw "P4.2 batch safety contract missing '$token'" }
           }
           if (-not $header.Contains('buildMassUploadEntries')) { throw 'P4.2 batch API missing' }
-          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled:root.massUploadReady')) {
+          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled: root.massUploadReady')) {
             if (-not $system.Contains($token)) { throw "P4.2 UI contract missing '$token'" }
           }
           foreach ($token in @('std::sort(normalized.begin(), normalized.end()','return a.slot > b.slot','m_massEntries = normalized','AwaitMassBeginAck')) {
@@ -50,6 +50,11 @@ jobs:
           }
           foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch')) {
             if (-not $test.Contains($token)) { throw "P4.2 donor batch test missing '$token'" }
+          }
+
+          # P6 must not silently route PC library loads through Mass Upload.
+          foreach ($token in @('root.fileBridge.loadBuiltInPreset(index)','root.fileBridge.loadFolderPreset(index)','PC PRESET LIBRARY','DEVICE PRESET SLOTS')) {
+            if (-not $system.Contains($token)) { throw "P6/P4.2 separation regression: missing '$token'" }
           }
 
       - name: Install Qt
