@@ -4,20 +4,50 @@
 #include "K500PresetEditMapper.h"
 #include "../StudioEngine.h"
 
+#include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QSettings>
 #include <algorithm>
 
 namespace {
 constexpr int ActiveMemorySize = 0x03AB;
 constexpr int OfflineActiveNameOffset = 0x02C0;
 constexpr int OfflineActiveNameLength = 0x10;
+
+struct BuiltInPresetDefinition {
+    const char *displayName;
+    const char *description;
+    const char *fileName;
+    const char *resourcePath;
+};
+
+constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
+    {"ALL GENRE",       "Universal karaoke flagship",          "01_ALL_GENRE.k500",       ":/presets/01_ALL_GENRE.k500"},
+    {"BROADCAST",       "Podcast, radio and MC",               "02_BROADCAST.k500",       ":/presets/02_BROADCAST.k500"},
+    {"DANGDUT SUPREME", "Dangdut pitch-lock and cengkok",      "03_DANGDUT_SUPREME.k500", ":/presets/03_DANGDUT_SUPREME.k500"},
+    {"ROCK",            "Forward vocal and punch",             "04_ROCK.k500",            ":/presets/04_ROCK.k500"},
+    {"POP KENANGAN",    "Smooth nostalgic pop vocal",          "05_POP_KENANGAN.k500",    ":/presets/05_POP_KENANGAN.k500"},
+    {"QORI / SHOLAWAT", "Long-phrase spiritual vocal support", "06_QORI_SHOLAWAT.k500",   ":/presets/06_QORI_SHOLAWAT.k500"},
+    {"JAZZ",            "Natural dynamic vocal support",       "07_JAZZ.k500",            ":/presets/07_JAZZ.k500"},
+    {"BLUES",           "Warm controlled vocal",               "08_BLUES.k500",           ":/presets/08_BLUES.k500"},
+    {"ACOUSTIC",        "Intimate vocal and music",            "09_ACOUSTIC.k500",        ":/presets/09_ACOUSTIC.k500"},
+    {"REGGAE",          "Relaxed rhythmic vocal support",      "10_REGGAE.k500",          ":/presets/10_REGGAE.k500"},
+};
 }
 
 K500PresetFileBridge::K500PresetFileBridge(QObject *parent)
     : QObject(parent)
 {
+    rebuildBuiltInPresets();
+
+    const QString rememberedFolder = QSettings().value(
+        QStringLiteral("pcPresetLibrary/folder")).toString();
+    if (!rememberedFolder.isEmpty() && QDir(rememberedFolder).exists()) {
+        m_presetFolder = QDir::cleanPath(rememberedFolder);
+        rebuildFolderPresets();
+    }
 }
 
 QObject *K500PresetFileBridge::engine() const
@@ -83,7 +113,95 @@ void K500PresetFileBridge::refreshDocumentMetadata()
     m_checksumOk = document.validSize() && document.checksumOk();
 }
 
-bool K500PresetFileBridge::loadFile(const QUrl &url)
+QVariantMap K500PresetFileBridge::describePreset(const QByteArray &bytes,
+                                                 const QString &displayName,
+                                                 const QString &fileName,
+                                                 const QString &path,
+                                                 const QString &source,
+                                                 int index) const
+{
+    const K500PresetCodec::Document document(bytes);
+    const bool sizeOk = document.validSize();
+    const bool checksumOk = sizeOk && document.checksumOk();
+
+    QVariantMap entry;
+    entry.insert(QStringLiteral("index"), index);
+    entry.insert(QStringLiteral("displayName"), displayName.isEmpty()
+        ? (checksumOk && !document.name().isEmpty() ? document.name() : fileName)
+        : displayName);
+    entry.insert(QStringLiteral("presetName"), checksumOk ? document.name() : QString());
+    entry.insert(QStringLiteral("fileName"), fileName);
+    entry.insert(QStringLiteral("path"), path);
+    entry.insert(QStringLiteral("source"), source);
+    entry.insert(QStringLiteral("size"), bytes.size());
+    entry.insert(QStringLiteral("sizeOk"), sizeOk);
+    entry.insert(QStringLiteral("checksumOk"), checksumOk);
+    entry.insert(QStringLiteral("valid"), sizeOk && checksumOk);
+    return entry;
+}
+
+void K500PresetFileBridge::rebuildBuiltInPresets()
+{
+    m_builtInPresets.clear();
+    int index = 0;
+    for (const BuiltInPresetDefinition &definition : BuiltInPresetDefinitions) {
+        QFile file(QString::fromLatin1(definition.resourcePath));
+        QByteArray bytes;
+        if (file.open(QIODevice::ReadOnly))
+            bytes = file.readAll();
+
+        QVariantMap entry = describePreset(
+            bytes,
+            QString::fromLatin1(definition.displayName),
+            QString::fromLatin1(definition.fileName),
+            QString::fromLatin1(definition.resourcePath),
+            QStringLiteral("builtin"),
+            index);
+        entry.insert(QStringLiteral("description"), QString::fromLatin1(definition.description));
+        entry.insert(QStringLiteral("resourcePath"), QString::fromLatin1(definition.resourcePath));
+        m_builtInPresets.append(entry);
+        ++index;
+    }
+}
+
+void K500PresetFileBridge::rebuildFolderPresets()
+{
+    QVariantList next;
+    if (!m_presetFolder.isEmpty()) {
+        QDir dir(m_presetFolder);
+        if (dir.exists()) {
+            const QStringList filters{QStringLiteral("*.k500")};
+            const QFileInfoList files = dir.entryInfoList(
+                filters,
+                QDir::Files | QDir::Readable | QDir::NoSymLinks,
+                QDir::Name | QDir::IgnoreCase);
+
+            int index = 0;
+            for (const QFileInfo &info : files) {
+                QFile file(info.absoluteFilePath());
+                QByteArray bytes;
+                if (file.open(QIODevice::ReadOnly))
+                    bytes = file.readAll();
+
+                next.append(describePreset(
+                    bytes,
+                    QString(),
+                    info.fileName(),
+                    info.absoluteFilePath(),
+                    QStringLiteral("folder"),
+                    index));
+                ++index;
+            }
+        }
+    }
+
+    m_folderPresets = next;
+    emit libraryChanged();
+}
+
+bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
+                                              const QString &sourcePath,
+                                              const QString &sourceName)
 {
     setError({});
     if (!m_engine) {
@@ -91,14 +209,6 @@ bool K500PresetFileBridge::loadFile(const QUrl &url)
         return false;
     }
 
-    const QString path = localPath(url, false);
-    QFile file(path);
-    if (!file.open(QIODevice::ReadOnly)) {
-        setError(QStringLiteral("Tidak dapat membuka preset: %1").arg(path));
-        return false;
-    }
-
-    const QByteArray bytes = file.readAll();
     const K500PresetCodec::Document document(bytes);
     if (!document.validSize()) {
         setError(QStringLiteral("File .k500 harus tepat 0x0478 (1144) byte; file ini %1 byte.").arg(bytes.size()));
@@ -121,8 +231,8 @@ bool K500PresetFileBridge::loadFile(const QUrl &url)
     // because StudioEngine hydration emits zero stateEdited events (P0 guard).
     m_sourceBytes = bytes;
     m_savedBytes = bytes;
-    m_sourcePath = path;
-    m_sourceName = QFileInfo(path).fileName();
+    m_sourcePath = sourcePath;
+    m_sourceName = sourceName;
     refreshDocumentMetadata();
 
     // P3_2_OFFLINE_HYDRATION_V1
@@ -134,8 +244,94 @@ bool K500PresetFileBridge::loadFile(const QUrl &url)
     m_engine->hydrateFromDeviceMemory(preview);
 
     emit sourceChanged();
-    emit loadedFile(path, m_presetName);
+    emit loadedFile(sourcePath, m_presetName);
     return true;
+}
+
+bool K500PresetFileBridge::loadFile(const QUrl &url)
+{
+    setError({});
+    const QString path = localPath(url, false);
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly)) {
+        setError(QStringLiteral("Tidak dapat membuka preset: %1").arg(path));
+        return false;
+    }
+
+    return loadValidatedBytes(file.readAll(), path, QFileInfo(path).fileName());
+}
+
+bool K500PresetFileBridge::setPresetFolder(const QUrl &url)
+{
+    setError({});
+    QString path = localPath(url, false);
+    if (path.isEmpty()) {
+        setError(QStringLiteral("Folder preset tidak valid."));
+        return false;
+    }
+
+    QFileInfo info(path);
+    if (info.isFile())
+        path = info.absolutePath();
+    path = QDir::cleanPath(path);
+
+    QDir dir(path);
+    if (!dir.exists()) {
+        setError(QStringLiteral("Folder preset tidak ditemukan: %1").arg(path));
+        return false;
+    }
+
+    m_presetFolder = dir.absolutePath();
+    QSettings().setValue(QStringLiteral("pcPresetLibrary/folder"), m_presetFolder);
+    rebuildFolderPresets();
+    return true;
+}
+
+void K500PresetFileBridge::refreshPresetFolder()
+{
+    rebuildFolderPresets();
+}
+
+bool K500PresetFileBridge::loadFolderPreset(int index)
+{
+    setError({});
+    if (index < 0 || index >= m_folderPresets.size()) {
+        setError(QStringLiteral("Preset folder index tidak valid."));
+        return false;
+    }
+
+    const QVariantMap entry = m_folderPresets.at(index).toMap();
+    if (!entry.value(QStringLiteral("valid")).toBool()) {
+        setError(QStringLiteral("Preset %1 tidak valid dan tidak akan diload.")
+                     .arg(entry.value(QStringLiteral("fileName")).toString()));
+        return false;
+    }
+
+    return loadFile(QUrl::fromLocalFile(entry.value(QStringLiteral("path")).toString()));
+}
+
+bool K500PresetFileBridge::loadBuiltInPreset(int index)
+{
+    setError({});
+    if (index < 0 || index >= m_builtInPresets.size()) {
+        setError(QStringLiteral("Built-in preset index tidak valid."));
+        return false;
+    }
+
+    const QVariantMap entry = m_builtInPresets.at(index).toMap();
+    const QString resourcePath = entry.value(QStringLiteral("resourcePath")).toString();
+    QFile file(resourcePath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        setError(QStringLiteral("Built-in preset resource tidak ditemukan: %1").arg(resourcePath));
+        return false;
+    }
+
+    const QString sourcePath = QStringLiteral("builtin://%1")
+        .arg(entry.value(QStringLiteral("fileName")).toString());
+    return loadValidatedBytes(
+        file.readAll(),
+        sourcePath,
+        entry.value(QStringLiteral("fileName")).toString());
 }
 
 void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &value)
@@ -201,6 +397,11 @@ bool K500PresetFileBridge::saveFile(const QUrl &url)
     refreshDocumentMetadata();
     emit sourceChanged();
     emit savedFile(path);
+
+    if (!m_presetFolder.isEmpty()
+        && QDir::cleanPath(QFileInfo(path).absolutePath()) == QDir::cleanPath(m_presetFolder)) {
+        rebuildFolderPresets();
+    }
     return true;
 }
 
