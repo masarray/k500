@@ -81,6 +81,27 @@ Fields for which no verified live command exists remain non-destructive rather t
 
 **Important:** a K500 permanent slot image is not the first `0x0290` bytes of a `.k500` file. The native codec performs the verified scalar split and compact EQ conversion.
 
+### AI / research preset engineering
+
+A fresh ChatGPT/Codex/AI thread can reconstruct the full preset-engineering workflow directly from this repository. Start with:
+
+- `AGENTS.md` — mandatory AI entry point and safety rules.
+- `docs/K500_AI_PRESET_ENGINEERING_PLAYBOOK.md` — sonic research method, output roles, psychoacoustic guardrails, simulation, iteration and hardware-feedback loop.
+- `docs/K500_BIT_PERFECT_AI_PRESET_GUIDE.md` — authoritative binary map and proven K500 signal flow.
+- `tools/k500_preset_lab.py` — validation, decode, donor-based surgical patching, Mic/Music/Main/FX/output response graphs, CSV/JSON export and A/B comparison.
+
+Typical research commands:
+
+```bash
+python -m pip install -r tools/requirements-preset-lab.txt
+python tools/k500_preset_lab.py inspect preset.k500 --json preset.json
+python tools/k500_preset_lab.py plot preset.k500 --out-dir analysis/
+python tools/k500_preset_lab.py compare donor.k500 candidate.k500 --out-dir comparison/
+python tools/k500_preset_lab.py patch donor.k500 tools/k500_patch_example.json candidate.k500
+```
+
+Preset simulation is intentionally **comparative**. Real K500 hardware listening remains authoritative, and all generated presets must remain donor-based, checksum-valid and byte-audited.
+
 ## Safety model
 
 The project follows four non-negotiable rules:
