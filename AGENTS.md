@@ -6,12 +6,37 @@ This file exists so a new ChatGPT/Codex/AI thread can work on K500 presets witho
 
 **Read these files first, in this order:**
 
-1. `docs/K500_AI_PRESET_ENGINEERING_PLAYBOOK.md` — workflow, sonic model, research method, plotting, iteration strategy.
-2. `docs/K500_BIT_PERFECT_AI_PRESET_GUIDE.md` — authoritative binary map, offsets, signal-flow facts, round-trip hazards.
-3. `docs/K500_PRESET_NAME_LIMIT.md` — hard hardware name limit.
-4. `tools/k500_preset_lab.py` — executable analysis / simulation / donor-based patch tool.
+1. `docs/K500_PROVEN_SONIC_BASELINE.md` — **current hardware-proven sonic reference, Hi-Fi Music Core V3, cross-mode transplant strategy, lock policy, and thread handoff state. Read this first so a new thread does not restart sonic research from zero.**
+2. `docs/K500_AI_PRESET_ENGINEERING_PLAYBOOK.md` — workflow, sonic model, research method, plotting, iteration strategy.
+3. `docs/K500_BIT_PERFECT_AI_PRESET_GUIDE.md` — authoritative binary map, offsets, signal-flow facts, round-trip hazards.
+4. `docs/K500_PRESET_NAME_LIMIT.md` — hard hardware name limit.
+5. `tools/k500_preset_lab.py` — executable analysis / simulation / donor-based patch tool.
 
 Do not improvise a `.k500` format from memory when the repository provides the proven map.
+
+## Current sonic baseline that must not be forgotten
+
+The current **gold music reference** is the repository's Mode 03 preset:
+
+```text
+resources/presets/03_DANGDUT_SUPREME.k500
+```
+
+Its current sonic state is documented in `docs/K500_PROVEN_SONIC_BASELINE.md` and was approved through real K500 listening after the following progression:
+
+```text
+Core V1: bass became enjoyable; mid still ordinary
+Core V2: mid refinement -> user reported the mid became enjoyable
+Core V3: small very-bottom extension -> user reported the overall result was enjoyable
+```
+
+Therefore a new thread MUST NOT casually rebuild the music tuning from a generic karaoke curve.
+
+Product-level rule:
+
+> **All modes should preserve their own vocal identity while giving the user a consistent premium Hi-Fi music-enhancement benefit. Enhancement means maximum listening enjoyment, not maximum loudness.**
+
+When the user reports that a region is already good, treat that as a **LOCK** for the next revision unless the user explicitly asks to revisit it.
 
 ## Non-negotiable preset rules
 
@@ -47,20 +72,49 @@ Recommended conceptual output roles:
 - **Surround** = width, air, ambience, decorrelation; not a second Main.
 - **Sub** = deep music foundation; normally keep Mic/Reverb/Echo out unless deliberately proven useful.
 
+## Hi-Fi music strategy
+
+The current design strategy is:
+
+```text
+mode identity = vocal architecture + FX/spatial vocal behavior
+music quality = shared premium Hi-Fi target
+```
+
+For music-only improvement requests:
+
+- preserve vocal EQ/routing/dynamics unless explicitly requested;
+- use the proven Mode 03 Hi-Fi Core V3 as the tonal reference;
+- match music routing using output-aware effective energy rather than copying raw route values blindly;
+- protect 2.5-4.5 kHz from excessive brightness;
+- prefer controlled 5-7 kHz detail and 10-14 kHz air for premium polish;
+- use the dedicated Sub path for additional 53-65 Hz very-bottom satisfaction;
+- use the ~158 Hz region for roundness/punch rather than solving everything with deep-sub gain;
+- do not change a region that the user has already approved.
+
+For route compensation, the comparative proxy is:
+
+```text
+Effective route amplitude ~= route * 10^(output_dB / 20)
+```
+
+If an output gain is changed for music scale, compensate Mic/Reverb/Echo source routes as needed so vocal ambience remains stable. Mode 02 Broadcast in the proven sonic baseline is the reference example.
+
 ## Preferred AI workflow
 
 ```text
-1. define listening goal / failure mode
-2. choose the closest proven donor
-3. inspect donor + reference presets
-4. form a narrow sonic hypothesis
-5. simulate cumulative paths and guardrail regions
-6. patch only intended fields
-7. recompute checksum
-8. byte-diff audit
-9. generate graphs / CSV / JSON
-10. test on real K500 hardware
-11. use listening feedback to choose the next *small* change
+1. read the proven sonic baseline and identify what is already GOLD / LOCKED
+2. define listening goal / failure mode
+3. choose the closest proven donor
+4. inspect donor + reference presets
+5. form a narrow sonic hypothesis
+6. simulate cumulative paths and guardrail regions
+7. patch only intended fields
+8. recompute checksum
+9. byte-diff audit
+10. generate graphs / CSV / JSON
+11. test on real K500 hardware
+12. use listening feedback to choose the next *small* change
 ```
 
 For iterative tuning, prefer one causal experiment per revision over broad multi-parameter rewrites.
@@ -88,12 +142,14 @@ When handing work to another thread, include or regenerate:
 - exact donor file / version;
 - exact output file / version;
 - intended listening goal;
+- current GOLD reference and all LOCKED regions;
 - changed semantic parameters;
 - changed byte offsets;
 - checksum/size/name validation;
 - Mic, Music, Main and cumulative path graphs;
 - guardrail metrics (especially body, mud, `i`-ring, detail, air, sub and punch);
 - real hardware listening feedback;
-- what is locked and must not be changed in the next iteration.
+- what is modeled/transplanted but still awaiting hardware validation;
+- what must not be changed in the next iteration.
 
-If a later thread has only the repository, this file plus the linked playbook must be sufficient to restart the preset-engineering workflow safely.
+If a later thread has only the repository, **this file plus `docs/K500_PROVEN_SONIC_BASELINE.md` are the required restart point** and must be sufficient to continue preset engineering without restarting from a generic karaoke preset.
