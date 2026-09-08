@@ -61,24 +61,42 @@ jobs:
           if (-not $fileBridge.Contains('return K500PresetCodec::buildDeviceSlotImage(m_sourceBytes)')) {
             throw 'P4 regression: file bridge no longer exposes the staged verified slot image'
           }
-          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','root.fileBridge.checksumOk','root.presetManager.usbStoreAvailable','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','enabled: root.pcUploadReady','editTracking = false')) {
+
+          # PC selection is still staging-only. Explicit offline Preview is the
+          # only PC-file action allowed to hydrate StudioEngine.
+          foreach ($token in @('OFFLINE_PREVIEW_V1','previewLoadedPreset','hydrateFromDeviceMemory(preview)')) {
+            if (-not $fileBridge.Contains($token)) { throw "P4 offline preview contract missing '$token'" }
+          }
+          $hydrateCount = ([regex]::Matches($fileBridge, 'hydrateFromDeviceMemory\(preview\)')).Count
+          if ($hydrateCount -ne 1) { throw "P4 preview regression: expected one explicit hydrate, found $hydrateCount" }
+          $loadStart = $fileBridge.IndexOf('bool K500PresetFileBridge::loadValidatedBytes')
+          $loadEnd = $fileBridge.IndexOf('bool K500PresetFileBridge::loadFile', $loadStart)
+          if ($loadStart -lt 0 -or $loadEnd -le $loadStart) { throw 'P4 loadValidatedBytes boundary missing' }
+          if ($fileBridge.Substring($loadStart, $loadEnd - $loadStart).Contains('hydrateFromDeviceMemory')) {
+            throw 'P4 device-truth regression: clicking/selecting a PC preset must remain staging-only'
+          }
+
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','root.fileBridge.checksumOk','root.presetManager.usbStoreAvailable','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','previewOrUploadLoadedPreset','root.fileBridge.previewLoadedPreset()','enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady','editTracking = false')) {
             if (-not $system.Contains($token)) { throw "P4 UI safety contract missing '$token'" }
           }
 
           if ($system.Contains('P4_2_PRESET_BATCH_UI_V1')) {
-            foreach ($token in @('MassUploadTransferWindow','enabled: root.massUploadReady')) {
+            foreach ($token in @('MassUploadTransferWindow','OFFLINE_MASS_PREP_V1','massPresetDialog.openTransfer()')) {
               if (-not $system.Contains($token)) { throw "P4.2 System transfer-list safety regression: missing '$token'" }
             }
-            foreach ($token in @('maxSlots: 10','buildTransferUploadEntries','massUploadSlotImages(entries)')) {
+            foreach ($token in @('maxSlots: 10','buildTransferUploadEntries','massUploadSlotImages(entries)','root.presetManager.usbStoreAvailable')) {
               if (-not $transfer.Contains($token)) { throw "P4.2 transfer-list safety regression: missing '$token'" }
             }
             if ($system.Contains('FileDialog.OpenFiles')) { throw 'P4.2 regression: direct multi-file upload must not bypass transfer review' }
+            if ($system -match 'text:\s*root\.presetManager.*"Mass"[\s\S]{0,180}enabled:\s*root\.massUploadReady') {
+              throw 'P4.2 regression: Mass transfer preparation must remain available offline'
+            }
           }
 
           if (-not $system.Contains('P6_PC_PRESET_LIBRARY_UI_V1')) {
             throw 'P6 regression: PC library must remain a separate UI domain from DEVICE PRESET SLOTS'
           }
-          foreach ($token in @('PC PRESET LIBRARY','DEVICE PRESET SLOTS','root.fileBridge.loadBuiltInPreset(index)','root.fileBridge.loadFolderPreset(index)')) {
+          foreach ($token in @('PC PRESET LIBRARY','DEVICE PRESET SLOTS','OFFLINE_DEVICE_SLOT_V1','root.fileBridge.loadBuiltInPreset(index)','root.fileBridge.loadFolderPreset(index)')) {
             if (-not $system.Contains($token)) { throw "P6/P4 separation regression: missing '$token'" }
           }
 
