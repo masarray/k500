@@ -230,16 +230,19 @@ bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
     }
 
     // DEVICE_TRUTH_STAGING_V1
-    // A PC preset is only staged here. Never hydrate StudioEngine from this file:
-    // StudioEngine represents the actual connected K500 and may only change from
-    // device readback or explicit live edits. This also prevents the former
-    // 0x02C0 preview write from corrupting the visible Device Mode #4 name.
+    // Every newly selected file starts as staging-only, even if the previous
+    // document had entered offline Preview/Edit mode. This prevents stale edit
+    // tracking from leaking across preset selections.
+    const bool trackingChanged = m_editTracking;
+    m_editTracking = false;
     m_sourceBytes = bytes;
     m_savedBytes = bytes;
     m_sourcePath = sourcePath;
     m_sourceName = sourceName;
     refreshDocumentMetadata();
 
+    if (trackingChanged)
+        emit editTrackingChanged();
     emit sourceChanged();
     emit loadedFile(sourcePath, m_presetName);
     return true;
@@ -404,8 +407,15 @@ bool K500PresetFileBridge::saveFile(const QUrl &url)
 
 void K500PresetFileBridge::clear()
 {
-    if (m_sourceBytes.isEmpty() && m_sourcePath.isEmpty() && m_presetName.isEmpty())
+    const bool trackingChanged = m_editTracking;
+    m_editTracking = false;
+    if (m_sourceBytes.isEmpty() && m_sourcePath.isEmpty() && m_presetName.isEmpty()) {
+        if (trackingChanged) {
+            emit editTrackingChanged();
+            emit sourceChanged();
+        }
         return;
+    }
     m_sourceBytes.clear();
     m_savedBytes.clear();
     m_sourcePath.clear();
@@ -413,6 +423,8 @@ void K500PresetFileBridge::clear()
     m_presetName.clear();
     m_checksumOk = false;
     setError({});
+    if (trackingChanged)
+        emit editTrackingChanged();
     emit sourceChanged();
 }
 
@@ -450,5 +462,12 @@ bool K500PresetFileBridge::previewLoadedPreset()
     QByteArray preview(ActiveMemorySize, char(0));
     std::copy(slot.cbegin(), slot.cend(), preview.begin());
     m_engine->hydrateFromDeviceMemory(preview);
+
+    // P3_4_OFFLINE_EDIT_SESSION_V1
+    // Explicit Preview is the opt-in boundary for controlled offline editing.
+    // From this point, only mapper-whitelisted StudioEngine edits may patch the
+    // staged .k500 document. Loading another file or connecting real hardware
+    // turns tracking off again.
+    setEditTracking(true);
     return true;
 }
