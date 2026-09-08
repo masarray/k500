@@ -53,7 +53,7 @@ QVariantList K500PresetFileBridge::buildMassUploadEntries(const QVariantList &ur
     }
 
     // File-dialog selection order is platform dependent. Sort by filename so
-    // slot assignment is deterministic and reviewable before touching hardware.
+    // the legacy batch path remains deterministic and regression-compatible.
     std::sort(sources.begin(), sources.end(), [](const Source &a, const Source &b) {
         const int nameCompare = QString::compare(a.fileName, b.fileName, Qt::CaseInsensitive);
         if (nameCompare != 0) return nameCompare < 0;
@@ -94,6 +94,78 @@ QVariantList K500PresetFileBridge::buildMassUploadEntries(const QVariantList &ur
         entry.insert(QStringLiteral("image"), image);
         entry.insert(QStringLiteral("name"), document.name());
         entry.insert(QStringLiteral("path"), sources.at(i).path);
+        entries.append(entry);
+    }
+
+    return entries;
+}
+
+QVariantList K500PresetFileBridge::buildTransferUploadEntries(const QVariantList &paths)
+{
+    // SYSTEM_TRANSFER_LIST_V1
+    // The right-hand transfer list is authoritative for slot assignment. Unlike
+    // the legacy FileDialog path above, never sort: visible row 1 -> slot 1,
+    // visible row 10 -> slot 10. The PC source collection itself is unlimited;
+    // only this transfer selection is capped at the hardware's ten slots.
+    setError({});
+    if (paths.isEmpty()) {
+        setError(QStringLiteral("Tambahkan minimal satu preset ke daftar Device Slots."));
+        return {};
+    }
+    if (paths.size() > 10) {
+        setError(QStringLiteral("Device hanya menerima maksimum 10 preset."));
+        return {};
+    }
+
+    QVariantList entries;
+    entries.reserve(paths.size());
+
+    for (int i = 0; i < paths.size(); ++i) {
+        const QVariant value = paths.at(i);
+        const QUrl url = value.toUrl();
+        QString path = url.isLocalFile() ? url.toLocalFile() : value.toString();
+        path = QUrl::fromPercentEncoding(path.toUtf8());
+
+        const QFileInfo info(path);
+        if (path.isEmpty() || !info.isFile() || !path.endsWith(QStringLiteral(".k500"), Qt::CaseInsensitive)) {
+            setError(QStringLiteral("Slot %1 bukan file lokal .k500 yang valid: %2")
+                         .arg(i + 1).arg(info.fileName().isEmpty() ? path : info.fileName()));
+            return {};
+        }
+
+        QFile file(path);
+        if (!file.open(QIODevice::ReadOnly)) {
+            setError(QStringLiteral("Tidak dapat membuka preset slot %1: %2")
+                         .arg(i + 1).arg(info.fileName()));
+            return {};
+        }
+
+        const QByteArray bytes = file.readAll();
+        const K500PresetCodec::Document document(bytes);
+        if (!document.validSize()) {
+            setError(QStringLiteral("%1 bukan file K500 1144-byte.").arg(info.fileName()));
+            return {};
+        }
+        if (!document.checksumOk()) {
+            setError(QStringLiteral("Checksum tidak valid pada %1; seluruh batch dibatalkan.")
+                         .arg(info.fileName()));
+            return {};
+        }
+
+        QString conversionError;
+        const QByteArray image = K500PresetCodec::buildDeviceSlotImage(bytes, &conversionError);
+        if (image.size() != K500PresetCodec::DeviceSlotImageLength) {
+            setError(QStringLiteral("Konversi %1 gagal: %2")
+                         .arg(info.fileName(),
+                              conversionError.isEmpty() ? QStringLiteral("slot image invalid") : conversionError));
+            return {};
+        }
+
+        QVariantMap entry;
+        entry.insert(QStringLiteral("slot"), i + 1);
+        entry.insert(QStringLiteral("image"), image);
+        entry.insert(QStringLiteral("name"), document.name());
+        entry.insert(QStringLiteral("path"), path);
         entries.append(entry);
     }
 
