@@ -1,0 +1,72 @@
+name: Qt 6.10.2 compatibility diagnostic
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/**'
+      - 'qml/**'
+      - '.github/workflows/qt610-diagnostic.yml'
+
+jobs:
+  diagnostic:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6.10.2
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.2'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure with captured diagnostics
+        id: configure
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          New-Item -ItemType Directory -Force -Path diagnostics | Out-Null
+          cmake -S . -B build-qt610 -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl *>&1 | Tee-Object diagnostics/configure.log
+          "exit_code=$LASTEXITCODE" >> $env:GITHUB_OUTPUT
+
+      - name: Build with captured diagnostics
+        id: compile
+        if: steps.configure.outputs.exit_code == '0'
+        shell: pwsh
+        continue-on-error: true
+        run: |
+          cmake --build build-qt610 --config Release *>&1 | Tee-Object diagnostics/build.log
+          "exit_code=$LASTEXITCODE" >> $env:GITHUB_OUTPUT
+
+      - name: Collect CMake diagnostics
+        if: always()
+        shell: pwsh
+        run: |
+          if (Test-Path 'build-qt610/CMakeCache.txt') { Copy-Item 'build-qt610/CMakeCache.txt' diagnostics/ -Force }
+          if (Test-Path 'build-qt610/CMakeFiles/CMakeConfigureLog.yaml') { Copy-Item 'build-qt610/CMakeFiles/CMakeConfigureLog.yaml' diagnostics/ -Force }
+          if (Test-Path 'build-qt610/CMakeFiles/CMakeError.log') { Copy-Item 'build-qt610/CMakeFiles/CMakeError.log' diagnostics/ -Force }
+          if (-not (Test-Path diagnostics/build.log)) { 'Build was not started.' | Set-Content diagnostics/build.log }
+          "Qt 6.10.2 diagnostic for $env:GITHUB_SHA" | Set-Content diagnostics/README.txt
+
+      - name: Upload diagnostic logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qt-6.10.2-diagnostics
+          path: diagnostics
+          if-no-files-found: error
+
+      - name: Enforce diagnostic result
+        if: always()
+        shell: pwsh
+        run: |
+          if ('${{ steps.configure.outputs.exit_code }}' -ne '0') { throw 'Qt 6.10.2 configure failed; see diagnostic artifact.' }
+          if ('${{ steps.compile.outputs.exit_code }}' -ne '0') { throw 'Qt 6.10.2 compile failed; see diagnostic artifact.' }
