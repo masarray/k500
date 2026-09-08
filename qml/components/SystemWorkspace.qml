@@ -26,15 +26,15 @@ Item {
     }
     readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected
     // P4_PC_PRESET_UPLOAD_UI_V1 — permanent write remains fail-closed unless
-    // the P3 working document is valid and P2 confirms USB store availability.
+    // the staged PC document is valid and P2 confirms USB store availability.
     readonly property bool pcUploadReady: !!root.fileBridge
                                           && root.fileBridge.loaded
                                           && root.fileBridge.checksumOk
                                           && !!root.presetManager
                                           && root.presetManager.usbStoreAvailable
                                           && !root.presetManager.busy
-    // P4_2_PRESET_BATCH_UI_V1 — batch files are validated only after the user
-    // selects them; before that we require only the safe USB transaction gate.
+    // P4_2_PRESET_BATCH_UI_V1 — transfer-list files are validated before the
+    // backend touches hardware; the PC collection itself is intentionally unbounded.
     readonly property bool massUploadReady: !!root.fileBridge
                                             && !!root.presetManager
                                             && root.presetManager.usbStoreAvailable
@@ -56,23 +56,21 @@ Item {
         return value === undefined || value === null || value === "" ? fallback : value
     }
     function bindFileBridgeEngine() {
-        if (root.fileBridge)
+        if (root.fileBridge) {
             root.fileBridge.engine = root.engine
+            // DEVICE_TRUTH_STAGING_V1: the PC library is staging-only while this
+            // workspace owns the connected K500 editor. Live tweaks must never
+            // mutate a staged PC file behind the user's back.
+            root.fileBridge.editTracking = false
+        }
     }
     function uploadLoadedPreset() {
         if (!root.pcUploadReady)
             return
-        // Backend performs exact 0x0290 validation again before any Store frame.
+        // Backend performs exact 0x0290 validation again before Store, then
+        // recalls the same slot and full-readbacks the K500 before UI changes.
         root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1,
                                            root.fileBridge.deviceSlotImage())
-    }
-    function massUploadFiles(files) {
-        if (!root.massUploadReady)
-            return
-        var entries = root.fileBridge.buildMassUploadEntries(files,
-                                                              root.selectedDeviceSlot + 1)
-        if (entries && entries.length > 0)
-            root.presetManager.massUploadSlotImages(entries)
     }
     function loadPcLibraryEntry(index) {
         if (!root.fileBridge)
@@ -142,12 +140,10 @@ Item {
         }
     }
 
-    FileDialog {
+    MassUploadTransferWindow {
         id: massPresetDialog
-        title: "Mass Upload K500 presets — start slot " + String(root.selectedDeviceSlot + 1)
-        fileMode: FileDialog.OpenFiles
-        nameFilters: ["K500 preset (*.k500)"]
-        onAccepted: root.massUploadFiles(selectedFiles)
+        fileBridge: root.fileBridge
+        presetManager: root.presetManager
     }
 
     ColumnLayout {
@@ -301,7 +297,7 @@ Item {
                                             }
                                         }
                                         Text {
-                                            text: loadedPreset ? "LOADED" : validPreset ? "LOAD" : "INVALID"
+                                            text: loadedPreset ? "STAGED" : validPreset ? "SELECT" : "INVALID"
                                             color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
                                             font.family: Theme.monoFamily
                                             font.pixelSize: 7
@@ -344,7 +340,7 @@ Item {
                                 Text { text: "PC"; color: Theme.amber; font.family: Theme.monoFamily; font.pixelSize: 8; font.weight: Font.Bold }
                                 Text {
                                     Layout.fillWidth: true
-                                    text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET LOADED"
+                                    text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET STAGED"
                                     color: root.fileBridge && root.fileBridge.loaded ? Theme.text : Theme.textDim
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 9
@@ -352,7 +348,7 @@ Item {
                                     elide: Text.ElideRight
                                 }
                                 Text {
-                                    text: root.fileBridge && root.fileBridge.checksumOk ? (root.fileBridge.dirty ? "EDITED" : "VALID") : ""
+                                    text: root.fileBridge && root.fileBridge.checksumOk ? "STAGED" : ""
                                     color: Theme.accent
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 7
@@ -365,11 +361,9 @@ Item {
                             Layout.fillWidth: true
                             text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
                                   ? String(root.fileBridge.lastError)
-                                  : (root.fileBridge && root.fileBridge.loaded && root.fileBridge.dirty
-                                     ? ("Verified edit · " + String(root.fileBridge.changedByteCount) + " changed byte(s) incl. checksum")
-                                     : (root.pcUploadReady
-                                        ? ("PC preset ready · explicit upload to hardware slot " + String(root.selectedDeviceSlot + 1))
-                                        : "PC library is separate from the 10 hardware slots"))
+                                  : (root.pcUploadReady
+                                     ? ("Staged only · editor remains K500 truth · Upload to hardware slot " + String(root.selectedDeviceSlot + 1))
+                                     : "PC library is separate from the 10 hardware slots")
                             color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                             font.family: Theme.monoFamily
                             font.pixelSize: 8
@@ -393,7 +387,7 @@ Item {
                                 text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass"
                                 compact: true
                                 enabled: root.massUploadReady
-                                onClicked: massPresetDialog.open()
+                                onClicked: massPresetDialog.openTransfer()
                             }
                         }
                     }
