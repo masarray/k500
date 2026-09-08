@@ -69,6 +69,39 @@ jobs:
             if (-not $test.Contains($token)) { throw "Offline edit runtime regression coverage missing '$token'" }
           }
 
+      - name: Guard Device Mode layout and read-only MODE NAME parity
+        shell: pwsh
+        run: |
+          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          foreach ($token in @(
+            'readonly property string selectedDeviceModeName',
+            'id: deviceSlotColumn',
+            'height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)',
+            'text:"MODE NAME"',
+            'text:root.selectedDeviceModeName',
+            'readOnly:true',
+            'maximumLength:16',
+            'text:"READ ONLY"',
+            'text:"Connect K500 to read"'
+          )) {
+            if (-not $system.Contains($token)) { throw "Device Mode acceptance layout regressed: missing '$token'" }
+          }
+
+          if ($system.Contains('Layout.maximumHeight:311')) {
+            throw 'Device slot list regressed to fixed 311 px maximum height.'
+          }
+
+          $deviceStart = $system.IndexOf('text:"DEVICE PRESET SLOTS"')
+          $rightColumn = $system.IndexOf('Layout.preferredWidth: 355', $deviceStart)
+          if ($deviceStart -lt 0 -or $rightColumn -lt 0) {
+            throw 'Unable to isolate Device Preset Slots panel for layout guard.'
+          }
+          $devicePanel = $system.Substring($deviceStart, $rightColumn - $deviceStart)
+          if ($devicePanel.Contains('Item{Layout.fillHeight:true}')) {
+            throw 'Device action panel regressed: trailing fill-height spacer would push buttons above the PC button baseline.'
+          }
+          Write-Host 'Device slot fill-height + button baseline + MODE NAME read-only parity PASS'
+
       - name: Guard ALL GENRE latest Hi-Fi tuning and binary structure
         shell: pwsh
         run: |
