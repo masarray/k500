@@ -35,25 +35,24 @@ jobs:
               return names && names.length === 10 ? names : root.defaultDeviceSlots
           }
           '''
-          prop_anchor = prop_anchor.replace('          ', '')
           prop_insert = '''    property var deviceSlots: {
               if (!root.deviceConnected)
                   return root.defaultDeviceSlots
               var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
               return names && names.length === 10 ? names : root.defaultDeviceSlots
           }
-              // MODE_NAME_UI_V1 — the field mirrors the selected hardware slot name.
-              // Persistent rename remains read-only until its donor packet is captured.
-              readonly property string selectedDeviceModeName: {
-                  if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
-                      return ""
-                  return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
-              }
+          // MODE_NAME_UI_V1 — mirrors the selected hardware slot name only.
+          // Persistent rename stays disabled until the donor write packet is captured.
+          readonly property string selectedDeviceModeName: {
+              if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
+                  return ""
+              return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
+          }
           '''
-          prop_insert = prop_insert.replace('          ', '')
-          if prop_anchor not in text:
-              raise SystemExit('deviceSlots property anchor not found')
-          text = text.replace(prop_anchor, prop_insert, 1)
+          if 'readonly property string selectedDeviceModeName' not in text:
+              if prop_anchor not in text:
+                  raise SystemExit('deviceSlots property anchor not found')
+              text = text.replace(prop_anchor, prop_insert, 1)
 
           marker = 'text:"DEVICE PRESET SLOTS"'
           panel_start = text.index(marker)
@@ -83,9 +82,10 @@ jobs:
                               Layout.fillHeight:true
                               Layout.minimumHeight:311
           '''.replace('          ', '')
-          if old_height not in panel:
-              raise SystemExit('fixed Device slot height anchor not found')
-          panel = panel.replace(old_height, new_height, 1)
+          if 'Layout.maximumHeight:311' in panel:
+              if old_height not in panel:
+                  raise SystemExit('fixed Device slot height anchor not found')
+              panel = panel.replace(old_height, new_height, 1)
 
           old_column = '''                            Column {
                                   anchors.fill:parent
@@ -98,14 +98,18 @@ jobs:
                                   anchors.margins:7
                                   spacing:3
           '''.replace('          ', '')
-          if old_column not in panel:
-              raise SystemExit('Device slot column anchor not found')
-          panel = panel.replace(old_column, new_column, 1)
+          if 'id: deviceSlotColumn' not in panel:
+              if old_column not in panel:
+                  raise SystemExit('Device slot column anchor not found')
+              panel = panel.replace(old_column, new_column, 1)
 
-          if '                                        height:27\n' not in panel:
-              raise SystemExit('fixed Device row height anchor not found')
-          panel = panel.replace('                                        height:27\n',
-                                '                                        height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)\n', 1)
+          if 'height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)' not in panel:
+              if '                                        height:27\n' not in panel:
+                  raise SystemExit('fixed Device row height anchor not found')
+              panel = panel.replace(
+                  '                                        height:27\n',
+                  '                                        height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)\n',
+                  1)
 
           init_anchor = '''                        RowLayout {
                               Layout.fillWidth:true
@@ -113,9 +117,8 @@ jobs:
                               Rectangle{
                                   id:initVolumeCheck
           '''.replace('          ', '')
-          mode_block = '''                        // Native KTV parity: expose the selected Device Mode name beside
-                          // the slot bank. Writing is intentionally disabled until the persistent
-                          // rename transaction is verified from a donor capture.
+          mode_block = '''                        // Native KTV parity: selected hardware Mode Name.
+                          // Read-only until persistent rename traffic is donor-verified.
                           RowLayout {
                               Layout.fillWidth:true
                               spacing:7
@@ -170,29 +173,32 @@ jobs:
                           }
 
           '''.replace('          ', '')
-          if init_anchor not in panel:
-              raise SystemExit('Use init volume anchor not found')
-          panel = panel.replace(init_anchor, mode_block + init_anchor, 1)
+          if 'text:"MODE NAME"' not in panel:
+              if init_anchor not in panel:
+                  raise SystemExit('Use init volume anchor not found')
+              panel = panel.replace(init_anchor, mode_block + init_anchor, 1)
 
-          tail_spacer = '''                        }
-                              Item{Layout.fillHeight:true}
+          # Remove only the trailing spacer after Device action buttons. The expanding
+          # slot list now owns the vertical slack, which aligns the Device buttons with PC.
+          tail = '''                            SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true;enabled:false}
                           }
-                      }
-                  }
+                          Item{Layout.fillHeight:true}
           '''.replace('          ', '')
-          tail_no_spacer = '''                        }
+          tail_fixed = '''                            SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true;enabled:false}
                           }
-                      }
-                  }
           '''.replace('          ', '')
-          if tail_spacer not in panel:
-              raise SystemExit('Device panel tail spacer anchor not found')
-          panel = panel.replace(tail_spacer, tail_no_spacer, 1)
+          if 'Item{Layout.fillHeight:true}' in panel:
+              if tail not in panel:
+                  raise SystemExit('Device action spacer anchor not found')
+              panel = panel.replace(tail, tail_fixed, 1)
+
+          # Match the PC panel bottom inset and spacing for visual baseline parity.
+          panel = panel.replace('                        Layout.margins:12\n                        spacing:8\n',
+                                '                        Layout.margins:10\n                        spacing:7\n', 1)
 
           text = text[:panel_start] + panel + text[panel_end:]
           path.write_text(text, encoding='utf-8')
 
-          # Fail fast on the exact acceptance invariants.
           out = path.read_text(encoding='utf-8')
           required = [
               'readonly property string selectedDeviceModeName',
@@ -200,7 +206,7 @@ jobs:
               'height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)',
               'text:"MODE NAME"',
               'text:"READ ONLY"',
-              'Layout.fillHeight:true\n                            Layout.minimumHeight:311',
+              'text:"Connect K500 to read"',
           ]
           for token in required:
               if token not in out:
