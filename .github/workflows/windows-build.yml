@@ -117,19 +117,25 @@ jobs:
           foreach ($token in @('P2_PRESET_PROTOCOL_GOLDEN_VECTORS_V1','recallMode(1)','recallHandshake()','useInitVolume(false)','storeBegin(zeroImage)','storeCommit(1, zeroImage)','mass-upload chain derivation mismatch')) {
             if (-not $protocol.Contains($token)) { throw "P2 protocol regression: missing '$token'" }
           }
-          foreach ($token in @('P2_TRANSACTION_COORDINATOR_V1','P2_SAVE_FROM_DEVICE_TRUTH_V1','RecallSettleMs = 80','response.rsp == 0xC0','response.rsp == 0xED','response.rsp == 0xBE','response.rsp == 0xBD','response.rsp == 0xBC','resetConnectionState(true)','m_manager->setLiveEnabled(false)','return a.slot > b.slot')) {
-            if (-not $preset.Contains($token)) { throw "P2 transaction regression: missing '$token'" }
+          foreach ($token in @('P2_TRANSACTION_COORDINATOR_V1','P2_SAVE_FROM_DEVICE_TRUTH_V1','RecallSettleMs = 80','response.rsp == 0xC0','response.rsp == 0xED','response.rsp == 0xBE','response.rsp == 0xBD','response.rsp == 0xBC','resetConnectionState(true)','m_manager->setLiveEnabled(false)','return a.slot > b.slot','OFFLINE_DEVICE_SLOT_V1','OFFLINE_USE_INIT_V1')) {
+            if (-not $preset.Contains($token)) { throw "P2 transaction/System-state regression: missing '$token'" }
           }
           foreach ($token in @('deviceScalarsReady(memory.left(0x40))','activeMemoryReady(memory)')) {
             if (-not $managerBridge.Contains($token)) { throw "P2 hydration bridge regression: missing '$token'" }
           }
 
-          # PC files are staging-only. Device/editor state remains K500 truth.
-          foreach ($token in @('DEVICE_TRUTH_STAGING_V1','P3_4_CONTROLLED_EDIT_PERSISTENCE_V1','P3_4_EDITED_EXPORT_V1','buildDeviceSlotImage','QSaveFile')) {
+          # PC selection is staging-only. Exactly one hydration is allowed and
+          # belongs to the explicit offline Preview action.
+          foreach ($token in @('DEVICE_TRUTH_STAGING_V1','OFFLINE_PREVIEW_V1','P3_4_CONTROLLED_EDIT_PERSISTENCE_V1','P3_4_EDITED_EXPORT_V1','buildDeviceSlotImage','QSaveFile')) {
             if (-not $fileBridge.Contains($token)) { throw "P3/P3.4 file regression: missing '$token'" }
           }
-          if ($fileBridge.Contains('hydrateFromDeviceMemory(preview)')) {
-            throw 'Device-truth regression: staging a PC preset must never hydrate StudioEngine'
+          $hydrateCount = ([regex]::Matches($fileBridge, 'hydrateFromDeviceMemory\(preview\)')).Count
+          if ($hydrateCount -ne 1) { throw "Offline preview regression: expected exactly one explicit preview hydrate, found $hydrateCount" }
+          $loadStart = $fileBridge.IndexOf('bool K500PresetFileBridge::loadValidatedBytes')
+          $loadEnd = $fileBridge.IndexOf('bool K500PresetFileBridge::loadFile', $loadStart)
+          if ($loadStart -lt 0 -or $loadEnd -le $loadStart) { throw 'loadValidatedBytes boundary missing' }
+          if ($fileBridge.Substring($loadStart, $loadEnd - $loadStart).Contains('hydrateFromDeviceMemory')) {
+            throw 'Device-truth regression: selecting/staging a PC preset must never hydrate StudioEngine'
           }
 
           foreach ($token in @('DEVICE_TRUTH_UPLOAD_V1','usbStoreAvailable','DeviceSlotImageLength','m_storeImage = image','beginStoreSlot(false)','Operation::Upload')) {
@@ -148,15 +154,17 @@ jobs:
           foreach ($token in @('P4_2_PRESET_BATCH_LIBRARY_V1','SYSTEM_TRANSFER_LIST_V1','document.checksumOk','buildDeviceSlotImage','buildTransferUploadEntries','paths.size() > 10','entry.insert(QStringLiteral("slot"), i + 1)')) {
             if (-not $batchBridge.Contains($token)) { throw "P4.2 transfer batch regression: missing '$token'" }
           }
-          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','P4_2_PRESET_BATCH_UI_V1','MassUploadTransferWindow','root.fileBridge.checksumOk','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1')) {
-            if (-not $system.Contains($token)) { throw "P4 UI regression: missing '$token'" }
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','P4_2_PRESET_BATCH_UI_V1','OFFLINE_MASS_PREP_V1','OFFLINE_DEVICE_SLOT_V1','MassUploadTransferWindow','root.fileBridge.previewLoadedPreset()','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1')) {
+            if (-not $system.Contains($token)) { throw "P4/System UI regression: missing '$token'" }
           }
           if ($system.Contains('FileDialog.OpenFiles')) { throw 'Mass Upload must not bypass transfer-list review UI' }
-          foreach ($token in @('folderPresets','maxSlots: 10','Add All','Remove','buildTransferUploadEntries','massUploadSlotImages(entries)')) {
+          foreach ($token in @('folderPresets','maxSlots: 10','Add All','Remove','buildTransferUploadEntries','massUploadSlotImages(entries)','root.presetManager.usbStoreAvailable')) {
             if (-not $transfer.Contains($token)) { throw "Transfer-list UI regression: missing '$token'" }
           }
-          if ($system -notmatch 'enabled:\s*root\.pcUploadReady') { throw 'P4 UI regression: PC upload gate missing' }
-          if ($system -notmatch 'enabled:\s*root\.massUploadReady') { throw 'P4.2 UI regression: Mass Upload gate missing' }
+          if (-not $system.Contains('enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady')) { throw 'P4 UI regression: Preview/Upload gate missing' }
+          if ($system -match 'text:\s*root\.presetManager.*"Mass"[\s\S]{0,180}enabled:\s*root\.massUploadReady') {
+            throw 'P4.2 regression: opening Mass transfer list must remain available offline'
+          }
 
           # Native Mass Upload is hardware-descending 10 -> 1, chained, then
           # Recall slot 1 + C0 + full 939-byte readback before LIVE resumes.
@@ -174,8 +182,8 @@ jobs:
             if (-not $cmake.Contains($token)) { throw "Regression test target missing '$token'" }
           }
 
-          foreach ($token in @('P6_PC_PRESET_LIBRARY_V1','setPresetFolder','refreshPresetFolder','loadFolderPreset','loadBuiltInPreset')) {
-            if (-not $fileHeader.Contains($token) -and -not $fileBridge.Contains($token)) { throw "P6 backend regression: missing '$token'" }
+          foreach ($token in @('P6_PC_PRESET_LIBRARY_V1','setPresetFolder','refreshPresetFolder','loadFolderPreset','loadBuiltInPreset','previewLoadedPreset')) {
+            if (-not $fileHeader.Contains($token) -and -not $fileBridge.Contains($token)) { throw "P6/backend regression: missing '$token'" }
           }
           foreach ($token in @('P6_PC_PRESET_LIBRARY_UI_V1','PC PRESET LIBRARY','DEVICE PRESET SLOTS','root.fileBridge.builtInPresets','root.fileBridge.folderPresets','root.fileBridge.loadBuiltInPreset(index)','root.fileBridge.loadFolderPreset(index)')) {
             if (-not $system.Contains($token)) { throw "P6 UI regression: missing '$token'" }
@@ -183,22 +191,15 @@ jobs:
 
           $builtIns = @(Get-ChildItem 'resources/presets' -Filter '*.k500' -File)
           if ($builtIns.Count -ne 10) { throw "P6 built-in preset count must be 10, found $($builtIns.Count)" }
-          $validPresetCount = 0
           foreach ($file in $builtIns) {
             $bytes = [IO.File]::ReadAllBytes($file.FullName)
-            if ($bytes.Length -ne 1144) {
-              if ($file.Name -ne '01_ALL_GENRE.k500') { throw "$($file.Name) is not 1144 bytes" }
-              Write-Warning 'Known baseline defect: 01_ALL_GENRE.k500 is 1143 bytes and remains fail-closed/INVALID.'
-              continue
-            }
+            if ($bytes.Length -ne 1144) { throw "$($file.Name) is not 1144 bytes" }
             $sum = 0
             foreach ($b in $bytes) { $sum += [int]$b }
             if (($sum % 256) -ne 0) { throw "$($file.Name) checksum invalid" }
-            $validPresetCount++
             $name = [Text.Encoding]::ASCII.GetString($bytes[0x454..0x474]).Trim([char]0).Trim()
             if ($name.Length -gt 16) { throw "$($file.Name) internal name exceeds the 16-character K500 loader limit: '$name'" }
           }
-          if ($validPresetCount -lt 9) { throw "P6 built-in validated preset count dropped below 9: $validPresetCount" }
           if (-not $cmake.Contains('built_in_presets') -or -not $cmake.Contains('MassUploadTransferWindow.qml')) {
             throw 'P6/transfer preset resources missing from CMake'
           }
