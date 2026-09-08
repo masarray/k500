@@ -248,7 +248,7 @@ jobs:
         run: |
           $version = '${{ steps.meta.outputs.version }}'
           $releaseFiles = @(
-            Get-Item "dist/SonKuPik-K500-v$version-Windows-Setup.exe",
+            Get-Item "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
             Get-Item "dist/SonKuPik-K500-v$version-Windows-Portable.zip"
           )
           $artifacts = @()
