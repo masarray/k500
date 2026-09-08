@@ -129,6 +129,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/RackDynamicsPanel.qml
         qml/components/RackFilterPanel.qml
         qml/components/SystemWorkspace.qml
+        qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
 )
 
