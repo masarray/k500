@@ -199,10 +199,11 @@ void K500PresetManager::recallMode(int slotOneBased)
 void K500PresetManager::sendRecallHandshake()
 {
     m_step = Step::AwaitRecallHandshake;
-    setProgress(QStringLiteral("Recall slot %1 · refresh handshake").arg(m_requestedSlot));
+    setProgress(QStringLiteral("%1 · slot %2 refresh handshake")
+                    .arg(operationName(m_operation)).arg(m_requestedSlot));
     if (!send(K500PresetProtocol::recallHandshake(), QStringLiteral("Recall refresh handshake · mask 0x03")))
         return;
-    armTimeout(RecallHandshakeTimeoutMs, QStringLiteral("Recall"),
+    armTimeout(RecallHandshakeTimeoutMs, operationName(m_operation),
                QStringLiteral("Timeout menunggu RSP 0xC0 setelah Recall."));
 }
 
@@ -443,8 +444,20 @@ void K500PresetManager::finishReadback()
     emit activeMemoryReady(m_readbackMemory);
 
     if (m_readbackPurpose == ReadbackPurpose::Recall) {
-        setProgress(QStringLiteral("Recall slot %1 · 939-byte resync complete").arg(m_activeSlot > 0 ? m_activeSlot : m_requestedSlot));
-        finishOperation(QStringLiteral("Recall"), m_activeSlot > 0 ? m_activeSlot : m_requestedSlot);
+        const int resolvedSlot = m_activeSlot > 0 ? m_activeSlot : m_requestedSlot;
+        if (m_operation == Operation::Upload) {
+            setProgress(QStringLiteral("Upload slot %1 · device activated and 939-byte resync complete").arg(resolvedSlot));
+            finishOperation(QStringLiteral("Upload"), resolvedSlot);
+            return;
+        }
+        if (m_operation == Operation::MassUpload) {
+            setProgress(QStringLiteral("Mass upload complete · slot 1 active · 939-byte resync complete"));
+            finishOperation(QStringLiteral("Mass Upload"), resolvedSlot);
+            return;
+        }
+
+        setProgress(QStringLiteral("Recall slot %1 · 939-byte resync complete").arg(resolvedSlot));
+        finishOperation(QStringLiteral("Recall"), resolvedSlot);
         return;
     }
 
@@ -552,22 +565,29 @@ void K500PresetManager::acceptStoreCommit()
         const int count = m_massEntries.size();
         m_massEntries.clear();
         m_massIndex = -1;
-        setProgress(QStringLiteral("%1 slot uploaded · refreshing slot 1").arg(count));
-        finishOperation(QStringLiteral("Mass Upload"));
-        QTimer::singleShot(0, this, [this] {
-            if (connected() && !busy())
-                recallMode(1);
+        m_requestedSlot = 1;
+        setProgress(QStringLiteral("%1 slot uploaded · recalling slot 1 before LIVE resumes").arg(count));
+        m_step = Step::RecallDelay;
+        if (!send(K500PresetProtocol::recallMode(m_requestedSlot),
+                  QStringLiteral("Mass Upload final recall slot 1 · mask 0x03")))
+            return;
+        QTimer::singleShot(RecallSettleMs, this, [this] {
+            if (m_operation == Operation::MassUpload && m_step == Step::RecallDelay)
+                sendRecallHandshake();
         });
         return;
     }
 
     if (m_operation == Operation::Upload) {
         const int uploadedSlot = m_requestedSlot;
-        setProgress(QStringLiteral("Upload slot %1 complete · activating device slot").arg(uploadedSlot));
-        finishOperation(QStringLiteral("Upload"), uploadedSlot);
-        QTimer::singleShot(0, this, [this, uploadedSlot] {
-            if (connected() && !busy())
-                recallMode(uploadedSlot);
+        setProgress(QStringLiteral("Upload slot %1 committed · recalling same slot before LIVE resumes").arg(uploadedSlot));
+        m_step = Step::RecallDelay;
+        if (!send(K500PresetProtocol::recallMode(uploadedSlot),
+                  QStringLiteral("Upload final recall slot %1 · mask 0x03").arg(uploadedSlot)))
+            return;
+        QTimer::singleShot(RecallSettleMs, this, [this] {
+            if (m_operation == Operation::Upload && m_step == Step::RecallDelay)
+                sendRecallHandshake();
         });
         return;
     }
