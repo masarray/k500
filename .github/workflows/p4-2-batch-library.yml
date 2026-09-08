@@ -57,13 +57,19 @@ jobs:
             if (-not $header.Contains($token)) { throw "P4.2 batch API missing '$token'" }
           }
 
-          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','MassUploadTransferWindow','enabled: root.massUploadReady')) {
+          # OFFLINE_MASS_PREP_V1: open/select/reorder is a PC-side workflow and
+          # must remain available disconnected. Only the final transfer button is
+          # gated by USB store readiness inside the popup.
+          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','MassUploadTransferWindow','OFFLINE_MASS_PREP_V1','massPresetDialog.openTransfer()')) {
             if (-not $system.Contains($token)) { throw "P4.2 System UI contract missing '$token'" }
           }
-          foreach ($token in @('folderPresets','maxSlots: 10','Add All','Remove','buildTransferUploadEntries','massUploadSlotImages(entries)')) {
+          foreach ($token in @('folderPresets','maxSlots: 10','Add All','Remove','buildTransferUploadEntries','massUploadSlotImages(entries)','root.presetManager.usbStoreAvailable')) {
             if (-not $transfer.Contains($token)) { throw "P4.2 transfer-list UI contract missing '$token'" }
           }
           if ($system.Contains('FileDialog.OpenFiles')) { throw 'P4.2 Mass Upload must not bypass the transfer-list review UI' }
+          if ($system -match 'text:\s*root\.presetManager.*"Mass"[\s\S]{0,180}enabled:\s*root\.massUploadReady') {
+            throw 'P4.2 offline preparation regression: Mass popup open must not require USB/connection'
+          }
 
           # Native capture MASS_UPLOAD_TO_DEVICE_10_PRESET_INIT_OFF proves descending
           # hardware execution: slot 10 -> 1, BE begin ACK on every slot, chained
