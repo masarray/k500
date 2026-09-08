@@ -56,7 +56,7 @@ jobs:
           }
 
           if ($system.Contains('P4_PC_PRESET_UPLOAD_UI_V1')) {
-            foreach ($token in @('previewOrUploadLoadedPreset','root.offlineFileMode ? "Preview"','root.pcUploadReady','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','root.fileBridge.previewLoadedPreset()','root.presetManager.usbStoreAvailable')) {
+            foreach ($token in @('previewOrUploadLoadedPreset','root.offlineEditMode ? "Preview again" : "Preview"','root.pcUploadReady','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','root.fileBridge.previewLoadedPreset()','root.presetManager.usbStoreAvailable')) {
               if (-not $system.Contains($token)) { throw "P4/offline-preview UI regression: missing '$token'" }
             }
           } elseif (-not $system.Contains('enabled:false')) {
