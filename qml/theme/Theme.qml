@@ -10,6 +10,7 @@ QtObject {
 
     // Exact sRGB equivalents of the current web console OKLCH tokens.
     readonly property color bg: "#060A0E"
+    readonly property color background: bg
     readonly property color chassis: "#0C1116"
     readonly property color bgRaised: "#11171D"
     readonly property color panel: "#11171D"
