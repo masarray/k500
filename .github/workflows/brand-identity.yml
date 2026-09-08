@@ -1,0 +1,101 @@
+name: Guard SonKuPik K500 brand identity
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'assets/SonKuPik-k500-logo.png'
+      - 'docs/SonKuPik-k500-logo.png'
+      - 'docs/favicon.png'
+      - 'docs/index.html'
+      - 'README.md'
+      - 'src/main.cpp'
+      - 'qml/Main.qml'
+      - 'qml/components/TopBar.qml'
+      - 'CMakeLists.txt'
+      - 'packaging/windows/**'
+      - '.github/workflows/windows-release.yml'
+      - '.github/workflows/brand-identity.yml'
+  pull_request:
+    paths:
+      - 'assets/SonKuPik-k500-logo.png'
+      - 'docs/SonKuPik-k500-logo.png'
+      - 'docs/favicon.png'
+      - 'docs/index.html'
+      - 'README.md'
+      - 'src/main.cpp'
+      - 'qml/Main.qml'
+      - 'qml/components/TopBar.qml'
+      - 'CMakeLists.txt'
+      - 'packaging/windows/**'
+      - '.github/workflows/windows-release.yml'
+      - '.github/workflows/brand-identity.yml'
+
+jobs:
+  brand-identity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard authoritative artwork identity
+        shell: pwsh
+        run: |
+          $source = 'assets/SonKuPik-k500-logo.png'
+          $webLogo = 'docs/SonKuPik-k500-logo.png'
+          $favicon = 'docs/favicon.png'
+          foreach ($path in @($source,$webLogo,$favicon)) {
+            if (-not (Test-Path $path)) { throw "Brand asset missing: $path" }
+          }
+
+          $sourceHash = (Get-FileHash $source -Algorithm SHA256).Hash
+          $webHash = (Get-FileHash $webLogo -Algorithm SHA256).Hash
+          $faviconHash = (Get-FileHash $favicon -Algorithm SHA256).Hash
+          if ($sourceHash -ne $webHash -or $sourceHash -ne $faviconHash) {
+            throw 'App/web/favicon artwork must remain byte-identical to the authoritative SonKuPik K500 logo.'
+          }
+
+      - name: Guard product name and active logo references
+        shell: pwsh
+        run: |
+          $mainCpp = Get-Content 'src/main.cpp' -Raw
+          $mainQml = Get-Content 'qml/Main.qml' -Raw
+          $topbar = Get-Content 'qml/components/TopBar.qml' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          $landing = Get-Content 'docs/index.html' -Raw
+          $installer = Get-Content 'packaging/windows/installer.nsi' -Raw
+          $portable = Get-Content 'packaging/windows/portable.nsi' -Raw
+          $release = Get-Content '.github/workflows/windows-release.yml' -Raw
+          $readme = Get-Content 'README.md' -Raw
+
+          foreach ($token in @('setApplicationName(QStringLiteral("SonKuPik K500"))','setWindowIcon(QIcon(QStringLiteral(":/assets/SonKuPik-k500-logo.png")))')) {
+            if (-not $mainCpp.Contains($token)) { throw "Native brand regression: missing '$token'" }
+          }
+          foreach ($token in @('SonKuPik K500 — Karaoke Processor')) {
+            if (-not $mainQml.Contains($token)) { throw "Window brand regression: missing '$token'" }
+          }
+          foreach ($token in @('qrc:/assets/SonKuPik-k500-logo.png','text:"SonKuPik"','text:"K500"')) {
+            if (-not $topbar.Contains($token)) { throw "Header brand regression: missing '$token'" }
+          }
+          foreach ($token in @('BRAND_SONKUPIK_K500_V1','assets/SonKuPik-k500-logo.png')) {
+            if (-not $cmake.Contains($token)) { throw "Brand resource regression: missing '$token'" }
+          }
+          foreach ($token in @('<title>SonKuPik K500</title>','./favicon.png','./SonKuPik-k500-logo.png')) {
+            if (-not $landing.Contains($token)) { throw "Landing-page brand regression: missing '$token'" }
+          }
+          if (-not $installer.Contains('SonKuPik K500') -or -not $portable.Contains('SonKuPik K500')) {
+            throw 'Windows package branding regressed.'
+          }
+          foreach ($token in @("product = 'SonKuPik K500'",'SonKuPik-K500-v$version-Windows-Setup.exe','SonKuPik-K500-v$version-Windows-Portable-Single.exe')) {
+            if (-not $release.Contains($token)) { throw "Release brand regression: missing '$token'" }
+          }
+          foreach ($token in @('# SonKuPik K500','assets/SonKuPik-k500-logo.png')) {
+            if (-not $readme.Contains($token)) { throw "README brand regression: missing '$token'" }
+          }
+
+          $activeFiles = @('src/main.cpp','qml/Main.qml','qml/components/TopBar.qml','CMakeLists.txt','docs/index.html')
+          foreach ($path in $activeFiles) {
+            $text = Get-Content $path -Raw
+            if ($text.Contains('assets/sonkupik-logo.png') -or $text.Contains('qrc:/assets/sonkupik-logo.png')) {
+              throw "Legacy logo reference remains active in $path"
+            }
+          }

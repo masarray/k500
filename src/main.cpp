@@ -2,6 +2,7 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QStringList>
@@ -91,8 +92,9 @@ void putLiveEqBand(QByteArray &memory, int sectionOffset, int index,
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("SONKUPIK STUDIO Native UI"));
+    app.setApplicationName(QStringLiteral("SonKuPik K500"));
     app.setOrganizationName(QStringLiteral("MasArray"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/SonKuPik-k500-logo.png")));
 
     if (!registerEmbeddedFonts()) {
         qCritical() << "Plus Jakarta Sans embedded font family is unavailable";

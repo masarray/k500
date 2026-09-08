@@ -9,9 +9,13 @@ on:
       - 'CMakeLists.txt'
       - 'src/AppVersionInit.cpp'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/main.cpp'
+      - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
+      - 'assets/SonKuPik-k500-logo.png'
       - 'packaging/windows/**'
       - 'docs/P5_RELEASE_READINESS.md'
+      - 'docs/index.html'
       - '.github/workflows/windows-release.yml'
   push:
     branches:
@@ -20,9 +24,13 @@ on:
       - 'CMakeLists.txt'
       - 'src/AppVersionInit.cpp'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/main.cpp'
+      - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
+      - 'assets/SonKuPik-k500-logo.png'
       - 'packaging/windows/**'
       - 'docs/P5_RELEASE_READINESS.md'
+      - 'docs/index.html'
       - '.github/workflows/windows-release.yml'
 
 permissions:
@@ -52,7 +60,7 @@ jobs:
           $version = $Matches[1]
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=v$version" >> $env:GITHUB_OUTPUT
-          Write-Host "Packaging SONKUPIK STUDIO v$version release candidate"
+          Write-Host "Packaging SonKuPik K500 v$version release candidate"
 
       - name: Guard release-candidate truth
         shell: pwsh
@@ -129,8 +137,8 @@ jobs:
           $makensis = Join-Path ${env:ProgramFiles(x86)} 'NSIS\makensis.exe'
           $appDir = (Resolve-Path package).Path
           $distDir = (Resolve-Path dist).Path
-          $setup = Join-Path $distDir "SONKUPIK-STUDIO-v$version-Windows-Setup.exe"
-          $portable = Join-Path $distDir "SONKUPIK-STUDIO-v$version-Windows-Portable-Single.exe"
+          $setup = Join-Path $distDir "SonKuPik-K500-v$version-Windows-Setup.exe"
+          $portable = Join-Path $distDir "SonKuPik-K500-v$version-Windows-Portable-Single.exe"
 
           & $makensis "/DAPP_DIR=$appDir" "/DOUT_FILE=$setup" "/DAPP_VERSION=$version" packaging/windows/installer.nsi
           if ($LASTEXITCODE -ne 0 -or -not (Test-Path $setup)) { throw 'Installer packaging failed' }
@@ -142,7 +150,7 @@ jobs:
         shell: pwsh
         run: |
           $version = '${{ steps.meta.outputs.version }}'
-          $portable = "dist/SONKUPIK-STUDIO-v$version-Windows-Portable-Single.exe"
+          $portable = "dist/SonKuPik-K500-v$version-Windows-Portable-Single.exe"
           foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
             $p = Start-Process -FilePath $portable -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "Portable $arg failed with exit code $($p.ExitCode)" }
@@ -161,7 +169,7 @@ jobs:
 
           $manifest = [ordered]@{
             schema = 'sonkupik-k500-release-manifest-v1'
-            product = 'SONKUPIK STUDIO Native K500'
+            product = 'SonKuPik K500'
             version = $version
             commit = $env:GITHUB_SHA
             generatedUtc = [DateTime]::UtcNow.ToString('o')
@@ -182,6 +190,7 @@ jobs:
           $manifest = Get-Content dist/release-manifest.json -Raw | ConvertFrom-Json
           if ($manifest.version -ne '${{ steps.meta.outputs.version }}') { throw 'Manifest version mismatch' }
           if ($manifest.commit -ne $env:GITHUB_SHA) { throw 'Manifest commit mismatch' }
+          if ($manifest.product -ne 'SonKuPik K500') { throw 'Manifest product branding mismatch' }
           if ($manifest.hardwareAcceptance -ne 'pending') { throw 'P5 manifest must remain hardware-pending' }
           if ($manifest.stableReleaseEligible -ne $false) { throw 'P5 must not advertise stable release eligibility' }
           if ($manifest.artifacts.Count -ne 2) { throw 'Manifest must describe installer and portable artifacts' }
@@ -189,7 +198,7 @@ jobs:
       - name: Upload Windows release artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: SONKUPIK-STUDIO-Windows-${{ steps.meta.outputs.version }}-RC
+          name: SonKuPik-K500-Windows-${{ steps.meta.outputs.version }}-RC
           path: |
             dist/*.exe
             dist/SHA256SUMS.txt
@@ -202,15 +211,15 @@ jobs:
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          name: SONKUPIK STUDIO ${{ steps.meta.outputs.tag }} RC
+          name: SonKuPik K500 ${{ steps.meta.outputs.tag }} RC
           prerelease: true
           generate_release_notes: true
           body: |
             Release candidate. Automated software gates passed, but physical K500 hardware acceptance is still pending.
             Do not treat hardware-facing features as fully qualified until the repository hardware acceptance checklist is completed for this exact commit.
           files: |
-            dist/SONKUPIK-STUDIO-v${{ steps.meta.outputs.version }}-Windows-Setup.exe
-            dist/SONKUPIK-STUDIO-v${{ steps.meta.outputs.version }}-Windows-Portable-Single.exe
+            dist/SonKuPik-K500-v${{ steps.meta.outputs.version }}-Windows-Setup.exe
+            dist/SonKuPik-K500-v${{ steps.meta.outputs.version }}-Windows-Portable-Single.exe
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true

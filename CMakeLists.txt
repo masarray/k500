@@ -133,8 +133,9 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/SectionWorkspace.qml
 )
 
-set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/sonkupik-logo.png")
-set_source_files_properties("${SONKUPIK_LOGO}" PROPERTIES QT_RESOURCE_ALIAS "assets/sonkupik-logo.png")
+# BRAND_SONKUPIK_K500_V1 — one authoritative visual identity for app/header/web.
+set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/SonKuPik-k500-logo.png")
+set_source_files_properties("${SONKUPIK_LOGO}" PROPERTIES QT_RESOURCE_ALIAS "assets/SonKuPik-k500-logo.png")
 qt_add_resources(sonkupik_studio_native brand_assets
     PREFIX "/"
     FILES "${SONKUPIK_LOGO}"
@@ -192,6 +193,8 @@ if(WIN32)
     target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid)
 endif()
 
+# Keep the internal executable name stable for regression harnesses; user-facing
+# product/package identity is SonKuPik K500.
 set_target_properties(sonkupik_studio_native PROPERTIES
     OUTPUT_NAME "SONKUPIK-STUDIO-Native-UI"
 )
