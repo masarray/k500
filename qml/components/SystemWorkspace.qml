@@ -29,6 +29,9 @@ Item {
     readonly property bool stagedPresetReady: !!root.fileBridge
                                               && root.fileBridge.loaded
                                               && root.fileBridge.checksumOk
+    readonly property bool offlineEditMode: root.offlineFileMode
+                                             && !!root.fileBridge
+                                             && root.fileBridge.editPersistenceEnabled
     // P4_PC_PRESET_UPLOAD_UI_V1 — permanent write remains fail-closed unless
     // the staged PC document is valid and P2 confirms USB store availability.
     readonly property bool pcUploadReady: root.stagedPresetReady
@@ -60,9 +63,9 @@ Item {
     function bindFileBridgeEngine() {
         if (root.fileBridge) {
             root.fileBridge.engine = root.engine
-            // DEVICE_TRUTH_STAGING_V1: the PC library is staging-only while this
-            // workspace owns the connected K500 editor. Live tweaks must never
-            // mutate a staged PC file behind the user's back.
+            // DEVICE_TRUTH_STAGING_V1: every new selection begins staged-only.
+            // Explicit offline Preview is the only action that opts into the
+            // controlled P3.4 edit-persistence session.
             root.fileBridge.editTracking = false
         }
     }
@@ -70,8 +73,8 @@ Item {
         if (!root.stagedPresetReady)
             return
         if (root.offlineFileMode) {
-            // OFFLINE_PREVIEW_V1 — explicit Preview hydrates only visual/editor
-            // state. Selecting a PC preset alone remains staging-only.
+            // OFFLINE_PREVIEW_V1 — explicit Preview hydrates visual/editor state
+            // and the bridge then enables its whitelisted offline edit session.
             root.fileBridge.previewLoadedPreset()
             return
         }
@@ -123,6 +126,10 @@ Item {
                 root.selectedDeviceSlot = root.activeDeviceSlot
         }
         function onConnectedChanged() {
+            // DEVICE_TRUTH_EDIT_ISOLATION_V1 — a real K500 session always wins.
+            // Disable PC edit persistence before any subsequent LIVE user edits.
+            if (root.deviceConnected && root.fileBridge)
+                root.fileBridge.editTracking = false
             if (root.activeDeviceSlot >= 0)
                 root.selectedDeviceSlot = root.activeDeviceSlot
         }
@@ -369,8 +376,10 @@ Item {
                                     elide: Text.ElideRight
                                 }
                                 Text {
-                                    text: root.fileBridge && root.fileBridge.checksumOk ? "STAGED" : ""
-                                    color: Theme.accent
+                                    text: root.fileBridge && root.fileBridge.checksumOk
+                                          ? (root.fileBridge.dirty ? "EDITED" : (root.offlineEditMode ? "PREVIEW" : "STAGED"))
+                                          : ""
+                                    color: root.fileBridge && root.fileBridge.dirty ? Theme.amber : Theme.accent
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 7
                                     font.weight: Font.Bold
@@ -382,11 +391,15 @@ Item {
                             Layout.fillWidth: true
                             text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
                                   ? String(root.fileBridge.lastError)
-                                  : (root.offlineFileMode && root.stagedPresetReady
-                                     ? "Offline · press Preview to inspect this preset visually"
-                                     : (root.pcUploadReady
-                                        ? ("Staged only · editor remains K500 truth · Upload to hardware slot " + String(root.selectedDeviceSlot + 1))
-                                        : "PC library is separate from the 10 hardware slots"))
+                                  : (root.fileBridge && root.fileBridge.dirty
+                                     ? ("Verified edit · " + String(root.fileBridge.changedByteCount) + " changed byte(s) incl. checksum")
+                                     : (root.offlineEditMode
+                                        ? "Offline preview/edit · verified PEQ/fader edits persist to the staged preset"
+                                        : (root.offlineFileMode && root.stagedPresetReady
+                                           ? "Offline · press Preview to inspect and edit this preset"
+                                           : (root.pcUploadReady
+                                              ? ("Staged only · editor remains K500 truth · Upload to hardware slot " + String(root.selectedDeviceSlot + 1))
+                                              : "PC library is separate from the 10 hardware slots"))))
                             color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                             font.family: Theme.monoFamily
                             font.pixelSize: 8
@@ -400,7 +413,7 @@ Item {
                             SoftButton { Layout.fillWidth: true; text: "Save as"; compact: true; enabled: root.fileBridge && root.fileBridge.loaded; onClicked: savePresetDialog.open() }
                             SoftButton {
                                 Layout.fillWidth: true
-                                text: root.offlineFileMode ? "Preview" : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
+                                text: root.offlineFileMode ? (root.offlineEditMode ? "Preview again" : "Preview") : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
                                 compact: true
                                 enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady
                                 onClicked: root.previewOrUploadLoadedPreset()
