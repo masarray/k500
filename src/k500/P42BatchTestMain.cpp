@@ -129,6 +129,24 @@ int main(int argc, char **argv)
     if (stagedImageBeforeLiveEdit != stagedImageAfterLiveEdit)
         return fail(QStringLiteral("LIVE editor tweak mutated staged PC preset"));
 
+    // OFFLINE_PREVIEW_V1: preview is deliberately separate from selection.
+    // Once the user explicitly requests Preview, the staged preset must hydrate
+    // the visual editor using the verified slot-image mapping, without modifying
+    // the staged source document itself.
+    const QVariantMap stateImmediatelyBeforePreview = engine.deviceState();
+    const QByteArray stagedImageBeforePreview = bridge.deviceSlotImage();
+    if (!bridge.previewLoadedPreset())
+        return fail(QStringLiteral("explicit offline preview was rejected"));
+    if (engine.deviceState() == stateImmediatelyBeforePreview)
+        return fail(QStringLiteral("explicit offline preview did not hydrate StudioEngine"));
+    if (bridge.deviceSlotImage() != stagedImageBeforePreview)
+        return fail(QStringLiteral("offline preview mutated staged PC preset bytes"));
+
+    const QVariantMap previewSystem = engine.deviceState().value(QStringLiteral("system")).toMap();
+    if (!previewSystem.value(QStringLiteral("btName")).toString().isEmpty()
+        || !previewSystem.value(QStringLiteral("bleName")).toString().isEmpty())
+        return fail(QStringLiteral("offline preview invented hardware-only BT/BLE metadata"));
+
     QByteArray corrupt = source;
     corrupt[0x20] = static_cast<char>(static_cast<unsigned char>(corrupt.at(0x20)) ^ 0x01);
     const QString badPath = dir.filePath(QStringLiteral("03_CORRUPT.k500"));
@@ -141,6 +159,6 @@ int main(int argc, char **argv)
     if (!bridge.lastError().contains(QStringLiteral("Checksum"), Qt::CaseInsensitive))
         return fail(QStringLiteral("batch checksum rejection did not surface an error"));
 
-    QTextStream(stdout) << "P4.2 donor batch + transfer staging PASS\n";
+    QTextStream(stdout) << "P4.2 donor batch + transfer staging + offline preview PASS\n";
     return 0;
 }
