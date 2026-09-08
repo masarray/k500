@@ -63,6 +63,7 @@ QString K500PresetManager::operationName(Operation operation)
     case Operation::Recall: return QStringLiteral("Recall");
     case Operation::UseInit: return QStringLiteral("Use Init Volume");
     case Operation::Save: return QStringLiteral("Save");
+    case Operation::Upload: return QStringLiteral("Upload");
     case Operation::MassUpload: return QStringLiteral("Mass Upload");
     case Operation::None: break;
     }
@@ -469,8 +470,11 @@ void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
     m_storeOffset = 0;
     m_pendingStoreLength = 0;
     m_commitFrame.clear();
+    const QString storeKind = m_operation == Operation::MassUpload
+        ? QStringLiteral("Mass upload")
+        : (m_operation == Operation::Upload ? QStringLiteral("Upload") : QStringLiteral("Save"));
     setProgress(QStringLiteral("%1 slot %2 · begin 0x41")
-                    .arg(m_operation == Operation::MassUpload ? QStringLiteral("Mass upload") : QStringLiteral("Save"))
+                    .arg(storeKind)
                     .arg(m_requestedSlot));
     if (!send(K500PresetProtocol::storeBegin(m_storeImage, m_storeChain),
               QStringLiteral("Store begin slot %1 · %2 bytes")
@@ -484,11 +488,12 @@ void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
         return;
     }
 
-    // Native single-slot Save capture proceeds to CMD 0x42 after 80 ms and
-    // does not wait for 0xBE. Only Mass Upload uses the begin ACK chain.
+    // Native single-slot Save/Upload capture proceeds to CMD 0x42 after 80 ms
+    // and does not wait for 0xBE. Only Mass Upload uses the begin ACK chain.
     m_step = Step::SingleStoreBeginDelay;
     QTimer::singleShot(SingleStoreBeginSettleMs, this, [this] {
-        if (m_operation == Operation::Save && m_step == Step::SingleStoreBeginDelay)
+        if ((m_operation == Operation::Save || m_operation == Operation::Upload)
+            && m_step == Step::SingleStoreBeginDelay)
             sendNextStoreChunk();
     });
 }
@@ -552,6 +557,17 @@ void K500PresetManager::acceptStoreCommit()
         QTimer::singleShot(0, this, [this] {
             if (connected() && !busy())
                 recallMode(1);
+        });
+        return;
+    }
+
+    if (m_operation == Operation::Upload) {
+        const int uploadedSlot = m_requestedSlot;
+        setProgress(QStringLiteral("Upload slot %1 complete · activating device slot").arg(uploadedSlot));
+        finishOperation(QStringLiteral("Upload"), uploadedSlot);
+        QTimer::singleShot(0, this, [this, uploadedSlot] {
+            if (connected() && !busy())
+                recallMode(uploadedSlot);
         });
         return;
     }
