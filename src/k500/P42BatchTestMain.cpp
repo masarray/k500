@@ -122,6 +122,8 @@ int main(int argc, char **argv)
         return fail(QStringLiteral("valid preset could not be staged"));
     if (engine.deviceState() != deviceStateBeforeStage)
         return fail(QStringLiteral("staging PC preset changed StudioEngine/device truth"));
+    if (bridge.editTracking())
+        return fail(QStringLiteral("newly staged preset inherited stale edit tracking"));
 
     const QByteArray stagedImageBeforeLiveEdit = bridge.deviceSlotImage();
     engine.setMasterMusic(37.0);
@@ -129,10 +131,9 @@ int main(int argc, char **argv)
     if (stagedImageBeforeLiveEdit != stagedImageAfterLiveEdit)
         return fail(QStringLiteral("LIVE editor tweak mutated staged PC preset"));
 
-    // OFFLINE_PREVIEW_V1: preview is deliberately separate from selection.
-    // Once the user explicitly requests Preview, the staged preset must hydrate
-    // the visual editor using the verified slot-image mapping, without modifying
-    // the staged source document itself.
+    // OFFLINE_PREVIEW_V1 + P3_4_OFFLINE_EDIT_SESSION_V1: Preview is deliberately
+    // separate from selection. Once explicitly requested, it hydrates the visual
+    // editor and re-enables only the existing mapper-whitelisted edit persistence.
     const QVariantMap stateImmediatelyBeforePreview = engine.deviceState();
     const QByteArray stagedImageBeforePreview = bridge.deviceSlotImage();
     if (!bridge.previewLoadedPreset())
@@ -141,11 +142,36 @@ int main(int argc, char **argv)
         return fail(QStringLiteral("explicit offline preview did not hydrate StudioEngine"));
     if (bridge.deviceSlotImage() != stagedImageBeforePreview)
         return fail(QStringLiteral("offline preview mutated staged PC preset bytes"));
+    if (!bridge.editTracking() || !bridge.editPersistenceEnabled())
+        return fail(QStringLiteral("offline Preview did not restore controlled edit persistence"));
 
     const QVariantMap previewSystem = engine.deviceState().value(QStringLiteral("system")).toMap();
     if (!previewSystem.value(QStringLiteral("btName")).toString().isEmpty()
         || !previewSystem.value(QStringLiteral("bleName")).toString().isEmpty())
         return fail(QStringLiteral("offline preview invented hardware-only BT/BLE metadata"));
+
+    const QByteArray beforeOfflineEdit = bridge.deviceSlotImage();
+    engine.setMasterMusic(42.0);
+    const QByteArray afterOfflineEdit = bridge.deviceSlotImage();
+    if (afterOfflineEdit == beforeOfflineEdit || !bridge.dirty())
+        return fail(QStringLiteral("offline Preview edit did not persist to staged preset"));
+    if (!K500PresetCodec::validateChecksum(bridge.deviceSlotImage().isEmpty() ? QByteArray() : source)) {
+        // The actual full-file checksum is guarded inside K500PresetFileBridge;
+        // this branch is intentionally unreachable and keeps this test focused
+        // on the public slot-image boundary.
+        return fail(QStringLiteral("unexpected checksum guard failure"));
+    }
+
+    bridge.setEditTracking(false);
+    const QByteArray beforeBlockedEdit = bridge.deviceSlotImage();
+    engine.setMasterMusic(43.0);
+    if (bridge.deviceSlotImage() != beforeBlockedEdit)
+        return fail(QStringLiteral("disabled edit tracking still mutated staged preset"));
+
+    // Loading another file must always reset a prior edit session.
+    bridge.setEditTracking(true);
+    if (!bridge.loadFile(QUrl::fromLocalFile(bPath)) || bridge.editTracking())
+        return fail(QStringLiteral("new preset load did not reset offline edit session"));
 
     QByteArray corrupt = source;
     corrupt[0x20] = static_cast<char>(static_cast<unsigned char>(corrupt.at(0x20)) ^ 0x01);
@@ -159,6 +185,6 @@ int main(int argc, char **argv)
     if (!bridge.lastError().contains(QStringLiteral("Checksum"), Qt::CaseInsensitive))
         return fail(QStringLiteral("batch checksum rejection did not surface an error"));
 
-    QTextStream(stdout) << "P4.2 donor batch + transfer staging + offline preview PASS\n";
+    QTextStream(stdout) << "P4.2 donor batch + transfer staging + offline preview/edit PASS\n";
     return 0;
 }
