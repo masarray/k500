@@ -9,13 +9,8 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QSettings>
-#include <algorithm>
 
 namespace {
-constexpr int ActiveMemorySize = 0x03AB;
-constexpr int OfflineActiveNameOffset = 0x02C0;
-constexpr int OfflineActiveNameLength = 0x10;
-
 struct BuiltInPresetDefinition {
     const char *displayName;
     const char *description;
@@ -66,9 +61,9 @@ void K500PresetFileBridge::setEngine(QObject *engineObject)
 
     m_engine = next;
     if (m_engine) {
-        // P3_4_CONTROLLED_EDIT_PERSISTENCE_V1
-        // StudioEngine remains the single canonical edit stream. The file bridge
-        // never watches QML controls directly and never invents a second model.
+        // P3_4_CONTROLLED_EDIT_PERSISTENCE_V1 remains available for an explicit
+        // offline file-edit workflow, but PC preset staging keeps editTracking
+        // false so live K500 tweaks never mutate the staged source document.
         m_engineEditConnection = QObject::connect(
             m_engine, &StudioEngine::stateEdited,
             this, &K500PresetFileBridge::onEngineEdit);
@@ -76,6 +71,15 @@ void K500PresetFileBridge::setEngine(QObject *engineObject)
         m_engineEditConnection = {};
     }
     emit engineChanged();
+    emit sourceChanged();
+}
+
+void K500PresetFileBridge::setEditTracking(bool enabled)
+{
+    if (m_editTracking == enabled)
+        return;
+    m_editTracking = enabled;
+    emit editTrackingChanged();
     emit sourceChanged();
 }
 
@@ -204,10 +208,6 @@ bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
                                               const QString &sourceName)
 {
     setError({});
-    if (!m_engine) {
-        setError(QStringLiteral("Preset file bridge belum memiliki StudioEngine."));
-        return false;
-    }
 
     const K500PresetCodec::Document document(bytes);
     if (!document.validSize()) {
@@ -226,22 +226,16 @@ bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
         return false;
     }
 
-    // Assign the validated source only after all format checks pass. Hydration is
-    // contractually read-only; nevertheless the canonical edit callback is safe
-    // because StudioEngine hydration emits zero stateEdited events (P0 guard).
+    // DEVICE_TRUTH_STAGING_V1
+    // A PC preset is only staged here. Never hydrate StudioEngine from this file:
+    // StudioEngine represents the actual connected K500 and may only change from
+    // device readback or explicit live edits. This also prevents the former
+    // 0x02C0 preview write from corrupting the visible Device Mode #4 name.
     m_sourceBytes = bytes;
     m_savedBytes = bytes;
     m_sourcePath = sourcePath;
     m_sourceName = sourceName;
     refreshDocumentMetadata();
-
-    // P3_2_OFFLINE_HYDRATION_V1
-    QByteArray preview(ActiveMemorySize, char(0));
-    std::copy(slot.cbegin(), slot.cend(), preview.begin());
-    const QByteArray visibleName = document.name().toLatin1().left(OfflineActiveNameLength);
-    for (int i = 0; i < visibleName.size(); ++i)
-        preview[OfflineActiveNameOffset + i] = visibleName.at(i);
-    m_engine->hydrateFromDeviceMemory(preview);
 
     emit sourceChanged();
     emit loadedFile(sourcePath, m_presetName);
@@ -336,7 +330,7 @@ bool K500PresetFileBridge::loadBuiltInPreset(int index)
 
 void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &value)
 {
-    if (!loaded())
+    if (!m_editTracking || !loaded())
         return;
 
     const auto edit = K500PresetEditMapper::applyEngineEdit(m_sourceBytes, path, value);
