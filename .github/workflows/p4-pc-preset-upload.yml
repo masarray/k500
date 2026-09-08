@@ -47,9 +47,18 @@ jobs:
           if ($upload.Contains('startReadback') -or $upload.Contains('m_readbackMemory')) {
             throw 'P4 regression: PC preset upload must never replace its staged file image with device readback before Store'
           }
-          foreach ($token in @('Operation::Upload','recallMode(uploadedSlot)','finishOperation(QStringLiteral("Upload"), uploadedSlot)')) {
+
+          # Upload remains one transaction through Store -> Recall -> 939-byte
+          # readback. LIVE may return only from finishOperation after resync.
+          foreach ($token in @('m_operation == Operation::Upload','m_step = Step::RecallDelay','K500PresetProtocol::recallMode(uploadedSlot)','startReadback(ReadbackPurpose::Recall)','finishOperation(QStringLiteral("Upload"), resolvedSlot)')) {
             if (-not $manager.Contains($token)) { throw "P4 upload->device-resync contract missing '$token'" }
           }
+          $uploadCommitPos = $manager.IndexOf('K500PresetProtocol::recallMode(uploadedSlot)')
+          $uploadFinishPos = $manager.IndexOf('finishOperation(QStringLiteral("Upload"), resolvedSlot)')
+          if ($uploadCommitPos -lt 0 -or $uploadFinishPos -lt 0 -or $uploadCommitPos -ge $uploadFinishPos) {
+            throw 'P4 regression: Upload must recall/read back device before operation completion/LIVE resume'
+          }
+
           if (-not $header.Contains('uploadSlotImage')) { throw 'P4 QML upload entry point missing' }
           if (-not $fileBridge.Contains('return K500PresetCodec::buildDeviceSlotImage(m_sourceBytes)')) {
             throw 'P4 regression: file bridge no longer exposes the staged verified slot image'
