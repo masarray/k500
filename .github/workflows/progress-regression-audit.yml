@@ -1,0 +1,105 @@
+name: Guard recovered K500 progress
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'src/k500/P42BatchTestMain.cpp'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'resources/presets/01_ALL_GENRE.k500'
+      - '.github/workflows/progress-regression-audit.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'src/k500/P42BatchTestMain.cpp'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'resources/presets/01_ALL_GENRE.k500'
+      - '.github/workflows/progress-regression-audit.yml'
+
+jobs:
+  progress-regression-audit:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard previously completed offline edit workflow
+        shell: pwsh
+        run: |
+          $bridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
+          $access = Get-Content 'src/k500/K500PresetFileBridgeAccess.cpp' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $test = Get-Content 'src/k500/P42BatchTestMain.cpp' -Raw
+
+          foreach ($token in @(
+            'P3_4_OFFLINE_EDIT_SESSION_V1',
+            'setEditTracking(true)',
+            'const bool trackingChanged = m_editTracking',
+            'm_editTracking = false'
+          )) {
+            if (-not $bridge.Contains($token)) { throw "Offline edit backend regressed: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'DEVICE_TRUTH_EDIT_ISOLATION_V1',
+            'bridge->setEditTracking(false)'
+          )) {
+            if (-not $access.Contains($token)) { throw "Connected-device isolation regressed: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'readonly property bool offlineEditMode',
+            'root.fileBridge.editPersistenceEnabled',
+            'root.fileBridge.dirty ? "EDITED"',
+            'root.fileBridge.changedByteCount',
+            'Offline preview/edit',
+            'root.fileBridge.editTracking = false'
+          )) {
+            if (-not $system.Contains($token)) { throw "Offline edit UI progress regressed: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'offline Preview did not restore controlled edit persistence',
+            'offline Preview edit did not persist as a checksum-valid staged preset',
+            'disabled edit tracking still mutated staged preset',
+            'new preset load did not reset offline edit session'
+          )) {
+            if (-not $test.Contains($token)) { throw "Offline edit runtime regression coverage missing '$token'" }
+          }
+
+      - name: Guard ALL GENRE latest Hi-Fi tuning and binary structure
+        shell: pwsh
+        run: |
+          $path = 'resources/presets/01_ALL_GENRE.k500'
+          $bytes = [IO.File]::ReadAllBytes($path)
+          if ($bytes.Length -ne 0x0478) { throw "ALL GENRE length regressed: $($bytes.Length), expected 1144" }
+
+          $sum = 0
+          foreach ($b in $bytes) { $sum = ($sum + [int]$b) -band 0xff }
+          if ($sum -ne 0) { throw "ALL GENRE checksum regressed: additive sum is $sum" }
+
+          if ($bytes[0x452] -ne 0x55 -or $bytes[0x453] -ne 0x00) {
+            throw 'ALL GENRE structural marker at 0x452/0x453 regressed'
+          }
+
+          $nameBytes = $bytes[0x454..0x474]
+          $name = [Text.Encoding]::ASCII.GetString($nameBytes).Split([char]0)[0].Trim()
+          if ($name -ne 'CONCERT HIFI V4') {
+            throw "ALL GENRE latest tuning identity regressed: '$name'"
+          }
+
+          $sha = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
+          $expected = '9e19ce83d840e7e9e21d5fbce6170e95bc48fd1565902b21f90678a3e32d891f'
+          if ($sha -ne $expected) {
+            throw "ALL GENRE sonic blob changed unexpectedly: $sha"
+          }
+
+          Write-Host "ALL GENRE Hi-Fi V4 structure/checksum/SHA256 PASS: $sha"
+
+      - name: Build and run existing P4.2 runtime regression
+        shell: pwsh
+        run: |
+          Write-Host 'The full Qt build/P4.2 executable coverage is provided by the existing Windows and P4.2 workflows.'
+          Write-Host 'This guard intentionally adds semantic progress checks without duplicating the full toolchain build.'
