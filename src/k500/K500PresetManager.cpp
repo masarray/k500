@@ -4,6 +4,7 @@
 #include "K500Protocol.h"
 
 #include <QSet>
+#include <QSettings>
 #include <QVariantMap>
 #include <algorithm>
 
@@ -17,12 +18,14 @@ constexpr int UseInitTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
+constexpr auto UseInitPreferenceKey = "system/useInitVolume";
 }
 
 K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent)
     : QObject(parent), m_manager(manager)
 {
     m_timeout.setSingleShot(true);
+    m_useInitVolume = QSettings().value(QString::fromLatin1(UseInitPreferenceKey), false).toBool();
 
     if (!m_manager)
         return;
@@ -35,12 +38,21 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
             this, &K500PresetManager::onBytesReceived);
     connect(m_manager, &K500DeviceManager::statusChanged, this, [this] {
         emit connectedChanged();
-        if (!connected() && busy()) {
-            clearTimeout();
-            m_operation = Operation::None;
-            m_step = Step::Idle;
-            m_readbackPurpose = ReadbackPurpose::None;
-            emit busyChanged();
+        if (!connected()) {
+            // OFFLINE_DEVICE_SLOT_V1 — there is no such thing as an active K500
+            // slot without a connected/handshaken device. Clear the last C0
+            // result so System never paints a stale ACTIVE badge while offline.
+            if (m_activeSlot != 0) {
+                m_activeSlot = 0;
+                emit activeSlotChanged();
+            }
+            if (busy()) {
+                clearTimeout();
+                m_operation = Operation::None;
+                m_step = Step::Idle;
+                m_readbackPurpose = ReadbackPurpose::None;
+                emit busyChanged();
+            }
         }
     });
     connect(m_manager, &K500DeviceManager::transportModeChanged,
@@ -123,6 +135,7 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
 
     if (failedOperation == Operation::UseInit && m_useInitVolume != m_previousUseInitVolume) {
         m_useInitVolume = m_previousUseInitVolume;
+        QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
         emit useInitVolumeChanged();
     }
     setProgress(QStringLiteral("%1 failed").arg(kind));
@@ -209,6 +222,20 @@ void K500PresetManager::sendRecallHandshake()
 
 void K500PresetManager::setUseInitVolume(bool enabled)
 {
+    // OFFLINE_USE_INIT_V1 — official KTV UI allows this checkbox to be prepared
+    // before a device exists. Offline changes are local preference only: no I/O,
+    // no fake connection error, and no mutation of the editor/device state.
+    if (!connected()) {
+        if (enabled == m_useInitVolume)
+            return;
+        m_useInitVolume = enabled;
+        QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
+        setProgress(QStringLiteral("Use init volume %1 · offline preference")
+                        .arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
+        emit useInitVolumeChanged();
+        return;
+    }
+
     if (enabled == m_useInitVolume && !busy())
         return;
 
@@ -221,6 +248,7 @@ void K500PresetManager::setUseInitVolume(bool enabled)
 
     m_previousUseInitVolume = m_useInitVolume;
     m_useInitVolume = enabled;
+    QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
     emit useInitVolumeChanged();
     m_step = Step::AwaitUseInitAck;
     setProgress(QStringLiteral("Use init volume %1").arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
@@ -317,7 +345,7 @@ void K500PresetManager::onResponse(const K500Response &response)
 {
     // The C0 handshake reports active slot zero-based. Capture it even outside
     // P2 operations so System UI has an authoritative slot when available.
-    if (response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
+    if (connected() && response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
         const int slot = qBound(1, static_cast<int>(static_cast<quint8>(response.data.at(0))) + 1, 10);
         if (m_activeSlot != slot) {
             m_activeSlot = slot;
