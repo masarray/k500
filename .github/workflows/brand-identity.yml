@@ -54,7 +54,7 @@ jobs:
             throw 'App/web/favicon artwork must remain byte-identical to the authoritative SonKuPik K500 logo.'
           }
 
-      - name: Guard product name and active logo references
+      - name: Guard product name, package identity and AV-friendly distribution
         shell: pwsh
         run: |
           $mainCpp = Get-Content 'src/main.cpp' -Raw
@@ -62,16 +62,15 @@ jobs:
           $topbar = Get-Content 'qml/components/TopBar.qml' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
           $landing = Get-Content 'docs/index.html' -Raw
-          $installer = Get-Content 'packaging/windows/installer.nsi' -Raw
-          $portable = Get-Content 'packaging/windows/portable.nsi' -Raw
+          $installer = Get-Content 'packaging/windows/installer.iss' -Raw
           $release = Get-Content '.github/workflows/windows-release.yml' -Raw
           $readme = Get-Content 'README.md' -Raw
 
           foreach ($token in @('setApplicationName(QStringLiteral("SonKuPik K500"))','setWindowIcon(QIcon(QStringLiteral(":/assets/SonKuPik-k500-logo.png")))')) {
             if (-not $mainCpp.Contains($token)) { throw "Native brand regression: missing '$token'" }
           }
-          foreach ($token in @('SonKuPik K500 — Karaoke Processor')) {
-            if (-not $mainQml.Contains($token)) { throw "Window brand regression: missing '$token'" }
+          if (-not $mainQml.Contains('SonKuPik K500 — Karaoke Processor')) {
+            throw 'Window brand regression.'
           }
           foreach ($token in @('qrc:/assets/SonKuPik-k500-logo.png','text:"SonKuPik"','text:"K500"')) {
             if (-not $topbar.Contains($token)) { throw "Header brand regression: missing '$token'" }
@@ -82,11 +81,14 @@ jobs:
           foreach ($token in @('<title>SonKuPik K500</title>','./favicon.png','./SonKuPik-k500-logo.png')) {
             if (-not $landing.Contains($token)) { throw "Landing-page brand regression: missing '$token'" }
           }
-          if (-not $installer.Contains('SonKuPik K500') -or -not $portable.Contains('SonKuPik K500')) {
-            throw 'Windows package branding regressed.'
+          foreach ($token in @('AppName={#AppName}','WizardStyle=modern','PrivilegesRequired=lowest','SonKuPik-K500.exe')) {
+            if (-not $installer.Contains($token)) { throw "Inno installer regression: missing '$token'" }
           }
-          foreach ($token in @("product = 'SonKuPik K500'",'SonKuPik-K500-v$version-Windows-Setup.exe','SonKuPik-K500-v$version-Windows-Portable-Single.exe')) {
-            if (-not $release.Contains($token)) { throw "Release brand regression: missing '$token'" }
+          foreach ($token in @("product = 'SonKuPik K500'",'SonKuPik-K500-v$version-Windows-Setup.exe','SonKuPik-K500-v$version-Windows-Portable.zip',"QT_VERSION: '6.11.2'",'portableFormat = ''ZIP (non-self-extracting)''','selfExtractingPortable = $false')) {
+            if (-not $release.Contains($token)) { throw "Release identity/distribution regression: missing '$token'" }
+          }
+          if ($release.Contains('Portable-Single.exe') -or $release.Contains('packaging/windows/portable.nsi') -or $release.Contains('Build installer and true portable single EXE')) {
+            throw 'AV-friendly regression: custom self-extracting portable EXE returned to the active release pipeline.'
           }
           foreach ($token in @('# SonKuPik K500','assets/SonKuPik-k500-logo.png')) {
             if (-not $readme.Contains($token)) { throw "README brand regression: missing '$token'" }
