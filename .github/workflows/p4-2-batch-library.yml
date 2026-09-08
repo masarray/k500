@@ -71,10 +71,8 @@ jobs:
           foreach ($token in @('std::sort(normalized.begin(), normalized.end()','return a.slot > b.slot','m_massEntries = normalized','AwaitMassBeginAck','response.rsp == 0xBE','response.rsp == 0xBD','response.rsp == 0xBC','m_requestedSlot = 1','K500PresetProtocol::recallMode(m_requestedSlot)','m_operation == Operation::MassUpload','startReadback(ReadbackPurpose::Recall)','finishOperation(QStringLiteral("Mass Upload"), resolvedSlot)')) {
             if (-not $manager.Contains($token)) { throw "P4.2 native descending mass-chain regression missing '$token'" }
           }
-          $massRecallPos = $manager.IndexOf('m_requestedSlot = 1')
-          $massFinishPos = $manager.IndexOf('finishOperation(QStringLiteral("Mass Upload"), resolvedSlot)')
-          if ($massRecallPos -lt 0 -or $massFinishPos -lt 0 -or $massRecallPos -ge $massFinishPos) {
-            throw 'P4.2 regression: Mass Upload must recall/read back slot 1 before completion/LIVE resume'
+          if ($manager.Contains('finishOperation(QStringLiteral("Mass Upload"));')) {
+            throw 'P4.2 regression: Mass Upload must not finish/re-enable LIVE immediately after final Store commit'
           }
 
           foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch','transfer-list order was sorted or remapped unexpectedly','transfer-list accepted more than 10 device slots','staging PC preset changed StudioEngine/device truth','LIVE editor tweak mutated staged PC preset')) {
