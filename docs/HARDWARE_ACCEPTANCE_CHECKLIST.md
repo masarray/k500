@@ -107,11 +107,16 @@ Mark each transport independently.
 Use a known `.k500` fixture and record its SHA-256 before testing.
 
 - [ ] File loads only when exact size/checksum are valid.
+- [ ] Selecting/staging the PC preset does **not** alter current K500 audio, editor, PEQ, faders, active slot, or Device Mode names.
+- [ ] LIVE edits made before Upload do not mutate the staged PC preset bytes.
 - [ ] Upload is enabled only with USB store availability and idle transaction manager.
 - [ ] Selected destination slot is clearly known before starting.
 - [ ] PC preset image is used directly; no pre-Store device readback replaces it.
 - [ ] Store Begin/Chunk/Commit completes without timeout.
-- [ ] Recall destination slot and confirm values match the source preset.
+- [ ] Upload automatically activates/recalls the destination slot.
+- [ ] Full 939-byte readback occurs after the destination slot is activated.
+- [ ] Main editor changes only after that hardware readback.
+- [ ] Continue moving at least one fader and one PEQ band; confirm LIVE sync remains active.
 - [ ] Disconnect/reconnect and confirm the same values.
 - [ ] Power-cycle K500 and confirm persistence.
 - [ ] Source `.k500` remains unchanged by Upload.
@@ -119,18 +124,34 @@ Use a known `.k500` fixture and record its SHA-256 before testing.
 
 ## Multi-file Mass Upload — P4.2
 
+Donor evidence reference: `MASS_UPLOAD_TO_DEVICE_10_PRESET_INIT_OFF` / `STORE_PROTOCOL_AUDIT_v0.8.26.md`.
 Start with 2–3 distinct known presets before attempting all 10 slots.
 
+### Transfer-list mapping
+
+- [ ] Left PC collection can contain more than 10 valid presets; it is not artificially capped.
+- [ ] User can Add / Add All / Remove / Clear before touching hardware.
+- [ ] Right transfer list accepts no more than 10 entries.
+- [ ] Right row 1 maps to Device Slot 01, row 2 to Slot 02, … row 10 to Slot 10.
 - [ ] File selection is validated before any device write.
 - [ ] Invalid checksum in one member aborts the entire batch before Store begins.
-- [ ] Filename sort / sequential selected-slot mapping matches the UI expectation.
-- [ ] Native device write order is descending by destination slot.
-- [ ] Each Store Begin receives `RSP 0xBE`.
-- [ ] Every chunk receives `RSP 0xBD`.
-- [ ] Every commit receives `RSP 0xBC`.
-- [ ] Three-byte Store chain remains continuous across entries.
-- [ ] Batch completion refresh/recall behavior matches donor semantics.
+
+### Native hardware sequence
+
+- [ ] For a full 10-slot bank, first hardware Store is **Slot 10**, then 09, 08 … and **Slot 01 is last**.
+- [ ] For a partial batch, selected destination slots are likewise transmitted highest-to-lowest.
+- [ ] Each Slot Begin (`CMD 0x41`) receives `RSP 0xBE` before its chunks start.
+- [ ] Each slot writes exactly eleven `CMD 0x42` chunks (10×60-byte + 1×56-byte), every chunk receiving `RSP 0xBD`.
+- [ ] Each slot commit (`CMD 0x43`) receives `RSP 0xBC`.
+- [ ] The next slot's `CMD 0x41` carries the native three-byte chain derived from the previous slot signature/checksum.
+- [ ] No slot is reported complete before its `RSP 0xBC` commit ACK.
+- [ ] After Slot 01, app automatically recalls Slot 01, performs the recall handshake, then refreshes full active memory.
+- [ ] UI returns to LIVE only after the final refresh is complete.
+
+### Persistence / correctness
+
 - [ ] Recall each uploaded slot and compare against its source file.
+- [ ] Device Mode names correspond to actual hardware readback, not PC staging labels.
 - [ ] Disconnect/reconnect and repeat comparison.
 - [ ] Power-cycle K500 and repeat comparison.
 - [ ] Slots outside the batch remain unchanged.
