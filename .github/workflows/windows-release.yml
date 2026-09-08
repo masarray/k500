@@ -1,5 +1,7 @@
 name: Windows Release
 
+# Acceptance-fix RC packaging: keep this workflow in the PR path set so hardware
+# testers receive installer/portable artifacts from the exact System-state code.
 on:
   workflow_dispatch:
   pull_request:
