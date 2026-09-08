@@ -343,9 +343,11 @@ void K500PresetManager::onBytesReceived(const QByteArray &bytes)
 
 void K500PresetManager::onResponse(const K500Response &response)
 {
-    // The C0 handshake reports active slot zero-based. Capture it even outside
-    // P2 operations so System UI has an authoritative slot when available.
-    if (connected() && response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
+    // The C0 handshake reports active slot zero-based. Capture it during both
+    // initial connection and later Recall handshakes. Stage::Idle is the only
+    // state where a C0 must never resurrect a stale offline ACTIVE badge.
+    if (m_manager && m_manager->m_stage != K500DeviceManager::Stage::Idle
+        && response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
         const int slot = qBound(1, static_cast<int>(static_cast<quint8>(response.data.at(0))) + 1, 10);
         if (m_activeSlot != slot) {
             m_activeSlot = slot;
