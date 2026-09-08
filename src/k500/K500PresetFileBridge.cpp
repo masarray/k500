@@ -9,8 +9,11 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QSettings>
+#include <algorithm>
 
 namespace {
+constexpr int ActiveMemorySize = 0x03AB;
+
 struct BuiltInPresetDefinition {
     const char *displayName;
     const char *description;
@@ -418,4 +421,34 @@ QByteArray K500PresetFileBridge::deviceSlotImage() const
     if (!loaded() || !K500PresetCodec::validateChecksum(m_sourceBytes))
         return {};
     return K500PresetCodec::buildDeviceSlotImage(m_sourceBytes);
+}
+
+bool K500PresetFileBridge::previewLoadedPreset()
+{
+    setError({});
+    if (!m_engine) {
+        setError(QStringLiteral("Editor belum tersedia untuk offline preview."));
+        return false;
+    }
+    if (!loaded() || !K500PresetCodec::validateChecksum(m_sourceBytes)) {
+        setError(QStringLiteral("Belum ada preset .k500 valid untuk dipreview."));
+        return false;
+    }
+
+    QString slotError;
+    const QByteArray slot = K500PresetCodec::buildDeviceSlotImage(m_sourceBytes, &slotError);
+    if (slot.size() != K500PresetCodec::DeviceSlotImageLength) {
+        setError(slotError.isEmpty() ? QStringLiteral("Gagal membentuk image offline preview 0x0290.") : slotError);
+        return false;
+    }
+
+    // OFFLINE_PREVIEW_V1
+    // StudioEngine consumes the same active-memory layout used by real K500
+    // readback. Only the verified 0x0290 audio/settings image is populated;
+    // hardware-only metadata (mode names, BT/BLE names, active slot) stays empty.
+    // In particular, never synthesize/write the old 0x02C0 mode-name preview.
+    QByteArray preview(ActiveMemorySize, char(0));
+    std::copy(slot.cbegin(), slot.cend(), preview.begin());
+    m_engine->hydrateFromDeviceMemory(preview);
+    return true;
 }
