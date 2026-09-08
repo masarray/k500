@@ -16,15 +16,16 @@ class StudioEngine;
 // object with controlled edit persistence, but every mutation still goes through
 // K500PresetEditMapper -> K500PresetCodec explicit byte whitelists.
 //
-// P6_PC_PRESET_LIBRARY_V1 adds a read-only PC-side preset catalog. It never
-// mutates device slots implicitly: built-in and folder presets first hydrate the
-// validated PC working document, and the existing explicit Upload/Save actions
-// remain the only paths that write to K500 hardware.
+// P6_PC_PRESET_LIBRARY_V1 adds a read-only PC-side preset catalog. PC preset
+// selection is staging-only: selecting a file must never hydrate/replace the
+// live StudioEngine state that represents the connected K500. Explicit Upload
+// remains the only path that transfers a staged PC preset to hardware.
 class K500PresetFileBridge final : public QObject
 {
     Q_OBJECT
 
     Q_PROPERTY(QObject *engine READ engine WRITE setEngine NOTIFY engineChanged)
+    Q_PROPERTY(bool editTracking READ editTracking WRITE setEditTracking NOTIFY editTrackingChanged)
     Q_PROPERTY(bool loaded READ loaded NOTIFY sourceChanged)
     Q_PROPERTY(bool dirty READ dirty NOTIFY sourceChanged)
     Q_PROPERTY(bool editPersistenceEnabled READ editPersistenceEnabled NOTIFY sourceChanged)
@@ -44,10 +45,12 @@ public:
 
     QObject *engine() const;
     void setEngine(QObject *engine);
+    bool editTracking() const { return m_editTracking; }
+    void setEditTracking(bool enabled);
 
     bool loaded() const { return m_sourceBytes.size() == 0x0478; }
     bool dirty() const { return loaded() && m_sourceBytes != m_savedBytes; }
-    bool editPersistenceEnabled() const { return loaded() && m_engine != nullptr; }
+    bool editPersistenceEnabled() const { return loaded() && m_engine != nullptr && m_editTracking; }
     QString sourcePath() const { return m_sourcePath; }
     QString sourceName() const { return m_sourceName; }
     QString presetName() const { return m_presetName; }
@@ -66,20 +69,25 @@ public:
 
     // P6_PC_PRESET_LIBRARY_V1 — folder discovery is intentionally local-only
     // and read-only. Invalid files stay visible with valid=false so users can
-    // diagnose a bad preset without risking hydration or device writes.
+    // diagnose a bad preset without risking device/editor state changes.
     Q_INVOKABLE bool setPresetFolder(const QUrl &url);
     Q_INVOKABLE void refreshPresetFolder();
     Q_INVOKABLE bool loadFolderPreset(int index);
     Q_INVOKABLE bool loadBuiltInPreset(int index);
 
-    // P4_2_PRESET_BATCH_LIBRARY_V1 — validate/convert a deterministic batch of
-    // local .k500 files for the already-proven P2 Mass Upload engine. Files are
-    // sorted by filename and mapped sequentially from startSlotOneBased.
+    // P4_2_PRESET_BATCH_LIBRARY_V1 — legacy deterministic batch builder retained
+    // for regression compatibility. It sorts local files by filename and maps
+    // them sequentially from startSlotOneBased.
     Q_INVOKABLE QVariantList buildMassUploadEntries(const QVariantList &urls,
                                                      int startSlotOneBased);
 
+    // SYSTEM_TRANSFER_LIST_V1 — preserves the explicit right-list order from the
+    // transfer window. Item 0 maps to device slot 1, item 9 maps to slot 10.
+    Q_INVOKABLE QVariantList buildTransferUploadEntries(const QVariantList &paths);
+
 signals:
     void engineChanged();
+    void editTrackingChanged();
     void sourceChanged();
     void errorChanged();
     void libraryChanged();
@@ -108,7 +116,8 @@ private:
 
     StudioEngine *m_engine = nullptr;
     QMetaObject::Connection m_engineEditConnection;
-    QByteArray m_sourceBytes; // current working document, always checksum-valid
+    bool m_editTracking = false;
+    QByteArray m_sourceBytes; // staged PC working document, always checksum-valid
     QByteArray m_savedBytes;  // last loaded/saved checkpoint for dirty tracking
     QString m_sourcePath;
     QString m_sourceName;
