@@ -12,6 +12,8 @@ on:
       - 'src/main.cpp'
       - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'assets/SonKuPik-k500-logo.png'
       - 'packaging/windows/**'
       - 'docs/P5_RELEASE_READINESS.md'
@@ -27,6 +29,8 @@ on:
       - 'src/main.cpp'
       - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
+      - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'assets/SonKuPik-k500-logo.png'
       - 'packaging/windows/**'
       - 'docs/P5_RELEASE_READINESS.md'
@@ -146,16 +150,51 @@ jobs:
           '@ | python -
           if (-not (Test-Path 'package/SonKuPik-K500.ico')) { throw 'ICO generation failed' }
 
-      - name: Install Inno Setup
+      - name: Install and locate Inno Setup
         shell: pwsh
         run: |
           choco install innosetup -y --no-progress
-          $candidates = @(
-            "$env:ProgramFiles(x86)\Inno Setup 6\ISCC.exe",
-            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-          )
-          $iscc = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
-          if (-not $iscc) { throw 'Inno Setup ISCC.exe not found' }
+
+          $iscc = $null
+          $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($command) {
+            $iscc = $command.Source
+          }
+
+          if (-not $iscc) {
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+              "$env:ChocolateyInstall\bin\ISCC.exe",
+              "$env:ChocolateyInstall\lib\innosetup\tools\ISCC.exe"
+            ) | Where-Object { $_ -and (Test-Path $_) }
+            $iscc = $candidates | Select-Object -First 1
+          }
+
+          if (-not $iscc -and $env:ChocolateyInstall) {
+            $innoRoot = Join-Path $env:ChocolateyInstall 'lib\innosetup'
+            if (Test-Path $innoRoot) {
+              $found = Get-ChildItem $innoRoot -Filter ISCC.exe -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) { $iscc = $found.FullName }
+            }
+          }
+
+          if (-not $iscc) {
+            $fallbackRoots = @(
+              ${env:ProgramFiles(x86)},
+              $env:ProgramFiles
+            ) | Where-Object { $_ -and (Test-Path $_) }
+            foreach ($root in $fallbackRoots) {
+              $found = Get-ChildItem $root -Filter ISCC.exe -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($found) {
+                $iscc = $found.FullName
+                break
+              }
+            }
+          }
+
+          if (-not $iscc) { throw 'Inno Setup ISCC.exe not found after Chocolatey install.' }
+          Write-Host "Using Inno Setup compiler: $iscc"
           "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
 
       - name: Build Inno installer and portable ZIP
