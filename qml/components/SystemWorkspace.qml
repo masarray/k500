@@ -109,6 +109,13 @@ Item {
         var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
         return names && names.length === 10 ? names : root.defaultDeviceSlots
     }
+    // MODE_NAME_UI_V1 — mirrors the selected hardware slot name only.
+    // Persistent rename stays disabled until the donor write packet is captured.
+    readonly property string selectedDeviceModeName: {
+        if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
+            return ""
+        return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
+    }
     readonly property int lowerRackHeight: 304
 
     Component.onCompleted: {
@@ -453,14 +460,13 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth:true
                         Layout.fillHeight:true
-                        Layout.margins:12
-                        spacing:8
+                        Layout.margins:10
+                        spacing:7
 
                         Rectangle {
                             Layout.fillWidth:true
-                            Layout.preferredHeight:311
+                            Layout.fillHeight:true
                             Layout.minimumHeight:311
-                            Layout.maximumHeight:311
                             radius:10
                             color:"#090D11"
                             border.width:1
@@ -468,6 +474,7 @@ Item {
                             clip:true
 
                             Column {
+                                id: deviceSlotColumn
                                 anchors.fill:parent
                                 anchors.margins:7
                                 spacing:3
@@ -477,7 +484,7 @@ Item {
                                         required property int index
                                         required property string modelData
                                         width:parent.width
-                                        height:27
+                                        height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)
                                         radius:6
                                         readonly property bool active:root.deviceConnected && index===root.activeDeviceSlot
                                         readonly property bool selected:index===root.selectedDeviceSlot
@@ -493,6 +500,61 @@ Item {
                                         MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;enabled:!root.presetManager||!root.presetManager.busy;onClicked:root.selectedDeviceSlot=index}
                                     }
                                 }
+                            }
+                        }
+
+                        // Native KTV parity: selected hardware Mode Name.
+                        // Read-only until persistent rename traffic is donor-verified.
+                        RowLayout {
+                            Layout.fillWidth:true
+                            spacing:7
+                            Text {
+                                text:"MODE NAME"
+                                color:Theme.textDim
+                                font.family:Theme.monoFamily
+                                font.pixelSize:8
+                                font.letterSpacing:1.0
+                                Layout.preferredWidth:68
+                            }
+                            Rectangle {
+                                Layout.fillWidth:true
+                                Layout.preferredHeight:29
+                                radius:6
+                                color:"#080C10"
+                                border.width:1
+                                border.color:root.deviceConnected?Theme.borderSoft:"#20272D"
+                                TextInput {
+                                    anchors.fill:parent
+                                    anchors.leftMargin:9
+                                    anchors.rightMargin:9
+                                    verticalAlignment:TextInput.AlignVCenter
+                                    text:root.selectedDeviceModeName
+                                    readOnly:true
+                                    selectByMouse:true
+                                    maximumLength:16
+                                    color:root.deviceConnected?Theme.amber:Theme.textDim
+                                    font.family:Theme.monoFamily
+                                    font.pixelSize:9
+                                    font.weight:Font.Bold
+                                    clip:true
+                                }
+                                Text {
+                                    anchors.left:parent.left
+                                    anchors.leftMargin:9
+                                    anchors.verticalCenter:parent.verticalCenter
+                                    visible:!root.deviceConnected
+                                    text:"Connect K500 to read"
+                                    color:Theme.textDim
+                                    font.family:Theme.monoFamily
+                                    font.pixelSize:8
+                                }
+                            }
+                            Text {
+                                text:"READ ONLY"
+                                color:Theme.textDim
+                                font.family:Theme.monoFamily
+                                font.pixelSize:7
+                                font.weight:Font.Bold
                             }
                         }
 
@@ -541,7 +603,6 @@ Item {
                             }
                             SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true;enabled:false}
                         }
-                        Item{Layout.fillHeight:true}
                     }
                 }
             }
