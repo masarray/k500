@@ -9,6 +9,7 @@ on:
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/K500PresetCodec.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-pc-preset-upload.yml'
   pull_request:
@@ -18,6 +19,7 @@ on:
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/K500PresetCodec.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-pc-preset-upload.yml'
 
@@ -32,28 +34,38 @@ jobs:
         shell: pwsh
         run: |
           $upload = Get-Content 'src/k500/K500PresetUploadBridge.cpp' -Raw
+          $manager = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
           $header = Get-Content 'src/k500/K500PresetManager.h' -Raw
           $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
           $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
-          foreach ($token in @('P4_PC_PRESET_UPLOAD_V1','usbStoreAvailable','DeviceSlotImageLength','m_storeImage = image','beginStoreSlot(false)')) {
+
+          foreach ($token in @('DEVICE_TRUTH_UPLOAD_V1','usbStoreAvailable','DeviceSlotImageLength','m_storeImage = image','beginStoreSlot(false)','Operation::Upload')) {
             if (-not $upload.Contains($token)) { throw "P4 upload contract missing '$token'" }
           }
           if ($upload.Contains('startReadback') -or $upload.Contains('m_readbackMemory')) {
-            throw 'P4 regression: PC preset upload must never replace its file image with device readback'
+            throw 'P4 regression: PC preset upload must never replace its staged file image with device readback before Store'
+          }
+          foreach ($token in @('Operation::Upload','recallMode(uploadedSlot)','finishOperation(QStringLiteral("Upload"), uploadedSlot)')) {
+            if (-not $manager.Contains($token)) { throw "P4 upload->device-resync contract missing '$token'" }
           }
           if (-not $header.Contains('uploadSlotImage')) { throw 'P4 QML upload entry point missing' }
           if (-not $fileBridge.Contains('return K500PresetCodec::buildDeviceSlotImage(m_sourceBytes)')) {
-            throw 'P4 regression: file bridge no longer exposes current verified edited slot image'
+            throw 'P4 regression: file bridge no longer exposes the staged verified slot image'
           }
-          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','root.fileBridge.checksumOk','root.presetManager.usbStoreAvailable','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','enabled: root.pcUploadReady')) {
+          foreach ($token in @('P4_PC_PRESET_UPLOAD_UI_V1','root.fileBridge.checksumOk','root.presetManager.usbStoreAvailable','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','enabled: root.pcUploadReady','editTracking = false')) {
             if (-not $system.Contains($token)) { throw "P4 UI safety contract missing '$token'" }
           }
 
           if ($system.Contains('P4_2_PRESET_BATCH_UI_V1')) {
-            foreach ($token in @('FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled: root.massUploadReady')) {
-              if (-not $system.Contains($token)) { throw "P4.2 Mass Upload safety regression: missing '$token'" }
+            foreach ($token in @('MassUploadTransferWindow','enabled: root.massUploadReady')) {
+              if (-not $system.Contains($token)) { throw "P4.2 System transfer-list safety regression: missing '$token'" }
             }
+            foreach ($token in @('maxSlots: 10','buildTransferUploadEntries','massUploadSlotImages(entries)')) {
+              if (-not $transfer.Contains($token)) { throw "P4.2 transfer-list safety regression: missing '$token'" }
+            }
+            if ($system.Contains('FileDialog.OpenFiles')) { throw 'P4.2 regression: direct multi-file upload must not bypass transfer review' }
           }
 
           if (-not $system.Contains('P6_PC_PRESET_LIBRARY_UI_V1')) {
@@ -63,7 +75,9 @@ jobs:
             if (-not $system.Contains($token)) { throw "P6/P4 separation regression: missing '$token'" }
           }
 
-          if (-not $cmake.Contains('K500PresetUploadBridge.cpp')) { throw 'P4 upload bridge missing from native build' }
+          if (-not $cmake.Contains('K500PresetUploadBridge.cpp') -or -not $cmake.Contains('MassUploadTransferWindow.qml')) {
+            throw 'P4 upload/transfer UI bridge missing from native build'
+          }
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
