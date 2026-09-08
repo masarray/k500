@@ -153,14 +153,8 @@ int main(int argc, char **argv)
     const QByteArray beforeOfflineEdit = bridge.deviceSlotImage();
     engine.setMasterMusic(42.0);
     const QByteArray afterOfflineEdit = bridge.deviceSlotImage();
-    if (afterOfflineEdit == beforeOfflineEdit || !bridge.dirty())
-        return fail(QStringLiteral("offline Preview edit did not persist to staged preset"));
-    if (!K500PresetCodec::validateChecksum(bridge.deviceSlotImage().isEmpty() ? QByteArray() : source)) {
-        // The actual full-file checksum is guarded inside K500PresetFileBridge;
-        // this branch is intentionally unreachable and keeps this test focused
-        // on the public slot-image boundary.
-        return fail(QStringLiteral("unexpected checksum guard failure"));
-    }
+    if (afterOfflineEdit == beforeOfflineEdit || !bridge.dirty() || !bridge.checksumOk())
+        return fail(QStringLiteral("offline Preview edit did not persist as a checksum-valid staged preset"));
 
     bridge.setEditTracking(false);
     const QByteArray beforeBlockedEdit = bridge.deviceSlotImage();
