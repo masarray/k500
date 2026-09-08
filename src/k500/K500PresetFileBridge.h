@@ -67,6 +67,11 @@ public:
     Q_INVOKABLE void clear();
     Q_INVOKABLE QByteArray deviceSlotImage() const;
 
+    // OFFLINE_PREVIEW_V1 — an explicit user action may hydrate the editor from
+    // the staged PC preset while disconnected. Merely selecting/staging a file
+    // never calls this path, so connected K500 state remains hardware truth.
+    Q_INVOKABLE bool previewLoadedPreset();
+
     // P6_PC_PRESET_LIBRARY_V1 — folder discovery is intentionally local-only
     // and read-only. Invalid files stay visible with valid=false so users can
     // diagnose a bad preset without risking device/editor state changes.
