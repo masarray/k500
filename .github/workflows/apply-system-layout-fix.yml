@@ -1,0 +1,222 @@
+name: Apply System layout acceptance fix
+
+on:
+  push:
+    branches:
+      - fix/system-device-truth-mass-transfer
+    paths:
+      - '.github/workflows/apply-system-layout-fix.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          ref: fix/system-device-truth-mass-transfer
+          fetch-depth: 0
+
+      - name: Apply Device Mode layout and MODE NAME field
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path('qml/components/SystemWorkspace.qml')
+          text = path.read_text(encoding='utf-8')
+
+          prop_anchor = '''    property var deviceSlots: {
+              if (!root.deviceConnected)
+                  return root.defaultDeviceSlots
+              var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
+              return names && names.length === 10 ? names : root.defaultDeviceSlots
+          }
+          '''
+          prop_anchor = prop_anchor.replace('          ', '')
+          prop_insert = '''    property var deviceSlots: {
+              if (!root.deviceConnected)
+                  return root.defaultDeviceSlots
+              var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
+              return names && names.length === 10 ? names : root.defaultDeviceSlots
+          }
+              // MODE_NAME_UI_V1 — the field mirrors the selected hardware slot name.
+              // Persistent rename remains read-only until its donor packet is captured.
+              readonly property string selectedDeviceModeName: {
+                  if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
+                      return ""
+                  return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
+              }
+          '''
+          prop_insert = prop_insert.replace('          ', '')
+          if prop_anchor not in text:
+              raise SystemExit('deviceSlots property anchor not found')
+          text = text.replace(prop_anchor, prop_insert, 1)
+
+          marker = 'text:"DEVICE PRESET SLOTS"'
+          panel_start = text.index(marker)
+          panel_end = text.index('            ColumnLayout {\n                Layout.fillWidth: true\n                Layout.fillHeight: true\n                Layout.preferredWidth: 355', panel_start)
+          panel = text[panel_start:panel_end]
+
+          panel = panel.replace('''                    ColumnLayout {
+                          Layout.fillWidth:true
+                          Layout.fillHeight:true
+                          Layout.margins:12
+                          spacing:8
+          '''.replace('          ', ''), '''                    ColumnLayout {
+                          Layout.fillWidth:true
+                          Layout.fillHeight:true
+                          Layout.margins:10
+                          spacing:7
+          '''.replace('          ', ''), 1)
+
+          old_height = '''                        Rectangle {
+                              Layout.fillWidth:true
+                              Layout.preferredHeight:311
+                              Layout.minimumHeight:311
+                              Layout.maximumHeight:311
+          '''.replace('          ', '')
+          new_height = '''                        Rectangle {
+                              Layout.fillWidth:true
+                              Layout.fillHeight:true
+                              Layout.minimumHeight:311
+          '''.replace('          ', '')
+          if old_height not in panel:
+              raise SystemExit('fixed Device slot height anchor not found')
+          panel = panel.replace(old_height, new_height, 1)
+
+          old_column = '''                            Column {
+                                  anchors.fill:parent
+                                  anchors.margins:7
+                                  spacing:3
+          '''.replace('          ', '')
+          new_column = '''                            Column {
+                                  id: deviceSlotColumn
+                                  anchors.fill:parent
+                                  anchors.margins:7
+                                  spacing:3
+          '''.replace('          ', '')
+          if old_column not in panel:
+              raise SystemExit('Device slot column anchor not found')
+          panel = panel.replace(old_column, new_column, 1)
+
+          if '                                        height:27\n' not in panel:
+              raise SystemExit('fixed Device row height anchor not found')
+          panel = panel.replace('                                        height:27\n',
+                                '                                        height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)\n', 1)
+
+          init_anchor = '''                        RowLayout {
+                              Layout.fillWidth:true
+                              spacing:5
+                              Rectangle{
+                                  id:initVolumeCheck
+          '''.replace('          ', '')
+          mode_block = '''                        // Native KTV parity: expose the selected Device Mode name beside
+                          // the slot bank. Writing is intentionally disabled until the persistent
+                          // rename transaction is verified from a donor capture.
+                          RowLayout {
+                              Layout.fillWidth:true
+                              spacing:7
+                              Text {
+                                  text:"MODE NAME"
+                                  color:Theme.textDim
+                                  font.family:Theme.monoFamily
+                                  font.pixelSize:8
+                                  font.letterSpacing:1.0
+                                  Layout.preferredWidth:68
+                              }
+                              Rectangle {
+                                  Layout.fillWidth:true
+                                  Layout.preferredHeight:29
+                                  radius:6
+                                  color:"#080C10"
+                                  border.width:1
+                                  border.color:root.deviceConnected?Theme.borderSoft:"#20272D"
+                                  TextInput {
+                                      anchors.fill:parent
+                                      anchors.leftMargin:9
+                                      anchors.rightMargin:9
+                                      verticalAlignment:TextInput.AlignVCenter
+                                      text:root.selectedDeviceModeName
+                                      readOnly:true
+                                      selectByMouse:true
+                                      maximumLength:16
+                                      color:root.deviceConnected?Theme.amber:Theme.textDim
+                                      font.family:Theme.monoFamily
+                                      font.pixelSize:9
+                                      font.weight:Font.Bold
+                                      clip:true
+                                  }
+                                  Text {
+                                      anchors.left:parent.left
+                                      anchors.leftMargin:9
+                                      anchors.verticalCenter:parent.verticalCenter
+                                      visible:!root.deviceConnected
+                                      text:"Connect K500 to read"
+                                      color:Theme.textDim
+                                      font.family:Theme.monoFamily
+                                      font.pixelSize:8
+                                  }
+                              }
+                              Text {
+                                  text:"READ ONLY"
+                                  color:Theme.textDim
+                                  font.family:Theme.monoFamily
+                                  font.pixelSize:7
+                                  font.weight:Font.Bold
+                              }
+                          }
+
+          '''.replace('          ', '')
+          if init_anchor not in panel:
+              raise SystemExit('Use init volume anchor not found')
+          panel = panel.replace(init_anchor, mode_block + init_anchor, 1)
+
+          tail_spacer = '''                        }
+                              Item{Layout.fillHeight:true}
+                          }
+                      }
+                  }
+          '''.replace('          ', '')
+          tail_no_spacer = '''                        }
+                          }
+                      }
+                  }
+          '''.replace('          ', '')
+          if tail_spacer not in panel:
+              raise SystemExit('Device panel tail spacer anchor not found')
+          panel = panel.replace(tail_spacer, tail_no_spacer, 1)
+
+          text = text[:panel_start] + panel + text[panel_end:]
+          path.write_text(text, encoding='utf-8')
+
+          # Fail fast on the exact acceptance invariants.
+          out = path.read_text(encoding='utf-8')
+          required = [
+              'readonly property string selectedDeviceModeName',
+              'id: deviceSlotColumn',
+              'height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)',
+              'text:"MODE NAME"',
+              'text:"READ ONLY"',
+              'Layout.fillHeight:true\n                            Layout.minimumHeight:311',
+          ]
+          for token in required:
+              if token not in out:
+                  raise SystemExit(f'missing acceptance token: {token}')
+          if 'Layout.maximumHeight:311' in out:
+              raise SystemExit('fixed maximum Device slot height survived patch')
+
+      - name: Commit acceptance fix
+        shell: bash
+        run: |
+          if git diff --quiet -- qml/components/SystemWorkspace.qml; then
+            echo 'No QML change required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qml/components/SystemWorkspace.qml
+          git commit -m 'Fix Device Mode layout and expose mode name'
+          git push origin HEAD:fix/system-device-truth-mass-transfer
