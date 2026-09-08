@@ -37,8 +37,8 @@ permissions:
   contents: write
 
 env:
-  # Public current Qt runtime for the open-source release pipeline.
-  QT_VERSION: '6.11.2'
+  # Public Windows/MSVC Qt release for the open-source distribution pipeline.
+  QT_VERSION: '6.10.2'
   HARDWARE_ACCEPTANCE: pending
 
 jobs:
@@ -196,7 +196,7 @@ jobs:
           $setup = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Setup.exe").Path
           $installDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-install-test'
           if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
-          $installArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="{0}"' -f $installDir))
+          $installArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir"))
           $install = Start-Process -FilePath $setup -ArgumentList $installArgs -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Inno installer failed with exit code $($install.ExitCode)" }
           foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {

@@ -84,7 +84,7 @@ jobs:
           foreach ($token in @('AppName={#AppName}','WizardStyle=modern','PrivilegesRequired=lowest','SonKuPik-K500.exe')) {
             if (-not $installer.Contains($token)) { throw "Inno installer regression: missing '$token'" }
           }
-          foreach ($token in @("product = 'SonKuPik K500'",'SonKuPik-K500-v$version-Windows-Setup.exe','SonKuPik-K500-v$version-Windows-Portable.zip',"QT_VERSION: '6.11.2'",'portableFormat = ''ZIP (non-self-extracting)''','selfExtractingPortable = $false')) {
+          foreach ($token in @("product = 'SonKuPik K500'",'SonKuPik-K500-v$version-Windows-Setup.exe','SonKuPik-K500-v$version-Windows-Portable.zip',"QT_VERSION: '6.10.2'",'portableFormat = ''ZIP (non-self-extracting)''','selfExtractingPortable = $false')) {
             if (-not $release.Contains($token)) { throw "Release identity/distribution regression: missing '$token'" }
           }
           if ($release.Contains('Portable-Single.exe') -or $release.Contains('packaging/windows/portable.nsi') -or $release.Contains('Build installer and true portable single EXE')) {
