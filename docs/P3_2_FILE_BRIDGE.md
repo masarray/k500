@@ -1,33 +1,93 @@
 # P3.2 — `.k500` File Bridge + Real Corpus
 
-Status: **IMPLEMENTED IN BRANCH — CI GATE PENDING**
+Status: **LOCKED ✅ — integrated in the v1.0 stable application**
 
-P3.2 connects the P3 byte-preserving codec to the Qt application without weakening the P0/P1/P2 device-control baseline.
+P3.2 connects the byte-preserving P3 codec to the Qt application without weakening the device-control baseline.
 
-## Added
+## Current role
 
-- `K500PresetFileBridge` as a native Qt backend prepared for later QML wiring;
-- safe `.k500` import from a local file URL;
-- strict `0x0478` size validation;
-- strict additive checksum validation before hydration;
-- `.k500 -> 0x0290` conversion through the verified P3 converter;
-- offline hydration through the same 939-byte `StudioEngine` decoder used by CONNECT;
-- atomic `QSaveFile` export;
-- no-op Save As writes the exact imported source bytes;
-- `deviceSlotImage()` exposes the verified 656-byte native representation for the later P4 Upload/Mass Upload workflow;
-- a real donor fixture copied byte-for-byte from `ktv-studio-mixer-pro/src/assets/sample.k500`;
-- a corpus test that checks donor name, checksum, byte-identical no-op round trip, scalar `+8/+9` split, compact PEQ conversion, tail mapping, and 16-byte name mapping.
+`K500PresetFileBridge` is the application-facing file boundary for validated `.k500` documents. It supports:
 
-## Safety boundary
+- local file import;
+- exact `0x0478` / 1144-byte validation;
+- additive checksum validation;
+- source-byte-preserving document ownership;
+- `.k500 -> 0x0290` native slot conversion through the P3 codec;
+- explicit offline Preview hydration;
+- controlled edit persistence through the P3.4 whitelist mapper;
+- atomic `QSaveFile` Save As;
+- validated source paths for single Upload and Mass Upload.
 
-P3.2 deliberately validates the backend before exposing it to QML. The first CI run showed that Qt auto type registration itself could fail independently of the codec/file logic, so QML registration and FileDialog UI are deferred to P3.3 after this backend/corpus gate is green.
+A real donor fixture remains in the test corpus and protects name/checksum, no-op byte identity, split scalar mapping, compact PEQ conversion, tail mapping, and 16-byte hardware name projection.
 
-P3.2 also does **not** yet serialize arbitrary UI edits back into the source file. Until an edit is routed through the P3 explicit whitelist patcher, Save As remains source-byte exact.
+## State-authority boundary
 
-This deliberately separates three guarantees:
+The file bridge never becomes hardware truth merely because a file is selected.
 
-1. **Load/preview/export safety** — implemented here.
-2. **QML FileDialog/UI wiring** — P3.3, after backend acceptance.
-3. **Editable file persistence** — requires per-parameter whitelist patch coverage before P4 device upload uses edited files.
+```text
+Hardware editor truth
+K500 -> full 939-byte readback -> StudioEngine -> QML
 
-The System page Upload/Mass Upload buttons remain disabled. P4 will connect the validated slot image to the existing P2 permanent Store/Mass Upload transaction engine only after file editing and UI paths are proven.
+PC staging truth
+System QML -> K500PresetManager / K500PresetFileBridge -> validated .k500 document
+```
+
+Selecting a PC preset is staging-only. It does not change K500 audio, active slot, device mode names, faders, or PEQ.
+
+Only an explicit **Preview** hydrates the editor from the staged file while offline/preview semantics are active. Connecting a K500 restores hardware readback as authority and disables PC-file edit tracking for LIVE hardware edits.
+
+## Controlled persistence
+
+The v1 path is no longer a source-byte-only Save As prototype. Verified PEQ/fader edits may be persisted through explicit byte whitelists.
+
+The invariant remains:
+
+```text
+source bytes
+  -> permitted semantic edit
+  -> whitelist patch
+  -> checksum refresh
+  -> changed-byte audit
+  -> atomic Save As
+```
+
+Unknown/reserved bytes are not normalized.
+
+## Upload integration
+
+The file bridge supplies validated 656-byte slot images to the proven permanent Store path. It does **not** write raw hardware frames itself.
+
+Single Upload:
+
+```text
+validated staged .k500
+  -> verified slot-image conversion
+  -> K500PresetManager
+  -> Store transaction
+  -> destination Recall
+  -> full 939-byte readback
+  -> LIVE
+```
+
+Mass Upload validates every selected entry before the first hardware write and uses the same transaction coordinator.
+
+## Official + Local sources
+
+The v1 preset library can resolve staged files from two sources:
+
+- **SONKUPIK** official bundled/cache presets;
+- **LOCAL** user-owned files.
+
+Both reach the same validation/codec path before Preview, Upload, or Mass Upload. The source label changes provenance and update behavior, not binary safety rules.
+
+Official remote sync never writes into the Local user folder.
+
+## Stable guarantees
+
+- no-op file operations remain byte-identical;
+- invalid size/checksum is rejected before Preview/Upload;
+- file selection remains non-destructive;
+- Preview is explicit;
+- permanent Upload is explicit and USB/store-gated;
+- device state is re-read after permanent activation;
+- file/backend code never bypasses `K500DeviceManager` for raw I/O.
