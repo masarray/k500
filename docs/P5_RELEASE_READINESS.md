@@ -1,8 +1,8 @@
 # v1.0 Stable Release Qualification
 
-> **Status:** `v1.0.0` is the first public stable SonKuPik K500 release.
+> **Status:** `v1.0.0` is the first public stable SonKuPik K500 release; **public stable approved** after physical K500 validation of the Windows/USB workflow.
 >
-> **Hardware-qualified scope:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP remains implemented but experimental and is not part of the v1.0 hardware-qualified support claim.
+> **Hardware-qualified scope:** **Windows x64 + USB HID** on Windows 10/11 x64. **Bluetooth SPP remains available** in the application but is experimental and is **not part of the v1.0 hardware-qualified support claim**.
 
 ## Published stable checkpoint
 
