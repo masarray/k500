@@ -11,6 +11,9 @@
 QVariantList K500PresetFileBridge::buildMassUploadEntries(const QVariantList &urls,
                                                            int startSlotOneBased)
 {
+    // P4_2_PRESET_BATCH_LIBRARY_V1
+    // Legacy deterministic file-dialog builder retained for donor/regression
+    // parity. It remains side-effect free with respect to the staged document.
     setError({});
     if (urls.isEmpty()) {
         setError(QStringLiteral("Pilih minimal satu file .k500 untuk Mass Upload."));
@@ -28,10 +31,7 @@ QVariantList K500PresetFileBridge::buildMassUploadEntries(const QVariantList &ur
         return {};
     }
 
-    struct Source {
-        QString path;
-        QString fileName;
-    };
+    struct Source { QString path; QString fileName; };
     QVector<Source> sources;
     sources.reserve(urls.size());
     for (const QVariant &value : urls) {
@@ -96,6 +96,7 @@ QVariantList K500PresetFileBridge::buildMassUploadEntries(const QVariantList &ur
 
 QVariantList K500PresetFileBridge::buildTransferUploadEntries(const QVariantList &paths)
 {
+    // SYSTEM_TRANSFER_LIST_V1
     // The right-hand transfer list is authoritative for slot assignment. Never
     // sort it: visible row 1 -> slot 1, row 10 -> slot 10. Sources may be a local
     // user/cache file or a bundled Qt resource; both pass the same codec gate.
@@ -120,9 +121,7 @@ QVariantList K500PresetFileBridge::buildTransferUploadEntries(const QVariantList
 
         const bool resourcePath = path.startsWith(QStringLiteral(":/"));
         const QFileInfo info(path);
-        const QString fileName = resourcePath
-            ? path.section(QLatin1Char('/'), -1)
-            : info.fileName();
+        const QString fileName = resourcePath ? path.section(QLatin1Char('/'), -1) : info.fileName();
         if (path.isEmpty()
             || (!resourcePath && !info.isFile())
             || !path.endsWith(QStringLiteral(".k500"), Qt::CaseInsensitive)) {

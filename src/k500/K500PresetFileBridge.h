@@ -13,9 +13,14 @@
 class QNetworkAccessManager;
 class StudioEngine;
 
-// Native backend boundary for validated .k500 import/export, offline preview/edit,
-// local preset discovery, and the read-only official SonKuPik preset catalog.
-// Hardware writes remain outside this object.
+// P3_2_FILE_BRIDGE_V1
+// Native backend boundary for validated .k500 import/export. P3.4 extends this
+// object with controlled edit persistence, but every mutation still goes through
+// K500PresetEditMapper -> K500PresetCodec explicit byte whitelists.
+//
+// P6_PC_PRESET_LIBRARY_V1
+// Official SonKuPik presets and user-local presets remain PC-side data. Selection
+// is staging-only; hardware changes only through the explicit upload manager.
 class K500PresetFileBridge final : public QObject
 {
     Q_OBJECT
@@ -34,9 +39,8 @@ class K500PresetFileBridge final : public QObject
 
     Q_PROPERTY(QString presetFolder READ presetFolder NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList folderPresets READ folderPresets NOTIFY libraryChanged)
-    // The historic property name is kept for QML/regression compatibility, but
-    // its content is now the current official SonKuPik library: bundled fallback
-    // plus validated GitHub-cache overrides/new files.
+    // Historic property retained for P6/UI compatibility. Its content is now the
+    // current official SonKuPik library: bundled fallback plus validated cache.
     Q_PROPERTY(QVariantList builtInPresets READ builtInPresets NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList combinedPresets READ combinedPresets NOTIFY libraryChanged)
 
@@ -78,8 +82,8 @@ public:
     Q_INVOKABLE void clear();
     Q_INVOKABLE QByteArray deviceSlotImage() const;
 
-    // Explicit offline preview only. Merely staging a file never hydrates the
-    // editor and therefore never masks connected K500 truth.
+    // OFFLINE_PREVIEW_V1 — explicit user action may hydrate editor state while
+    // disconnected. Merely staging a file never hydrates StudioEngine.
     Q_INVOKABLE bool previewLoadedPreset();
 
     Q_INVOKABLE bool setPresetFolder(const QUrl &url);
@@ -87,14 +91,18 @@ public:
     Q_INVOKABLE bool loadFolderPreset(int index);
     Q_INVOKABLE bool loadBuiltInPreset(int index);
 
-    // OFFICIAL_PRESET_SYNC_V1 — one public GitHub directory request followed by
-    // downloads only for new/changed files. Every downloaded .k500 must pass the
-    // same exact-size/checksum validation before replacing the last-known-good
-    // local cache. Network failure never removes the bundled/cached library.
+    // OFFICIAL_PRESET_SYNC_V1 — fetch only new/changed official files, validate
+    // exact K500 size/checksum, then atomically replace cache. Network failure
+    // never removes the bundled or last-known-good library.
     Q_INVOKABLE void syncOfficialPresets();
 
+    // P4_2_PRESET_BATCH_LIBRARY_V1 — legacy deterministic builder retained for
+    // regression parity with the previous file-dialog path.
     Q_INVOKABLE QVariantList buildMassUploadEntries(const QVariantList &urls,
                                                      int startSlotOneBased);
+
+    // SYSTEM_TRANSFER_LIST_V1 — visible right-list row 01..10 maps exactly to
+    // device slot 01..10. Transport later sends those slots in native 10->1 order.
     Q_INVOKABLE QVariantList buildTransferUploadEntries(const QVariantList &paths);
 
 signals:

@@ -34,15 +34,6 @@ constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     {"REGGAE",          "Relaxed rhythmic vocal support",      "10_REGGAE.k500",          ":/presets/10_REGGAE.k500"},
 };
 
-const BuiltInPresetDefinition *definitionForFileName(const QString &fileName)
-{
-    for (const auto &definition : BuiltInPresetDefinitions) {
-        if (fileName.compare(QString::fromLatin1(definition.fileName), Qt::CaseInsensitive) == 0)
-            return &definition;
-    }
-    return nullptr;
-}
-
 bool readValidPreset(const QString &path, QByteArray *bytes)
 {
     QFile file(path);
@@ -89,6 +80,9 @@ void K500PresetFileBridge::setEngine(QObject *engineObject)
 
     m_engine = next;
     if (m_engine) {
+        // P3_4_CONTROLLED_EDIT_PERSISTENCE_V1
+        // Controlled persistence exists only when editTracking is explicitly
+        // enabled by offline Preview. Connected LIVE sessions force it off.
         m_engineEditConnection = QObject::connect(
             m_engine, &StudioEngine::stateEdited,
             this, &K500PresetFileBridge::onEngineEdit);
@@ -176,8 +170,8 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
     QStringList knownNames;
     int index = 0;
 
-    // Bundled presets are a permanent offline fallback. A checksum-valid cached
-    // copy with the same filename transparently overrides it after GitHub sync.
+    // P6_PC_PRESET_LIBRARY_V1 — bundled files remain the guaranteed offline
+    // bank; checksum-valid official cache overrides/additions are PC-side only.
     for (const BuiltInPresetDefinition &definition : BuiltInPresetDefinitions) {
         const QString fileName = QString::fromLatin1(definition.fileName);
         knownNames.append(fileName.toLower());
@@ -207,8 +201,6 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         next.append(entry);
     }
 
-    // Any additional .k500 file added later to resources/presets on GitHub is
-    // discovered by sync and appears automatically without an application update.
     if (cacheDir.exists()) {
         const QFileInfoList files = cacheDir.entryInfoList(
             {QStringLiteral("*.k500")},
@@ -305,6 +297,9 @@ bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
         return false;
     }
 
+    // DEVICE_TRUTH_STAGING_V1
+    // Every newly selected file starts staging-only. It does not hydrate the
+    // StudioEngine and it resets any prior offline edit session.
     const bool trackingChanged = m_editTracking;
     m_editTracking = false;
     m_sourceBytes = bytes;
@@ -457,6 +452,9 @@ bool K500PresetFileBridge::saveFile(const QUrl &url)
         return false;
     }
 
+    // P3_4_EDITED_EXPORT_V1
+    // No-op Save As is still byte-identical. Once verified offline edits exist,
+    // only mapper-whitelisted bytes plus the checksum differ from the checkpoint.
     if (file.write(m_sourceBytes) != m_sourceBytes.size() || !file.commit()) {
         setError(QStringLiteral("Gagal menyimpan preset secara atomik: %1").arg(path));
         return false;
@@ -525,9 +523,15 @@ bool K500PresetFileBridge::previewLoadedPreset()
         return false;
     }
 
+    // OFFLINE_PREVIEW_V1
+    // Only verified 0x0290 audio/settings data is hydrated. Hardware-only mode
+    // names/BT metadata/active slot are never synthesized from a PC preset.
     QByteArray preview(ActiveMemorySize, char(0));
     std::copy(slot.cbegin(), slot.cend(), preview.begin());
     m_engine->hydrateFromDeviceMemory(preview);
+
+    // P3_4_OFFLINE_EDIT_SESSION_V1
+    // Explicit Preview is the opt-in boundary for controlled offline editing.
     setEditTracking(true);
     return true;
 }

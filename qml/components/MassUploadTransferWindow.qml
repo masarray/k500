@@ -22,6 +22,8 @@ Window {
     property int sourceIndex: -1
     property int targetIndex: -1
     readonly property int maxSlots: 10
+    // Unified source replaces the old folderPresets-only Mass Upload source.
+    // folderPresets remains part of combinedPresets together with SONKUPIK official presets.
     readonly property var sourcePresets: root.fileBridge ? root.fileBridge.combinedPresets : []
 
     ListModel { id: targetModel }
