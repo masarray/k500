@@ -4,22 +4,18 @@
 #include <QMetaObject>
 #include <QObject>
 #include <QString>
+#include <QStringList>
 #include <QUrl>
 #include <QVariant>
 #include <QVariantList>
 #include <QVariantMap>
 
+class QNetworkAccessManager;
 class StudioEngine;
 
-// P3_2_FILE_BRIDGE_V1
-// Native backend boundary for validated .k500 import/export. P3.4 extends this
-// object with controlled edit persistence, but every mutation still goes through
-// K500PresetEditMapper -> K500PresetCodec explicit byte whitelists.
-//
-// P6_PC_PRESET_LIBRARY_V1 adds a read-only PC-side preset catalog. PC preset
-// selection is staging-only: selecting a file must never hydrate/replace the
-// live StudioEngine state that represents the connected K500. Explicit Upload
-// remains the only path that transfers a staged PC preset to hardware.
+// Native backend boundary for validated .k500 import/export, offline preview/edit,
+// local preset discovery, and the read-only official SonKuPik preset catalog.
+// Hardware writes remain outside this object.
 class K500PresetFileBridge final : public QObject
 {
     Q_OBJECT
@@ -38,7 +34,16 @@ class K500PresetFileBridge final : public QObject
 
     Q_PROPERTY(QString presetFolder READ presetFolder NOTIFY libraryChanged)
     Q_PROPERTY(QVariantList folderPresets READ folderPresets NOTIFY libraryChanged)
-    Q_PROPERTY(QVariantList builtInPresets READ builtInPresets CONSTANT)
+    // The historic property name is kept for QML/regression compatibility, but
+    // its content is now the current official SonKuPik library: bundled fallback
+    // plus validated GitHub-cache overrides/new files.
+    Q_PROPERTY(QVariantList builtInPresets READ builtInPresets NOTIFY libraryChanged)
+    Q_PROPERTY(QVariantList combinedPresets READ combinedPresets NOTIFY libraryChanged)
+
+    Q_PROPERTY(bool officialSyncBusy READ officialSyncBusy NOTIFY officialSyncChanged)
+    Q_PROPERTY(QString officialSyncStatus READ officialSyncStatus NOTIFY officialSyncChanged)
+    Q_PROPERTY(QString officialSyncError READ officialSyncError NOTIFY officialSyncChanged)
+    Q_PROPERTY(int officialUpdateCount READ officialUpdateCount NOTIFY officialSyncChanged)
 
 public:
     explicit K500PresetFileBridge(QObject *parent = nullptr);
@@ -61,33 +66,35 @@ public:
     QString presetFolder() const { return m_presetFolder; }
     QVariantList folderPresets() const { return m_folderPresets; }
     QVariantList builtInPresets() const { return m_builtInPresets; }
+    QVariantList combinedPresets() const { return m_combinedPresets; }
+
+    bool officialSyncBusy() const { return m_officialSyncBusy; }
+    QString officialSyncStatus() const { return m_officialSyncStatus; }
+    QString officialSyncError() const { return m_officialSyncError; }
+    int officialUpdateCount() const { return m_officialUpdateCount; }
 
     Q_INVOKABLE bool loadFile(const QUrl &url);
     Q_INVOKABLE bool saveFile(const QUrl &url);
     Q_INVOKABLE void clear();
     Q_INVOKABLE QByteArray deviceSlotImage() const;
 
-    // OFFLINE_PREVIEW_V1 — an explicit user action may hydrate the editor from
-    // the staged PC preset while disconnected. Merely selecting/staging a file
-    // never calls this path, so connected K500 state remains hardware truth.
+    // Explicit offline preview only. Merely staging a file never hydrates the
+    // editor and therefore never masks connected K500 truth.
     Q_INVOKABLE bool previewLoadedPreset();
 
-    // P6_PC_PRESET_LIBRARY_V1 — folder discovery is intentionally local-only
-    // and read-only. Invalid files stay visible with valid=false so users can
-    // diagnose a bad preset without risking device/editor state changes.
     Q_INVOKABLE bool setPresetFolder(const QUrl &url);
     Q_INVOKABLE void refreshPresetFolder();
     Q_INVOKABLE bool loadFolderPreset(int index);
     Q_INVOKABLE bool loadBuiltInPreset(int index);
 
-    // P4_2_PRESET_BATCH_LIBRARY_V1 — legacy deterministic batch builder retained
-    // for regression compatibility. It sorts local files by filename and maps
-    // them sequentially from startSlotOneBased.
+    // OFFICIAL_PRESET_SYNC_V1 — one public GitHub directory request followed by
+    // downloads only for new/changed files. Every downloaded .k500 must pass the
+    // same exact-size/checksum validation before replacing the last-known-good
+    // local cache. Network failure never removes the bundled/cached library.
+    Q_INVOKABLE void syncOfficialPresets();
+
     Q_INVOKABLE QVariantList buildMassUploadEntries(const QVariantList &urls,
                                                      int startSlotOneBased);
-
-    // SYSTEM_TRANSFER_LIST_V1 — preserves the explicit right-list order from the
-    // transfer window. Item 0 maps to device slot 1, item 9 maps to slot 10.
     Q_INVOKABLE QVariantList buildTransferUploadEntries(const QVariantList &paths);
 
 signals:
@@ -96,6 +103,7 @@ signals:
     void sourceChanged();
     void errorChanged();
     void libraryChanged();
+    void officialSyncChanged();
     void loadedFile(const QString &path, const QString &presetName);
     void savedFile(const QString &path);
     void persistedEdit(const QString &path, int changedByteCount);
@@ -118,12 +126,18 @@ private:
                                int index) const;
     void rebuildBuiltInPresets();
     void rebuildFolderPresets();
+    void rebuildCombinedPresets();
+
+    QString officialCacheDirectory() const;
+    void setOfficialSyncState(bool busy, const QString &status, const QString &error = {});
+    void downloadNextOfficialPreset();
+    void finishOfficialSync();
 
     StudioEngine *m_engine = nullptr;
     QMetaObject::Connection m_engineEditConnection;
     bool m_editTracking = false;
-    QByteArray m_sourceBytes; // staged PC working document, always checksum-valid
-    QByteArray m_savedBytes;  // last loaded/saved checkpoint for dirty tracking
+    QByteArray m_sourceBytes;
+    QByteArray m_savedBytes;
     QString m_sourcePath;
     QString m_sourceName;
     QString m_presetName;
@@ -133,4 +147,14 @@ private:
     QString m_presetFolder;
     QVariantList m_folderPresets;
     QVariantList m_builtInPresets;
+    QVariantList m_combinedPresets;
+
+    QNetworkAccessManager *m_networkManager = nullptr;
+    bool m_officialSyncBusy = false;
+    QString m_officialSyncStatus = QStringLiteral("Bundled SonKuPik presets ready");
+    QString m_officialSyncError;
+    int m_officialUpdateCount = 0;
+    int m_officialSyncTotal = 0;
+    QVariantList m_officialDownloadQueue;
+    QStringList m_officialRemoteNames;
 };

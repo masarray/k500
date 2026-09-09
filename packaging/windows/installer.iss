@@ -8,6 +8,8 @@
 #define AppDir GetEnv("SONKUPIK_APP_DIR")
 #define OutputDir GetEnv("SONKUPIK_OUTPUT_DIR")
 #define AppIcon GetEnv("SONKUPIK_APP_ICON")
+#define WizardImage GetEnv("SONKUPIK_WIZARD_IMAGE")
+#define WizardSmallImage GetEnv("SONKUPIK_WIZARD_SMALL_IMAGE")
 
 #ifndef AppVersion
   #define AppVersion "0.0.0-dev"
@@ -21,6 +23,12 @@
 #endif
 #if AppIcon == ""
   #error SONKUPIK_APP_ICON is required
+#endif
+#if WizardImage == ""
+  #error SONKUPIK_WIZARD_IMAGE is required
+#endif
+#if WizardSmallImage == ""
+  #error SONKUPIK_WIZARD_SMALL_IMAGE is required
 #endif
 
 [Setup]
@@ -41,6 +49,8 @@ ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
 OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup
 SetupIconFile={#AppIcon}
+WizardImageFile={#WizardImage}
+WizardSmallImageFile={#WizardSmallImage}
 LicenseFile={#AppDir}\LICENSE
 Compression=lzma2/max
 SolidCompression=yes

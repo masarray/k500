@@ -33,6 +33,29 @@ constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     {"ACOUSTIC",        "Intimate vocal and music",            "09_ACOUSTIC.k500",        ":/presets/09_ACOUSTIC.k500"},
     {"REGGAE",          "Relaxed rhythmic vocal support",      "10_REGGAE.k500",          ":/presets/10_REGGAE.k500"},
 };
+
+const BuiltInPresetDefinition *definitionForFileName(const QString &fileName)
+{
+    for (const auto &definition : BuiltInPresetDefinitions) {
+        if (fileName.compare(QString::fromLatin1(definition.fileName), Qt::CaseInsensitive) == 0)
+            return &definition;
+    }
+    return nullptr;
+}
+
+bool readValidPreset(const QString &path, QByteArray *bytes)
+{
+    QFile file(path);
+    if (!file.open(QIODevice::ReadOnly))
+        return false;
+    const QByteArray candidate = file.readAll();
+    const K500PresetCodec::Document document(candidate);
+    if (!document.validSize() || !document.checksumOk())
+        return false;
+    if (bytes)
+        *bytes = candidate;
+    return true;
+}
 }
 
 K500PresetFileBridge::K500PresetFileBridge(QObject *parent)
@@ -45,6 +68,8 @@ K500PresetFileBridge::K500PresetFileBridge(QObject *parent)
     if (!rememberedFolder.isEmpty() && QDir(rememberedFolder).exists()) {
         m_presetFolder = QDir::cleanPath(rememberedFolder);
         rebuildFolderPresets();
+    } else {
+        rebuildCombinedPresets();
     }
 }
 
@@ -64,9 +89,6 @@ void K500PresetFileBridge::setEngine(QObject *engineObject)
 
     m_engine = next;
     if (m_engine) {
-        // P3_4_CONTROLLED_EDIT_PERSISTENCE_V1 remains available for an explicit
-        // offline file-edit workflow, but PC preset staging keeps editTracking
-        // false so live K500 tweaks never mutate the staged source document.
         m_engineEditConnection = QObject::connect(
             m_engine, &StudioEngine::stateEdited,
             this, &K500PresetFileBridge::onEngineEdit);
@@ -149,26 +171,69 @@ QVariantMap K500PresetFileBridge::describePreset(const QByteArray &bytes,
 
 void K500PresetFileBridge::rebuildBuiltInPresets()
 {
-    m_builtInPresets.clear();
+    QVariantList next;
+    const QDir cacheDir(officialCacheDirectory());
+    QStringList knownNames;
     int index = 0;
+
+    // Bundled presets are a permanent offline fallback. A checksum-valid cached
+    // copy with the same filename transparently overrides it after GitHub sync.
     for (const BuiltInPresetDefinition &definition : BuiltInPresetDefinitions) {
-        QFile file(QString::fromLatin1(definition.resourcePath));
+        const QString fileName = QString::fromLatin1(definition.fileName);
+        knownNames.append(fileName.toLower());
+
         QByteArray bytes;
-        if (file.open(QIODevice::ReadOnly))
-            bytes = file.readAll();
+        const QString cachedPath = cacheDir.filePath(fileName);
+        QString path = QString::fromLatin1(definition.resourcePath);
+        QString source = QStringLiteral("official-bundled");
+        if (readValidPreset(cachedPath, &bytes)) {
+            path = cachedPath;
+            source = QStringLiteral("official-cache");
+        } else {
+            QFile file(path);
+            if (file.open(QIODevice::ReadOnly))
+                bytes = file.readAll();
+        }
 
         QVariantMap entry = describePreset(
             bytes,
             QString::fromLatin1(definition.displayName),
-            QString::fromLatin1(definition.fileName),
-            QString::fromLatin1(definition.resourcePath),
-            QStringLiteral("builtin"),
-            index);
+            fileName,
+            path,
+            source,
+            index++);
         entry.insert(QStringLiteral("description"), QString::fromLatin1(definition.description));
-        entry.insert(QStringLiteral("resourcePath"), QString::fromLatin1(definition.resourcePath));
-        m_builtInPresets.append(entry);
-        ++index;
+        entry.insert(QStringLiteral("originLabel"), QStringLiteral("SONKUPIK"));
+        next.append(entry);
     }
+
+    // Any additional .k500 file added later to resources/presets on GitHub is
+    // discovered by sync and appears automatically without an application update.
+    if (cacheDir.exists()) {
+        const QFileInfoList files = cacheDir.entryInfoList(
+            {QStringLiteral("*.k500")},
+            QDir::Files | QDir::Readable | QDir::NoSymLinks,
+            QDir::Name | QDir::IgnoreCase);
+        for (const QFileInfo &info : files) {
+            if (knownNames.contains(info.fileName().toLower()))
+                continue;
+            QByteArray bytes;
+            if (!readValidPreset(info.absoluteFilePath(), &bytes))
+                continue;
+            QVariantMap entry = describePreset(
+                bytes,
+                QString(),
+                info.fileName(),
+                info.absoluteFilePath(),
+                QStringLiteral("official-cache"),
+                index++);
+            entry.insert(QStringLiteral("description"), QStringLiteral("Official SonKuPik preset"));
+            entry.insert(QStringLiteral("originLabel"), QStringLiteral("SONKUPIK"));
+            next.append(entry);
+        }
+    }
+
+    m_builtInPresets = next;
 }
 
 void K500PresetFileBridge::rebuildFolderPresets()
@@ -190,20 +255,31 @@ void K500PresetFileBridge::rebuildFolderPresets()
                 if (file.open(QIODevice::ReadOnly))
                     bytes = file.readAll();
 
-                next.append(describePreset(
+                QVariantMap entry = describePreset(
                     bytes,
                     QString(),
                     info.fileName(),
                     info.absoluteFilePath(),
                     QStringLiteral("folder"),
-                    index));
-                ++index;
+                    index++);
+                entry.insert(QStringLiteral("description"), QStringLiteral("User local preset"));
+                entry.insert(QStringLiteral("originLabel"), QStringLiteral("LOCAL"));
+                next.append(entry);
             }
         }
     }
 
     m_folderPresets = next;
+    rebuildCombinedPresets();
     emit libraryChanged();
+}
+
+void K500PresetFileBridge::rebuildCombinedPresets()
+{
+    QVariantList next = m_builtInPresets;
+    for (const QVariant &preset : m_folderPresets)
+        next.append(preset);
+    m_combinedPresets = next;
 }
 
 bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
@@ -229,10 +305,6 @@ bool K500PresetFileBridge::loadValidatedBytes(const QByteArray &bytes,
         return false;
     }
 
-    // DEVICE_TRUTH_STAGING_V1
-    // Every newly selected file starts as staging-only, even if the previous
-    // document had entered offline Preview/Edit mode. This prevents stale edit
-    // tracking from leaking across preset selections.
     const bool trackingChanged = m_editTracking;
     m_editTracking = false;
     m_sourceBytes = bytes;
@@ -314,20 +386,22 @@ bool K500PresetFileBridge::loadBuiltInPreset(int index)
 {
     setError({});
     if (index < 0 || index >= m_builtInPresets.size()) {
-        setError(QStringLiteral("Built-in preset index tidak valid."));
+        setError(QStringLiteral("Official preset index tidak valid."));
         return false;
     }
 
     const QVariantMap entry = m_builtInPresets.at(index).toMap();
-    const QString resourcePath = entry.value(QStringLiteral("resourcePath")).toString();
-    QFile file(resourcePath);
+    const QString path = entry.value(QStringLiteral("path")).toString();
+    QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
-        setError(QStringLiteral("Built-in preset resource tidak ditemukan: %1").arg(resourcePath));
+        setError(QStringLiteral("Official preset tidak ditemukan: %1")
+                     .arg(entry.value(QStringLiteral("fileName")).toString()));
         return false;
     }
 
-    const QString sourcePath = QStringLiteral("builtin://%1")
-        .arg(entry.value(QStringLiteral("fileName")).toString());
+    const QString sourcePath = path.startsWith(QStringLiteral(":/"))
+        ? QStringLiteral("official://%1").arg(entry.value(QStringLiteral("fileName")).toString())
+        : path;
     return loadValidatedBytes(
         file.readAll(),
         sourcePath,
@@ -341,7 +415,7 @@ void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &val
 
     const auto edit = K500PresetEditMapper::applyEngineEdit(m_sourceBytes, path, value);
     if (!edit.supported)
-        return; // intentionally read-only/unverified field; never mutate bytes
+        return;
 
     if (!edit.patch.ok) {
         const QString reason = edit.patch.error.isEmpty()
@@ -383,9 +457,6 @@ bool K500PresetFileBridge::saveFile(const QUrl &url)
         return false;
     }
 
-    // P3_4_EDITED_EXPORT_V1
-    // No-op Save As is still byte-identical. Once verified edits exist, only
-    // mapper-whitelisted bytes plus checksum differ from the loaded checkpoint.
     if (file.write(m_sourceBytes) != m_sourceBytes.size() || !file.commit()) {
         setError(QStringLiteral("Gagal menyimpan preset secara atomik: %1").arg(path));
         return false;
@@ -454,20 +525,9 @@ bool K500PresetFileBridge::previewLoadedPreset()
         return false;
     }
 
-    // OFFLINE_PREVIEW_V1
-    // StudioEngine consumes the same active-memory layout used by real K500
-    // readback. Only the verified 0x0290 audio/settings image is populated;
-    // hardware-only metadata (mode names, BT/BLE names, active slot) stays empty.
-    // In particular, never synthesize/write the old 0x02C0 mode-name preview.
     QByteArray preview(ActiveMemorySize, char(0));
     std::copy(slot.cbegin(), slot.cend(), preview.begin());
     m_engine->hydrateFromDeviceMemory(preview);
-
-    // P3_4_OFFLINE_EDIT_SESSION_V1
-    // Explicit Preview is the opt-in boundary for controlled offline editing.
-    // From this point, only mapper-whitelisted StudioEngine edits may patch the
-    // staged .k500 document. Loading another file or connecting real hardware
-    // turns tracking off again.
     setEditTracking(true);
     return true;
 }

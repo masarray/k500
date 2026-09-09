@@ -9,11 +9,14 @@ on:
       - 'CMakeLists.txt'
       - 'src/AppVersionInit.cpp'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500OfficialPresetSync.cpp'
       - 'src/main.cpp'
       - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
       - 'qml/components/SystemWorkspace.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
+      - 'resources/presets/**'
       - 'assets/SonKuPik-k500-logo.png'
       - 'packaging/windows/**'
       - 'docs/P5_RELEASE_READINESS.md'
@@ -26,11 +29,14 @@ on:
       - 'CMakeLists.txt'
       - 'src/AppVersionInit.cpp'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500OfficialPresetSync.cpp'
       - 'src/main.cpp'
       - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
       - 'qml/components/SystemWorkspace.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
+      - 'resources/presets/**'
       - 'assets/SonKuPik-k500-logo.png'
       - 'packaging/windows/**'
       - 'docs/P5_RELEASE_READINESS.md'
@@ -41,7 +47,6 @@ permissions:
   contents: write
 
 env:
-  # Public Windows/MSVC Qt release for the open-source distribution pipeline.
   QT_VERSION: '6.10.2'
   HARDWARE_ACCEPTANCE: pending
 
@@ -77,8 +82,9 @@ jobs:
           foreach ($token in @('physical K500 acceptance pending','stable `v1.0`','release-manifest.json')) {
             if (-not $readiness.Contains($token)) { throw "P5 readiness contract missing '$token'" }
           }
-          if (-not (Test-Path 'packaging/windows/installer.iss')) {
-            throw 'AV-friendly Inno Setup installer script is missing.'
+          $installer = Get-Content 'packaging/windows/installer.iss' -Raw
+          foreach ($token in @('SetupIconFile={#AppIcon}','WizardImageFile={#WizardImage}','WizardSmallImageFile={#WizardSmallImage}')) {
+            if (-not $installer.Contains($token)) { throw "Installer branding contract missing '$token'" }
           }
 
       - name: Install Qt
@@ -116,7 +122,7 @@ jobs:
       - name: Deploy direct Qt application
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path package,dist | Out-Null
+          New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
           if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
           windeployqt --release --qmldir qml package/SonKuPik-K500.exe
@@ -125,6 +131,7 @@ jobs:
           Product: SonKuPik K500
           Version: ${{ steps.meta.outputs.version }}
           Source: https://github.com/masarray/k500
+          Official presets: https://github.com/masarray/k500/tree/main/resources/presets
           Commit: $env:GITHUB_SHA
           Qt: $env:QT_VERSION
           Distribution: unsigned open-source build; Inno Setup installer + portable ZIP
@@ -138,17 +145,37 @@ jobs:
             if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
           }
 
-      - name: Generate Windows icon from authoritative PNG
+      - name: Generate Windows installer branding
         shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check --quiet pillow
           @'
           from PIL import Image
+
           source = Image.open('assets/SonKuPik-k500-logo.png').convert('RGBA')
           source.save('package/SonKuPik-K500.ico', format='ICO',
                       sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+
+          def branded_bmp(size, logo_box, out_path):
+              canvas = Image.new('RGB', size, (13, 18, 22))
+              logo = source.copy()
+              logo.thumbnail(logo_box, Image.Resampling.LANCZOS)
+              x = (size[0] - logo.width) // 2
+              y = max(12, (size[1] - logo.height) // 3)
+              canvas.paste(logo, (x, y), logo)
+              canvas.save(out_path, format='BMP')
+
+          branded_bmp((164, 314), (132, 132), 'build/packaging/SonKuPik-K500-wizard.bmp')
+          branded_bmp((55, 55), (48, 48), 'build/packaging/SonKuPik-K500-wizard-small.bmp')
           '@ | python -
-          if (-not (Test-Path 'package/SonKuPik-K500.ico')) { throw 'ICO generation failed' }
+
+          foreach ($file in @(
+            'package/SonKuPik-K500.ico',
+            'build/packaging/SonKuPik-K500-wizard.bmp',
+            'build/packaging/SonKuPik-K500-wizard-small.bmp'
+          )) {
+            if (-not (Test-Path $file)) { throw "Installer branding generation failed: $file" }
+          }
 
       - name: Install and locate Inno Setup
         shell: pwsh
@@ -157,9 +184,7 @@ jobs:
 
           $iscc = $null
           $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
-          if ($command) {
-            $iscc = $command.Source
-          }
+          if ($command) { $iscc = $command.Source }
 
           if (-not $iscc) {
             $candidates = @(
@@ -180,15 +205,10 @@ jobs:
           }
 
           if (-not $iscc) {
-            $fallbackRoots = @(
-              ${env:ProgramFiles(x86)},
-              $env:ProgramFiles
-            ) | Where-Object { $_ -and (Test-Path $_) }
-            foreach ($root in $fallbackRoots) {
-              $found = Get-ChildItem $root -Filter ISCC.exe -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
-              if ($found) {
-                $iscc = $found.FullName
-                break
+            foreach ($root in @(${env:ProgramFiles(x86)}, $env:ProgramFiles)) {
+              if ($root -and (Test-Path $root)) {
+                $found = Get-ChildItem $root -Filter ISCC.exe -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1
+                if ($found) { $iscc = $found.FullName; break }
               }
             }
           }
@@ -204,6 +224,8 @@ jobs:
           $env:SONKUPIK_APP_DIR = (Resolve-Path package).Path
           $env:SONKUPIK_OUTPUT_DIR = (Resolve-Path dist).Path
           $env:SONKUPIK_APP_ICON = (Resolve-Path package/SonKuPik-K500.ico).Path
+          $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard.bmp).Path
+          $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard-small.bmp).Path
 
           & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup packaging failed' }
@@ -272,6 +294,7 @@ jobs:
             installerTechnology = 'Inno Setup 6'
             portableFormat = 'ZIP (non-self-extracting)'
             selfExtractingPortable = $false
+            officialPresetSource = 'github:masarray/k500/resources/presets@main'
             regressionSuite = @('P0/P1 architecture','P2 preset protocol','P3 codec','P3.2 donor corpus','P3.4 edit persistence','P4.2 donor batch','runtime self-tests','portable ZIP test','Inno installed-app test')
             artifacts = $artifacts
           }
@@ -290,6 +313,7 @@ jobs:
           if ($manifest.stableReleaseEligible -ne $false) { throw 'P5 must not advertise stable release eligibility' }
           if ($manifest.codeSigning -ne 'unsigned-open-source') { throw 'Unsigned OSS distribution status must be explicit' }
           if ($manifest.selfExtractingPortable -ne $false) { throw 'Portable distribution must not be self-extracting' }
+          if ($manifest.officialPresetSource -ne 'github:masarray/k500/resources/presets@main') { throw 'Official preset source mismatch' }
           if ($manifest.artifacts.Count -ne 2) { throw 'Manifest must describe installer and portable ZIP artifacts' }
 
       - name: Upload Windows release artifacts

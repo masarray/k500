@@ -9,10 +9,10 @@ Window {
     required property var fileBridge
     required property var presetManager
 
-    width: 920
-    height: 570
-    minimumWidth: 760
-    minimumHeight: 500
+    width: 960
+    height: 590
+    minimumWidth: 800
+    minimumHeight: 520
     modality: Qt.ApplicationModal
     flags: Qt.Dialog
     color: Theme.background
@@ -22,6 +22,7 @@ Window {
     property int sourceIndex: -1
     property int targetIndex: -1
     readonly property int maxSlots: 10
+    readonly property var sourcePresets: root.fileBridge ? root.fileBridge.combinedPresets : []
 
     ListModel { id: targetModel }
 
@@ -29,8 +30,10 @@ Window {
         sourceIndex = -1
         targetIndex = -1
         targetModel.clear()
-        if (fileBridge)
+        if (fileBridge) {
             fileBridge.refreshPresetFolder()
+            fileBridge.syncOfficialPresets()
+        }
         visible = true
         requestActivate()
     }
@@ -53,20 +56,21 @@ Window {
             fileName: String(entry.fileName || "preset.k500"),
             displayName: String(entry.displayName || entry.presetName || entry.fileName || "K500 PRESET"),
             presetName: String(entry.presetName || ""),
+            originLabel: String(entry.originLabel || (entry.source === "folder" ? "LOCAL" : "SONKUPIK")),
             path: path
         })
         targetIndex = targetModel.count - 1
     }
 
     function addSelected() {
-        var source = fileBridge ? fileBridge.folderPresets : []
+        var source = root.sourcePresets
         if (sourceIndex < 0 || sourceIndex >= source.length)
             return
         addEntry(source[sourceIndex])
     }
 
     function addAll() {
-        var source = fileBridge ? fileBridge.folderPresets : []
+        var source = root.sourcePresets
         for (var i = 0; i < source.length && targetModel.count < maxSlots; ++i)
             addEntry(source[i])
     }
@@ -75,10 +79,7 @@ Window {
         if (targetIndex < 0 || targetIndex >= targetModel.count)
             return
         targetModel.remove(targetIndex)
-        if (targetModel.count === 0)
-            targetIndex = -1
-        else
-            targetIndex = Math.min(targetIndex, targetModel.count - 1)
+        targetIndex = targetModel.count === 0 ? -1 : Math.min(targetIndex, targetModel.count - 1)
     }
 
     function clearTarget() {
@@ -101,7 +102,7 @@ Window {
 
     FolderDialog {
         id: folderDialog
-        title: "Select folder containing K500 presets"
+        title: "Select folder containing your K500 presets"
         onAccepted: {
             if (root.fileBridge) {
                 root.fileBridge.setPresetFolder(selectedFolder)
@@ -123,7 +124,7 @@ Window {
                 Layout.fillWidth: true
                 spacing: 3
                 Text {
-                    text: "MASS UPLOAD · TRANSFER LIST"
+                    text: "MASS UPLOAD · PRESET TRANSFER"
                     color: Theme.text
                     font.family: Theme.monoFamily
                     font.pixelSize: 12
@@ -132,7 +133,7 @@ Window {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Choose any presets from your PC collection, then map up to 10 items to K500 device slots. Left list is unlimited; right list is limited to 10 hardware slots."
+                    text: "Mix official SonKuPik presets and your own local presets, then map up to 10 selections to K500 Device Slots."
                     color: Theme.textDim
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -148,7 +149,7 @@ Window {
                 StudioPanel {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.preferredWidth: 390
+                    Layout.preferredWidth: 410
                     accentTop: false
 
                     ColumnLayout {
@@ -173,10 +174,11 @@ Window {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: String(root.fileBridge ? root.fileBridge.folderPresets.length : 0) + " FILES"
-                                color: Theme.textDim
+                                text: String(root.sourcePresets.length) + " PRESETS"
+                                color: Theme.accent
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 8
+                                font.weight: Font.Bold
                             }
                             Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Theme.borderSoft }
                         }
@@ -190,18 +192,42 @@ Window {
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 6
-                                Text {
+                                ColumnLayout {
                                     Layout.fillWidth: true
-                                    text: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0
-                                          ? String(root.fileBridge.presetFolder)
-                                          : "Choose your preset collection folder"
-                                    color: Theme.textDim
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 8
-                                    elide: Text.ElideMiddle
+                                    spacing: 1
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: root.fileBridge ? String(root.fileBridge.officialSyncStatus || "SonKuPik presets ready") : "SonKuPik presets ready"
+                                        color: root.fileBridge && String(root.fileBridge.officialSyncError || "").length > 0 ? Theme.amber : Theme.textSoft
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
+                                        elide: Text.ElideRight
+                                    }
+                                    Text {
+                                        Layout.fillWidth: true
+                                        text: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0
+                                              ? ("LOCAL · " + String(root.fileBridge.presetFolder))
+                                              : "LOCAL · choose a folder for your own presets"
+                                        color: Theme.textDim
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 7
+                                        elide: Text.ElideMiddle
+                                    }
                                 }
-                                SoftButton { Layout.preferredWidth: 70; text: "Folder"; compact: true; enabled: !!root.fileBridge; onClicked: folderDialog.open() }
-                                SoftButton { Layout.preferredWidth: 70; text: "Refresh"; compact: true; enabled: !!root.fileBridge; onClicked: root.fileBridge.refreshPresetFolder() }
+                                SoftButton {
+                                    Layout.preferredWidth: 64
+                                    text: "Folder"
+                                    compact: true
+                                    enabled: !!root.fileBridge
+                                    onClicked: folderDialog.open()
+                                }
+                                SoftButton {
+                                    Layout.preferredWidth: 64
+                                    text: root.fileBridge && root.fileBridge.officialSyncBusy ? "Sync…" : "Sync"
+                                    compact: true
+                                    enabled: !!root.fileBridge && !root.fileBridge.officialSyncBusy
+                                    onClicked: root.fileBridge.syncOfficialPresets()
+                                }
                             }
 
                             Rectangle {
@@ -219,16 +245,17 @@ Window {
                                     anchors.margins: 6
                                     spacing: 3
                                     clip: true
-                                    model: root.fileBridge ? root.fileBridge.folderPresets : []
+                                    model: root.sourcePresets
 
                                     delegate: Rectangle {
                                         required property int index
                                         required property var modelData
                                         width: sourceList.width
-                                        height: 34
+                                        height: 38
                                         radius: 6
                                         readonly property bool validPreset: Boolean(modelData.valid)
                                         readonly property bool selected: index === root.sourceIndex
+                                        readonly property string origin: String(modelData.originLabel || (modelData.source === "folder" ? "LOCAL" : "SONKUPIK"))
                                         color: selected ? "#15252A" : sourceMouse.containsMouse ? "#12181D" : "#0D1115"
                                         border.width: 1
                                         border.color: selected ? Theme.accentSoft : validPreset ? "#252D34" : "#553A32"
@@ -237,13 +264,22 @@ Window {
                                             anchors.fill: parent
                                             anchors.leftMargin: 8
                                             anchors.rightMargin: 8
-                                            spacing: 8
-                                            Text {
-                                                text: String(index + 1)
-                                                color: validPreset ? Theme.amber : Theme.textDim
-                                                font.family: Theme.monoFamily
-                                                font.pixelSize: 8
-                                                font.weight: Font.Bold
+                                            spacing: 7
+                                            Rectangle {
+                                                Layout.preferredWidth: origin === "SONKUPIK" ? 62 : 42
+                                                Layout.preferredHeight: 20
+                                                radius: 5
+                                                color: origin === "SONKUPIK" ? "#18252A" : "#171B20"
+                                                border.width: 1
+                                                border.color: origin === "SONKUPIK" ? Theme.accentSoft : Theme.borderSoft
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: origin
+                                                    color: origin === "SONKUPIK" ? Theme.accent : Theme.textSoft
+                                                    font.family: Theme.monoFamily
+                                                    font.pixelSize: 7
+                                                    font.weight: Font.Bold
+                                                }
                                             }
                                             ColumnLayout {
                                                 Layout.fillWidth: true
@@ -259,9 +295,9 @@ Window {
                                                 }
                                                 Text {
                                                     Layout.fillWidth: true
-                                                    text: String(modelData.fileName || "")
+                                                    text: String(modelData.description || modelData.fileName || "")
                                                     color: Theme.textDim
-                                                    font.family: Theme.monoFamily
+                                                    font.family: Theme.fontFamily
                                                     font.pixelSize: 7
                                                     elide: Text.ElideRight
                                                 }
@@ -289,10 +325,13 @@ Window {
                                     Text {
                                         anchors.centerIn: parent
                                         visible: sourceList.count === 0
-                                        text: "No .k500 presets in selected folder"
+                                        width: parent.width - 30
+                                        horizontalAlignment: Text.AlignHCenter
+                                        text: "SonKuPik presets are available automatically.\nChoose a Local Folder to add your own presets."
                                         color: Theme.textDim
                                         font.family: Theme.monoFamily
                                         font.pixelSize: 9
+                                        wrapMode: Text.WordWrap
                                     }
                                 }
                             }
@@ -308,13 +347,13 @@ Window {
                     SoftButton { Layout.fillWidth: true; text: "Add All  >>"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll() }
                     Item { Layout.preferredHeight: 12 }
                     SoftButton { Layout.fillWidth: true; text: "<  Remove"; compact: true; enabled: root.targetIndex >= 0; onClicked: root.removeSelected() }
-                    SoftButton { Layout.fillWidth: true; text: "<<  Clear"; compact: true; enabled: targetModel.count > 0; onClicked: root.clearTarget() }
+                    SoftButton { Layout.fillWidth: true; text: "<<  Remove All"; compact: true; enabled: targetModel.count > 0; onClicked: root.clearTarget() }
                 }
 
                 StudioPanel {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.preferredWidth: 390
+                    Layout.preferredWidth: 410
                     accentTop: false
 
                     ColumnLayout {
@@ -371,8 +410,9 @@ Window {
                                     required property string displayName
                                     required property string fileName
                                     required property string path
+                                    required property string originLabel
                                     width: targetList.width
-                                    height: 34
+                                    height: 38
                                     radius: 6
                                     readonly property bool selected: index === root.targetIndex
                                     color: selected ? "#15252A" : targetMouse.containsMouse ? "#12181D" : "#0D1115"
@@ -414,7 +454,7 @@ Window {
                                             }
                                             Text {
                                                 Layout.fillWidth: true
-                                                text: fileName
+                                                text: originLabel + " · " + fileName
                                                 color: Theme.textDim
                                                 font.family: Theme.monoFamily
                                                 font.pixelSize: 7
@@ -445,7 +485,7 @@ Window {
                                     visible: targetModel.count === 0
                                     width: parent.width - 30
                                     horizontalAlignment: Text.AlignHCenter
-                                    text: "Add presets from the left.\nTheir order here becomes Device Slot 01…10."
+                                    text: "Add any SonKuPik or Local presets from the left.\nTheir order becomes Device Slot 01…10."
                                     color: Theme.textDim
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 9
@@ -464,7 +504,9 @@ Window {
                     Layout.fillWidth: true
                     text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
                           ? String(root.fileBridge.lastError)
-                          : "Upload validates every preset first; any invalid file cancels the whole batch before hardware write."
+                          : (root.presetManager && root.presetManager.usbStoreAvailable
+                             ? "Ready · upload validates every preset before any hardware write."
+                             : "Prepare the list offline; connect K500 via USB to enable final Mass Upload.")
                     color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                     font.family: Theme.monoFamily
                     font.pixelSize: 8
