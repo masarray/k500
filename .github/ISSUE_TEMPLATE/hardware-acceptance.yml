@@ -1,32 +1,45 @@
 name: K500 hardware acceptance
-about: Record reproducible physical USB/BT qualification evidence for a specific commit
-labels: [hardware-acceptance]
+description: Record reproducible physical K500 qualification or regression evidence for an exact SonKuPik K500 commit.
+title: "[Hardware] "
+labels:
+  - hardware-acceptance
 body:
   - type: markdown
     attributes:
       value: |
-        Use this only for tests performed on a real K500. CI-only results are not hardware acceptance.
+        Use this form only for tests performed on a physical K500. CI-only results are not hardware acceptance.
 
-  - type: input
-    id: commit
-    attributes:
-      label: SONKUPIK STUDIO commit SHA
-      placeholder: 40-character commit SHA
-    validations:
-      required: true
+        **v1.0 qualified baseline:** Windows 10/11 x64 + USB HID. Bluetooth SPP remains experimental and must be qualified independently.
 
   - type: input
     id: version
     attributes:
-      label: SONKUPIK STUDIO version
-      placeholder: 0.5.0 RC
+      label: SonKuPik K500 version
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: commit
+    attributes:
+      label: Exact commit SHA
+      placeholder: 40-character Git commit SHA
     validations:
       required: true
 
   - type: input
     id: firmware
     attributes:
-      label: K500 firmware/version
+      label: K500 firmware / version
+      placeholder: Device firmware/version shown by your hardware workflow
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2 x64
     validations:
       required: true
 
@@ -40,26 +53,24 @@ body:
     validations:
       required: true
 
-  - type: input
-    id: windows
-    attributes:
-      label: Windows version
-    validations:
-      required: true
-
   - type: dropdown
     id: scope
     attributes:
-      label: Acceptance scope
+      label: Acceptance / regression scope
       options:
-        - P0 connect / reconnect / hydration
-        - P1 live controls
-        - P2 Recall / Use Init
-        - P2 current-device permanent Save
-        - P4 PC preset Upload
-        - P4.2 Mass Upload
-        - P5 installer / portable package
+        - Connect / reconnect / 939-byte hydration
+        - LIVE controls / PEQ / crossover
+        - Section navigation / runtime stability
+        - Equipment Mode Recall / Use Init
+        - Current-device permanent Save
+        - PC preset Preview / controlled editing
+        - Single PC preset Upload
+        - Official + Local preset library / Sync
+        - Mass Upload
+        - Installer / portable package
         - Failure / recovery injection
+        - Bluetooth qualification
+        - Other hardware-facing regression
     validations:
       required: true
 
@@ -67,33 +78,44 @@ body:
     id: procedure
     attributes:
       label: Exact test procedure
-      description: Include source/destination slots and changed values for destructive tests.
+      description: Include source/destination slots, preset source/hash, changed controls, and operation order where relevant.
+      placeholder: |
+        1. Connect by USB...
+        2. Select...
+        3. Upload...
     validations:
       required: true
 
   - type: textarea
     id: result
     attributes:
-      label: Result and non-target preservation
-      description: State what changed, what remained unchanged, reconnect result and power-cycle result where applicable.
+      label: Result
+      description: State expected vs actual behavior, non-target preservation, reconnect result, and power-cycle result where relevant.
     validations:
       required: true
 
   - type: input
-    id: report
+    id: evidence
     attributes:
       label: Support Report / trace / capture reference
+      placeholder: Filename, issue attachment, capture ID, or commit-local evidence reference
     validations:
       required: true
 
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional observations
+      description: Optional device/audio/UI observations that may help reproduce the result.
+
   - type: checkboxes
-    id: evidence
+    id: declaration
     attributes:
       label: Evidence declaration
       options:
-        - label: I tested this on a physical K500 using the commit and transport above.
-          required: true
-        - label: I did not mark a permanent-storage test PASS without reconnect and power-cycle verification.
+        - label: I tested this on a physical K500 using the exact version/commit and transport above.
           required: true
         - label: I checked non-target values/slots for unintended changes where applicable.
+          required: true
+        - label: I did not claim permanent persistence without reconnect/power-cycle evidence when persistence is part of this test.
           required: true
