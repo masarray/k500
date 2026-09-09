@@ -4,10 +4,12 @@ SonKuPik K500 controls real audio-processing hardware and includes permanent dev
 
 ## Supported versions
 
+Current supported stable line: **v1.0.x**.
+
 | Version | Status |
 |---|---|
-| `1.0.x` | Supported stable line |
-| `< 1.0` | Historical release candidates; upgrade recommended |
+| `v1.0.x` | Supported stable line |
+| `< v1.0` | Historical release candidates; upgrade recommended |
 | `main` | Development baseline; support depends on current CI state |
 
 The v1.0 hardware-qualified support scope is Windows 10/11 x64 + USB HID. Bluetooth SPP is implemented but remains experimental until independently accepted.
