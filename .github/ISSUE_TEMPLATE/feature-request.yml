@@ -1,0 +1,84 @@
+name: Feature request
+description: Propose an evidence-backed SonKuPik K500 feature, workflow, UX, protocol, or preset-tooling improvement.
+title: "[Feature] "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        SonKuPik K500 prioritizes verified hardware behavior over UI completeness. A visible control is not sufficient evidence for a new hardware write command.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem / user need
+      description: What workflow is difficult or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-facing result rather than only an implementation idea.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - UI / UX
+        - Device connection / transport
+        - LIVE control / protocol
+        - Device Mode / preset transactions
+        - .k500 codec / offline editing
+        - Official + Local preset library
+        - Preset engineering / analysis tools
+        - Packaging / release / security
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: hardware
+    attributes:
+      label: Does this require new or changed K500 hardware writes?
+      options:
+        - No
+        - Yes — donor/capture evidence exists
+        - Yes — protocol evidence still needs to be captured
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Protocol / donor / hardware evidence
+      description: Required for hardware-write proposals. Include packet captures, donor behavior, or exact reproducible observations when available.
+
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety / regression considerations
+      description: Note device-truth, neighboring-byte, permanent-storage, preset-integrity, or compatibility risks.
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional. Explain workarounds or simpler designs you considered.
+
+  - type: checkboxes
+    id: declaration
+    attributes:
+      label: Project principles
+      options:
+        - label: I understand unverified hardware commands should remain read-only rather than being guessed.
+          required: true
+        - label: I understand changes to stable hardware behavior require regression tests and physical validation where relevant.
+          required: true
