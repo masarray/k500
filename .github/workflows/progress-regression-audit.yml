@@ -102,34 +102,36 @@ jobs:
           }
           Write-Host 'Device slot fill-height + button baseline + MODE NAME read-only parity PASS'
 
-      - name: Guard ALL GENRE latest Hi-Fi tuning and binary structure
+      - name: Guard Mode 01 native CONCERT HIFI V4 donor parity
         shell: pwsh
         run: |
           $path = 'resources/presets/01_ALL_GENRE.k500'
           $bytes = [IO.File]::ReadAllBytes($path)
-          if ($bytes.Length -ne 0x0478) { throw "ALL GENRE length regressed: $($bytes.Length), expected 1144" }
+          if ($bytes.Length -ne 0x0478) { throw "Mode 01 length regressed: $($bytes.Length), expected 1144" }
 
           $sum = 0
           foreach ($b in $bytes) { $sum = ($sum + [int]$b) -band 0xff }
-          if ($sum -ne 0) { throw "ALL GENRE checksum regressed: additive sum is $sum" }
+          if ($sum -ne 0) { throw "Mode 01 checksum regressed: additive sum is $sum" }
 
           if ($bytes[0x452] -ne 0x55 -or $bytes[0x453] -ne 0x00) {
-            throw 'ALL GENRE structural marker at 0x452/0x453 regressed'
+            throw 'Mode 01 native structural marker at 0x452/0x453 regressed'
           }
 
           $nameBytes = $bytes[0x454..0x474]
           $name = [Text.Encoding]::ASCII.GetString($nameBytes).Split([char]0)[0].Trim()
           if ($name -ne 'CONCERT HIFI V4') {
-            throw "ALL GENRE latest tuning identity regressed: '$name'"
+            throw "Mode 01 native donor identity regressed: '$name'"
           }
 
+          # Golden source is the user-provided native K500 preset captured from the
+          # official/native workflow. Do not reconstruct or normalize this blob.
           $sha = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
-          $expected = '9e19ce83d840e7e9e21d5fbce6170e95bc48fd1565902b21f90678a3e32d891f'
+          $expected = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'
           if ($sha -ne $expected) {
-            throw "ALL GENRE sonic blob changed unexpectedly: $sha"
+            throw "Mode 01 native donor changed unexpectedly: $sha"
           }
 
-          Write-Host "ALL GENRE Hi-Fi V4 structure/checksum/SHA256 PASS: $sha"
+          Write-Host "Mode 01 native CONCERT HIFI V4 checksum/SHA256 PASS: $sha"
 
       - name: Build and run existing P4.2 runtime regression
         shell: pwsh
