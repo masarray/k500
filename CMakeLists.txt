@@ -113,6 +113,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/ChannelStrip.qml
         qml/components/EqGraph.qml
         qml/components/SectionEqGraph.qml
+        qml/components/SectionEqGraphHost.qml
         qml/components/LocalEqModel.qml
         qml/components/CompressorGraph.qml
         qml/components/KeyControl.qml
