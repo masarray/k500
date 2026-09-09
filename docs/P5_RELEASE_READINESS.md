@@ -1,83 +1,122 @@
-# v1.0 Stable Release Readiness
+# v1.0 Stable Release Qualification
 
-> Status: **public stable approved by maintainer after physical K500 validation of the current Windows/USB workflow**.
+> **Status:** `v1.0.0` is the first public stable SonKuPik K500 release.
 >
-> SonKuPik K500 v1.0.0 is the first public stable release. The stable claim covers the tested Windows x64 + USB HID workflow. Bluetooth SPP remains available in the software but is not part of the v1.0 hardware-qualified support claim and should be treated as experimental until independently accepted.
+> **Hardware-qualified scope:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP remains implemented but experimental and is not part of the v1.0 hardware-qualified support claim.
 
-## Stable checkpoint
+## Published stable checkpoint
 
-The v1.0 stable baseline preserves all software gates completed during the RC cycle and includes the hardware fixes accepted on a physical K500:
+| Item | v1.0.0 record |
+|---|---|
+| Tag | `v1.0.0` |
+| Release commit | `a6c10847597616dbd22ba0271d82f5814991cb3e` |
+| Qt release runtime | `6.10.2` |
+| Windows target | x64 |
+| Stable release | non-draft, non-prerelease |
+| Installer | `SonKuPik-K500-v1.0.0-Windows-Setup.exe` |
+| Portable | `SonKuPik-K500-v1.0.0-Windows-Portable.zip` |
+| Setup SHA-256 | `5fb9458d8b56f047b0304a651c13aeade032ea8a250b0142b6a1c0c2134a7345` |
+| Portable SHA-256 | `5e196c09fc75033f5f44532916b03aa3ff521510606470f46787099d72f00fe4` |
 
-- crash-proof section navigation across Mic/Reverb/Echo/Main/Surround/Center/Sub/System;
-- authoritative 939-byte device readback and hardware-truth slot state;
-- permanent single-preset Upload and deterministic Mass Upload transaction flow;
-- unified Official + Local PC preset library;
-- remote Official Preset sync with validation and last-known-good cache;
-- native donor Mode 01 `CONCERT HIFI V4`, replacing the earlier reconstructed blob;
-- branded Inno Setup installer and ordinary portable ZIP;
-- complete Windows runtime regression suite and installed-app/portable self-tests.
+The release also publishes `SHA256SUMS.txt` and `release-manifest.json` with exact build provenance.
 
-The official Mode 01 donor is intentionally preserved byte-for-byte and guarded by SHA-256:
+## What reached stable
 
-`9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`
+The v1.0 stable baseline includes:
+
+- native Qt 6 / QML Windows application;
+- USB HID connect, heartbeat/handshake, and authoritative 939-byte device hydration;
+- fail-closed LIVE/device transaction architecture;
+- donor-verified live command families;
+- Equipment Mode Recall and Use Init Volume transaction handling;
+- permanent current-device Save;
+- `.k500` bit-preserving parser/codec and controlled edit persistence;
+- single PC preset Upload;
+- deterministic Mass Upload using the native descending Store order;
+- unified **SONKUPIK + LOCAL** preset collection;
+- bundled official preset fallback plus validated GitHub-backed official preset cache/sync;
+- exact native Mode 01 `CONCERT HIFI V4` donor;
+- crash-resistant fixed EQ-page/model lifetime across processor sections;
+- bounded/redacted Support Report diagnostics;
+- branded Inno Setup installer and ordinary portable ZIP.
+
+## Mode 01 native donor
+
+The official Mode 01 file is preserved byte-for-byte:
+
+```text
+resources/presets/01_ALL_GENRE.k500
+internal name: CONCERT HIFI V4
+SHA-256: 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74
+```
+
+This replaced an earlier reconstructed Mode 01 after physical hardware testing exposed a music-output failure. Stable CI now treats native donor identity as an explicit regression contract.
 
 ## Stable support boundary
 
-### Qualified for v1.0
+### Qualified in v1.0
 
-- Windows 10/11 x64.
-- USB HID K500 connection (`VID:PID 10C4:0321`).
-- Full device hydration before LIVE editing.
-- Verified live command families already present in the parity matrix.
-- Equipment Mode Recall with full resync.
-- Use Init Volume transaction.
-- Current-device Save through the proven Store path.
-- PC `.k500` single-slot Upload.
-- 1–10 preset Mass Upload using the proven descending hardware order 10 → 1 followed by Slot 01 recall/readback.
-- Official SonKuPik preset library, local user presets, offline cache and remote preset updates.
+- Windows 10/11 x64;
+- USB HID K500 connection (`VID:PID 10C4:0321`);
+- full device hydration before LIVE;
+- verified live command families documented in the parity matrix;
+- Equipment Mode Recall with full resync;
+- Use Init Volume;
+- current-device permanent Save;
+- PC `.k500` single-slot Upload;
+- 1–10 preset Mass Upload with final Slot 01 recall/readback;
+- Official/Local preset library and validated remote official updates.
 
-### Intentionally not claimed as v1.0 hardware-qualified
+### Deliberately outside the qualified claim
 
-- Bluetooth SPP transport. It remains implemented but requires independent physical acceptance before it is promoted to the same support level as USB.
-- Persistent LCD/Equipment Mode rename. The readback field is available, but writing remains disabled until a donor-verified native rename transaction is captured.
-- Any hardware command that does not yet have a verified donor/native protocol mapping.
+- **Bluetooth SPP:** implemented, but independent hardware qualification is still required.
+- **Persistent LCD/Equipment Mode rename:** readback exists; persistent write remains disabled until a donor-verified native rename transaction is captured.
+- Any UI field for which no verified hardware write protocol exists.
 
-These boundaries are deliberate. Stable does not mean guessed protocol behavior is enabled.
+Stable does not mean guessed protocol behavior is enabled.
 
-## Software release gates
+## Release gates
 
-Every public stable Windows package must pass all of the following from the exact release commit:
+Every stable Windows package must pass from the exact release commit:
 
-1. Clean Qt/MSVC build.
-2. P0/P1 architecture and protocol guards.
-3. P2 permanent preset protocol self-test.
-4. P3 synthetic codec tests.
-5. P3.2 donor corpus tests.
-6. P3.4 controlled edit-persistence tests.
-7. P4/P4.2 single and batch preset guards.
-8. Recovered-progress and official-preset-library guards.
-9. Runtime font, protocol/RX, StudioEngine and section-navigation stress tests.
-10. Portable ZIP extraction + runtime self-tests.
-11. Inno Setup installation + installed-app runtime self-tests.
-12. SHA-256 generation and release-manifest validation.
+1. semantic version/release truth guard;
+2. exact native Mode 01 SHA-256 guard;
+3. clean Qt/MSVC build;
+4. P0/P1 architecture and protocol guards;
+5. P2 preset protocol self-test;
+6. P3 synthetic codec and P3.2 donor corpus tests;
+7. P3.4 controlled edit-persistence test;
+8. P4/P4.2 upload/batch regressions;
+9. runtime font, protocol/RX, StudioEngine, and section-navigation stress tests;
+10. direct deployed-app runtime test;
+11. portable ZIP extraction + runtime tests;
+12. Inno Setup build + real silent installation + installed-app runtime tests;
+13. artifact SHA-256 generation;
+14. machine-readable stable manifest validation;
+15. GitHub release publish as `prerelease: false`.
 
 A failed gate blocks publishing.
 
-## Release artifacts
-
-The stable Windows release contains:
-
-- `SonKuPik-K500-v1.0.0-Windows-Setup.exe`
-- `SonKuPik-K500-v1.0.0-Windows-Portable.zip`
-- `SHA256SUMS.txt`
-- `release-manifest.json`
-
-The release manifest records the exact packaged commit, target, Qt version, hardware-acceptance scope and artifact hashes.
-
 ## Distribution and signing
 
-SonKuPik K500 is free/open-source software. The Windows packages are currently unsigned and therefore Windows SmartScreen or third-party antivirus reputation systems may still warn about a new binary. The installer uses standard Inno Setup 6 and the portable package is a normal ZIP rather than a custom self-extracting executable.
+SonKuPik K500 is GPL-3.0-or-later open-source software. The v1.0 Windows binaries are currently **unsigned**, so SmartScreen or antivirus reputation systems may warn on a new binary. The project does not claim Authenticode signing when none exists.
 
-## Ongoing acceptance
+The official distribution formats are:
 
-Future changes to device protocol, preset conversion, Mass Upload, transport behavior or hardware state truth must preserve the existing regression fortress and be physically revalidated when they change destructive hardware behavior. Stable v1.0 is a baseline, not permission to weaken fail-closed behavior.
+- standard **Inno Setup 6** installer;
+- ordinary **ZIP** portable package.
+
+The retired custom self-extracting portable executable is not part of stable distribution.
+
+## Ongoing release discipline
+
+`v1.0.0` is a frozen public baseline. Future changes should land through focused branches/PRs and preserve exact-head CI evidence.
+
+A hardware/protocol change must be physically revalidated when it can alter destructive device behavior. A documentation-only change must not silently broaden support claims. Bluetooth qualification must remain independent from the USB stable claim until evidence exists.
+
+See also:
+
+- [Release Model](RELEASES.md)
+- [Hardware Acceptance Checklist](HARDWARE_ACCEPTANCE_CHECKLIST.md)
+- [Capability & Protocol Parity Matrix](PORTING_PARITY_MATRIX.md)
+- [Windows Distribution Security](WINDOWS_DISTRIBUTION_SECURITY.md)
