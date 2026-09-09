@@ -17,11 +17,37 @@ ApplicationWindow {
     readonly property int lowerRackHeight: 304
     property int selectedSection: 0
 
+    // CRASH_SAFE_SECTION_RELOAD_V1
+    // Processor sections use different EQ model shapes (Mic=10, Main=7,
+    // Reverb/Echo/etc=5). Never hot-swap those models inside one live QML
+    // graph instance. Destroy the old workspace first, then create the next
+    // workspace on the following event-loop turn. StudioEngine remains alive,
+    // so this changes UI lifetime only and never device/protocol state.
+    function reloadProcessorWorkspace() {
+        if (root.selectedSection === 0) {
+            sectionWorkspaceLoader.active = false
+            return
+        }
+        sectionWorkspaceLoader.active = false
+        Qt.callLater(function() {
+            if (root.selectedSection !== 0)
+                sectionWorkspaceLoader.active = true
+        })
+    }
+    onSelectedSectionChanged: reloadProcessorWorkspace()
+
     background: Rectangle {
         gradient: Gradient {
             GradientStop { position:0;color:"#0C1116" }
             GradientStop { position:.48;color:Theme.bg }
             GradientStop { position:1;color:"#04070A" }
+        }
+    }
+
+    Component {
+        id: sectionWorkspaceComponent
+        SectionWorkspace {
+            engine: root.studioEngine
         }
     }
 
@@ -114,10 +140,18 @@ ApplicationWindow {
                     }
                 }
 
-                SectionWorkspace {
-                    id: sectionWorkspace
-                    engine: root.studioEngine
-                    sectionIndex: root.selectedSection
+                Loader {
+                    id: sectionWorkspaceLoader
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    active: false
+                    sourceComponent: sectionWorkspaceComponent
+                    onLoaded: {
+                        // Deliberately imperative: the old workspace must never
+                        // observe the next sectionIndex before it is destroyed.
+                        if (item)
+                            item.sectionIndex = root.selectedSection
+                    }
                 }
             }
         }
@@ -127,9 +161,11 @@ ApplicationWindow {
     // SectionEqGraph owns the local toggle and SectionWorkspace mirrors it.
     // Keep the hardware path at the application boundary through StudioEngine.
     Connections {
-        target: sectionWorkspace
+        target: sectionWorkspaceLoader.item
+        enabled: target !== null
         function onMicEqLinkedChanged() {
-            root.studioEngine.editDevicePath("mic.eqLink", sectionWorkspace.micEqLinked)
+            if (root.selectedSection === 1)
+                root.studioEngine.editDevicePath("mic.eqLink", target.micEqLinked)
         }
     }
 }
