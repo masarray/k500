@@ -8,7 +8,7 @@ Native **Qt 6 / QML** editor and control application for the K500 karaoke proces
 
 The project ports the verified K500 behavior from the earlier Web/Electron donor into a Windows-native C++ stack. Normal operation does **not** require Electron, Node.js, Web Serial, WebHID, a browser, or a localhost bridge.
 
-> **Release status:** P5 release-candidate hardening. The software regression suite is automated; physical K500 qualification is still required before hardware-facing features are promoted to `LOCKED ✅` or the project is tagged stable `v1.0`.
+> **Release status:** **v1.0 public stable**. The Windows x64 + USB HID workflow has been accepted on physical K500 hardware. Bluetooth SPP remains implemented but is not part of the v1.0 hardware-qualified support claim and should be treated as experimental until independently accepted.
 
 ## Architecture
 
@@ -38,7 +38,7 @@ No QML component owns a raw transport handle.
 ### Native device connection
 
 - Windows USB HID, VID/PID `10C4:0321`, report ID 0, 64-byte HID reports.
-- Windows Bluetooth SPP COM probing at `115200 8N1`.
+- Windows Bluetooth SPP COM probing at `115200 8N1` (experimental support boundary for v1.0).
 - Heartbeat and handshake validation before LIVE is allowed.
 - Full active-memory synchronization: `0x03AB` / **939 bytes**.
 - Readback in verified `0x003A` blocks with 35 ms pacing.
@@ -69,6 +69,8 @@ Fields for which no verified live command exists remain non-destructive rather t
 - Fail-closed behavior on uncertain destructive transactions.
 - Native Mass Upload engine with verified descending slot order and store-chain handling.
 
+Persistent LCD/Equipment Mode rename remains read-only until a donor-verified native write transaction is captured.
+
 ### `.k500` file workflow
 
 - Exact 1144-byte (`0x0478`) file validation.
@@ -80,10 +82,20 @@ Fields for which no verified live command exists remain non-destructive rather t
 - Atomic Save As.
 - Verified `.k500` -> native 656-byte (`0x0290`) slot-image conversion.
 - Single PC preset permanent upload to the selected K500 slot.
-- Deterministic multi-file Mass Upload: filename sort -> sequential selected slots -> native descending device transaction.
+- Deterministic multi-file Mass Upload: selected Slot 01–10 mapping -> native descending device transaction 10 → 1 -> final Slot 01 recall/readback.
 - Whole batch aborts before device writes if any member is invalid.
 
 **Important:** a K500 permanent slot image is not the first `0x0290` bytes of a `.k500` file. The native codec performs the verified scalar split and compact EQ conversion.
+
+### Official + local preset library
+
+- Built-in SonKuPik presets remain available offline.
+- Official presets can be synchronized from `resources/presets` on this repository.
+- New or updated official `.k500` files are validated before entering the local cache.
+- A failed download never replaces the last-known-good cached preset.
+- User-created/local presets are shown together with Official presets in the PC Preset Collection.
+- Official and Local presets can be mixed freely in the 1–10 Mass Upload transfer list.
+- Native Mode 01 `CONCERT HIFI V4` is preserved byte-for-byte and guarded against accidental reconstruction/regression.
 
 ### AI / research preset engineering
 
@@ -155,8 +167,10 @@ The Windows CI build protects the complete software stack, including:
 - P3 synthetic bit-perfect codec tests.
 - P3.2 real donor `.k500` corpus tests.
 - P3.4 controlled-edit persistence tests.
-- P4.2 donor batch-library tests.
-- deployed runtime font, protocol/RX and StudioEngine self-tests.
+- P4/P4.2 upload and donor batch-library tests.
+- Official preset library and recovered-progress guards.
+- Deployed runtime font, protocol/RX, StudioEngine and section-navigation stress tests.
+- Portable ZIP and installed Inno application runtime validation.
 
 Later milestones may extend this fortress, but must not weaken earlier invariants to make a new feature pass.
 
@@ -184,16 +198,16 @@ SONKUPIK-STUDIO-Native-UI.exe --protocol-self-test
 SONKUPIK-STUDIO-Native-UI.exe --engine-self-test
 ```
 
-The user-facing product identity, window title, installer, shortcuts and release packages are **SonKuPik K500**. The internal executable name is intentionally retained for CI compatibility while the native hardware stack is still under release-candidate qualification.
+The user-facing product identity, window title, installer, shortcuts and release packages are **SonKuPik K500**. The internal executable target remains intentionally stable for regression harness compatibility.
 
 ## Windows packages
 
-CI builds two separate branded artifacts:
+Stable CI publishes two separate branded artifacts:
 
 - `SonKuPik-K500-v<version>-Windows-Setup.exe`
-- `SonKuPik-K500-v<version>-Windows-Portable-Single.exe`
+- `SonKuPik-K500-v<version>-Windows-Portable.zip`
 
-`SHA256SUMS.txt` is generated for release verification. P5 also adds a machine-readable release manifest that explicitly records whether physical hardware acceptance is complete.
+`SHA256SUMS.txt` and `release-manifest.json` are generated for every public stable release. The Windows build is currently unsigned open-source software, so SmartScreen or antivirus reputation warnings can still occur on new binaries.
 
 ## Web / landing page branding
 
@@ -205,12 +219,11 @@ The published web copies under `docs/` intentionally remain byte-identical to th
 
 ## Hardware acceptance
 
-Software CI cannot prove electrical/device persistence behavior. Before stable `v1.0`, test the exact release candidate against a physical K500 using:
+The v1.0 stable hardware-qualified support boundary is **Windows x64 + USB HID**. The stable baseline was promoted after maintainer acceptance on physical K500 hardware, including the corrected native Mode 01 preset and crash-proof section navigation.
 
-- `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
-- `docs/P5_RELEASE_READINESS.md`
+Bluetooth SPP remains available but is explicitly outside the v1.0 qualified hardware claim until independently accepted. Any future destructive protocol change must be revalidated against a physical K500 before the stable support boundary is expanded.
 
-USB and Bluetooth must be qualified independently. Permanent Save, PC Upload and Mass Upload must survive reconnect and power cycle with non-target slots preserved.
+See `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md` and `docs/P5_RELEASE_READINESS.md` for acceptance boundaries and regression requirements.
 
 ## License
 
