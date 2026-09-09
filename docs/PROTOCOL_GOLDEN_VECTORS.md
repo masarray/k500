@@ -67,7 +67,7 @@ Music uses current scalar `0x1B` as the final state byte. Verified non-Music cro
 
 `CMD 0x02` is a block write. Rarely edited fields are seeded from device scalar cache, never stale UI defaults. Regression tests deliberately provide different cached values and verify preservation.
 
-## Top Mic `CMD 0x05`
+## P1 Top Mic CMD 0x05
 
 Reference state:
 
@@ -84,7 +84,7 @@ Body layout after command byte:
 
 The final `00` is explicitly **not** EQ Link.
 
-## Top Effect `CMD 0x09`
+## P1 Top Effect CMD 0x09
 
 Reference master effect 49, init 25:
 
@@ -94,7 +94,7 @@ AA 03 09 31 19 AA
 
 The init byte is mirrored from current device scalar `0x15`.
 
-## Mic EQ Link
+## P1 Mic EQ Link
 
 ```text
 OFF  AA 04 3C 00 00 C4 FC
@@ -103,7 +103,7 @@ ON   AA 04 3C 01 01 9E 20
 
 These tail bytes are captured command data and must not be regenerated heuristically.
 
-## Output blocks `CMD 0x0E`
+## P1 output blocks CMD 0x0E
 
 Shared structure:
 
@@ -129,7 +129,7 @@ Main
 AA 25 0E 00 63 00 5F 00 5B 00 57 00 53 00 4F 00 2F 12 07 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 6E
 
 Surround (L=3 ms, R=4 ms delay)
-AA 25 0E 02 63 00 61 00 57 00 55 00 50 00 4B 00 1E 64 01 01 03 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 35
+AA 25 0E 02 63 00 61 00 57 00 55 00 50 00 4B 00 1E 64 01 01 03 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 35
 
 Center
 AA 25 0E 04 63 00 00 00 58 00 56 00 54 00 52 00 2E 0A 05 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 D3
