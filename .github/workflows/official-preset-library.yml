@@ -1,0 +1,64 @@
+name: Guard official preset library
+
+on:
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500OfficialPresetSync.cpp'
+      - 'src/k500/K500PresetBatchBridge.cpp'
+      - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'qml/components/MassUploadTransferWindow.qml'
+      - 'resources/presets/**'
+      - 'packaging/windows/installer.iss'
+      - '.github/workflows/official-preset-library.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/k500/K500PresetFileBridge.*'
+      - 'src/k500/K500OfficialPresetSync.cpp'
+      - 'src/k500/K500PresetBatchBridge.cpp'
+      - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'qml/components/MassUploadTransferWindow.qml'
+      - 'resources/presets/**'
+      - 'packaging/windows/installer.iss'
+      - '.github/workflows/official-preset-library.yml'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard unified preset and update contracts
+        shell: pwsh
+        run: |
+          $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
+          $sync = Get-Content 'src/k500/K500OfficialPresetSync.cpp' -Raw
+          $batch = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
+          $mass = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
+          $access = Get-Content 'src/k500/K500PresetFileBridgeAccess.cpp' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          $installer = Get-Content 'packaging/windows/installer.iss' -Raw
+
+          foreach ($token in @('combinedPresets','officialSyncBusy','syncOfficialPresets','officialSyncStatus')) {
+            if (-not $header.Contains($token)) { throw "Official library header regression: $token" }
+          }
+          foreach ($token in @(
+            'api.github.com/repos/masarray/k500/contents/resources/presets?ref=main',
+            'raw.githubusercontent.com',
+            'validPresetBytes',
+            'QSaveFile',
+            'officialPresetLibrary/gitSha'
+          )) {
+            if (-not $sync.Contains($token)) { throw "Official sync safety regression: $token" }
+          }
+          foreach ($token in @('fileBridge.combinedPresets','syncOfficialPresets()','SONKUPIK','LOCAL','Remove All')) {
+            if (-not $mass.Contains($token)) { throw "Unified Mass Upload regression: $token" }
+          }
+          if (-not $batch.Contains('resourcePath = path.startsWith')) { throw 'Bundled qrc presets can no longer enter transfer upload.' }
+          if (-not $access.Contains('OFFICIAL_PRESET_AUTO_SYNC_V1')) { throw 'Automatic official preset update check was removed.' }
+          if (-not $cmake.Contains('Qt6::Network') -or -not $cmake.Contains('K500OfficialPresetSync.cpp')) { throw 'Qt Network official sync build contract missing.' }
+          foreach ($token in @('SetupIconFile={#AppIcon}','WizardImageFile={#WizardImage}','WizardSmallImageFile={#WizardSmallImage}')) {
+            if (-not $installer.Contains($token)) { throw "Installer branding regression: $token" }
+          }

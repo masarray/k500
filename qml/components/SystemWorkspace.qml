@@ -24,17 +24,22 @@ Item {
         var dm = w ? w["deviceManager"] : null
         return dm ? dm.presetFileBridge : null
     }
-    readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected
+    readonly property bool deviceConnected: !!root.presetManager && root.presetManager.connected
+    readonly property bool offlineFileMode: !root.deviceConnected
+    readonly property bool stagedPresetReady: !!root.fileBridge
+                                              && root.fileBridge.loaded
+                                              && root.fileBridge.checksumOk
+    readonly property bool offlineEditMode: root.offlineFileMode
+                                             && !!root.fileBridge
+                                             && root.fileBridge.editPersistenceEnabled
     // P4_PC_PRESET_UPLOAD_UI_V1 — permanent write remains fail-closed unless
-    // the P3 working document is valid and P2 confirms USB store availability.
-    readonly property bool pcUploadReady: !!root.fileBridge
-                                          && root.fileBridge.loaded
-                                          && root.fileBridge.checksumOk
+    // the staged PC document is valid and P2 confirms USB store availability.
+    readonly property bool pcUploadReady: root.stagedPresetReady
                                           && !!root.presetManager
                                           && root.presetManager.usbStoreAvailable
                                           && !root.presetManager.busy
-    // P4_2_PRESET_BATCH_UI_V1 — batch files are validated only after the user
-    // selects them; before that we require only the safe USB transaction gate.
+    // P4_2_PRESET_BATCH_UI_V1 — only final hardware execution is USB-gated.
+    // The transfer window itself is deliberately available offline.
     readonly property bool massUploadReady: !!root.fileBridge
                                             && !!root.presetManager
                                             && root.presetManager.usbStoreAvailable
@@ -56,23 +61,29 @@ Item {
         return value === undefined || value === null || value === "" ? fallback : value
     }
     function bindFileBridgeEngine() {
-        if (root.fileBridge)
+        if (root.fileBridge) {
             root.fileBridge.engine = root.engine
+            // DEVICE_TRUTH_STAGING_V1: every new selection begins staged-only.
+            // Explicit offline Preview is the only action that opts into the
+            // controlled P3.4 edit-persistence session.
+            root.fileBridge.editTracking = false
+        }
     }
-    function uploadLoadedPreset() {
+    function previewOrUploadLoadedPreset() {
+        if (!root.stagedPresetReady)
+            return
+        if (root.offlineFileMode) {
+            // OFFLINE_PREVIEW_V1 — explicit Preview hydrates visual/editor state
+            // and the bridge then enables its whitelisted offline edit session.
+            root.fileBridge.previewLoadedPreset()
+            return
+        }
         if (!root.pcUploadReady)
             return
-        // Backend performs exact 0x0290 validation again before any Store frame.
+        // Backend performs exact 0x0290 validation again before Store, then
+        // recalls the same slot and full-readbacks the K500 before UI changes.
         root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1,
                                            root.fileBridge.deviceSlotImage())
-    }
-    function massUploadFiles(files) {
-        if (!root.massUploadReady)
-            return
-        var entries = root.fileBridge.buildMassUploadEntries(files,
-                                                              root.selectedDeviceSlot + 1)
-        if (entries && entries.length > 0)
-            root.presetManager.massUploadSlotImages(entries)
     }
     function loadPcLibraryEntry(index) {
         if (!root.fileBridge)
@@ -84,29 +95,51 @@ Item {
             root.fileBridge.loadFolderPreset(index)
     }
 
+    // OFFLINE_DEVICE_SLOT_V1 — ACTIVE is a hardware fact, never a fallback.
+    // Without a connected K500/C0 handshake there is no active device slot.
     readonly property int activeDeviceSlot: {
-        if (root.presetManager && Number(root.presetManager.activeSlot) > 0)
+        if (root.deviceConnected && Number(root.presetManager.activeSlot) > 0)
             return Math.max(0, Math.min(9, Number(root.presetManager.activeSlot) - 1))
-        return Math.max(0, Math.min(9, Number(systemValue("deviceModeIndex", 4)) - 1))
+        return -1
     }
-    property int selectedDeviceSlot: 3
+    property int selectedDeviceSlot: 0
     property var deviceSlots: {
-        var names = systemValue("deviceModeNames", root.defaultDeviceSlots)
+        if (!root.deviceConnected)
+            return root.defaultDeviceSlots
+        var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
         return names && names.length === 10 ? names : root.defaultDeviceSlots
+    }
+    // MODE_NAME_UI_V1 — mirrors the selected hardware slot name only.
+    // Persistent rename stays disabled until the donor write packet is captured.
+    readonly property string selectedDeviceModeName: {
+        if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
+            return ""
+        return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
     }
     readonly property int lowerRackHeight: 304
 
-    Component.onCompleted: root.bindFileBridgeEngine()
+    Component.onCompleted: {
+        root.bindFileBridgeEngine()
+        if (root.activeDeviceSlot >= 0)
+            root.selectedDeviceSlot = root.activeDeviceSlot
+    }
     onFileBridgeChanged: root.bindFileBridgeEngine()
 
     Connections {
-        target: root.engine
-        function onDeviceStateChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
-    }
-    Connections {
         target: root.presetManager
         enabled: !!root.presetManager
-        function onActiveSlotChanged() { root.selectedDeviceSlot = root.activeDeviceSlot }
+        function onActiveSlotChanged() {
+            if (root.activeDeviceSlot >= 0)
+                root.selectedDeviceSlot = root.activeDeviceSlot
+        }
+        function onConnectedChanged() {
+            // DEVICE_TRUTH_EDIT_ISOLATION_V1 — a real K500 session always wins.
+            // Disable PC edit persistence before any subsequent LIVE user edits.
+            if (root.deviceConnected && root.fileBridge)
+                root.fileBridge.editTracking = false
+            if (root.activeDeviceSlot >= 0)
+                root.selectedDeviceSlot = root.activeDeviceSlot
+        }
     }
 
     FileDialog {
@@ -142,12 +175,10 @@ Item {
         }
     }
 
-    FileDialog {
+    MassUploadTransferWindow {
         id: massPresetDialog
-        title: "Mass Upload K500 presets — start slot " + String(root.selectedDeviceSlot + 1)
-        fileMode: FileDialog.OpenFiles
-        nameFilters: ["K500 preset (*.k500)"]
-        onAccepted: root.massUploadFiles(selectedFiles)
+        fileBridge: root.fileBridge
+        presetManager: root.presetManager
     }
 
     ColumnLayout {
@@ -301,7 +332,7 @@ Item {
                                             }
                                         }
                                         Text {
-                                            text: loadedPreset ? "LOADED" : validPreset ? "LOAD" : "INVALID"
+                                            text: loadedPreset ? "STAGED" : validPreset ? "SELECT" : "INVALID"
                                             color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
                                             font.family: Theme.monoFamily
                                             font.pixelSize: 7
@@ -344,7 +375,7 @@ Item {
                                 Text { text: "PC"; color: Theme.amber; font.family: Theme.monoFamily; font.pixelSize: 8; font.weight: Font.Bold }
                                 Text {
                                     Layout.fillWidth: true
-                                    text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET LOADED"
+                                    text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET STAGED"
                                     color: root.fileBridge && root.fileBridge.loaded ? Theme.text : Theme.textDim
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 9
@@ -352,8 +383,10 @@ Item {
                                     elide: Text.ElideRight
                                 }
                                 Text {
-                                    text: root.fileBridge && root.fileBridge.checksumOk ? (root.fileBridge.dirty ? "EDITED" : "VALID") : ""
-                                    color: Theme.accent
+                                    text: root.fileBridge && root.fileBridge.checksumOk
+                                          ? (root.fileBridge.dirty ? "EDITED" : (root.offlineEditMode ? "PREVIEW" : "STAGED"))
+                                          : ""
+                                    color: root.fileBridge && root.fileBridge.dirty ? Theme.amber : Theme.accent
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 7
                                     font.weight: Font.Bold
@@ -365,11 +398,15 @@ Item {
                             Layout.fillWidth: true
                             text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
                                   ? String(root.fileBridge.lastError)
-                                  : (root.fileBridge && root.fileBridge.loaded && root.fileBridge.dirty
+                                  : (root.fileBridge && root.fileBridge.dirty
                                      ? ("Verified edit · " + String(root.fileBridge.changedByteCount) + " changed byte(s) incl. checksum")
-                                     : (root.pcUploadReady
-                                        ? ("PC preset ready · explicit upload to hardware slot " + String(root.selectedDeviceSlot + 1))
-                                        : "PC library is separate from the 10 hardware slots"))
+                                     : (root.offlineEditMode
+                                        ? "Offline preview/edit · verified PEQ/fader edits persist to the staged preset"
+                                        : (root.offlineFileMode && root.stagedPresetReady
+                                           ? "Offline · press Preview to inspect and edit this preset"
+                                           : (root.pcUploadReady
+                                              ? ("Staged only · editor remains K500 truth · Upload to hardware slot " + String(root.selectedDeviceSlot + 1))
+                                              : "PC library is separate from the 10 hardware slots"))))
                             color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                             font.family: Theme.monoFamily
                             font.pixelSize: 8
@@ -379,21 +416,24 @@ Item {
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 6
-                            SoftButton { Layout.fillWidth: true; text: "Open file"; compact: true; enabled: root.offlineFileMode && !!root.fileBridge; onClicked: openPresetDialog.open() }
+                            SoftButton { Layout.fillWidth: true; text: "Open file"; compact: true; enabled: !!root.fileBridge; onClicked: openPresetDialog.open() }
                             SoftButton { Layout.fillWidth: true; text: "Save as"; compact: true; enabled: root.fileBridge && root.fileBridge.loaded; onClicked: savePresetDialog.open() }
                             SoftButton {
                                 Layout.fillWidth: true
-                                text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload"
+                                text: root.offlineFileMode ? (root.offlineEditMode ? "Preview again" : "Preview") : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
                                 compact: true
-                                enabled: root.pcUploadReady
-                                onClicked: root.uploadLoadedPreset()
+                                enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady
+                                onClicked: root.previewOrUploadLoadedPreset()
                             }
                             SoftButton {
                                 Layout.fillWidth: true
                                 text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass"
                                 compact: true
-                                enabled: root.massUploadReady
-                                onClicked: massPresetDialog.open()
+                                // OFFLINE_MASS_PREP_V1 — preparation is local-only and
+                                // remains available without hardware. Final send is gated
+                                // inside MassUploadTransferWindow.
+                                enabled: !!root.fileBridge && (!root.presetManager || !root.presetManager.busy)
+                                onClicked: massPresetDialog.openTransfer()
                             }
                         }
                     }
@@ -420,18 +460,13 @@ Item {
                     ColumnLayout {
                         Layout.fillWidth:true
                         Layout.fillHeight:true
-                        Layout.margins:12
-                        spacing:8
-
-                        RowLayout {
-                            Layout.fillWidth:true
-                            Text{Layout.fillWidth:true;text:(root.activeDeviceSlot+1)+" · "+String(root.deviceSlots[root.activeDeviceSlot] || "K500 DEVICE");color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:12;font.weight:Font.Bold}
-                            Rectangle{width:52;height:24;radius:12;color:"#0B1715";border.width:1;border.color:"#31584E";Text{anchors.centerIn:parent;text:"ACTIVE";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}}
-                        }
+                        Layout.margins:10
+                        spacing:7
 
                         Rectangle {
                             Layout.fillWidth:true
                             Layout.fillHeight:true
+                            Layout.minimumHeight:311
                             radius:10
                             color:"#090D11"
                             border.width:1
@@ -439,6 +474,7 @@ Item {
                             clip:true
 
                             Column {
+                                id: deviceSlotColumn
                                 anchors.fill:parent
                                 anchors.margins:7
                                 spacing:3
@@ -448,9 +484,9 @@ Item {
                                         required property int index
                                         required property string modelData
                                         width:parent.width
-                                        height:27
+                                        height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)
                                         radius:6
-                                        readonly property bool active:index===root.activeDeviceSlot
+                                        readonly property bool active:root.deviceConnected && index===root.activeDeviceSlot
                                         readonly property bool selected:index===root.selectedDeviceSlot
                                         color:selected?"#151B20":"#0D1115"
                                         border.width:1
@@ -467,6 +503,61 @@ Item {
                             }
                         }
 
+                        // Native KTV parity: selected hardware Mode Name.
+                        // Read-only until persistent rename traffic is donor-verified.
+                        RowLayout {
+                            Layout.fillWidth:true
+                            spacing:7
+                            Text {
+                                text:"MODE NAME"
+                                color:Theme.textDim
+                                font.family:Theme.monoFamily
+                                font.pixelSize:8
+                                font.letterSpacing:1.0
+                                Layout.preferredWidth:68
+                            }
+                            Rectangle {
+                                Layout.fillWidth:true
+                                Layout.preferredHeight:29
+                                radius:6
+                                color:"#080C10"
+                                border.width:1
+                                border.color:root.deviceConnected?Theme.borderSoft:"#20272D"
+                                TextInput {
+                                    anchors.fill:parent
+                                    anchors.leftMargin:9
+                                    anchors.rightMargin:9
+                                    verticalAlignment:TextInput.AlignVCenter
+                                    text:root.selectedDeviceModeName
+                                    readOnly:true
+                                    selectByMouse:true
+                                    maximumLength:16
+                                    color:root.deviceConnected?Theme.amber:Theme.textDim
+                                    font.family:Theme.monoFamily
+                                    font.pixelSize:9
+                                    font.weight:Font.Bold
+                                    clip:true
+                                }
+                                Text {
+                                    anchors.left:parent.left
+                                    anchors.leftMargin:9
+                                    anchors.verticalCenter:parent.verticalCenter
+                                    visible:!root.deviceConnected
+                                    text:"Connect K500 to read"
+                                    color:Theme.textDim
+                                    font.family:Theme.monoFamily
+                                    font.pixelSize:8
+                                }
+                            }
+                            Text {
+                                text:"READ ONLY"
+                                color:Theme.textDim
+                                font.family:Theme.monoFamily
+                                font.pixelSize:7
+                                font.weight:Font.Bold
+                            }
+                        }
+
                         RowLayout {
                             Layout.fillWidth:true
                             spacing:5
@@ -480,11 +571,12 @@ Item {
                                 MouseArea{
                                     anchors.fill:parent
                                     cursorShape:Qt.PointingHandCursor
-                                    enabled:root.presetManager&&root.presetManager.connected&&!root.presetManager.busy
+                                    enabled:root.presetManager&&!root.presetManager.busy
                                     onClicked:root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
                                 }
                             }
                             Text{text:"Use init volume";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
+                            Text{visible:root.offlineFileMode;text:"OFFLINE PREF";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7}
                             Item{Layout.fillWidth:true}
                             Text{
                                 visible:root.presetManager&&String(root.presetManager.progress||"").length>0
@@ -501,7 +593,7 @@ Item {
                             spacing:8
                             SoftButton{
                                 Layout.fillWidth:true;text:root.presetManager&&root.presetManager.recallBusy?"Recalling…":"Recall";compact:true
-                                enabled:root.presetManager&&root.presetManager.connected&&!root.presetManager.busy
+                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
                                 onClicked:root.presetManager.recallMode(root.selectedDeviceSlot+1)
                             }
                             SoftButton{

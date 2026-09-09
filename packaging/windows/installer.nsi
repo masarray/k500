@@ -6,16 +6,16 @@ RequestExecutionLevel user
   !error "APP_DIR define is required"
 !endif
 !ifndef OUT_FILE
-  !define OUT_FILE "SONKUPIK-STUDIO-Setup.exe"
+  !define OUT_FILE "SonKuPik-K500-Setup.exe"
 !endif
 !ifndef APP_VERSION
   !define APP_VERSION "0.1.1"
 !endif
 
-Name "SONKUPIK STUDIO ${APP_VERSION}"
+Name "SonKuPik K500 ${APP_VERSION}"
 OutFile "${OUT_FILE}"
-InstallDir "$LOCALAPPDATA\Programs\SONKUPIK STUDIO"
-InstallDirRegKey HKCU "Software\MasArray\SONKUPIK STUDIO" "InstallDir"
+InstallDir "$LOCALAPPDATA\Programs\SonKuPik K500"
+InstallDirRegKey HKCU "Software\MasArray\SonKuPik K500" "InstallDir"
 ShowInstDetails show
 ShowUninstDetails show
 
@@ -24,32 +24,32 @@ Page instfiles
 UninstPage uninstConfirm
 UninstPage instfiles
 
-Section "SONKUPIK STUDIO" SEC_MAIN
+Section "SonKuPik K500" SEC_MAIN
   SetShellVarContext current
   SetOutPath "$INSTDIR"
   File /r "${APP_DIR}\*.*"
 
-  WriteRegStr HKCU "Software\MasArray\SONKUPIK STUDIO" "InstallDir" "$INSTDIR"
+  WriteRegStr HKCU "Software\MasArray\SonKuPik K500" "InstallDir" "$INSTDIR"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
 
-  CreateDirectory "$SMPROGRAMS\SONKUPIK STUDIO"
-  CreateShortcut "$SMPROGRAMS\SONKUPIK STUDIO\SONKUPIK STUDIO.lnk" "$INSTDIR\SONKUPIK-STUDIO-Native-UI.exe"
-  CreateShortcut "$SMPROGRAMS\SONKUPIK STUDIO\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortcut "$DESKTOP\SONKUPIK STUDIO.lnk" "$INSTDIR\SONKUPIK-STUDIO-Native-UI.exe"
+  CreateDirectory "$SMPROGRAMS\SonKuPik K500"
+  CreateShortcut "$SMPROGRAMS\SonKuPik K500\SonKuPik K500.lnk" "$INSTDIR\SONKUPIK-STUDIO-Native-UI.exe"
+  CreateShortcut "$SMPROGRAMS\SonKuPik K500\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
+  CreateShortcut "$DESKTOP\SonKuPik K500.lnk" "$INSTDIR\SONKUPIK-STUDIO-Native-UI.exe"
 
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO" "DisplayName" "SONKUPIK STUDIO"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO" "DisplayVersion" "${APP_VERSION}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO" "Publisher" "MasArray"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO" "UninstallString" '"$INSTDIR\Uninstall.exe"'
-  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO" "NoModify" 1
-  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO" "NoRepair" 1
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500" "DisplayName" "SonKuPik K500"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500" "DisplayVersion" "${APP_VERSION}"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500" "Publisher" "MasArray"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500" "UninstallString" '"$INSTDIR\Uninstall.exe"'
+  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500" "NoModify" 1
+  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500" "NoRepair" 1
 SectionEnd
 
 Section "Uninstall"
   SetShellVarContext current
-  Delete "$DESKTOP\SONKUPIK STUDIO.lnk"
-  RMDir /r "$SMPROGRAMS\SONKUPIK STUDIO"
-  DeleteRegKey HKCU "Software\MasArray\SONKUPIK STUDIO"
-  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SONKUPIK-STUDIO"
+  Delete "$DESKTOP\SonKuPik K500.lnk"
+  RMDir /r "$SMPROGRAMS\SonKuPik K500"
+  DeleteRegKey HKCU "Software\MasArray\SonKuPik K500"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SonKuPik-K500"
   RMDir /r "$INSTDIR"
 SectionEnd

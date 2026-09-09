@@ -2,9 +2,12 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QIcon>
+#include <QList>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QStringList>
+#include <QTimer>
 
 #include "StudioEngine.h"
 #include "k500/K500Controller.h"
@@ -91,8 +94,9 @@ void putLiveEqBand(QByteArray &memory, int sectionOffset, int index,
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("SONKUPIK STUDIO Native UI"));
+    app.setApplicationName(QStringLiteral("SonKuPik K500"));
     app.setOrganizationName(QStringLiteral("MasArray"));
+    app.setWindowIcon(QIcon(QStringLiteral(":/assets/SonKuPik-k500-logo.png")));
 
     if (!registerEmbeddedFonts()) {
         qCritical() << "Plus Jakarta Sans embedded font family is unavailable";
@@ -158,7 +162,8 @@ int main(int argc, char *argv[])
         return 0;
     }
 
-    if (app.arguments().contains(QStringLiteral("--engine-self-test"))) {
+    const bool engineSelfTest = app.arguments().contains(QStringLiteral("--engine-self-test"));
+    if (engineSelfTest) {
         studioEngine.setBass(3.5);
         studioEngine.setHpfHz(95.0);
         studioEngine.setLpType(QStringLiteral("LP LR 24"));
@@ -380,7 +385,8 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(mainEq.value(QStringLiteral("hpfHz")).toDouble(), 45.0)
             && qFuzzyCompare(mainEq.value(QStringLiteral("lpfHz")).toDouble(), 19000.0)
             && hydrationEdits == 0;
-        return hydrationValid ? 0 : 7;
+        if (!hydrationValid)
+            return 7;
     }
 
     QQmlApplicationEngine engine;
@@ -396,5 +402,45 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
     engine.loadFromModule(QStringLiteral("SonkupikStudio"), QStringLiteral("Main"));
+
+    // CRASH_SAFE_SECTION_SELF_TEST_V1
+    // Existing --engine-self-test now also loads the real QML and repeatedly
+    // crosses the risky EQ model-size boundaries. Any native/QML crash makes
+    // the already-established Windows/release runtime self-test fail.
+    if (engineSelfTest) {
+        if (engine.rootObjects().isEmpty()) {
+            qCritical() << "UI section self-test failed: Main root object missing";
+            return 8;
+        }
+
+        QObject *rootObject = engine.rootObjects().constFirst();
+        auto *timer = new QTimer(&app);
+        auto *step = new int(0);
+        const QList<int> sequence{
+            1, 2, 1, 2, 3, 2, 4, 5, 6, 7, 8,
+            7, 6, 5, 4, 3, 2, 1, 2, 1, 0
+        };
+        timer->setInterval(90);
+        QObject::connect(timer, &QTimer::timeout, &app,
+                         [timer, rootObject, sequence, step]() {
+            if (*step >= sequence.size()) {
+                timer->stop();
+                qInfo() << "Engine hydration + UI section navigation self-test passed";
+                delete step;
+                QCoreApplication::exit(0);
+                return;
+            }
+
+            const int section = sequence.at((*step)++);
+            if (!rootObject->setProperty("selectedSection", section)) {
+                timer->stop();
+                qCritical() << "UI section self-test failed to select section" << section;
+                delete step;
+                QCoreApplication::exit(9);
+            }
+        });
+        timer->start();
+    }
+
     return app.exec();
 }

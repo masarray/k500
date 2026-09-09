@@ -11,7 +11,7 @@ ApplicationWindow {
     height: 920
     minimumWidth: 1260
     minimumHeight: 800
-    title: "SONKUPIK STUDIO — Karaoke Processor"
+    title: "SonKuPik K500 — Karaoke Processor"
     color: Theme.bg
 
     readonly property int lowerRackHeight: 304

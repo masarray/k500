@@ -4,6 +4,7 @@
 #include "K500Protocol.h"
 
 #include <QSet>
+#include <QSettings>
 #include <QVariantMap>
 #include <algorithm>
 
@@ -17,12 +18,14 @@ constexpr int UseInitTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
+constexpr auto UseInitPreferenceKey = "system/useInitVolume";
 }
 
 K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent)
     : QObject(parent), m_manager(manager)
 {
     m_timeout.setSingleShot(true);
+    m_useInitVolume = QSettings().value(QString::fromLatin1(UseInitPreferenceKey), false).toBool();
 
     if (!m_manager)
         return;
@@ -35,12 +38,21 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
             this, &K500PresetManager::onBytesReceived);
     connect(m_manager, &K500DeviceManager::statusChanged, this, [this] {
         emit connectedChanged();
-        if (!connected() && busy()) {
-            clearTimeout();
-            m_operation = Operation::None;
-            m_step = Step::Idle;
-            m_readbackPurpose = ReadbackPurpose::None;
-            emit busyChanged();
+        if (!connected()) {
+            // OFFLINE_DEVICE_SLOT_V1 — there is no such thing as an active K500
+            // slot without a connected/handshaken device. Clear the last C0
+            // result so System never paints a stale ACTIVE badge while offline.
+            if (m_activeSlot != 0) {
+                m_activeSlot = 0;
+                emit activeSlotChanged();
+            }
+            if (busy()) {
+                clearTimeout();
+                m_operation = Operation::None;
+                m_step = Step::Idle;
+                m_readbackPurpose = ReadbackPurpose::None;
+                emit busyChanged();
+            }
         }
     });
     connect(m_manager, &K500DeviceManager::transportModeChanged,
@@ -63,6 +75,7 @@ QString K500PresetManager::operationName(Operation operation)
     case Operation::Recall: return QStringLiteral("Recall");
     case Operation::UseInit: return QStringLiteral("Use Init Volume");
     case Operation::Save: return QStringLiteral("Save");
+    case Operation::Upload: return QStringLiteral("Upload");
     case Operation::MassUpload: return QStringLiteral("Mass Upload");
     case Operation::None: break;
     }
@@ -122,6 +135,7 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
 
     if (failedOperation == Operation::UseInit && m_useInitVolume != m_previousUseInitVolume) {
         m_useInitVolume = m_previousUseInitVolume;
+        QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
         emit useInitVolumeChanged();
     }
     setProgress(QStringLiteral("%1 failed").arg(kind));
@@ -198,15 +212,30 @@ void K500PresetManager::recallMode(int slotOneBased)
 void K500PresetManager::sendRecallHandshake()
 {
     m_step = Step::AwaitRecallHandshake;
-    setProgress(QStringLiteral("Recall slot %1 · refresh handshake").arg(m_requestedSlot));
+    setProgress(QStringLiteral("%1 · slot %2 refresh handshake")
+                    .arg(operationName(m_operation)).arg(m_requestedSlot));
     if (!send(K500PresetProtocol::recallHandshake(), QStringLiteral("Recall refresh handshake · mask 0x03")))
         return;
-    armTimeout(RecallHandshakeTimeoutMs, QStringLiteral("Recall"),
+    armTimeout(RecallHandshakeTimeoutMs, operationName(m_operation),
                QStringLiteral("Timeout menunggu RSP 0xC0 setelah Recall."));
 }
 
 void K500PresetManager::setUseInitVolume(bool enabled)
 {
+    // OFFLINE_USE_INIT_V1 — official KTV UI allows this checkbox to be prepared
+    // before a device exists. Offline changes are local preference only: no I/O,
+    // no fake connection error, and no mutation of the editor/device state.
+    if (!connected()) {
+        if (enabled == m_useInitVolume)
+            return;
+        m_useInitVolume = enabled;
+        QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
+        setProgress(QStringLiteral("Use init volume %1 · offline preference")
+                        .arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
+        emit useInitVolumeChanged();
+        return;
+    }
+
     if (enabled == m_useInitVolume && !busy())
         return;
 
@@ -219,6 +248,7 @@ void K500PresetManager::setUseInitVolume(bool enabled)
 
     m_previousUseInitVolume = m_useInitVolume;
     m_useInitVolume = enabled;
+    QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
     emit useInitVolumeChanged();
     m_step = Step::AwaitUseInitAck;
     setProgress(QStringLiteral("Use init volume %1").arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
@@ -313,9 +343,11 @@ void K500PresetManager::onBytesReceived(const QByteArray &bytes)
 
 void K500PresetManager::onResponse(const K500Response &response)
 {
-    // The C0 handshake reports active slot zero-based. Capture it even outside
-    // P2 operations so System UI has an authoritative slot when available.
-    if (response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
+    // The C0 handshake reports active slot zero-based. Capture it during both
+    // initial connection and later Recall handshakes. Stage::Idle is the only
+    // state where a C0 must never resurrect a stale offline ACTIVE badge.
+    if (m_manager && m_manager->m_stage != K500DeviceManager::Stage::Idle
+        && response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
         const int slot = qBound(1, static_cast<int>(static_cast<quint8>(response.data.at(0))) + 1, 10);
         if (m_activeSlot != slot) {
             m_activeSlot = slot;
@@ -442,8 +474,20 @@ void K500PresetManager::finishReadback()
     emit activeMemoryReady(m_readbackMemory);
 
     if (m_readbackPurpose == ReadbackPurpose::Recall) {
-        setProgress(QStringLiteral("Recall slot %1 · 939-byte resync complete").arg(m_activeSlot > 0 ? m_activeSlot : m_requestedSlot));
-        finishOperation(QStringLiteral("Recall"), m_activeSlot > 0 ? m_activeSlot : m_requestedSlot);
+        const int resolvedSlot = m_activeSlot > 0 ? m_activeSlot : m_requestedSlot;
+        if (m_operation == Operation::Upload) {
+            setProgress(QStringLiteral("Upload slot %1 · device activated and 939-byte resync complete").arg(resolvedSlot));
+            finishOperation(QStringLiteral("Upload"), resolvedSlot);
+            return;
+        }
+        if (m_operation == Operation::MassUpload) {
+            setProgress(QStringLiteral("Mass upload complete · slot 1 active · 939-byte resync complete"));
+            finishOperation(QStringLiteral("Mass Upload"), resolvedSlot);
+            return;
+        }
+
+        setProgress(QStringLiteral("Recall slot %1 · 939-byte resync complete").arg(resolvedSlot));
+        finishOperation(QStringLiteral("Recall"), resolvedSlot);
         return;
     }
 
@@ -469,8 +513,11 @@ void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
     m_storeOffset = 0;
     m_pendingStoreLength = 0;
     m_commitFrame.clear();
+    const QString storeKind = m_operation == Operation::MassUpload
+        ? QStringLiteral("Mass upload")
+        : (m_operation == Operation::Upload ? QStringLiteral("Upload") : QStringLiteral("Save"));
     setProgress(QStringLiteral("%1 slot %2 · begin 0x41")
-                    .arg(m_operation == Operation::MassUpload ? QStringLiteral("Mass upload") : QStringLiteral("Save"))
+                    .arg(storeKind)
                     .arg(m_requestedSlot));
     if (!send(K500PresetProtocol::storeBegin(m_storeImage, m_storeChain),
               QStringLiteral("Store begin slot %1 · %2 bytes")
@@ -484,11 +531,12 @@ void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
         return;
     }
 
-    // Native single-slot Save capture proceeds to CMD 0x42 after 80 ms and
-    // does not wait for 0xBE. Only Mass Upload uses the begin ACK chain.
+    // Native single-slot Save/Upload capture proceeds to CMD 0x42 after 80 ms
+    // and does not wait for 0xBE. Only Mass Upload uses the begin ACK chain.
     m_step = Step::SingleStoreBeginDelay;
     QTimer::singleShot(SingleStoreBeginSettleMs, this, [this] {
-        if (m_operation == Operation::Save && m_step == Step::SingleStoreBeginDelay)
+        if ((m_operation == Operation::Save || m_operation == Operation::Upload)
+            && m_step == Step::SingleStoreBeginDelay)
             sendNextStoreChunk();
     });
 }
@@ -547,11 +595,29 @@ void K500PresetManager::acceptStoreCommit()
         const int count = m_massEntries.size();
         m_massEntries.clear();
         m_massIndex = -1;
-        setProgress(QStringLiteral("%1 slot uploaded · refreshing slot 1").arg(count));
-        finishOperation(QStringLiteral("Mass Upload"));
-        QTimer::singleShot(0, this, [this] {
-            if (connected() && !busy())
-                recallMode(1);
+        m_requestedSlot = 1;
+        setProgress(QStringLiteral("%1 slot uploaded · recalling slot 1 before LIVE resumes").arg(count));
+        m_step = Step::RecallDelay;
+        if (!send(K500PresetProtocol::recallMode(m_requestedSlot),
+                  QStringLiteral("Mass Upload final recall slot 1 · mask 0x03")))
+            return;
+        QTimer::singleShot(RecallSettleMs, this, [this] {
+            if (m_operation == Operation::MassUpload && m_step == Step::RecallDelay)
+                sendRecallHandshake();
+        });
+        return;
+    }
+
+    if (m_operation == Operation::Upload) {
+        const int uploadedSlot = m_requestedSlot;
+        setProgress(QStringLiteral("Upload slot %1 committed · recalling same slot before LIVE resumes").arg(uploadedSlot));
+        m_step = Step::RecallDelay;
+        if (!send(K500PresetProtocol::recallMode(uploadedSlot),
+                  QStringLiteral("Upload final recall slot %1 · mask 0x03").arg(uploadedSlot)))
+            return;
+        QTimer::singleShot(RecallSettleMs, this, [this] {
+            if (m_operation == Operation::Upload && m_step == Step::RecallDelay)
+                sendRecallHandshake();
         });
         return;
     }

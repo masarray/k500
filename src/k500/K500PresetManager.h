@@ -29,7 +29,7 @@ public:
     bool connected() const;
     bool busy() const { return m_operation != Operation::None; }
     bool recallBusy() const { return m_operation == Operation::Recall; }
-    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::MassUpload; }
+    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
     bool useInitVolume() const { return m_useInitVolume; }
     bool usbStoreAvailable() const;
     int activeSlot() const { return m_activeSlot; }
@@ -41,8 +41,8 @@ public:
 
     // P4_PC_PRESET_UPLOAD_V1 — a validated 0x0290 image produced by the P3
     // codec can be stored directly without replacing it with fresh device
-    // readback. Internally it intentionally reuses the proven single-slot Save
-    // transaction state because donor savePresetToSlot uses the same chain.
+    // readback. After commit, Upload recalls that same slot and performs a full
+    // 939-byte resync so the editor changes only after the K500 has changed.
     Q_INVOKABLE void uploadSlotImage(int slotOneBased, const QByteArray &image);
 
     // P2 mass-upload engine accepts pre-built 0x0290 slot images. P4 preset
@@ -60,7 +60,7 @@ signals:
     void operationFailed(const QString &kind, const QString &message);
 
 private:
-    enum class Operation { None, Recall, UseInit, Save, MassUpload };
+    enum class Operation { None, Recall, UseInit, Save, Upload, MassUpload };
     enum class Step {
         Idle,
         RecallDelay,

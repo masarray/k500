@@ -6,10 +6,12 @@
 
 void K500PresetManager::uploadSlotImage(int slotOneBased, const QByteArray &image)
 {
-    // P4_PC_PRESET_UPLOAD_V1
+    // DEVICE_TRUTH_UPLOAD_V1
     // The P3 file bridge supplies an already validated/converted native 0x0290
     // image. Unlike saveCurrentToSlot(), this path MUST NOT perform a fresh
-    // device readback because that would replace the PC preset being uploaded.
+    // device readback before Store because that would replace the PC preset
+    // being uploaded. After commit, K500PresetManager recalls the same slot and
+    // performs the normal full 939-byte readback before the editor changes.
     if (!usbStoreAvailable()) {
         const QString error = QStringLiteral("Upload preset PC hanya diaktifkan melalui USB HID.");
         if (m_manager) m_manager->setError(error);
@@ -27,9 +29,7 @@ void K500PresetManager::uploadSlotImage(int slotOneBased, const QByteArray &imag
     }
 
     QString error;
-    // Donor savePresetToSlot uses the same single-store transaction as the P2
-    // Save path: Store Begin, settle delay (no 0xBE wait), chunk ACKs, Commit.
-    if (!beginOperation(Operation::Save, &error)) {
+    if (!beginOperation(Operation::Upload, &error)) {
         if (m_manager) m_manager->setError(error);
         emit operationFailed(QStringLiteral("Upload"), error);
         return;

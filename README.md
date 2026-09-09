@@ -1,4 +1,8 @@
-# SONKUPIK STUDIO — Native K500
+<p align="center">
+  <img src="assets/SonKuPik-k500-logo.png" alt="SonKuPik K500" width="240">
+</p>
+
+# SonKuPik K500
 
 Native **Qt 6 / QML** editor and control application for the K500 karaoke processor.
 
@@ -166,7 +170,7 @@ The report contains build/runtime metadata, transport/status, last error, last T
 - `.k500` preset bytes;
 - local preset paths.
 
-For live console tracing:
+For live console tracing, the internal regression-stable executable is currently:
 
 ```bat
 SONKUPIK-STUDIO-Native-UI.exe --trace-k500
@@ -180,14 +184,24 @@ SONKUPIK-STUDIO-Native-UI.exe --protocol-self-test
 SONKUPIK-STUDIO-Native-UI.exe --engine-self-test
 ```
 
+The user-facing product identity, window title, installer, shortcuts and release packages are **SonKuPik K500**. The internal executable name is intentionally retained for CI compatibility while the native hardware stack is still under release-candidate qualification.
+
 ## Windows packages
 
-CI builds two separate artifacts:
+CI builds two separate branded artifacts:
 
-- `SONKUPIK-STUDIO-v<version>-Windows-Setup.exe`
-- `SONKUPIK-STUDIO-v<version>-Windows-Portable-Single.exe`
+- `SonKuPik-K500-v<version>-Windows-Setup.exe`
+- `SonKuPik-K500-v<version>-Windows-Portable-Single.exe`
 
 `SHA256SUMS.txt` is generated for release verification. P5 also adds a machine-readable release manifest that explicitly records whether physical hardware acceptance is complete.
+
+## Web / landing page branding
+
+The static landing page is in `docs/index.html`. Its favicon, web logo, repository brand image, application window icon and application header all use the same authoritative source image:
+
+`assets/SonKuPik-k500-logo.png`
+
+The published web copies under `docs/` intentionally remain byte-identical to that source image.
 
 ## Hardware acceptance
 
@@ -200,6 +214,6 @@ USB and Bluetooth must be qualified independently. Permanent Save, PC Upload and
 
 ## License
 
-SONKUPIK STUDIO Native K500 is released under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See `LICENSE`.
+SonKuPik K500 is released under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See `LICENSE`.
 
 Qt and other third-party components remain subject to their respective licenses.

@@ -8,6 +8,7 @@ on:
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
       - 'src/k500/K500PresetFileBridge.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'resources/presets/*.k500'
       - 'CMakeLists.txt'
       - '.github/workflows/p3-3-preset-ui.yml'
@@ -17,6 +18,7 @@ on:
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
       - 'src/k500/K500PresetFileBridge.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'resources/presets/*.k500'
       - 'CMakeLists.txt'
       - '.github/workflows/p3-3-preset-ui.yml'
@@ -34,6 +36,7 @@ jobs:
           $fileBridgeHeader = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
           $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
           $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
 
           foreach ($token in @('presetFileBridge READ presetFileBridge CONSTANT','QObject *presetFileBridge() const','m_presetFileBridge')) {
@@ -45,22 +48,51 @@ jobs:
           foreach ($token in @('P3_3_PRESET_FILE_UI_V1','import QtQuick.Dialogs','FileDialog.OpenFile','FileDialog.SaveFile','root.fileBridge.loadFile(selectedFile)','root.fileBridge.saveFile(selectedFile)','root.fileBridge.checksumOk')) {
             if (-not $system.Contains($token)) { throw "P3.3 System UI regression: missing '$token'" }
           }
-          if (-not $system.Contains('readonly property bool offlineFileMode: !root.presetManager || !root.presetManager.connected') -or
-              -not $system.Contains('enabled: root.offlineFileMode && !!root.fileBridge')) {
-            throw 'P3.3 safety regression: manual PC file open/preview must remain offline-only'
+
+          # Manual file open is safe online because it stages only; it must not be
+          # hidden behind an offline-only gate anymore.
+          if (-not $system.Contains('enabled: !!root.fileBridge; onClicked: openPresetDialog.open()')) {
+            throw 'P3.3 staging regression: manual PC file open must remain available online/offline'
           }
 
           if ($system.Contains('P4_PC_PRESET_UPLOAD_UI_V1')) {
-            foreach ($token in @('enabled: root.pcUploadReady','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','root.fileBridge.checksumOk','root.presetManager.usbStoreAvailable')) {
-              if (-not $system.Contains($token)) { throw "P4-gated upload regression: missing '$token'" }
+            foreach ($token in @('previewOrUploadLoadedPreset','root.offlineEditMode ? "Preview again" : "Preview"','root.pcUploadReady','root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1','root.fileBridge.previewLoadedPreset()','root.presetManager.usbStoreAvailable')) {
+              if (-not $system.Contains($token)) { throw "P4/offline-preview UI regression: missing '$token'" }
             }
           } elseif (-not $system.Contains('enabled:false')) {
             throw 'P3.3 dependency safety regression: Upload must be disabled before P4 validation exists'
           }
 
+          # DEVICE_TRUTH_STAGING_V1: selecting a PC file stages bytes only. Exactly
+          # one StudioEngine hydration is allowed and it must live in the explicit
+          # OFFLINE_PREVIEW_V1 action, not loadValidatedBytes().
+          foreach ($token in @('editTracking = false','OFFLINE_DEVICE_SLOT_V1','MassUploadTransferWindow')) {
+            if (-not $system.Contains($token)) { throw "Device-truth System UI regression: missing '$token'" }
+          }
+          foreach ($token in @('DEVICE_TRUTH_STAGING_V1','OFFLINE_PREVIEW_V1','previewLoadedPreset','m_editTracking','buildTransferUploadEntries')) {
+            if (-not $fileBridgeHeader.Contains($token) -and -not $fileBridge.Contains($token)) { throw "Device-truth file bridge regression: missing '$token'" }
+          }
+          $hydrateCount = ([regex]::Matches($fileBridge, 'hydrateFromDeviceMemory\(preview\)')).Count
+          if ($hydrateCount -ne 1) { throw "Offline preview regression: expected exactly one explicit preview hydrate, found $hydrateCount" }
+          $loadStart = $fileBridge.IndexOf('bool K500PresetFileBridge::loadValidatedBytes')
+          $loadEnd = $fileBridge.IndexOf('bool K500PresetFileBridge::loadFile', $loadStart)
+          if ($loadStart -lt 0 -or $loadEnd -le $loadStart) { throw 'loadValidatedBytes boundary missing' }
+          if ($fileBridge.Substring($loadStart, $loadEnd - $loadStart).Contains('hydrateFromDeviceMemory')) {
+            throw 'Device-truth regression: selecting/staging a PC preset must not hydrate StudioEngine'
+          }
+
           if ($system.Contains('P4_2_PRESET_BATCH_UI_V1')) {
-            foreach ($token in @('FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled: root.massUploadReady')) {
-              if (-not $system.Contains($token)) { throw "P4.2-gated Mass Upload regression: missing '$token'" }
+            foreach ($token in @('MassUploadTransferWindow','OFFLINE_MASS_PREP_V1','massPresetDialog.openTransfer()')) {
+              if (-not $system.Contains($token)) { throw "P4.2 System transfer-list regression: missing '$token'" }
+            }
+            foreach ($token in @('folderPresets','maxSlots: 10','Add All','buildTransferUploadEntries','massUploadSlotImages(entries)','root.presetManager.usbStoreAvailable')) {
+              if (-not $transfer.Contains($token)) { throw "P4.2 transfer-list regression: missing '$token'" }
+            }
+            if ($system.Contains('FileDialog.OpenFiles')) {
+              throw 'P4.2 regression: Mass Upload must use transfer-list UI, not direct multi-file upload'
+            }
+            if ($system -match 'text:\s*"Mass"[\s\S]{0,180}enabled:\s*root\.massUploadReady') {
+              throw 'Offline Mass Upload preparation regression: opening transfer list must not require connected USB'
             }
           }
 
@@ -71,6 +103,8 @@ jobs:
             if (-not $fileBridgeHeader.Contains($token) -and -not $fileBridge.Contains($token)) { throw "P6 PC preset library backend regression: missing '$token'" }
           }
 
+          # Built-in bank is now repaired: every shipped preset must be exact and
+          # checksum-valid. No baseline exception is allowed back in.
           $presets = @(Get-ChildItem 'resources/presets' -Filter '*.k500' -File)
           if ($presets.Count -ne 10) { throw "P6 built-in bank must contain exactly 10 .k500 files; found $($presets.Count)" }
           foreach ($preset in $presets) {
@@ -84,8 +118,8 @@ jobs:
             if ($name.Length -gt 16) { throw "$($preset.Name) internal preset name exceeds K500 16-character loader limit: '$name'" }
           }
 
-          foreach ($token in @('built_in_presets','resources/presets/01_ALL_GENRE.k500','QT_RESOURCE_ALIAS "presets/${PRESET_NAME}"')) {
-            if (-not $cmake.Contains($token)) { throw "P6 CMake preset-resource regression: missing '$token'" }
+          foreach ($token in @('built_in_presets','resources/presets/01_ALL_GENRE.k500','QT_RESOURCE_ALIAS "presets/${PRESET_NAME}"','qml/components/MassUploadTransferWindow.qml')) {
+            if (-not $cmake.Contains($token)) { throw "P6/CMake UI-resource regression: missing '$token'" }
           }
           if (-not $cmake.Contains('K500PresetFileBridgeAccess.cpp')) {
             throw 'P3.3 CMake access adapter registration missing'

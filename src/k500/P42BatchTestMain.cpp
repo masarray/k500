@@ -1,5 +1,6 @@
 #include "K500PresetFileBridge.h"
 #include "K500PresetCodec.h"
+#include "../StudioEngine.h"
 
 #include <QCoreApplication>
 #include <QFile>
@@ -19,6 +20,17 @@ bool writeFile(const QString &path, const QByteArray &bytes)
 {
     QFile f(path);
     return f.open(QIODevice::WriteOnly) && f.write(bytes) == bytes.size();
+}
+
+void putFixedAscii(QByteArray &memory, int offset, int length, const QByteArray &text)
+{
+    if (offset < 0 || offset + length > memory.size())
+        return;
+    for (int i = 0; i < length; ++i)
+        memory[offset + i] = char(0);
+    const QByteArray clipped = text.left(length);
+    for (int i = 0; i < clipped.size(); ++i)
+        memory[offset + i] = clipped.at(i);
 }
 }
 
@@ -46,8 +58,8 @@ int main(int argc, char **argv)
 
     K500PresetFileBridge bridge;
     QVariantList urls;
-    // Deliberately reverse the selection order: mapping must be deterministic
-    // by filename, not dependent on FileDialog/platform selection order.
+    // Deliberately reverse the selection order: legacy mapping must remain
+    // deterministic by filename, not FileDialog/platform selection order.
     urls << QUrl::fromLocalFile(bPath) << QUrl::fromLocalFile(aPath);
     const QVariantList entries = bridge.buildMassUploadEntries(urls, 4);
     if (entries.size() != 2)
@@ -67,6 +79,94 @@ int main(int argc, char **argv)
     if (!bridge.buildMassUploadEntries(urls, 10).isEmpty())
         return fail(QStringLiteral("slot overflow was not rejected"));
 
+    // SYSTEM_TRANSFER_LIST_V1: explicit right-list order is authoritative.
+    QVariantList transferPaths;
+    transferPaths << bPath << aPath;
+    const QVariantList transferEntries = bridge.buildTransferUploadEntries(transferPaths);
+    if (transferEntries.size() != 2)
+        return fail(QStringLiteral("valid transfer-list batch rejected"));
+    const QVariantMap transferFirst = transferEntries.at(0).toMap();
+    const QVariantMap transferSecond = transferEntries.at(1).toMap();
+    if (transferFirst.value(QStringLiteral("slot")).toInt() != 1
+        || transferSecond.value(QStringLiteral("slot")).toInt() != 2
+        || !transferFirst.value(QStringLiteral("path")).toString().endsWith(QStringLiteral("02_BETA.k500"))
+        || !transferSecond.value(QStringLiteral("path")).toString().endsWith(QStringLiteral("01_ALPHA.k500")))
+        return fail(QStringLiteral("transfer-list order was sorted or remapped unexpectedly"));
+
+    QVariantList tooMany;
+    for (int i = 0; i < 11; ++i)
+        tooMany << aPath;
+    if (!bridge.buildTransferUploadEntries(tooMany).isEmpty())
+        return fail(QStringLiteral("transfer-list accepted more than 10 device slots"));
+
+    // DEVICE_TRUTH_STAGING_V1: loading a PC preset must not hydrate or replace
+    // the StudioEngine state representing the actual K500, and subsequent LIVE
+    // edits must not silently mutate the staged PC bytes.
+    StudioEngine engine;
+    QByteArray deviceMemory(0x03AB, char(0));
+    const QStringList hardwareNames{
+        QStringLiteral("DEVICE MODE 01"), QStringLiteral("DEVICE MODE 02"),
+        QStringLiteral("DEVICE MODE 03"), QStringLiteral("DEVICE MODE 04"),
+        QStringLiteral("DEVICE MODE 05"), QStringLiteral("DEVICE MODE 06"),
+        QStringLiteral("DEVICE MODE 07"), QStringLiteral("DEVICE MODE 08"),
+        QStringLiteral("DEVICE MODE 09"), QStringLiteral("DEVICE MODE 10")};
+    for (int i = 0; i < hardwareNames.size(); ++i)
+        putFixedAscii(deviceMemory, 0x0290 + i * 0x10, 0x10, hardwareNames.at(i).toLatin1());
+    putFixedAscii(deviceMemory, 0x02C0, 0x10, QByteArray("DEVICE MODE 04"));
+    engine.hydrateFromDeviceMemory(deviceMemory);
+    const QVariantMap deviceStateBeforeStage = engine.deviceState();
+
+    bridge.setEngine(&engine);
+    bridge.setEditTracking(false);
+    if (!bridge.loadFile(QUrl::fromLocalFile(aPath)))
+        return fail(QStringLiteral("valid preset could not be staged"));
+    if (engine.deviceState() != deviceStateBeforeStage)
+        return fail(QStringLiteral("staging PC preset changed StudioEngine/device truth"));
+    if (bridge.editTracking())
+        return fail(QStringLiteral("newly staged preset inherited stale edit tracking"));
+
+    const QByteArray stagedImageBeforeLiveEdit = bridge.deviceSlotImage();
+    engine.setMasterMusic(37.0);
+    const QByteArray stagedImageAfterLiveEdit = bridge.deviceSlotImage();
+    if (stagedImageBeforeLiveEdit != stagedImageAfterLiveEdit)
+        return fail(QStringLiteral("LIVE editor tweak mutated staged PC preset"));
+
+    // OFFLINE_PREVIEW_V1 + P3_4_OFFLINE_EDIT_SESSION_V1: Preview is deliberately
+    // separate from selection. Once explicitly requested, it hydrates the visual
+    // editor and re-enables only the existing mapper-whitelisted edit persistence.
+    const QVariantMap stateImmediatelyBeforePreview = engine.deviceState();
+    const QByteArray stagedImageBeforePreview = bridge.deviceSlotImage();
+    if (!bridge.previewLoadedPreset())
+        return fail(QStringLiteral("explicit offline preview was rejected"));
+    if (engine.deviceState() == stateImmediatelyBeforePreview)
+        return fail(QStringLiteral("explicit offline preview did not hydrate StudioEngine"));
+    if (bridge.deviceSlotImage() != stagedImageBeforePreview)
+        return fail(QStringLiteral("offline preview mutated staged PC preset bytes"));
+    if (!bridge.editTracking() || !bridge.editPersistenceEnabled())
+        return fail(QStringLiteral("offline Preview did not restore controlled edit persistence"));
+
+    const QVariantMap previewSystem = engine.deviceState().value(QStringLiteral("system")).toMap();
+    if (!previewSystem.value(QStringLiteral("btName")).toString().isEmpty()
+        || !previewSystem.value(QStringLiteral("bleName")).toString().isEmpty())
+        return fail(QStringLiteral("offline preview invented hardware-only BT/BLE metadata"));
+
+    const QByteArray beforeOfflineEdit = bridge.deviceSlotImage();
+    engine.setMasterMusic(42.0);
+    const QByteArray afterOfflineEdit = bridge.deviceSlotImage();
+    if (afterOfflineEdit == beforeOfflineEdit || !bridge.dirty() || !bridge.checksumOk())
+        return fail(QStringLiteral("offline Preview edit did not persist as a checksum-valid staged preset"));
+
+    bridge.setEditTracking(false);
+    const QByteArray beforeBlockedEdit = bridge.deviceSlotImage();
+    engine.setMasterMusic(43.0);
+    if (bridge.deviceSlotImage() != beforeBlockedEdit)
+        return fail(QStringLiteral("disabled edit tracking still mutated staged preset"));
+
+    // Loading another file must always reset a prior edit session.
+    bridge.setEditTracking(true);
+    if (!bridge.loadFile(QUrl::fromLocalFile(bPath)) || bridge.editTracking())
+        return fail(QStringLiteral("new preset load did not reset offline edit session"));
+
     QByteArray corrupt = source;
     corrupt[0x20] = static_cast<char>(static_cast<unsigned char>(corrupt.at(0x20)) ^ 0x01);
     const QString badPath = dir.filePath(QStringLiteral("03_CORRUPT.k500"));
@@ -79,6 +179,6 @@ int main(int argc, char **argv)
     if (!bridge.lastError().contains(QStringLiteral("Checksum"), Qt::CaseInsensitive))
         return fail(QStringLiteral("batch checksum rejection did not surface an error"));
 
-    QTextStream(stdout) << "P4.2 donor batch library PASS\n";
+    QTextStream(stdout) << "P4.2 donor batch + transfer staging + offline preview/edit PASS\n";
     return 0;
 }

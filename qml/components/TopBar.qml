@@ -22,7 +22,7 @@ StudioPanel {
         title: "Save K500 support report"
         fileMode: FileDialog.SaveFile
         nameFilters: ["JSON support report (*.json)"]
-        currentFile: "SONKUPIK-K500-support-report.json"
+        currentFile: "SonKuPik-K500-support-report.json"
         onAccepted: root.deviceManager.saveSupportReport(selectedFile)
     }
 
@@ -58,15 +58,15 @@ StudioPanel {
                 }
                 Rectangle { anchors.fill:parent;anchors.margins:1;radius:6;color:"transparent";border.width:1;border.color:"#12FFFFFF" }
                 Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.10 }
-                Image { anchors.fill:parent;anchors.margins:4;source:"qrc:/assets/sonkupik-logo.png";fillMode:Image.PreserveAspectFit;smooth:true }
+                Image { anchors.fill:parent;anchors.margins:3;source:"qrc:/assets/SonKuPik-k500-logo.png";fillMode:Image.PreserveAspectFit;smooth:true }
             }
 
             ColumnLayout {
                 spacing: -1
                 RowLayout {
                     spacing: 3
-                    Text { text:"SONKUPIK";color:Theme.text;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.Bold }
-                    Text { text:"STUDIO";color:Theme.amber;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.Bold }
+                    Text { text:"SonKuPik";color:Theme.text;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.Bold }
+                    Text { text:"K500";color:Theme.amber;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.Bold }
                 }
                 Text { text:"KARAOKE PROCESSOR";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.3 }
             }
@@ -115,7 +115,7 @@ StudioPanel {
                     Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"volume-x";iconOnly:true
                     checked:root.deviceManager.muted;danger:root.deviceManager.muted
                     enabled: root.deviceManager.connected
-                    onClicked: root.deviceManager.toggleMute()
+                    onClicked:root.deviceManager.toggleMute()
                 }
             }
         }

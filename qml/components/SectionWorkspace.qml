@@ -59,10 +59,9 @@ Item {
                 anchors.fill: parent
                 spacing: 12
 
-                SectionEqGraph {
-                    bandModel: root.activeEqModel()
-                    sectionLabel: root.activeEqLabel()
-                    showMicSelector: root.sectionIndex === 1
+                SectionEqGraphHost {
+                    engine: root.engine
+                    sectionIndex: root.sectionIndex
                     micChannel: root.micChannel
                     eqLinked: root.micEqLinked
                     Layout.fillWidth: true

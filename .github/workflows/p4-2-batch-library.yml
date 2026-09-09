@@ -9,6 +9,7 @@ on:
       - 'src/k500/P42BatchTestMain.cpp'
       - 'src/k500/K500PresetManager.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'tests/fixtures/*.k500'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-2-batch-library.yml'
@@ -19,6 +20,7 @@ on:
       - 'src/k500/P42BatchTestMain.cpp'
       - 'src/k500/K500PresetManager.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
       - 'tests/fixtures/*.k500'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-2-batch-library.yml'
@@ -36,23 +38,55 @@ jobs:
           $batch = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
           $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
           $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $manager = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
           $test = Get-Content 'src/k500/P42BatchTestMain.cpp' -Raw
+
+          # Keep the legacy file-dialog batch builder stable for regression parity.
           foreach ($token in @('P4_2_PRESET_BATCH_LIBRARY_V1','document.checksumOk','buildDeviceSlotImage','QString::compare','startSlot + urls.size() - 1 > 10')) {
-            if (-not $batch.Contains($token)) { throw "P4.2 batch safety contract missing '$token'" }
-          }
-          if (-not $header.Contains('buildMassUploadEntries')) { throw 'P4.2 batch API missing' }
-          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','FileDialog.OpenFiles','root.fileBridge.buildMassUploadEntries','root.presetManager.massUploadSlotImages(entries)','enabled: root.massUploadReady')) {
-            if (-not $system.Contains($token)) { throw "P4.2 UI contract missing '$token'" }
-          }
-          foreach ($token in @('std::sort(normalized.begin(), normalized.end()','return a.slot > b.slot','m_massEntries = normalized','AwaitMassBeginAck')) {
-            if (-not $manager.Contains($token)) { throw "P4.2 P2 mass-chain regression missing '$token'" }
-          }
-          foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch')) {
-            if (-not $test.Contains($token)) { throw "P4.2 donor batch test missing '$token'" }
+            if (-not $batch.Contains($token)) { throw "P4.2 legacy batch safety contract missing '$token'" }
           }
 
-          # P6 must not silently route PC library loads through Mass Upload.
+          # Transfer-list mapping is explicit: visible row 1..10 maps to hardware slot 1..10.
+          # Transmission order is intentionally NOT decided here; the P2 transaction engine
+          # sorts those hardware slots descending to reproduce the native 10 -> 1 capture.
+          foreach ($token in @('SYSTEM_TRANSFER_LIST_V1','buildTransferUploadEntries','paths.size() > 10','entry.insert(QStringLiteral("slot"), i + 1)')) {
+            if (-not $batch.Contains($token)) { throw "P4.2 transfer batch safety contract missing '$token'" }
+          }
+          foreach ($token in @('buildMassUploadEntries','buildTransferUploadEntries')) {
+            if (-not $header.Contains($token)) { throw "P4.2 batch API missing '$token'" }
+          }
+
+          # OFFLINE_MASS_PREP_V1: open/select/reorder is a PC-side workflow and
+          # must remain available disconnected. Only the final transfer button is
+          # gated by USB store readiness inside the popup.
+          foreach ($token in @('P4_2_PRESET_BATCH_UI_V1','MassUploadTransferWindow','OFFLINE_MASS_PREP_V1','massPresetDialog.openTransfer()')) {
+            if (-not $system.Contains($token)) { throw "P4.2 System UI contract missing '$token'" }
+          }
+          foreach ($token in @('folderPresets','maxSlots: 10','Add All','Remove','buildTransferUploadEntries','massUploadSlotImages(entries)','root.presetManager.usbStoreAvailable')) {
+            if (-not $transfer.Contains($token)) { throw "P4.2 transfer-list UI contract missing '$token'" }
+          }
+          if ($system.Contains('FileDialog.OpenFiles')) { throw 'P4.2 Mass Upload must not bypass the transfer-list review UI' }
+          if ($system -match 'text:\s*root\.presetManager.*"Mass"[\s\S]{0,180}enabled:\s*root\.massUploadReady') {
+            throw 'P4.2 offline preparation regression: Mass popup open must not require USB/connection'
+          }
+
+          # Native capture MASS_UPLOAD_TO_DEVICE_10_PRESET_INIT_OFF proves descending
+          # hardware execution: slot 10 -> 1, BE begin ACK on every slot, chained
+          # commit signature/checksum, then slot-1 Recall + C0 + full 939-byte readback.
+          foreach ($token in @('std::sort(normalized.begin(), normalized.end()','return a.slot > b.slot','m_massEntries = normalized','AwaitMassBeginAck','response.rsp == 0xBE','response.rsp == 0xBD','response.rsp == 0xBC','m_requestedSlot = 1','K500PresetProtocol::recallMode(m_requestedSlot)','m_operation == Operation::MassUpload','startReadback(ReadbackPurpose::Recall)','finishOperation(QStringLiteral("Mass Upload"), resolvedSlot)')) {
+            if (-not $manager.Contains($token)) { throw "P4.2 native descending mass-chain regression missing '$token'" }
+          }
+          if ($manager.Contains('finishOperation(QStringLiteral("Mass Upload"));')) {
+            throw 'P4.2 regression: Mass Upload must not finish/re-enable LIVE immediately after final Store commit'
+          }
+
+          foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch','transfer-list order was sorted or remapped unexpectedly','transfer-list accepted more than 10 device slots','staging PC preset changed StudioEngine/device truth','LIVE editor tweak mutated staged PC preset')) {
+            if (-not $test.Contains($token)) { throw "P4.2 donor/transfer regression test missing '$token'" }
+          }
+
+          # P6 ordinary preset selection only stages a PC file. It must never silently
+          # trigger permanent Mass Upload.
           foreach ($token in @('root.fileBridge.loadBuiltInPreset(index)','root.fileBridge.loadFolderPreset(index)','PC PRESET LIBRARY','DEVICE PRESET SLOTS')) {
             if (-not $system.Contains($token)) { throw "P6/P4.2 separation regression: missing '$token'" }
           }

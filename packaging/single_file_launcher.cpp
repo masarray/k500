@@ -26,7 +26,7 @@ constexpr char kMagic[16] = {
 
 void showError(const std::wstring &message)
 {
-    MessageBoxW(nullptr, message.c_str(), L"SONKUPIK STUDIO", MB_OK | MB_ICONERROR);
+    MessageBoxW(nullptr, message.c_str(), L"SonKuPik K500", MB_OK | MB_ICONERROR);
 }
 
 bool readExact(HANDLE file, void *buffer, DWORD bytes)
@@ -135,7 +135,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     wchar_t tempBase[MAX_PATH]{};
     GetTempPathW(MAX_PATH, tempBase);
     const auto root = std::filesystem::path(tempBase)
-                    / (L"SONKUPIK-STUDIO-" + std::to_wstring(GetCurrentProcessId()));
+                    / (L"SonKuPik-K500-" + std::to_wstring(GetCurrentProcessId()));
     const auto appDirectory = root / L"app";
     std::error_code error;
     std::filesystem::create_directories(appDirectory, error);

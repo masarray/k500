@@ -6,7 +6,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
-find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2)
+find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network)
 qt_standard_project_setup(REQUIRES 6.8)
 
 qt_add_executable(sonkupik_studio_native WIN32
@@ -27,6 +27,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500PresetFileBridge.cpp
     src/k500/K500PresetFileBridge.h
     src/k500/K500PresetFileBridgeAccess.cpp
+    src/k500/K500OfficialPresetSync.cpp
     src/k500/K500PresetBatchBridge.cpp
     src/k500/K500PresetManager.cpp
     src/k500/K500PresetManager.h
@@ -80,6 +81,7 @@ add_executable(k500_p42_batch_test
     src/k500/K500PresetBatchBridge.cpp
     src/k500/K500PresetFileBridge.cpp
     src/k500/K500PresetFileBridge.h
+    src/k500/K500OfficialPresetSync.cpp
     src/k500/K500PresetEditMapper.cpp
     src/k500/K500PresetEditMapper.h
     src/k500/K500PresetCodec.cpp
@@ -87,7 +89,7 @@ add_executable(k500_p42_batch_test
     src/StudioEngine.cpp
     src/StudioEngine.h
 )
-target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core)
+target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core Qt6::Network)
 
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
@@ -111,6 +113,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/ChannelStrip.qml
         qml/components/EqGraph.qml
         qml/components/SectionEqGraph.qml
+        qml/components/SectionEqGraphHost.qml
         qml/components/LocalEqModel.qml
         qml/components/CompressorGraph.qml
         qml/components/KeyControl.qml
@@ -129,11 +132,13 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/RackDynamicsPanel.qml
         qml/components/RackFilterPanel.qml
         qml/components/SystemWorkspace.qml
+        qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
 )
 
-set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/sonkupik-logo.png")
-set_source_files_properties("${SONKUPIK_LOGO}" PROPERTIES QT_RESOURCE_ALIAS "assets/sonkupik-logo.png")
+# BRAND_SONKUPIK_K500_V1 — one authoritative visual identity for app/header/web.
+set(SONKUPIK_LOGO "${CMAKE_CURRENT_SOURCE_DIR}/assets/SonKuPik-k500-logo.png")
+set_source_files_properties("${SONKUPIK_LOGO}" PROPERTIES QT_RESOURCE_ALIAS "assets/SonKuPik-k500-logo.png")
 qt_add_resources(sonkupik_studio_native brand_assets
     PREFIX "/"
     FILES "${SONKUPIK_LOGO}"
@@ -154,9 +159,8 @@ qt_add_resources(sonkupik_studio_native embedded_fonts
     FILES ${SONKUPIK_FONT_FILES}
 )
 
-# P6_PC_PRESET_LIBRARY_V1 — curated PC-side presets ship as application
-# resources. They are never written into K500 device slots automatically;
-# loading only hydrates the existing validated PC working document.
+# Bundled official presets are the offline fallback. Runtime GitHub sync may
+# replace/add validated files in the user cache, never mutate these resources.
 set(SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ALL_GENRE.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BROADCAST.k500"
@@ -182,15 +186,15 @@ target_link_libraries(sonkupik_studio_native
     PRIVATE
         Qt6::Quick
         Qt6::QuickControls2
+        Qt6::Network
 )
 
 if(WIN32)
-    # Native K500 transport uses SetupAPI for HID enumeration and hid.lib for
-    # report capabilities. Bluetooth SPP uses Win32 COM directly, so no
-    # QtSerialPort or third-party hidapi runtime is required.
     target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid)
 endif()
 
+# Keep the internal executable name stable for regression harnesses; user-facing
+# product/package identity is SonKuPik K500.
 set_target_properties(sonkupik_studio_native PROPERTIES
     OUTPUT_NAME "SONKUPIK-STUDIO-Native-UI"
 )
