@@ -17,18 +17,18 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 - `NOT PORTED ❌` — known donor capability has no native implementation.
 - `DONOR EVIDENCE 🟨` — historical donor/capture remains a specification reference, not a runtime dependency.
 
-## Non-negotiable architecture invariants
+## P0 non-negotiable invariants
 
 1. QML never talks directly to raw device I/O.
 2. LIVE path remains `QML -> StudioEngine -> K500Controller -> K500DeviceManager -> K500WinIo`.
 3. Transactional preset path remains `System UI -> K500PresetManager -> K500DeviceManager -> K500WinIo`.
 4. On connect/recall, the device is source of truth.
 5. Connect order remains heartbeat -> handshake -> full `0x03AB` / 939-byte readback -> hydrate while LIVE is OFF -> LIVE ON.
-6. Hydration emits zero replay edits/device writes.
+6. Hydration must emit **zero** replay edits/device writes.
 7. USB remains VID/PID `10C4:0321`, report ID 0, 64-byte HID reports.
 8. Bluetooth `CMD 0x40` read mode remains `0x63`; USB read mode remains `0x00`.
 9. Verified protocol bytes never change without donor/capture evidence and golden-vector updates.
-10. Unsupported paths remain non-destructive instead of guessing bytes.
+10. An `unsupportedPath` remains non-destructive instead of guessing bytes.
 11. Preset no-op operations remain byte-identical and preserve unknown/reserved data.
 12. Section navigation must retain stable EQ graph/model lifetimes and pass the runtime navigation stress test.
 
