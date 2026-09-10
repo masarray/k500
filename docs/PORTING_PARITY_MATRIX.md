@@ -24,7 +24,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 3. Transactional preset path remains `System UI -> K500PresetManager -> K500DeviceManager -> K500WinIo`.
 4. On connect/recall, the device is source of truth.
 5. Connect order remains heartbeat -> handshake -> full `0x03AB` / 939-byte readback -> hydrate while LIVE is OFF -> LIVE ON.
-6. Hydration must emit **zero** replay edits/device writes.
+6. hydration must emit **zero** replay edits/device writes.
 7. USB remains VID/PID `10C4:0321`, report ID 0, 64-byte HID reports.
 8. Bluetooth `CMD 0x40` read mode remains `0x63`; USB read mode remains `0x00`.
 9. Verified protocol bytes never change without donor/capture evidence and golden-vector updates.
