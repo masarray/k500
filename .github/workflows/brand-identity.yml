@@ -97,7 +97,12 @@ jobs:
           if ($release.Contains('Portable-Single.exe') -or $release.Contains('packaging/windows/portable.nsi') -or $release.Contains('Build installer and true portable single EXE')) {
             throw 'AV-friendly regression: custom self-extracting portable EXE returned to the active stable release pipeline.'
           }
-          foreach ($token in @('# SonKuPik K500','assets/SonKuPik-k500-logo.png','v1.0.0')) {
+
+          $readmeHasProductHeading = $readme.Contains('# SonKuPik K500') -or $readme.Contains('<h1 align="center">SonKuPik K500</h1>')
+          if (-not $readmeHasProductHeading) {
+            throw 'README brand regression: SonKuPik K500 product heading is missing.'
+          }
+          foreach ($token in @('assets/SonKuPik-k500-logo.png','v1.0.0')) {
             if (-not $readme.Contains($token)) { throw "README brand regression: missing '$token'" }
           }
 
