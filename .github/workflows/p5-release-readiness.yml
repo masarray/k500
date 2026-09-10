@@ -1,80 +1,202 @@
-name: Guard P5 release readiness
+name: Guard v1 stable release readiness
 
 on:
   workflow_dispatch:
   push:
     paths:
       - 'README.md'
+      - 'CHANGELOG.md'
+      - 'SUPPORT.md'
       - 'LICENSE'
       - 'SECURITY.md'
       - 'CONTRIBUTING.md'
-      - 'docs/P5_RELEASE_READINESS.md'
-      - 'docs/HARDWARE_ACCEPTANCE_CHECKLIST.md'
-      - 'docs/PORTING_PARITY_MATRIX.md'
-      - 'src/AppVersionInit.cpp'
+      - 'AGENTS.md'
+      - 'DESIGN_NOTES.md'
+      - 'SOURCE_SNAPSHOT.md'
+      - 'docs/**'
       - 'src/k500/K500DeviceManager.*'
       - 'qml/components/TopBar.qml'
       - 'CMakeLists.txt'
-      - '.github/workflows/windows-release.yml'
+      - 'resources/presets/01_ALL_GENRE.k500'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/workflows/windows-stable-release.yml'
       - '.github/workflows/p5-release-readiness.yml'
   pull_request:
     paths:
       - 'README.md'
+      - 'CHANGELOG.md'
+      - 'SUPPORT.md'
       - 'LICENSE'
       - 'SECURITY.md'
       - 'CONTRIBUTING.md'
-      - 'docs/P5_RELEASE_READINESS.md'
-      - 'docs/HARDWARE_ACCEPTANCE_CHECKLIST.md'
-      - 'docs/PORTING_PARITY_MATRIX.md'
-      - 'src/AppVersionInit.cpp'
+      - 'AGENTS.md'
+      - 'DESIGN_NOTES.md'
+      - 'SOURCE_SNAPSHOT.md'
+      - 'docs/**'
       - 'src/k500/K500DeviceManager.*'
       - 'qml/components/TopBar.qml'
       - 'CMakeLists.txt'
-      - '.github/workflows/windows-release.yml'
+      - 'resources/presets/01_ALL_GENRE.k500'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
+      - '.github/workflows/windows-stable-release.yml'
       - '.github/workflows/p5-release-readiness.yml'
 
 jobs:
-  p5-readiness:
+  stable-readiness:
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Guard P5 public and release contracts
+      - name: Guard public stable documentation contracts
         shell: pwsh
         run: |
           $readme = Get-Content README.md -Raw
           $license = Get-Content LICENSE -Raw
+          $security = Get-Content SECURITY.md -Raw
+          $contrib = Get-Content CONTRIBUTING.md -Raw
+          $changelog = Get-Content CHANGELOG.md -Raw
+          $docsIndex = Get-Content docs/README.md -Raw
+          $userGuide = Get-Content docs/USER_GUIDE.md -Raw
+          $architecture = Get-Content docs/ARCHITECTURE.md -Raw
+          $releases = Get-Content docs/RELEASES.md -Raw
           $readiness = Get-Content docs/P5_RELEASE_READINESS.md -Raw
           $hardware = Get-Content docs/HARDWARE_ACCEPTANCE_CHECKLIST.md -Raw
           $matrix = Get-Content docs/PORTING_PARITY_MATRIX.md -Raw
+          $codec = Get-Content docs/P3_K500_CODEC.md -Raw
+          $fileUi = Get-Content docs/P3_3_PRESET_FILE_UI.md -Raw
+          $landing = Get-Content docs/index.html -Raw
+          $stableWorkflow = Get-Content .github/workflows/windows-stable-release.yml -Raw
           $deviceHeader = Get-Content src/k500/K500DeviceManager.h -Raw
           $device = Get-Content src/k500/K500DeviceManager.cpp -Raw
           $topbar = Get-Content qml/components/TopBar.qml -Raw
           $cmake = Get-Content CMakeLists.txt -Raw
-          $release = Get-Content .github/workflows/windows-release.yml -Raw
 
           foreach ($token in @('GNU GENERAL PUBLIC LICENSE','Version 3, 29 June 2007','END OF TERMS AND CONDITIONS')) {
-            if (-not $license.Contains($token)) { throw "GPL-3 license text regression: missing '$token'" }
+            if (-not $license.Contains($token)) { throw "GPL-3 license regression: missing '$token'" }
           }
-          foreach ($token in @('P5 release-candidate hardening','P4.2 donor batch-library tests','Support diagnostics','GPL-3.0-or-later')) {
-            if (-not $readme.Contains($token)) { throw "P5 README regression: missing '$token'" }
+
+          foreach ($token in @(
+            'Stable release:',
+            'Windows 10/11 x64 + USB HID',
+            'Bluetooth SPP',
+            'Unified Official + Local library',
+            'Crash-resistant section navigation',
+            '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74',
+            'SonKuPik-K500-v1.0.0-Windows-Portable.zip',
+            'GPL-3.0-or-later'
+          )) {
+            if (-not $readme.Contains($token)) { throw "Stable README contract missing '$token'" }
           }
-          if ($readme.Contains('Segoe UI Variable Text') -or $readme.Contains('Currently wired live controls')) {
-            throw 'P5 README regressed to obsolete porting status'
+          if ($readme.Contains('Portable-Single.exe') -or $readme.Contains('physical K500 qualification is still required before')) {
+            throw 'README regressed to retired RC packaging/status.'
           }
-          foreach ($token in @('physical K500 acceptance pending','stable `v1.0`','release-manifest.json')) {
-            if (-not $readiness.Contains($token)) { throw "P5 readiness contract missing '$token'" }
+
+          foreach ($token in @('## 1.0.0 — Public stable','CONCERT HIFI V4','Official + Local','crash')) {
+            if (-not $changelog.Contains($token)) { throw "v1 changelog contract missing '$token'" }
           }
-          foreach ($token in @('PC preset permanent Upload — P4','Multi-file Mass Upload — P4.2','P5 release-candidate package acceptance','Unplug USB during Mass Upload')) {
-            if (-not $hardware.Contains($token)) { throw "P5 hardware runbook regression: missing '$token'" }
+
+          foreach ($token in @('v1.0.x','USB HID','experimental','Remote Official Preset security','unsigned open-source')) {
+            if (-not $security.Contains($token)) { throw "Security policy contract missing '$token'" }
           }
-          foreach ($token in @('P3 — Bit-perfect `.k500` engine — SOFTWARE COMPLETE','P4 / P4.2 — PC preset upload and batch library — SOFTWARE COMPLETE, HARDWARE GATE PENDING','P5 — Release candidate hardening')) {
-            if (-not $matrix.Contains($token)) { throw "P5 parity matrix regression: missing '$token'" }
+
+          foreach ($token in @('main` represents the current stable baseline','Official preset changes','Mode 01','focused branch')) {
+            if (-not $contrib.Contains($token)) { throw "Contribution policy contract missing '$token'" }
+          }
+
+          foreach ($token in @('Public stable','Qualified transport','Official Mode 01','Architecture','User Guide','Release Model')) {
+            if (-not $docsIndex.Contains($token)) { throw "Documentation index missing '$token'" }
+          }
+          foreach ($token in @('Official SonKuPik presets','Local presets','Preview and offline editing','Mass Upload','Mode 01')) {
+            if (-not $userGuide.Contains($token)) { throw "User guide missing '$token'" }
+          }
+          foreach ($token in @('State authority model','Official preset synchronization','Mass Upload','Crash-resistant QML section architecture','Failure model')) {
+            if (-not $architecture.Contains($token)) { throw "Architecture reference missing '$token'" }
+          }
+          foreach ($token in @('Current stable line: **v1.0.x**','Official Preset update channel','release-manifest.json','Do not republish a stable tag')) {
+            if (-not $releases.Contains($token)) { throw "Release model missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'v1.0.0',
+            'a6c10847597616dbd22ba0271d82f5814991cb3e',
+            'Windows 10/11 x64',
+            'Bluetooth SPP',
+            'release-manifest.json',
+            '5fb9458d8b56f047b0304a651c13aeade032ea8a250b0142b6a1c0c2134a7345'
+          )) {
+            if (-not $readiness.Contains($token)) { throw "Stable qualification record missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'Stable v1.0 is already published',
+            'Unified Official + Local preset library',
+            'Section-navigation crash regression',
+            'Mode 01 golden donor',
+            'Failure / recovery injection'
+          )) {
+            if (-not $hardware.Contains($token)) { throw "Hardware runbook missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'STABLE USB ✅',
+            'EXPERIMENTAL 🧪',
+            'Unified SONKUPIK + LOCAL preset library',
+            'Persistent LCD/Equipment Mode rename',
+            'P5 — Packaging / release qualification — COMPLETE'
+          )) {
+            if (-not $matrix.Contains($token)) { throw "Parity matrix missing '$token'" }
+          }
+
+          foreach ($token in @('LOCKED ✅','v1.0 stable baseline','Mode 01','buildDeviceSlotImage')) {
+            if (-not $codec.Contains($token)) { throw "Codec documentation missing '$token'" }
+          }
+          foreach ($token in @('SONKUPIK + LOCAL','Official Mode 01 integrity','Mass Upload transfer-list behavior','Preview')) {
+            if (-not $fileUi.Contains($token)) { throw "Preset UI documentation missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'v1.0.0 Public Stable',
+            'Native control.',
+            'Official + Local library',
+            'Validated preset sync',
+            'Release integrity',
+            'Portable ZIP'
+          )) {
+            if (-not $landing.Contains($token)) { throw "Landing-page stable contract missing '$token'" }
+          }
+          if ($landing.Contains('Physical K500 hardware acceptance remains required for release qualification.')) {
+            throw 'Landing page regressed to prerelease footer.'
+          }
+
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION 1\.0\.0 LANGUAGES CXX\)') {
+            throw 'Stable semantic version metadata is not 1.0.0.'
+          }
+
+          foreach ($token in @(
+            'HARDWARE_ACCEPTANCE: accepted-windows-usb',
+            'stableReleaseEligible = $true',
+            'prerelease: false',
+            "channel = 'stable'",
+            "portableFormat = 'ZIP (non-self-extracting)'",
+            "mode01NativeSha256 = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'",
+            'Run full preset regression suite',
+            'Validate portable ZIP end-to-end',
+            'Validate Inno installer end-to-end'
+          )) {
+            if (-not $stableWorkflow.Contains($token)) { throw "Stable release pipeline contract missing '$token'" }
+          }
+
+          $mode01Path = 'resources/presets/01_ALL_GENRE.k500'
+          $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($mode01Hash -ne '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74') {
+            throw "Native Mode 01 donor changed: $mode01Hash"
           }
 
           foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
-            if (-not $deviceHeader.Contains($token)) { throw "P5 diagnostics API missing '$token'" }
+            if (-not $deviceHeader.Contains($token)) { throw "Diagnostics API missing '$token'" }
           }
           foreach ($token in @(
             'DiagnosticLogLimit = 240',
@@ -85,35 +207,23 @@ jobs:
             'protocolLog',
             'P5_SUPPORT_REPORT_REDACTION_V1',
             '[REDACTED ACTIVE MEMORY]',
-            '[REDACTED PRESET PAYLOAD]',
-            'startsWith(QStringLiteral("RSP 0xBF"), Qt::CaseInsensitive)',
-            'startsWith(QStringLiteral("Store "), Qt::CaseInsensitive)',
-            'device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic)',
-            'device.insert(QStringLiteral("lastRx"), m_lastRxDiagnostic)'
+            '[REDACTED PRESET PAYLOAD]'
           )) {
-            if (-not $device.Contains($token)) { throw "P5 diagnostics privacy/schema regression: missing '$token'" }
+            if (-not $device.Contains($token)) { throw "Diagnostics privacy/schema regression: missing '$token'" }
           }
-          if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or
-              $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
-            throw 'P5 privacy regression: exported support report must never reference raw lastTx/lastRx'
+          if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
+            throw 'Support report must not export raw lastTx/lastRx.'
           }
           foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
-            if (-not $topbar.Contains($token)) { throw "P5 Support UI regression: missing '$token'" }
+            if (-not $topbar.Contains($token)) { throw "Support UI regression: missing '$token'" }
           }
-          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION [0-9]+\.[0-9]+\.[0-9]+ LANGUAGES CXX\)') {
-            throw 'P5 version metadata regression: semantic project VERSION missing'
-          }
-          foreach ($token in @('src/AppVersionInit.cpp','SONKUPIK_VERSION')) {
-            if (-not $cmake.Contains($token)) { throw "P5 version metadata regression: missing '$token'" }
-          }
-          foreach ($token in @('HARDWARE_ACCEPTANCE: pending','release-manifest.json','stableReleaseEligible = $false','prerelease: true','Run full preset regression suite')) {
-            if (-not $release.Contains($token)) { throw "P5 release pipeline regression: missing '$token'" }
-          }
+
+          Write-Host 'v1 public documentation, provenance, support scope and stable release contracts PASS'
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
-          version: '6.8.3'
+          version: '6.10.2'
           arch: 'win64_msvc2022_64'
           cache: true
 
@@ -122,15 +232,13 @@ jobs:
         with:
           arch: x64
 
-      - name: Configure
+      - name: Configure and build
         shell: pwsh
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+          cmake --build build --config Release
 
-      - name: Build full native app and tests
-        shell: pwsh
-        run: cmake --build build --config Release
-
-      - name: Run P0-P4.2 preset regression suite
+      - name: Run stable preset regression suite
         shell: pwsh
         run: |
           & build/k500_p2_selftest.exe
@@ -148,10 +256,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
           Copy-Item LICENSE package/
-          windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
+          windeployqt --release --qmldir qml package/SonKuPik-K500.exe
           foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
-            $p = Start-Process -FilePath 'package/SONKUPIK-STUDIO-Native-UI.exe' -ArgumentList $arg -Wait -PassThru
+            $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "Runtime $arg failed with exit code $($p.ExitCode)" }
           }

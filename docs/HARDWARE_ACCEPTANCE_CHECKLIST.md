@@ -1,192 +1,216 @@
-# K500 Hardware Acceptance Checklist
+# K500 Hardware Acceptance & Regression Checklist
 
-Use this checklist before promoting any hardware-facing row in `PORTING_PARITY_MATRIX.md` to `LOCKED ✅` or publishing a stable `v1.0`.
+Use this runbook for any change that can affect real K500 behavior. The public v1.0 support baseline is **Windows 10/11 x64 + USB HID**. Bluetooth SPP is implemented but remains experimental until independently qualified.
 
-## Test environment
+Stable v1.0 is already published; this checklist now protects future changes from silently regressing that accepted baseline.
 
-Record for every session:
+## Test record
 
+Record for every physical session:
+
+- SonKuPik K500 version:
+- exact commit SHA:
 - K500 firmware/version:
-- Connection: USB HID / Bluetooth SPP:
 - Windows version:
-- SONKUPIK STUDIO version:
-- SONKUPIK STUDIO commit SHA:
-- Donor/web version or capture reference used for comparison:
-- Tester/date:
-- Support-report filename / trace reference:
+- transport: USB HID / Bluetooth SPP:
+- test date and tester:
+- donor/capture reference when protocol behavior is involved:
+- Support Report / trace / capture reference:
+- affected source/destination slots for preset operations:
 
-## P0 baseline reconnect test
+A check mark without a reproducible version/commit and transport is not sufficient evidence for a hardware-facing promotion.
 
-1. Start with manufacturer software closed.
+## Baseline connect / reconnect
+
+1. Close manufacturer software and any process that can own the K500 transport.
 2. Connect K500.
-3. Select the intended transport.
-4. Press CONNECT.
-5. Confirm CONNECT/SYNC becomes ONLINE/LIVE only after full readback.
-6. Confirm current K500 values appear in Qt before touching any control.
-7. Disconnect and reconnect.
-8. Confirm the device is source of truth again; stale editor values must not overwrite it.
+3. Select the intended transport and press CONNECT.
+4. Confirm ONLINE/LIVE appears only after handshake and full device readback.
+5. Confirm current K500 values hydrate the editor before any control is touched.
+6. Change one verified control and confirm expected hardware behavior.
+7. Disconnect/reconnect.
+8. Confirm the K500 is authoritative again; stale editor values must not replay into hardware.
 
-Expected trace order:
+Expected USB truth path:
 
 ```text
-heartbeat -> handshake -> CMD 0x40 blocks 0x0000..0x03AA -> 939-byte hydration -> LIVE ON
+heartbeat -> handshake -> CMD 0x40 blocks -> 939-byte hydration -> LIVE ON
 ```
 
 ## Destructive-write safety rule
 
-For every new block command:
+For a new or modified write path:
 
-1. Capture/read all neighboring fields before editing.
-2. Change exactly one target control.
-3. Verify the intended field changes on hardware.
-4. Verify every non-target field remains unchanged.
-5. Disconnect/reconnect and verify persistence semantics are exactly as expected.
+1. establish before-state from device/file truth;
+2. change exactly the intended target;
+3. verify the target changed;
+4. verify neighboring/non-target values did not change;
+5. verify failure/timeout behavior;
+6. reconnect and verify resulting state;
+7. power-cycle when persistence is part of the claim.
 
-If a neighboring field changes unexpectedly, the feature fails acceptance even when the target control appears to work.
+Unexpected neighboring changes are an acceptance failure even if the intended target appears to work.
 
-## LIVE control matrix
+## LIVE control regression matrix
 
-Mark each transport independently.
+Test USB for every stable release that materially changes these paths. Use the Bluetooth column only for Bluetooth qualification work.
 
-| Control family | USB | Bluetooth | Reconnect readback | Non-target fields preserved |
+| Control family | USB stable regression | Bluetooth qualification | Reconnect/readback | Non-target preserved |
 |---|---:|---:|---:|---:|
-| Master Music | [ ] | [ ] | [ ] | [ ] |
-| Music input trims/key | [ ] | [ ] | [ ] | [ ] |
-| Master Mic | [ ] | [ ] | [ ] | [ ] |
-| Mic A/B | [ ] | [ ] | [ ] | [ ] |
+| Master Music / inputs / key | [ ] | [ ] | [ ] | [ ] |
+| Master Mic / Mic A/B | [ ] | [ ] | [ ] | [ ] |
 | Mic dynamics / FBX | [ ] | [ ] | [ ] | [ ] |
 | Master Effect | [ ] | [ ] | [ ] | [ ] |
-| Music PEQ | [ ] | [ ] | [ ] | [ ] |
-| Mic A/B PEQ | [ ] | [ ] | [ ] | [ ] |
-| Main PEQ | [ ] | [ ] | [ ] | [ ] |
-| Surround PEQ | [ ] | [ ] | [ ] | [ ] |
-| Center PEQ | [ ] | [ ] | [ ] | [ ] |
-| Sub PEQ | [ ] | [ ] | [ ] | [ ] |
-| Reverb PEQ | [ ] | [ ] | [ ] | [ ] |
-| Echo PEQ | [ ] | [ ] | [ ] | [ ] |
-| All verified HPF/LPF selectors | [ ] | [ ] | [ ] | [ ] |
+| Music / Mic PEQ | [ ] | [ ] | [ ] | [ ] |
+| Main / Surround / Center / Sub PEQ | [ ] | [ ] | [ ] | [ ] |
+| Reverb / Echo PEQ | [ ] | [ ] | [ ] | [ ] |
+| Verified HPF/LPF selectors | [ ] | [ ] | [ ] | [ ] |
 | Main output block | [ ] | [ ] | [ ] | [ ] |
-| Surround output block/delay | [ ] | [ ] | [ ] | [ ] |
-| Center output block | [ ] | [ ] | [ ] | [ ] |
-| Sub output block | [ ] | [ ] | [ ] | [ ] |
+| Surround output block / delay | [ ] | [ ] | [ ] | [ ] |
+| Center / Sub output block | [ ] | [ ] | [ ] | [ ] |
 | Mic EQ Link | [ ] | [ ] | [ ] | [ ] |
-| Mute/media | [ ] | [ ] | N/A | [ ] |
+| Mute / media | [ ] | [ ] | N/A | [ ] |
 
-## Device preset management gate — P2
+Fields that remain read-only in the parity matrix are not acceptance failures; they are intentional protocol boundaries.
 
-### Recall
+## Section-navigation crash regression
 
-- [ ] LIVE edits are paused during recall.
-- [ ] Recall command/handshake completes.
-- [ ] Full 939-byte readback runs again.
-- [ ] UI reflects recalled slot before LIVE resumes.
-- [ ] No stale queued write is emitted after recall.
-- [ ] Repeat on at least three different slots.
+The v1 baseline uses fixed EQ graph/model lifetimes. If a change touches QML section/workspace lifecycle, run repeated transitions including:
 
-### Use Init Volume
+```text
+Mic A -> Reverb -> Mic B -> Reverb -> Echo -> Main -> Surround -> Center -> Sub -> System
+```
 
-- [ ] Toggle ON receives expected device ACK and UI remains ON.
-- [ ] Toggle OFF receives expected device ACK and UI remains OFF.
-- [ ] Failure/timeout rolls back UI state.
-- [ ] Reconnect confirms the device-side behavior expected from the donor.
+Repeat the sequence rapidly and with a connected K500. There must be no freeze, close, heap corruption, stale-band selection, or unintended hardware write.
 
-### Current-device permanent Save
+## Equipment Mode Recall
 
-- [ ] USB HID is used; operation is rejected over Bluetooth.
-- [ ] Fresh device readback occurs before Store.
-- [ ] Store Begin accepted.
-- [ ] Every chunk accepted in order.
-- [ ] Store Commit accepted.
-- [ ] Application returns to a valid LIVE state.
-- [ ] Recall of the saved slot returns the intended values.
-- [ ] Power-cycle confirms the intended slot persists.
-- [ ] Other slots remain unchanged.
+- [ ] LIVE is paused during Recall.
+- [ ] Selected slot command completes.
+- [ ] `CMD 0x3F` refresh handshake completes and `RSP 0xC0` is received.
+- [ ] Full 939-byte readback completes.
+- [ ] UI reflects hardware slot/readback before LIVE resumes.
+- [ ] No stale queued write is emitted afterward.
+- [ ] Repeat across multiple slots.
 
-## PC preset permanent Upload — P4
+## Use Init Volume
 
-Use a known `.k500` fixture and record its SHA-256 before testing.
+- [ ] ON receives expected `RSP 0xED` behavior.
+- [ ] OFF receives expected `RSP 0xED` behavior.
+- [ ] Failure/timeout does not leave UI claiming an unverified state.
+- [ ] Reconnect confirms expected device behavior.
 
-- [ ] File loads only when exact size/checksum are valid.
-- [ ] Selecting/staging the PC preset does **not** alter current K500 audio, editor, PEQ, faders, active slot, or Device Mode names.
-- [ ] LIVE edits made before Upload do not mutate the staged PC preset bytes.
-- [ ] Upload is enabled only with USB store availability and idle transaction manager.
-- [ ] Selected destination slot is clearly known before starting.
-- [ ] PC preset image is used directly; no pre-Store device readback replaces it.
-- [ ] Store Begin/Chunk/Commit completes without timeout.
-- [ ] Upload automatically activates/recalls the destination slot.
-- [ ] Full 939-byte readback occurs after the destination slot is activated.
-- [ ] Main editor changes only after that hardware readback.
-- [ ] Continue moving at least one fader and one PEQ band; confirm LIVE sync remains active.
-- [ ] Disconnect/reconnect and confirm the same values.
-- [ ] Power-cycle K500 and confirm persistence.
-- [ ] Source `.k500` remains unchanged by Upload.
+## Current-device permanent Save
+
+- [ ] USB HID is used; destructive Store remains gated appropriately.
+- [ ] Fresh device truth is obtained before Save.
+- [ ] Store Begin completes.
+- [ ] Eleven chunks complete in order.
+- [ ] Store Commit completes.
+- [ ] Recalled saved slot contains intended values.
+- [ ] Reconnect confirms state.
+- [ ] Power-cycle confirms persistence when persistence behavior changed.
+- [ ] Other slots/non-target data remain unchanged.
+
+## PC preset single Upload
+
+Use a known `.k500` and record SHA-256.
+
+- [ ] File passes exact size/checksum validation.
+- [ ] Staging the file does not alter current K500 audio/editor/slot state.
+- [ ] Preview is explicit rather than implied by selection.
+- [ ] Destination slot is unambiguous.
+- [ ] Converted PC slot image is used; a device readback does not replace it before Store.
+- [ ] Store Begin/Chunk/Commit completes.
+- [ ] Destination slot is recalled after commit.
+- [ ] Full 939-byte readback occurs before LIVE resumes.
+- [ ] Reconnect confirms the same uploaded values.
+- [ ] Power-cycle confirms persistence when required by the change under test.
+- [ ] Source `.k500` remains unchanged unless an explicit file edit was saved.
 - [ ] Non-target device slots remain unchanged.
 
-## Multi-file Mass Upload — P4.2
+## Unified Official + Local preset library
 
-Donor evidence reference: `MASS_UPLOAD_TO_DEVICE_10_PRESET_INIT_OFF` / `STORE_PROTOCOL_AUDIT_v0.8.26.md`.
-Start with 2–3 distinct known presets before attempting all 10 slots.
+- [ ] Mass Upload collection contains bundled **SONKUPIK** presets without requiring network or a Local folder.
+- [ ] Selecting a Local folder adds valid **LOCAL** entries to the same collection.
+- [ ] Official and Local entries remain visibly distinguishable.
+- [ ] Official sync never overwrites Local files.
+- [ ] Failed network sync leaves bundled/last-known-good official entries usable.
+- [ ] Invalid remote `.k500` cannot replace a valid official cache entry.
+- [ ] A newly valid official preset can appear after Sync without reinstalling the app.
 
-### Transfer-list mapping
+### Mode 01 golden donor
 
-- [ ] Left PC collection can contain more than 10 valid presets; it is not artificially capped.
-- [ ] User can Add / Add All / Remove / Clear before touching hardware.
-- [ ] Right transfer list accepts no more than 10 entries.
-- [ ] Right row 1 maps to Device Slot 01, row 2 to Slot 02, … row 10 to Slot 10.
-- [ ] File selection is validated before any device write.
-- [ ] Invalid checksum in one member aborts the entire batch before Store begins.
+Before any stable release or official Mode 01 change, verify:
+
+```text
+resources/presets/01_ALL_GENRE.k500
+internal name: CONCERT HIFI V4
+SHA-256: 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74
+```
+
+A valid checksum alone is not sufficient evidence of donor identity.
+
+## Multi-file Mass Upload
+
+### Transfer-list staging
+
+- [ ] Unified PC collection is not artificially capped at 10.
+- [ ] Add / Add All / Remove / Clear do not touch hardware.
+- [ ] Right list accepts at most 10 destination entries.
+- [ ] Right row 1 maps to Slot 01 ... row 10 to Slot 10.
+- [ ] Official and Local presets can be mixed in one batch.
+- [ ] Entire batch validates before the first Store command.
+- [ ] One invalid member aborts before hardware writes begin.
 
 ### Native hardware sequence
 
-- [ ] For a full 10-slot bank, first hardware Store is **Slot 10**, then 09, 08 … and **Slot 01 is last**.
-- [ ] For a partial batch, selected destination slots are likewise transmitted highest-to-lowest.
-- [ ] Each Slot Begin (`CMD 0x41`) receives `RSP 0xBE` before its chunks start.
-- [ ] Each slot writes exactly eleven `CMD 0x42` chunks (10×60-byte + 1×56-byte), every chunk receiving `RSP 0xBD`.
-- [ ] Each slot commit (`CMD 0x43`) receives `RSP 0xBC`.
-- [ ] The next slot's `CMD 0x41` carries the native three-byte chain derived from the previous slot signature/checksum.
-- [ ] No slot is reported complete before its `RSP 0xBC` commit ACK.
-- [ ] After Slot 01, app automatically recalls Slot 01, performs the recall handshake, then refreshes full active memory.
-- [ ] UI returns to LIVE only after the final refresh is complete.
+- [ ] Full bank starts at Slot 10 and ends at Slot 01.
+- [ ] Partial batch also executes highest selected destination first.
+- [ ] Each Mass Upload begin receives the expected begin ACK before chunks.
+- [ ] Each slot sends ten 60-byte chunks + one final 56-byte chunk.
+- [ ] Every chunk/commit is acknowledged according to the golden protocol.
+- [ ] Native inter-slot chain remains correct.
+- [ ] No slot is reported complete before commit ACK.
+- [ ] After final Slot 01 commit, Slot 01 is recalled.
+- [ ] `RSP 0xC0` + full 939-byte refresh complete before LIVE.
 
-### Persistence / correctness
+### Correctness
 
-- [ ] Recall each uploaded slot and compare against its source file.
-- [ ] Device Mode names correspond to actual hardware readback, not PC staging labels.
-- [ ] Disconnect/reconnect and repeat comparison.
-- [ ] Power-cycle K500 and repeat comparison.
+- [ ] Recall uploaded Slot 01 and confirm music/output behavior is normal.
+- [ ] Recall other uploaded slots and compare against intended source presets.
+- [ ] Device Mode names come from hardware readback, not PC staging labels.
+- [ ] Reconnect confirms device truth.
+- [ ] Power-cycle confirms persistence when required.
 - [ ] Slots outside the batch remain unchanged.
 
-## Failure/recovery tests
+## Failure / recovery injection
 
-- [ ] Unplug USB while LIVE: app becomes offline/error, no crash, no further writes.
-- [ ] Drop Bluetooth while LIVE: queue clears, LIVE OFF, no crash.
-- [ ] Reconnect: full device readback occurs again.
-- [ ] Malformed/short readback: connection is rejected; partial state is not promoted to LIVE.
-- [ ] Unsupported UI path: no guessed frame is sent.
-- [ ] Unplug USB during Recall: transaction fails closed and requires reconnect.
-- [ ] Unplug USB during current-device Save: transaction fails closed and requires reconnect.
-- [ ] Unplug USB during PC Upload: transaction fails closed and requires reconnect.
-- [ ] Unplug USB during Mass Upload: transaction fails closed; never claim partial batch success.
+- [ ] Unplug USB while LIVE: app becomes offline/error, does not crash, sends no further writes.
+- [ ] Reconnect triggers full device hydration again.
+- [ ] Malformed/short readback is never promoted to LIVE.
+- [ ] Unsupported UI path sends no guessed frame.
+- [ ] Unplug USB during Recall: transaction fails closed.
+- [ ] Unplug USB during Save: transaction fails closed.
+- [ ] Unplug USB during single Upload: transaction fails closed.
+- [ ] Unplug USB during Mass Upload: transaction fails closed and never claims complete success.
 
-## P5 release-candidate package acceptance
+## Package acceptance
 
-Test both artifacts generated from the exact same commit:
+Test both artifacts from the same exact commit:
 
-- [ ] Installer launches and passes basic UI smoke test.
-- [ ] Portable single EXE launches and passes basic UI smoke test.
-- [ ] USB connect works from installer package.
-- [ ] USB connect works from portable package.
-- [ ] Bluetooth connect works from installer package.
-- [ ] Bluetooth connect works from portable package.
-- [ ] Support Report JSON saves successfully.
-- [ ] Support Report contains version, OS, transport/status and bounded log.
-- [ ] Support Report does **not** contain active-memory bytes, preset bytes or preset file paths.
-- [ ] `SHA256SUMS.txt` matches downloaded artifacts.
-- [ ] `release-manifest.json` commit/version match the tested build.
-- [ ] Release manifest still says hardware acceptance `pending` until this checklist is fully evidenced.
+- [ ] Inno Setup installer launches and application starts.
+- [ ] Portable ZIP extracts and application starts.
+- [ ] USB connect works from installed build.
+- [ ] USB connect works from portable build.
+- [ ] Section navigation remains crash-free in both packages.
+- [ ] Support Report saves and contains version/OS/transport/status/log metadata.
+- [ ] Support Report contains no full active-memory bytes, preset payloads, or local preset paths.
+- [ ] `SHA256SUMS.txt` matches the downloaded artifacts.
+- [ ] `release-manifest.json` matches exact version/commit and support scope.
+
+Bluetooth package testing is required only when qualifying or changing Bluetooth behavior; it does not inherit USB acceptance automatically.
 
 ## Acceptance record
 
-Attach trace/support-report/capture references to the PR or release note. A checked box without a reproducible commit SHA and transport is not sufficient evidence for `LOCKED ✅` status.
-
-When all mandatory hardware rows pass, update `PORTING_PARITY_MATRIX.md` in a separate evidence-backed PR. Do not silently promote hardware status as part of unrelated code cleanup.
+Attach the trace/support-report/capture reference to the relevant PR, issue, or release qualification record. Promote a hardware-facing claim only when the evidence matches the exact code and transport being promoted.

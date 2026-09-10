@@ -1,43 +1,83 @@
-# Windows distribution and antivirus policy
+# Windows Distribution & Antivirus Policy
 
-SonKuPik K500 is a GPL-3.0-or-later open-source application. The official Windows release pipeline is designed to minimize heuristic antivirus false positives without requiring a commercial code-signing certificate.
+SonKuPik K500 is a GPL-3.0-or-later open-source application. The official Windows pipeline is designed for transparent, reproducible release provenance and to avoid packaging patterns that can unnecessarily increase heuristic antivirus detections.
 
-## Distribution formats
+## Stable distribution formats
 
-Official release candidates use:
+The v1 stable line ships two Windows x64 packages:
 
-- **Installer:** standard Inno Setup 6 installer.
+- **Installer:** standard Inno Setup 6 executable.
 - **Portable:** ordinary ZIP archive containing the deployed Qt application.
 
-The project intentionally does **not** ship a custom self-extracting portable executable. Earlier RC packaging extracted a Qt runtime to a temporary folder, launched another executable, and removed the temporary runtime after exit. Although that mechanism was legitimate, the behavior resembles patterns used by droppers and can increase heuristic antivirus detections.
+The project intentionally does **not** ship a custom self-extracting portable executable. An earlier RC used a temporary extraction/launcher wrapper; although legitimate, that behavior resembles patterns used by droppers and can attract additional heuristic scrutiny. It is retired from the stable distribution model.
 
-## Open-source unsigned status
+## Current signing status
 
-Release manifests explicitly record `codeSigning: unsigned-open-source` until an open-source signing service is adopted. No release workflow may imply that an unsigned artifact is Authenticode-signed.
+Official v1.0 Windows packages are **unsigned open-source builds**. Release metadata records:
 
-Every release includes:
+```text
+codeSigning = unsigned-open-source
+```
 
-- exact Git commit SHA;
-- SHA-256 hashes for installer and portable archive;
-- machine-readable `release-manifest.json`;
-- Qt runtime version;
-- build/runtime regression evidence.
+Do not interpret an installer icon, GitHub release, or successful CI build as Authenticode signing. Windows SmartScreen and third-party antivirus products may still display reputation warnings for a new unsigned binary.
+
+The project does not require users to disable security software or add broad exclusions.
+
+## Release provenance
+
+Every public stable release includes:
+
+- exact Git commit SHA in `release-manifest.json`;
+- SHA-256 for Setup and Portable packages;
+- target architecture and Qt runtime version;
+- hardware-qualified support scope;
+- signing status;
+- release-channel metadata;
+- official Mode 01 native-donor SHA;
+- regression-suite summary.
+
+For v1.0.0, use the metadata published with the GitHub release rather than copying hashes from third-party mirrors.
+
+## Verification workflow
+
+When validating a downloaded release:
+
+1. download from the project's GitHub Release page;
+2. download `SHA256SUMS.txt` and `release-manifest.json` from the same tag;
+3. compute SHA-256 locally;
+4. compare the exact filename/hash;
+5. confirm the manifest version, release commit, target, and support scope.
+
+Example PowerShell:
+
+```powershell
+Get-FileHash .\SonKuPik-K500-v1.0.0-Windows-Setup.exe -Algorithm SHA256
+Get-FileHash .\SonKuPik-K500-v1.0.0-Windows-Portable.zip -Algorithm SHA256
+```
 
 ## Qt runtime policy
 
-The Windows release workflow tracks a current public Qt release rather than relying indefinitely on the original Qt 6.8.3 development runtime. This is security-maintenance hygiene and is independent of antivirus reputation.
+The release pipeline validates a current supported Qt runtime rather than remaining indefinitely on the original development kit. v1.0.0 was packaged and runtime-tested with **Qt 6.10.2**.
 
-## False-positive handling
+A future Qt upgrade must still pass the same protocol, preset, direct-deployment, portable, installed-app, and section-navigation regression gates before release.
+
+## Antivirus false-positive handling
 
 If an official artifact is detected heuristically:
 
-1. Verify its SHA-256 hash against `SHA256SUMS.txt`.
-2. Confirm the hash/commit in `release-manifest.json`.
-3. Reproduce the detection with the ordinary portable ZIP/direct executable, not the retired self-extracting wrapper.
-4. Submit the exact official artifact to the antivirus vendor for false-positive/reputation re-analysis.
+1. verify its SHA-256 against official release metadata;
+2. confirm the release commit/channel in `release-manifest.json`;
+3. reproduce with the standard package, not a third-party repack;
+4. record the antivirus product, engine/database version, exact detection name, and hash;
+5. submit the exact official artifact to the antivirus vendor for false-positive/reputation review when appropriate;
+6. open a project issue only if there is reproducible evidence useful to the project.
 
-Do not weaken application behavior, protocol safety checks, or malware protection exclusions merely to make a heuristic warning disappear.
+Do not weaken device safety checks, protocol validation, preset integrity, or operating-system security controls merely to suppress a heuristic warning.
 
-## Optional future open-source signing
+## Optional future signing
 
-Commercial signing is not required by this project. If maintainers later want Authenticode reputation without purchasing a commercial certificate, an eligible open-source signing program may be integrated as a separate provenance-controlled step. Until then, the release pipeline remains explicitly unsigned and transparent.
+The project may later adopt an eligible open-source signing service or other provenance mechanism. Such a change must be explicit in the release workflow and manifest. Until then, the correct public statement is **unsigned open-source Windows distribution**.
+
+## Download policy
+
+The canonical binary distribution is the repository's GitHub Releases page. Avoid redistributing modified installers under the same filenames because users rely on release hashes and manifest provenance to distinguish official artifacts.

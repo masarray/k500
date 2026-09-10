@@ -1,0 +1,108 @@
+name: Bug report
+description: Report a reproducible SonKuPik K500 application, device-control, preset, packaging, or UI regression.
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve SonKuPik K500. Please provide a minimal reproducible report and distinguish USB-stable behavior from experimental Bluetooth behavior.
+
+  - type: input
+    id: version
+    attributes:
+      label: SonKuPik K500 version
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 24H2 x64
+    validations:
+      required: true
+
+  - type: dropdown
+    id: connection
+    attributes:
+      label: Device / transport state
+      options:
+        - Offline / no K500 connected
+        - USB HID
+        - Bluetooth SPP (experimental)
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Connection / synchronization
+        - Music / Mic controls
+        - PEQ / crossover / section navigation
+        - Reverb / Echo
+        - System / Device Mode
+        - Official preset Sync
+        - Local preset library
+        - Preview / Save As
+        - Single Upload
+        - Mass Upload
+        - Installer / Portable ZIP
+        - Support Report / diagnostics
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      placeholder: |
+        1. Start SonKuPik K500...
+        2. Connect/select...
+        3. Click...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include freeze/crash/error text and whether audio or device state changed unexpectedly.
+    validations:
+      required: true
+
+  - type: textarea
+    id: preset
+    attributes:
+      label: Preset details
+      description: If relevant, state SONKUPIK or LOCAL, filename, internal name, SHA-256, and source/destination slot.
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics / attachments
+      description: Attach screenshots and a Support Report or trace when available. Do not post credentials or unrelated private data.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I can reproduce this with the steps above.
+          required: true
+        - label: I have stated whether a K500 was connected and which transport was used.
+          required: true
+        - label: I understand Bluetooth SPP is experimental in the v1.0 support policy.
+          required: true
