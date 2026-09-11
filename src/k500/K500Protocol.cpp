@@ -167,6 +167,13 @@ QByteArray eqWrite(const QString &section, int bandIndexZeroBased, const K500EqB
 quint8 crossoverFilterCode(const QString &label)
 {
     const QString normalized = label.trimmed().toUpper();
+    // CROSSOVER_NATIVE_BYPASS_TYPE0_V1
+    // Native K500 keeps the cutoff anchor unchanged while the type dropdown is
+    // set to bypass. The preset format uses the same 0x03xx/0x04xx type family,
+    // with active filters occupying contiguous codes 0x01..0x07; code 0x00 is
+    // therefore the native bypass member of that enum. Keep this behind the
+    // physical-device acceptance gate just like every newly replayed command.
+    if (normalized == QStringLiteral("BYPASS")) return 0x00;
     if (normalized.contains(QStringLiteral("BESSEL 12"))) return 0x01;
     if (normalized.contains(QStringLiteral("BUTTER 12"))) return 0x02;
     if (normalized.contains(QStringLiteral("BESSEL 18"))) return 0x03;
@@ -375,6 +382,7 @@ bool selfTest(QString *error)
     if (!expect(crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x0A, 0x02, 0xE8, 0x03, 0x00, 0xF2}, QStringLiteral("echo HPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0D, 0x02, 0xE8, 0x03, 0x00, 0xEF}, QStringLiteral("center LPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("sub"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0F, 0x02, 0xE8, 0x03, 0x00, 0xED}, QStringLiteral("sub LPF selector"))) return false;
+    if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1474.0, QStringLiteral("Bypass")), {0xAA, 0x06, 0x11, 0x0D, 0x00, 0xC2, 0x05, 0x00, 0x15}, QStringLiteral("center LPF bypass preserves cutoff"))) return false;
     if (!crossoverWrite(QStringLiteral("unknown"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("unsupported crossover section must not produce a frame"));
 
     K500MusicBlockState music;
@@ -396,7 +404,7 @@ bool selfTest(QString *error)
 
     K500OutputBlockState main;
     main.lVolDb = 12; main.rVolDb = 10; main.micDirect = 91; main.musicLevel = 87; main.reverbLevel = 83; main.echoLevel = 79; main.compThresholdDb = -3; main.compRatio = 18; main.attackMs = 7; main.releaseSec = 0.1;
-    if (!expect(outputBlock(QStringLiteral("main"), main, QByteArray(OutputDataLength, char(0))), {0xAA,0x25,0x0E,0x00,0x63,0x00,0x5F,0x00,0x5B,0x00,0x57,0x00,0x53,0x00,0x4F,0x00,0x2F,0x12,0x07,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x6E}, QStringLiteral("main output block"))) return false;
+    if (!expect(outputBlock(QStringLiteral("main"), main, QByteArray(OutputDataLength, char(0))), {0xAA,0x25,0x0E,0x00,0x63,0x00,0x5F,0x00,0x5B,0x00,0x57,0x00,0x53,0x00,0x4F,0x00,0x2F,0x12,0x07,0x01,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x6E}, QStringLiteral("main output block"))) return false;
 
     K500OutputBlockState surround;
     surround.lVolDb = 12; surround.rVolDb = 11; surround.micDirect = 87; surround.musicLevel = 85; surround.reverbLevel = 80; surround.echoLevel = 75; surround.compThresholdDb = -20; surround.compRatio = 100; surround.attackMs = 1; surround.releaseSec = 0.1; surround.lDelayMs = 3; surround.rDelayMs = 4;
@@ -408,7 +416,7 @@ bool selfTest(QString *error)
 
     K500OutputBlockState sub;
     sub.outputVolDb = 9; sub.micDirect = 70; sub.musicLevel = 90; sub.reverbLevel = 60; sub.echoLevel = 50; sub.compThresholdDb = -10; sub.compRatio = 8; sub.attackMs = 4; sub.releaseSec = 0.3;
-    if (!expect(outputBlock(QStringLiteral("sub"), sub, QByteArray(OutputDataLength, char(0))), {0xAA,0x25,0x0E,0x05,0x5D,0x00,0x00,0x00,0x46,0x00,0x5A,0x00,0x3C,0x00,0x32,0x00,0x28,0x08,0x04,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x26}, QStringLiteral("sub output block"))) return false;
+    if (!expect(outputBlock(QStringLiteral("sub"), sub, QByteArray(OutputDataLength, char(0))), {0xAA,0x25,0x0E,0x05,0x5D,0x00,0x00,0x00,0x46,0x00,0x5A,0x00,0x3C,0x00,0x32,0x00,0x28,0x08,0x04,0x03,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x26}, QStringLiteral("sub output block"))) return false;
 
     QByteArray preserve(OutputDataLength, char(0x5A));
     const QByteArray preservedFrame = outputBlock(QStringLiteral("main"), main, preserve);
