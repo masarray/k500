@@ -9,6 +9,9 @@ Item {
     property real to: 10.0
     property real defaultValue: 0.0
     property color accentColor: Theme.accent
+    // Kept for source compatibility with older panel bindings. Visual ownership
+    // is intentionally focus-based so two independent panels can never leave
+    // two faders persistently highlighted at the same time.
     property bool selected: false
     property real step: 0.5
     signal valueEdited(real newValue)
@@ -23,14 +26,19 @@ Item {
     Layout.maximumHeight: 160
 
     // FADER_INTERACTION_PARITY_V1
-    // Shared interaction state for every fader family in the application.
+    // FADER_SINGLE_ACTIVE_FOCUS_V1
+    // Strong highlight is owned by Qt's one active focus item, not by panel-
+    // local selected flags. Hover remains a quiet preview only. This gives the
+    // whole section/window one unambiguous active control like a professional
+    // console/VST surface while preserving keyboard and drag interaction.
     property real previewValue: value
     property real dragRawValue: value
     property real dragLastY: 0
     property bool dragging: false
     property bool hovered: pointer.containsMouse
-    readonly property bool interactionActive: selected || dragging || activeFocus
-    readonly property bool highlighted: interactionActive || hovered
+    readonly property bool interactionActive: dragging || activeFocus
+    readonly property bool highlighted: interactionActive
+    readonly property bool hoverPreview: hovered && !interactionActive
 
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
     function valueToNorm(v){ return clamp((v-from)/(to-from),0,1) }
@@ -74,15 +82,15 @@ Item {
     }
     onValueChanged: if(!dragging){previewValue=value;dragRawValue=value}
 
-    // A restrained full-hit-area highlight makes it obvious which fader will
-    // respond before the user clicks, without adding permanent visual noise.
+    // The active control gets the premium cyan focus treatment. Hover only
+    // lifts the surface slightly, so it can never be confused with selection.
     Rectangle {
         anchors.fill: parent
         anchors.margins: 1
         radius: 10
-        color: root.accentColor
-        opacity: root.dragging ? 0.13 : root.interactionActive ? 0.085 : root.hovered ? 0.045 : 0
-        border.width: root.highlighted ? 1 : 0
+        color: root.interactionActive ? root.accentColor : "#91A3AB"
+        opacity: root.dragging ? 0.13 : root.interactionActive ? 0.082 : root.hoverPreview ? 0.018 : 0
+        border.width: root.interactionActive ? 1 : 0
         border.color: root.accentColor
         Behavior on opacity { NumberAnimation { duration: 75 } }
     }
@@ -92,7 +100,7 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: parent.top
         anchors.bottom: parent.bottom
-        width: root.highlighted ? 9 : 8
+        width: root.interactionActive ? 9 : 8
         anchors.topMargin: 7
         anchors.bottomMargin: 7
         radius: width/2
@@ -102,8 +110,8 @@ Item {
             GradientStop { position:1;color:"#080B0E" }
         }
         border.width: 1
-        border.color: root.highlighted ? root.accentColor : "#010203"
-        opacity: root.hovered && !root.interactionActive ? 0.92 : 1
+        border.color: root.interactionActive ? root.accentColor : root.hoverPreview ? "#294047" : "#010203"
+        opacity: root.hoverPreview ? 0.96 : 1
         Behavior on width { NumberAnimation { duration: 70 } }
         Behavior on border.color { ColorAnimation { duration: 75 } }
         Rectangle { anchors.horizontalCenter:parent.horizontalCenter;anchors.top:parent.top;anchors.bottom:parent.bottom;anchors.margins:2;width:2;radius:1;color:"#000000" }
@@ -117,8 +125,8 @@ Item {
             width: root.width
             height: 1
             y: 5 + index * (root.height - 10) / 6
-            Rectangle { width:8;height:1;x:1;color:root.highlighted?root.accentColor:"#89949C";opacity:root.highlighted?.36:.28 }
-            Rectangle { width:8;height:1;anchors.right:parent.right;anchors.rightMargin:1;color:root.highlighted?root.accentColor:"#89949C";opacity:root.highlighted?.36:.28 }
+            Rectangle { width:8;height:1;x:1;color:root.interactionActive?root.accentColor:"#89949C";opacity:root.interactionActive?.36:.28 }
+            Rectangle { width:8;height:1;anchors.right:parent.right;anchors.rightMargin:1;color:root.interactionActive?root.accentColor:"#89949C";opacity:root.interactionActive?.36:.28 }
         }
     }
 
@@ -136,13 +144,13 @@ Item {
 
     Rectangle {
         id: cap
-        width: root.dragging ? 27 : root.highlighted ? 26 : 24
-        height: root.dragging ? 18 : 16
+        width: root.dragging ? 27 : root.interactionActive ? 26 : root.hoverPreview ? 25 : 24
+        height: root.dragging ? 18 : root.interactionActive ? 16 : 16
         radius: height/2
         anchors.horizontalCenter: parent.horizontalCenter
         y: 8+(1-root.valueToNorm(root.previewValue))*(root.height-height-16)
-        border.width: root.highlighted ? 1.5 : 1
-        border.color: root.highlighted ? root.accentColor : "#090C0F"
+        border.width: root.interactionActive ? 1.5 : 1
+        border.color: root.interactionActive ? root.accentColor : root.hoverPreview ? "#42555D" : "#090C0F"
         gradient: Gradient {
             GradientStop { position:0;color:"#6C767E" }
             GradientStop { position:.22;color:"#48525A" }
@@ -159,7 +167,7 @@ Item {
         Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.leftMargin:4;anchors.rightMargin:4;anchors.top:parent.top;anchors.topMargin:2;height:1;color:"#FFFFFF";opacity:.20 }
         Rectangle {
             anchors.left:parent.left;anchors.right:parent.right;anchors.leftMargin:4;anchors.rightMargin:4
-            anchors.verticalCenter:parent.verticalCenter;height:1;color:root.highlighted?root.accentColor:"#AAB4BA";opacity:root.interactionActive?.96:root.hovered?.72:.45
+            anchors.verticalCenter:parent.verticalCenter;height:1;color:root.interactionActive?root.accentColor:root.hoverPreview?"#C5CDD1":"#AAB4BA";opacity:root.interactionActive?.96:root.hoverPreview?.58:.45
         }
     }
 
