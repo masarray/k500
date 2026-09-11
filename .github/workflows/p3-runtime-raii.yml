@@ -25,10 +25,10 @@ jobs:
           if (-not $ioHeader.Contains('bool m_shutdown = false') -or -not $ioHeader.Contains('void shutdown()')) {
             throw 'P3 transport shutdown API/state missing'
           }
-          if (-not $managerHeader.Contains('void shutdown();') -or -not $managerHeader.Contains('bool m_shuttingDown = false')) {
-            throw 'P3 device shutdown API/state missing'
+          if (-not $managerHeader.Contains('void shutdown();') -or -not $managerHeader.Contains('bool m_shuttingDown = false') -or -not $managerHeader.Contains('AppShutdownHook m_shutdownHook{this}')) {
+            throw 'P3 device shutdown API/state/hook missing'
           }
-          foreach ($token in @('disconnect(m_controller, &K500Controller::frameReady','setLiveEnabled(false)','m_responseTimer.stop()','m_probeDelayTimer.stop()','m_heartbeatTimer.stop()','m_io.shutdown()')) {
+          foreach ($token in @('QCoreApplication::aboutToQuit','Qt::DirectConnection','disconnect(m_controller, &K500Controller::frameReady','setLiveEnabled(false)','m_responseTimer.stop()','m_probeDelayTimer.stop()','m_heartbeatTimer.stop()','m_io.shutdown()')) {
             if (-not $shutdown.Contains($token)) { throw "P3 shutdown sequencing regression: missing '$token'" }
           }
 
