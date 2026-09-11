@@ -3,7 +3,9 @@
 #include <QtGlobal>
 
 #ifdef Q_OS_WIN
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <hidsdi.h>
 #include <setupapi.h>
