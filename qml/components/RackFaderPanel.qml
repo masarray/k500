@@ -125,35 +125,87 @@ StudioPanel {
                         anchors.fill: parent
                         spacing: 3
 
+                        // MIXER_HEADER_MUTE_V1
+                        // Mute belongs with the channel identity, not below the value
+                        // readout. This keeps every fader column the same height and gives
+                        // L/R/CTR/SUB the familiar mixer-channel affordance.
                         Item {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: Math.max(48,channel.width-4)
                             Layout.preferredHeight: 25
-                            Column {
+
+                            Row {
                                 anchors.centerIn: parent
-                                spacing: -1
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: String(channel.modelData.label || "")
-                                    color: channel.muted ? Theme.amber : rackFader.highlighted ? rackFader.accentColor : Theme.textDim
-                                    style: rackFader.highlighted ? Text.Outline : Text.Normal
-                                    styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 9
-                                    font.weight: rackFader.highlighted || channel.muted ? Font.Bold : Font.DemiBold
-                                    font.letterSpacing: .35
-                                    Behavior on color { ColorAnimation { duration:75 } }
-                                    Behavior on styleColor { ColorAnimation { duration:75 } }
+                                spacing: channel.canMute ? 4 : 0
+
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: -1
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: String(channel.modelData.label || "")
+                                        color: channel.muted ? Theme.amber : rackFader.highlighted ? rackFader.accentColor : Theme.textDim
+                                        style: rackFader.highlighted ? Text.Outline : Text.Normal
+                                        styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 9
+                                        font.weight: rackFader.highlighted || channel.muted ? Font.Bold : Font.DemiBold
+                                        font.letterSpacing: .35
+                                        Behavior on color { ColorAnimation { duration:75 } }
+                                        Behavior on styleColor { ColorAnimation { duration:75 } }
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: String(channel.modelData.badge || "").length > 0
+                                        text: String(channel.modelData.badge || "")
+                                        color: rackFader.highlighted ? rackFader.accentColor : Theme.textFaint
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
+                                        font.weight: rackFader.highlighted ? Font.DemiBold : Font.Normal
+                                        Behavior on color { ColorAnimation { duration:75 } }
+                                    }
                                 }
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    visible: String(channel.modelData.badge || "").length > 0
-                                    text: String(channel.modelData.badge || "")
-                                    color: rackFader.highlighted ? rackFader.accentColor : Theme.textFaint
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 8
-                                    font.weight: rackFader.highlighted ? Font.DemiBold : Font.Normal
+
+                                Rectangle {
+                                    id: muteIconButton
+                                    visible: channel.canMute
+                                    width: 20; height: 20; radius: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: channel.muted ? "#211607" : mutePointer.containsMouse ? "#10171C" : "#090D10"
+                                    border.width: 1
+                                    border.color: channel.muted ? Theme.amber : mutePointer.containsMouse ? Theme.textDim : "#273038"
+
+                                    Item {
+                                        anchors.centerIn: parent
+                                        width: 12; height: 12
+                                        opacity: channel.muted ? 1 : .82
+                                        Rectangle {
+                                            x: 1; y: 4; width: 3; height: 5; radius: 1
+                                            color: channel.muted ? Theme.amber : Theme.textSoft
+                                        }
+                                        Rectangle {
+                                            x: 4; y: 3; width: 6; height: 6; radius: 1
+                                            rotation: 45
+                                            color: channel.muted ? Theme.amber : Theme.textSoft
+                                            transformOrigin: Item.Center
+                                        }
+                                        Rectangle {
+                                            visible: channel.muted
+                                            x: 0; y: 5.2; width: 13; height: 1.4; radius: .7
+                                            rotation: 45
+                                            color: "#FF665B"
+                                            transformOrigin: Item.Center
+                                        }
+                                    }
+                                    MouseArea {
+                                        id: mutePointer
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: channel.setMuted(!channel.muted)
+                                    }
                                     Behavior on color { ColorAnimation { duration:75 } }
+                                    Behavior on border.color { ColorAnimation { duration:75 } }
                                 }
                             }
                         }
@@ -211,18 +263,6 @@ StudioPanel {
                                 }
                             }
                             Behavior on border.color { ColorAnimation { duration: 75 } }
-                        }
-
-                        SoftButton {
-                            visible: channel.canMute
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 58
-                            Layout.preferredHeight: 21
-                            text: "MUTE"
-                            compact: true
-                            amber: true
-                            checked: channel.muted
-                            onClicked: channel.setMuted(!channel.muted)
                         }
 
                         Item { Layout.fillHeight: true }
