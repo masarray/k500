@@ -1,0 +1,49 @@
+name: Guard native control parity
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/SectionEqGraph.qml'
+      - 'qml/components/SectionEqGraphHost.qml'
+      - 'qml/components/EqGraph.qml'
+      - 'qml/components/FilterPanel.qml'
+      - 'qml/components/RackFilterPanel.qml'
+      - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/CrossoverInspector.qml'
+      - '.github/workflows/native-control-parity.yml'
+
+jobs:
+  parity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard control semantics
+        shell: python
+        run: |
+          from pathlib import Path
+
+          graph = Path('qml/components/SectionEqGraph.qml').read_text(encoding='utf-8')
+          host = Path('qml/components/SectionEqGraphHost.qml').read_text(encoding='utf-8')
+          music_filter = Path('qml/components/FilterPanel.qml').read_text(encoding='utf-8')
+          rack_filter = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
+          rack_fader = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          inspector = Path('qml/components/CrossoverInspector.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'VST compare contract': 'VST_COMPARE_AND_EQ_BYPASS_V1' in graph and 'toggleCompare()' in graph and 'setFlatAudition' in graph,
+              'Mic selector identity': 'MIC_SELECTOR_IDENTITY_V1' in graph and '#55E58A' in graph and '#FF626E' in graph,
+              'Mic link is switch': 'MIC_EQ_LINK_TOGGLE_V2' in graph and 'eqLinkRequested(!root.eqLinked)' in graph,
+              'Fixed graph lifetime preserved': 'CRASH_SAFE_FIXED_EQ_PAGES_V1' in host and host.count('SectionEqGraph {') == 8,
+              'Safe crossover bypass': 'CROSSOVER_EDGE_BYPASS_V1' in music_filter and 'CROSSOVER_EDGE_BYPASS_V1' in rack_filter,
+              'No guessed bypass protocol byte': '0x00' not in music_filter and '0x00' not in rack_filter,
+              'Bypass visible in all selectors': '"Bypass"' in music_filter and '"Bypass"' in rack_filter and '"Bypass"' in inspector,
+              'Output mute uses verified floor': 'OUTPUT_MUTE_VERIFIED_FLOOR_V1' in rack_fader and 'channel.muteFloor' in rack_fader,
+              'No raw device access from QML': 'K500WinIo' not in graph + host + music_filter + rack_filter + rack_fader,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('Control parity guard failed: ' + ', '.join(failed))
+          print('ALL NATIVE CONTROL PARITY GUARDS PASSED')
