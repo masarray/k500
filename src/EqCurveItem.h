@@ -87,7 +87,11 @@ private:
     EqBandModel *m_bandModel = nullptr;
     QVector<QMetaObject::Connection> m_modelConnections;
 
-    static constexpr int SampleCount = 360;
+    // P1_NATIVE_PEQ_HIGH_RES_V1
+    // 720 cached log-frequency samples keep curvature sub-pixel smooth at the
+    // 1260-1484 px qualified window sizes while remaining tiny compared with a
+    // CPU Canvas repaint. Trigonometry is still precomputed once per graph.
+    static constexpr int SampleCount = 720;
     QVector<double> m_frequencies;
     QVector<double> m_cos1;
     QVector<double> m_sin1;
