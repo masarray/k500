@@ -1,0 +1,113 @@
+name: Final Device Performance Qualification
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/DevicePerformanceMonitor.*'
+      - 'src/RuntimeMetrics.*'
+      - 'src/k500/K500DeviceManager.h'
+      - 'tools/run-final-device-acceptance.ps1'
+      - 'docs/FINAL_DEVICE_PERFORMANCE_ACCEPTANCE.md'
+      - 'CMakeLists.txt'
+      - '.github/workflows/final-device-performance.yml'
+  pull_request:
+    paths:
+      - 'src/DevicePerformanceMonitor.*'
+      - 'src/RuntimeMetrics.*'
+      - 'src/k500/K500DeviceManager.h'
+      - 'tools/run-final-device-acceptance.ps1'
+      - 'docs/FINAL_DEVICE_PERFORMANCE_ACCEPTANCE.md'
+      - 'CMakeLists.txt'
+      - '.github/workflows/final-device-performance.yml'
+
+jobs:
+  final-device-performance:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard qualification contract
+        shell: pwsh
+        run: |
+          $header = Get-Content 'src/DevicePerformanceMonitor.h' -Raw
+          $impl = Get-Content 'src/DevicePerformanceMonitor.cpp' -Raw
+          $manager = Get-Content 'src/k500/K500DeviceManager.h' -Raw
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          $doc = Get-Content 'docs/FINAL_DEVICE_PERFORMANCE_ACCEPTANCE.md' -Raw
+
+          foreach ($token in @('FINAL_DEVICE_PERFORMANCE_V1','--device-perf','--device-perf-report=')) {
+            if (-not $header.Contains($token) -and -not $impl.Contains($token)) { throw "Final performance harness missing '$token'" }
+          }
+          foreach ($token in @('connectToLive','activeMemoryReadback939','controllerToTransportAcceptance','eventLoop','automatedPerformancePass')) {
+            if (-not $impl.Contains($token)) { throw "Final performance report missing '$token'" }
+          }
+          if (-not $manager.Contains('DevicePerformanceMonitor m_performanceMonitor{this, m_controller};')) {
+            throw 'DeviceManager no longer owns the opt-in performance monitor'
+          }
+          foreach ($token in @('src/DevicePerformanceMonitor.cpp','src/RuntimeMetrics.cpp','SONKUPIK_GIT_SHA','setupapi hid psapi')) {
+            if (-not $cmake.Contains($token)) { throw "Shipping build qualification wiring missing '$token'" }
+          }
+          foreach ($token in @('25 disconnect/reconnect cycles','automatedPerformancePass == true','P2 -> P3 -> P4 -> P5 -> final qualification tooling')) {
+            if (-not $doc.Contains($token)) { throw "Final device runbook missing '$token'" }
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build qualification executable
+        shell: pwsh
+        run: cmake --build build --config Release --target sonkupik_studio_native
+
+      - name: Hardware-free monitor smoke
+        shell: pwsh
+        run: |
+          $report = Join-Path $PWD 'build/final-device-performance-smoke.json'
+          $args = @('--engine-self-test','--device-perf',"--device-perf-report=$report")
+          $p = Start-Process -FilePath 'build/SONKUPIK-STUDIO-Native-UI.exe' -ArgumentList $args -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Qualification smoke exited with $($p.ExitCode)" }
+          if (-not (Test-Path $report)) { throw 'Qualification smoke did not create JSON report' }
+
+          $json = Get-Content -Raw $report | ConvertFrom-Json
+          if ($json.schema -ne 'sonkupik-k500-device-performance-v1') { throw 'Qualification report schema mismatch' }
+          if ([string]::IsNullOrWhiteSpace($json.gitCommit) -or $json.gitCommit -eq 'unknown') { throw 'Qualification report missing exact Git commit' }
+          if ($json.bootstrapToEventLoopMs -lt 0) { throw 'Bootstrap/event-loop timing was not recorded' }
+          if (-not $json.runtime.startupPostQml.valid) { throw 'Windows runtime snapshot was not captured' }
+          if ($json.eventLoop.samples -lt 1) { throw 'Event-loop sampler did not run' }
+          if ($json.gates.scope -notmatch 'Performance-only') { throw 'Performance/manual acceptance scope separation missing' }
+
+          Write-Host "Monitor smoke PASS at commit $($json.gitCommit)"
+          Write-Host "Bootstrap-to-event-loop: $($json.bootstrapToEventLoopMs) ms"
+          Write-Host "Event-loop samples: $($json.eventLoop.samples), max lag $($json.eventLoop.maxLagMs) ms"
+
+      - name: Deploy exact qualification package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/
+          windeployqt --release --qmldir qml package/SONKUPIK-STUDIO-Native-UI.exe
+          New-Item -ItemType Directory -Force -Path package/qualification | Out-Null
+          Copy-Item tools/run-final-device-acceptance.ps1 package/qualification/
+          Copy-Item docs/FINAL_DEVICE_PERFORMANCE_ACCEPTANCE.md package/qualification/
+          Copy-Item build/final-device-performance-smoke.json package/qualification/
+
+      - name: Upload final device qualification build
+        uses: actions/upload-artifact@v4
+        with:
+          name: K500-Final-Device-Qualification
+          path: package
+          if-no-files-found: error
