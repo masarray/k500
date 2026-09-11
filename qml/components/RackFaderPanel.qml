@@ -54,6 +54,14 @@ StudioPanel {
         var engine = studioEngine()
         if (path.length && engine) engine.editDevicePath(path, value)
     }
+    function muteCapable(label) {
+        var t = String(root.title || "")
+        var l = String(label || "").toUpperCase()
+        if (t === "Main Bus" || t === "Surround Bus") return l === "L" || l === "R"
+        if (t === "Center Bus") return l === "CTR"
+        if (t === "Subwoofer Bus") return l === "SUB"
+        return false
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -82,7 +90,7 @@ StudioPanel {
             Layout.leftMargin: 10
             Layout.rightMargin: 10
             Layout.topMargin: 10
-            Layout.bottomMargin: 10
+            Layout.bottomMargin: 8
             spacing: 2
 
             Repeater {
@@ -96,11 +104,26 @@ StudioPanel {
                     Layout.minimumWidth: root.compactCluster ? 62 : 48
                     Layout.fillHeight: true
                     property real localValue: Number(modelData.value)
+                    property bool muted: false
                     readonly property bool selected: root.selectedFader === channel.index
+                    readonly property bool canMute: root.muteCapable(modelData.label)
+                    readonly property real muteFloor: Number(modelData.from)
+
+                    // OUTPUT_MUTE_VERIFIED_FLOOR_V1
+                    // Native per-channel mute flag bytes have never been donor-captured.
+                    // Do not invent them. Use the already verified output-volume field and
+                    // its raw-zero floor (-37.5 dB) as a reversible audition mute. The
+                    // fader retains the user's target value; unmute restores it exactly.
+                    function setMuted(next) {
+                        if (!channel.canMute || channel.muted === next) return
+                        channel.muted = next
+                        root.dispatchLive(channel.modelData.label,
+                                          next ? channel.muteFloor : channel.localValue)
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 4
+                        spacing: 3
 
                         Item {
                             Layout.alignment: Qt.AlignHCenter
@@ -112,12 +135,12 @@ StudioPanel {
                                 Text {
                                     anchors.horizontalCenter: parent.horizontalCenter
                                     text: String(channel.modelData.label || "")
-                                    color: rackFader.highlighted ? rackFader.accentColor : Theme.textDim
+                                    color: channel.muted ? Theme.amber : rackFader.highlighted ? rackFader.accentColor : Theme.textDim
                                     style: rackFader.highlighted ? Text.Outline : Text.Normal
                                     styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
                                     font.family: Theme.monoFamily
                                     font.pixelSize: 9
-                                    font.weight: rackFader.highlighted ? Font.Bold : Font.DemiBold
+                                    font.weight: rackFader.highlighted || channel.muted ? Font.Bold : Font.DemiBold
                                     font.letterSpacing: .35
                                     Behavior on color { ColorAnimation { duration:75 } }
                                     Behavior on styleColor { ColorAnimation { duration:75 } }
@@ -135,7 +158,7 @@ StudioPanel {
                             }
                         }
 
-                        Item { Layout.preferredHeight: 4 }
+                        Item { Layout.preferredHeight: 2 }
 
                         StudioFader {
                             id: rackFader
@@ -154,7 +177,8 @@ StudioPanel {
                             onActivated: root.selectedFader = channel.index
                             onValueEdited: function(v) {
                                 channel.localValue = v
-                                root.dispatchLive(channel.modelData.label, v)
+                                root.dispatchLive(channel.modelData.label,
+                                                  channel.muted ? channel.muteFloor : v)
                             }
                         }
 
@@ -163,9 +187,9 @@ StudioPanel {
                             Layout.preferredWidth: 58
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: rackFader.highlighted ? "#081013" : "#05080A"
+                            color: channel.muted ? "#171208" : rackFader.highlighted ? "#081013" : "#05080A"
                             border.width: 1
-                            border.color: rackFader.highlighted ? root.accentColor : "#020304"
+                            border.color: channel.muted ? Theme.amber : rackFader.highlighted ? root.accentColor : "#020304"
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 3
@@ -187,6 +211,18 @@ StudioPanel {
                                 }
                             }
                             Behavior on border.color { ColorAnimation { duration: 75 } }
+                        }
+
+                        SoftButton {
+                            visible: channel.canMute
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 58
+                            Layout.preferredHeight: 21
+                            text: "MUTE"
+                            compact: true
+                            amber: true
+                            checked: channel.muted
+                            onClicked: channel.setMuted(!channel.muted)
                         }
 
                         Item { Layout.fillHeight: true }
