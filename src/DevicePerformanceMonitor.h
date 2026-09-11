@@ -2,6 +2,7 @@
 
 #include "RuntimeMetrics.h"
 
+#include <QByteArray>
 #include <QElapsedTimer>
 #include <QString>
 #include <QTimer>
