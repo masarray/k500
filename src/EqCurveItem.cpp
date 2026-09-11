@@ -77,12 +77,28 @@ QColor interpolate(const QColor &a, const QColor &b, double t)
                             a.alphaF() + (b.alphaF() - a.alphaF()) * t);
 }
 
+constexpr uchar premultipliedChannel(int channel, int alpha)
+{
+    return static_cast<uchar>((channel * alpha + 127) / 255);
+}
+
+// P1_NATIVE_PEQ_PREMULTIPLIED_ALPHA_V2
+// QSGVertexColorMaterial blends premultiplied vertex colors. Supplying straight
+// RGB with a low alpha makes translucent cyan/amber geometry appear almost
+// opaque. Keep the retained native renderer, but feed it correct premultiplied
+// colors so the graph has the restrained transparency of a professional EQ UI.
 void setVertex(QSGGeometry::ColoredPoint2D &vertex, qreal x, qreal y, const QColor &color)
 {
+    const int alpha = color.alpha();
     vertex.set(static_cast<float>(x), static_cast<float>(y),
-               static_cast<uchar>(color.red()), static_cast<uchar>(color.green()),
-               static_cast<uchar>(color.blue()), static_cast<uchar>(color.alpha()));
+               premultipliedChannel(color.red(), alpha),
+               premultipliedChannel(color.green(), alpha),
+               premultipliedChannel(color.blue(), alpha),
+               static_cast<uchar>(alpha));
 }
+
+static_assert(premultipliedChannel(242, 34) == 32,
+              "PEQ scene-graph vertex colors must remain premultiplied");
 }
 
 EqCurveItem::EqCurveItem(QQuickItem *parent)
@@ -489,10 +505,12 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         node->markDirty(QSGNode::DirtyGeometry | QSGNode::DirtyMaterial);
     };
 
+    // VST-style hierarchy: the response shape is present, but deliberately
+    // restrained so the grid, individual bands and control nodes remain clear.
     {
         auto *geometry = root->fill->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const QColor topColor = withAlpha(m_accentColor, 54);
+        const QColor topColor = withAlpha(m_accentColor, 30);
         const QColor bottomColor = withAlpha(m_accentColor, 0);
         for (int i = 0; i < SampleCount; ++i) {
             const qreal x = xForSample(i);
@@ -506,19 +524,20 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         const bool active = std::any_of(m_bandResponses[band].cbegin(), m_bandResponses[band].cend(),
                                         [](float value) { return std::abs(value) > 0.001f; });
         const bool selected = active && m_selectedTarget == QStringLiteral("band") && band == m_selectedIndex;
-        const QColor color = active ? withAlpha(selected ? m_amberColor : m_accentColor, selected ? 166 : 34)
+        const QColor color = active ? withAlpha(selected ? m_amberColor : m_accentColor,
+                                                 selected ? 158 : 24)
                                     : QColor(0, 0, 0, 0);
-        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.6 : 1.0,
+        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.45 : 0.85,
                     [color](int) { return color; });
     }
 
-    writeStroke(root->crossover, m_crossoverResponse, 1.2,
-                [this](int) { return withAlpha(m_amberColor, 102); });
-    writeStroke(root->totalShadow, m_totalResponse, 6.2,
-                [](int) { return QColor(1, 2, 3, 224); });
-    writeStroke(root->totalGlow, m_totalResponse, 8.0,
-                [this](int) { return withAlpha(m_accentColor, 46); });
-    writeStroke(root->total, m_totalResponse, 3.2,
+    writeStroke(root->crossover, m_crossoverResponse, 1.05,
+                [this](int) { return withAlpha(m_amberColor, 78); });
+    writeStroke(root->totalShadow, m_totalResponse, 4.8,
+                [](int) { return QColor(1, 2, 3, 204); });
+    writeStroke(root->totalGlow, m_totalResponse, 5.8,
+                [this](int) { return withAlpha(m_accentColor, 28); });
+    writeStroke(root->total, m_totalResponse, 2.6,
                 [this](int sample) {
                     const double t = static_cast<double>(sample) / static_cast<double>(SampleCount - 1);
                     if (t <= 0.55)
