@@ -7,13 +7,33 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network)
+find_package(Git QUIET)
 qt_standard_project_setup(REQUIRES 6.8)
+
+set(SONKUPIK_GIT_SHA "unknown")
+if(GIT_FOUND)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --short=12 HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE SONKUPIK_GIT_RESULT
+        OUTPUT_VARIABLE SONKUPIK_GIT_SHA_CANDIDATE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(SONKUPIK_GIT_RESULT EQUAL 0 AND NOT SONKUPIK_GIT_SHA_CANDIDATE STREQUAL "")
+        set(SONKUPIK_GIT_SHA "${SONKUPIK_GIT_SHA_CANDIDATE}")
+    endif()
+endif()
 
 qt_add_executable(sonkupik_studio_native WIN32
     src/main.cpp
     src/AppVersionInit.cpp
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/DevicePerformanceMonitor.cpp
+    src/DevicePerformanceMonitor.h
+    src/RuntimeMetrics.cpp
+    src/RuntimeMetrics.h
     src/k500/K500Frame.cpp
     src/k500/K500Frame.h
     src/k500/K500Protocol.cpp
@@ -43,7 +63,10 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500DeviceManager.h
     src/k500/K500DeviceManagerShutdown.cpp
 )
-target_compile_definitions(sonkupik_studio_native PRIVATE SONKUPIK_VERSION=\"${PROJECT_VERSION}\")
+target_compile_definitions(sonkupik_studio_native PRIVATE
+    SONKUPIK_VERSION=\"${PROJECT_VERSION}\"
+    SONKUPIK_GIT_SHA=\"${SONKUPIK_GIT_SHA}\"
+)
 target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # P0_RUNTIME_TELEMETRY_V1 — deterministic, hardware-free resource qualification.
@@ -250,7 +273,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing
