@@ -13,6 +13,8 @@ StudioPanel {
     property color accentColor: Theme.amber
     readonly property bool stackedControls: root.title === "Band Limits"
     readonly property bool effectTone: root.title === "Tone"
+    property real rememberedHpfHz: 80
+    property real rememberedLpfHz: 16000
     signal fieldEdited(int index, real value)
     signal hpTypeEdited(string value)
     signal lpTypeEdited(string value)
@@ -37,6 +39,48 @@ StudioPanel {
         var ctx = studioContext()
         if (!ctx || ctx.sectionIndex !== 5) return
         ctx.engine.editDevicePath(label === "L DELAY" ? "outputs.surround.lDelayMs" : "outputs.surround.rDelayMs", value)
+    }
+
+    // CROSSOVER_EDGE_BYPASS_V1
+    // The donor UI exposes "bypass" but its dedicated type byte has not been
+    // captured. Use verified transparent edge cutoffs instead of inventing a
+    // protocol code: HPF 20 Hz / LPF 20 kHz, with the previous cutoff restored
+    // when the user selects a real filter again.
+    function fieldIndex(label) {
+        var wanted = String(label).toUpperCase()
+        for (var i = 0; i < root.fields.length; ++i)
+            if (String(root.fields[i].label || "").toUpperCase() === wanted) return i
+        return -1
+    }
+    function fieldValue(label, fallback) {
+        var i = fieldIndex(label)
+        return i >= 0 ? Number(root.fields[i].value) : fallback
+    }
+    function hpDisplayType() { return fieldValue("HPF", 20) <= 20.001 ? "Bypass" : root.hpType }
+    function lpDisplayType() { return fieldValue("LPF", 20000) >= 19999.999 ? "Bypass" : root.lpType }
+    function selectHpType(value) {
+        var i = fieldIndex("HPF")
+        var current = fieldValue("HPF", 20)
+        if (value === "Bypass") {
+            if (current > 20.001) root.rememberedHpfHz = current
+            if (i >= 0) root.fieldEdited(i, 20)
+            return
+        }
+        root.hpTypeEdited(value)
+        if (i >= 0 && current <= 20.001)
+            root.fieldEdited(i, Math.max(21, root.rememberedHpfHz))
+    }
+    function selectLpType(value) {
+        var i = fieldIndex("LPF")
+        var current = fieldValue("LPF", 20000)
+        if (value === "Bypass") {
+            if (current < 19999.999) root.rememberedLpfHz = current
+            if (i >= 0) root.fieldEdited(i, 20000)
+            return
+        }
+        root.lpTypeEdited(value)
+        if (i >= 0 && current >= 19999.999)
+            root.fieldEdited(i, Math.min(19999, root.rememberedLpfHz))
     }
 
     ColumnLayout {
@@ -83,7 +127,12 @@ StudioPanel {
                 unit: ""
                 defaultValue: value
                 accentColor: Theme.amber
-                onValueEdited: function(v) { if (root.fields.length > 0) { root.fieldEdited(0, v); root.dispatchVerifiedAux(0, v) } }
+                onValueEdited: function(v) {
+                    if (root.fields.length > 0) {
+                        if (String(root.fields[0].label || "").toUpperCase() === "HPF" && v > 20.001) root.rememberedHpfHz = v
+                        root.fieldEdited(0, v); root.dispatchVerifiedAux(0, v)
+                    }
+                }
             }
 
             ColumnLayout {
@@ -94,10 +143,10 @@ StudioPanel {
                 StudioComboBox {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 29
-                    value: root.hpType
-                    model: ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
+                    value: root.hpDisplayType()
+                    model: ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
                     accentColor: Theme.amber
-                    onValueEdited: function(v){ root.hpTypeEdited(v) }
+                    onValueEdited: function(v){ root.selectHpType(v) }
                 }
             }
 
@@ -114,7 +163,12 @@ StudioPanel {
                 unit: ""
                 defaultValue: value
                 accentColor: Theme.amber
-                onValueEdited: function(v) { if (root.fields.length > 1) { root.fieldEdited(1, v); root.dispatchVerifiedAux(1, v) } }
+                onValueEdited: function(v) {
+                    if (root.fields.length > 1) {
+                        if (String(root.fields[1].label || "").toUpperCase() === "LPF" && v < 19999.999) root.rememberedLpfHz = v
+                        root.fieldEdited(1, v); root.dispatchVerifiedAux(1, v)
+                    }
+                }
             }
 
             ColumnLayout {
@@ -125,10 +179,10 @@ StudioPanel {
                 StudioComboBox {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 29
-                    value: root.lpType
-                    model: ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
+                    value: root.lpDisplayType()
+                    model: ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
                     accentColor: Theme.amber
-                    onValueEdited: function(v){ root.lpTypeEdited(v) }
+                    onValueEdited: function(v){ root.selectLpType(v) }
                 }
             }
             Item { Layout.fillHeight: true }
@@ -166,7 +220,12 @@ StudioPanel {
                         unit: ""
                         defaultValue: Number(modelData.value)
                         accentColor: Theme.amber
-                        onValueEdited: function(v) { root.fieldEdited(index, v); root.dispatchVerifiedAux(index, v) }
+                        onValueEdited: function(v) {
+                            var label = String(modelData.label || "").toUpperCase()
+                            if (label === "HPF" && v > 20.001) root.rememberedHpfHz = v
+                            if (label === "LPF" && v < 19999.999) root.rememberedLpfHz = v
+                            root.fieldEdited(index, v); root.dispatchVerifiedAux(index, v)
+                        }
                     }
                 }
                 Item { Layout.fillHeight: true }
@@ -186,10 +245,10 @@ StudioPanel {
                     StudioComboBox {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 29
-                        value: root.hpType
-                        model: ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
+                        value: root.hpDisplayType()
+                        model: ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
                         accentColor: Theme.amber
-                        onValueEdited: function(v){ root.hpTypeEdited(v) }
+                        onValueEdited: function(v){ root.selectHpType(v) }
                     }
                 }
                 ColumnLayout {
@@ -199,10 +258,10 @@ StudioPanel {
                     StudioComboBox {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 29
-                        value: root.lpType
-                        model: ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
+                        value: root.lpDisplayType()
+                        model: ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
                         accentColor: Theme.amber
-                        onValueEdited: function(v){ root.lpTypeEdited(v) }
+                        onValueEdited: function(v){ root.selectLpType(v) }
                     }
                 }
                 Item { Layout.fillHeight: true }
