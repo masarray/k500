@@ -8,6 +8,7 @@ on:
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
       - 'src/k500/P42BatchTestMain.cpp'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'resources/presets/01_ALL_GENRE.k500'
       - '.github/workflows/progress-regression-audit.yml'
   pull_request:
@@ -16,6 +17,7 @@ on:
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
       - 'src/k500/P42BatchTestMain.cpp'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'resources/presets/01_ALL_GENRE.k500'
       - '.github/workflows/progress-regression-audit.yml'
 
@@ -30,7 +32,7 @@ jobs:
         run: |
           $bridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
           $access = Get-Content 'src/k500/K500PresetFileBridgeAccess.cpp' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $test = Get-Content 'src/k500/P42BatchTestMain.cpp' -Raw
 
           foreach ($token in @(
@@ -72,7 +74,7 @@ jobs:
       - name: Guard Device Mode layout and read-only MODE NAME parity
         shell: pwsh
         run: |
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           foreach ($token in @(
             'readonly property string selectedDeviceModeName',
             'id: deviceSlotColumn',
