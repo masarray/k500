@@ -92,6 +92,16 @@ private:
         Ready,
     };
 
+    // Tiny non-QObject helper that wires QCoreApplication::aboutToQuit to the
+    // deterministic shutdown slot. The connection uses this manager as context,
+    // so Qt disconnects it automatically if the manager is destroyed first.
+    class AppShutdownHook final
+    {
+    public:
+        explicit AppShutdownHook(K500DeviceManager *owner);
+        QMetaObject::Connection connection;
+    };
+
     void setStatus(const QString &status);
     void setPortLabel(const QString &label);
     void setError(const QString &message);
@@ -150,4 +160,5 @@ private:
     QTimer m_probeDelayTimer;
     QTimer m_heartbeatTimer;
     QElapsedTimer m_lastValidRx;
+    AppShutdownHook m_shutdownHook{this};
 };
