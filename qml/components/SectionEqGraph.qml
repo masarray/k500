@@ -34,6 +34,32 @@ StudioPanel {
     implicitHeight: 500
     accentTop: false
 
+    // PERF_EQ_PAINT_COALESCE_V1
+    // Fixed graph/model ownership is a crash-safety invariant. Keep those
+    // objects alive, but do not let every mouse/model signal trigger another
+    // expensive Canvas pass. One queued paint per ~display frame is enough.
+    function schedulePaint() {
+        if (!root.visible)
+            return
+        if (!paintTimer.running)
+            paintTimer.start()
+    }
+
+    Timer {
+        id: paintTimer
+        interval: 16
+        repeat: false
+        onTriggered: {
+            if (root.visible && curve.width > 0 && curve.height > 0)
+                curve.requestPaint()
+        }
+    }
+
+    onVisibleChanged: {
+        if (visible)
+            schedulePaint()
+    }
+
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
     function safeQ(q){ return clamp(Number(q)||0.7,0.1,30) }
     function normF(f){ return Math.log(clamp(f,20,20000)/20)/Math.log(1000) }
@@ -75,18 +101,25 @@ StudioPanel {
         a0=(A+1)-(A-1)*c+b
         return {b0:A*((A+1)+(A-1)*c+b)/a0,b1:-2*A*((A-1)+(A+1)*c)/a0,b2:A*((A+1)+(A-1)*c-b)/a0,a1:2*((A-1)-(A+1)*c)/a0,a2:((A+1)-(A-1)*c-b)/a0}
     }
-    function mag(c,f){
-        var w=2*Math.PI*clamp(f,1,23999)/48000,c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w)
+    function bandCoeff(b){
+        if(!b||Math.abs(b.gain)<0.001)return null
+        var t=String(b.typeName||"BELL").toUpperCase()
+        if(t.indexOf("LOW")>=0||t==="LS")return shelf(b.freq,b.q,b.gain,false)
+        if(t.indexOf("HIGH")>=0||t==="HS")return shelf(b.freq,b.q,b.gain,true)
+        return peak(b.freq,b.q,b.gain)
+    }
+    function magFromTrig(c,c1,s1,c2,s2){
+        if(!c)return 0
         var br=c.b0+c.b1*c1+c.b2*c2,bi=-(c.b1*s1+c.b2*s2),ar=1+c.a1*c1+c.a2*c2,ai=-(c.a1*s1+c.a2*s2)
         return 10*Math.log(Math.max((br*br+bi*bi)/Math.max(1e-12,ar*ar+ai*ai),1e-12))/Math.LN10
     }
+    function mag(c,f){
+        var w=2*Math.PI*clamp(f,1,23999)/48000,c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w)
+        return magFromTrig(c,c1,s1,c2,s2)
+    }
     function bandDb(b,f){
-        if(!b||Math.abs(b.gain)<0.001)return 0
-        var t=String(b.typeName||"BELL").toUpperCase(),c
-        if(t.indexOf("LOW")>=0||t==="LS")c=shelf(b.freq,b.q,b.gain,false)
-        else if(t.indexOf("HIGH")>=0||t==="HS")c=shelf(b.freq,b.q,b.gain,true)
-        else c=peak(b.freq,b.q,b.gain)
-        return mag(c,f)
+        var c=bandCoeff(b)
+        return c?mag(c,f):0
     }
     function bessel(order,r){
         var co=order===4?[105,105,45,10,1]:order===3?[15,15,6,1]:[3,3,1]
@@ -119,10 +152,10 @@ StudioPanel {
         selectedIndex=clamp(i,0,bands.count-1)
         var b=bands.get(selectedIndex)
         selectedFreq=b.freq;selectedGain=b.gain;selectedQ=b.q
-        curve.requestPaint()
+        schedulePaint()
     }
-    function selectCrossover(which){ selectedTarget=which==="lpf"?"lpf":"hpf";curve.requestPaint() }
-    function updateSelected(){ bands.setBand(selectedIndex,selectedFreq,selectedGain,selectedQ);curve.requestPaint() }
+    function selectCrossover(which){ selectedTarget=which==="lpf"?"lpf":"hpf";schedulePaint() }
+    function updateSelected(){ bands.setBand(selectedIndex,selectedFreq,selectedGain,selectedQ) }
     function setSelectedFrequency(v){selectedFreq=clamp(v,20,20000);updateSelected()}
     function setSelectedGain(v){selectedGain=clamp(v,-24,24);updateSelected()}
     function setSelectedQValue(v){selectedQ=clamp(v,0.1,30);updateSelected()}
@@ -135,7 +168,7 @@ StudioPanel {
             if(typeof bands.setLpType === "function")bands.setLpType(value)
             else root.crossoverTypeRequested("lpf",value)
         }
-        curve.requestPaint()
+        schedulePaint()
     }
     function resetCrossover(which){
         if(which==="hpf"){
@@ -145,7 +178,7 @@ StudioPanel {
             bands.setLpfHz(Number(bands.defaultLpfHz)||20000)
             setCrossoverType("lpf",String(bands.defaultLpType||"LP Butter 12"))
         }
-        curve.requestPaint()
+        schedulePaint()
     }
     function resetAll(){bands.resetAll();selectBand(0)}
 
@@ -153,11 +186,11 @@ StudioPanel {
         target: bands
         function onBandChanged(){
             if(root.selectedTarget==="band")root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
-            else curve.requestPaint()
+            else root.schedulePaint()
         }
-        function onCrossoverChanged(){curve.requestPaint()}
+        function onCrossoverChanged(){root.schedulePaint()}
     }
-    onBandModelChanged: Qt.callLater(function(){root.selectBand(0);curve.requestPaint()})
+    onBandModelChanged: Qt.callLater(function(){root.selectBand(0)})
     Component.onCompleted: selectBand(0)
 
     ColumnLayout {
@@ -255,29 +288,67 @@ StudioPanel {
                     id:curve
                     anchors.fill:parent
                     antialiasing:true
-                    onWidthChanged:requestPaint()
-                    onHeightChanged:requestPaint()
+                    onWidthChanged:root.schedulePaint()
+                    onHeightChanged:root.schedulePaint()
                     onPaint:{
                         var c=getContext("2d");c.reset()
-                        var n=Math.max(280,Math.floor(width/3)),i,t,f,x,y,zero=root.yFor(0)
+                        var n=Math.max(280,Math.min(420,Math.floor(width/3)))
+                        var count=n+1,i,b,t,f,x,y,zero=root.yFor(0)
+                        var xs=new Array(count),freqs=new Array(count)
+                        var c1s=new Array(count),s1s=new Array(count),c2s=new Array(count),s2s=new Array(count)
+                        var crossYs=new Array(count),totalYs=new Array(count)
+                        var prepared=new Array(root.bands.count)
+
+                        // PERF_EQ_CURVE_CACHE_V1
+                        // Biquad coefficients depend on the band, not on the
+                        // sampled frequency. Build them once per paint. Trig
+                        // terms depend on the frequency, so build those once per
+                        // sample and reuse them for every band and every stroke.
+                        for(b=0;b<root.bands.count;++b){
+                            var preparedBand=root.bands.get(b)
+                            prepared[b]={band:preparedBand,coeff:root.bandCoeff(preparedBand)}
+                        }
+                        for(i=0;i<count;++i){
+                            t=i/n
+                            f=root.freq(t)
+                            x=root.leftPad+t*(width-root.leftPad-root.rightPad)
+                            var w=2*Math.PI*root.clamp(f,1,23999)/48000
+                            var c1=Math.cos(w),s1=Math.sin(w),c2=Math.cos(2*w),s2=Math.sin(2*w)
+                            var cross=root.crossDb(f)
+                            var total=cross
+                            for(b=0;b<prepared.length;++b){
+                                if(prepared[b].coeff)
+                                    total+=root.magFromTrig(prepared[b].coeff,c1,s1,c2,s2)
+                            }
+                            xs[i]=x;freqs[i]=f
+                            c1s[i]=c1;s1s[i]=s1;c2s[i]=c2;s2s[i]=s2
+                            crossYs[i]=root.yFor(cross)
+                            totalYs[i]=root.yFor(root.clamp(total,-48,48))
+                        }
+
                         c.beginPath()
-                        for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                        for(i=0;i<count;++i){x=xs[i];y=totalYs[i];if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
                         c.lineTo(width-root.rightPad,zero);c.lineTo(root.leftPad,zero);c.closePath()
                         var fill=c.createLinearGradient(0,root.topPad,0,root.plotBottom)
                         fill.addColorStop(0,"rgba(36,233,242,0.24)");fill.addColorStop(.55,"rgba(36,233,242,0.08)");fill.addColorStop(1,"rgba(36,233,242,0)")
                         c.fillStyle=fill;c.fill()
 
-                        for(var b=0;b<root.bands.count;++b){
-                            var band=root.bands.get(b);if(Math.abs(band.gain)<.05)continue
+                        for(b=0;b<prepared.length;++b){
+                            var band=prepared[b].band,coeff=prepared[b].coeff
+                            if(!coeff||Math.abs(band.gain)<.05)continue
                             var bandSelected=root.selectedTarget==="band"&&b===root.selectedIndex
-                            c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                            c.beginPath()
+                            for(i=0;i<count;++i){
+                                y=root.yFor(root.magFromTrig(coeff,c1s[i],s1s[i],c2s[i],s2s[i]))
+                                if(i===0)c.moveTo(xs[i],y);else c.lineTo(xs[i],y)
+                            }
                             c.globalAlpha=bandSelected?.65:.13;c.lineWidth=bandSelected?1.6:1.0;c.strokeStyle=bandSelected?Theme.amber.toString():Theme.accent.toString();c.stroke()
                         }
 
-                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.crossDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                        c.beginPath();for(i=0;i<count;++i){if(i===0)c.moveTo(xs[i],crossYs[i]);else c.lineTo(xs[i],crossYs[i])}
                         c.globalAlpha=.40;c.lineWidth=1.2;c.strokeStyle=Theme.amber.toString();c.stroke()
 
-                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
+                        c.beginPath();for(i=0;i<count;++i){if(i===0)c.moveTo(xs[i],totalYs[i]);else c.lineTo(xs[i],totalYs[i])}
                         c.globalAlpha=.88;c.lineWidth=6.2;c.strokeStyle="#010203";c.stroke()
                         c.globalAlpha=.18;c.lineWidth=8;c.strokeStyle=Theme.accent.toString();c.stroke()
                         c.globalAlpha=1;c.lineWidth=3.2
