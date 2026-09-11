@@ -12,6 +12,7 @@ Item {
 
     SectionEqGraph {
         anchors.fill: parent
+        engine: root.engine
         bandModel: root.bandModel
         sectionLabel: "Music"
         showMicSelector: false
