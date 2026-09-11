@@ -41,6 +41,10 @@ StudioPanel {
         var n = Number(f[key])
         return isFinite(n) ? n : fallback
     }
+
+    // P1_RACK_FILTER_LIVE_BRIDGE_V1
+    // Reusable rack controls resolve StudioEngine through the owning workspace.
+    // QML never bypasses the canonical edit bridge or touches raw transport.
     function studioContext() {
         var p = root
         while (p) {
