@@ -21,7 +21,7 @@ jobs:
           $slider = Get-Content 'qml/components/ParameterSlider.qml' -Raw
           $knob = Get-Content 'qml/components/StudioKnob.qml' -Raw
           $input = Get-Content 'qml/components/InputFader.qml' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $theme = Get-Content 'qml/theme/Theme.qml' -Raw
           $main = Get-Content 'src/main.cpp' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
@@ -110,7 +110,7 @@ jobs:
           $fileHeader = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
           $batchBridge = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
           $uploadBridge = Get-Content 'src/k500/K500PresetUploadBridge.cpp' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
 
