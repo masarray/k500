@@ -16,6 +16,10 @@
 #include <vector>
 #endif
 
+namespace {
+constexpr int SerialPollIntervalMs = 25;
+}
+
 class K500WinIo::Impl
 {
 public:
@@ -84,17 +88,14 @@ public:
 
     void deliverHidBytes(DWORD bytesRead)
     {
-        if (bytesRead == 0)
+        if (bytesRead <= 1)
             return;
-        QByteArray data = hidReadBuffer.left(static_cast<int>(bytesRead));
 
         // ReadFile on a Windows HID handle includes the report id as byte 0.
-        // K500 uses report id 0, so strip that byte on EVERY report. This is
-        // essential for responses larger than 64 data bytes: the continuation
-        // report also begins with report id 0 even though its payload does not
-        // begin with a fresh 0x55 frame header.
-        if (!data.isEmpty())
-            data.remove(0, 1);
+        // K500 uses report id 0, so expose only the payload. Construct directly
+        // from byte 1 rather than copying the whole report and then memmoving it.
+        const int payloadSize = static_cast<int>(bytesRead - 1);
+        QByteArray data(hidReadBuffer.constData() + 1, payloadSize);
         if (!data.isEmpty())
             emit q->bytesReceived(data);
     }
@@ -104,8 +105,9 @@ public:
         if (closing || kind != Kind::UsbHid || handle == INVALID_HANDLE_VALUE)
             return;
 
+        // ReadFile reports the exact byte count, so clearing the entire report
+        // buffer before every overlapped read only burns CPU/cache bandwidth.
         hidReadBuffer.resize(qMax(2, hidInputReportLength));
-        hidReadBuffer.fill(char(0));
         ResetEvent(hidReadEvent);
         ZeroMemory(&hidReadOverlapped, sizeof(hidReadOverlapped));
         hidReadOverlapped.hEvent = hidReadEvent;
@@ -292,7 +294,7 @@ bool K500WinIo::openSerial(const QString &portName, QString *error)
     d->kind = Kind::Serial;
     d->label = portName.toUpper();
     d->serialPoll = std::make_unique<QTimer>(this);
-    d->serialPoll->setInterval(15);
+    d->serialPoll->setInterval(SerialPollIntervalMs);
     connect(d->serialPoll.get(), &QTimer::timeout, this, [this] { d->pollSerial(); });
     d->serialPoll->start();
     return true;
@@ -436,12 +438,19 @@ void K500WinIo::close()
 #ifdef Q_OS_WIN
     d->closing = true;
     if (d->serialPoll) {
-        d->serialPoll->stop();
-        d->serialPoll.reset();
+        // close() can be reached synchronously from errorOccurred while the
+        // timer is dispatching timeout(). Deleting the signal sender in that
+        // call stack is needlessly fragile; detach ownership and defer delete.
+        QTimer *timer = d->serialPoll.release();
+        timer->stop();
+        timer->deleteLater();
     }
     if (d->hidReadNotifier) {
-        d->hidReadNotifier->setEnabled(false);
-        d->hidReadNotifier.reset();
+        // Same re-entrancy rule for activated(): disable immediately but defer
+        // destruction until Qt unwinds the current event callback.
+        QWinEventNotifier *notifier = d->hidReadNotifier.release();
+        notifier->setEnabled(false);
+        notifier->deleteLater();
     }
     if (d->handle != INVALID_HANDLE_VALUE) {
         if (d->kind == Kind::UsbHid && d->hidReadEvent) {
