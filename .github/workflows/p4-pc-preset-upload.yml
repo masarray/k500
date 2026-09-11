@@ -9,6 +9,7 @@ on:
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/K500PresetCodec.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-pc-preset-upload.yml'
@@ -19,6 +20,7 @@ on:
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/K500PresetCodec.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-pc-preset-upload.yml'
@@ -37,7 +39,7 @@ jobs:
           $manager = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
           $header = Get-Content 'src/k500/K500PresetManager.h' -Raw
           $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
 
