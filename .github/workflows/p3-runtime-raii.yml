@@ -12,6 +12,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Guard P3 runtime ownership contract
+        shell: pwsh
+        run: |
+          $io = Get-Content 'src/k500/K500WinIo.cpp' -Raw
+          $ioHeader = Get-Content 'src/k500/K500WinIo.h' -Raw
+          $managerHeader = Get-Content 'src/k500/K500DeviceManager.h' -Raw
+          $shutdown = Get-Content 'src/k500/K500DeviceManagerShutdown.cpp' -Raw
+          foreach ($token in @('P3_WINDOWS_RAII_V1','UniqueWinHandle handle','UniqueWinHandle hidReadEvent','UniqueWinHandle hidWriteEvent','UniqueDeviceInfoSet devices','UniqueHidPreparsedData preparsed','UniqueLocalBuffer messageBuffer','P3_DETERMINISTIC_SHUTDOWN_V1','void K500WinIo::shutdown()')) {
+            if (-not $io.Contains($token)) { throw "P3 WinIo regression: missing '$token'" }
+          }
+          if (-not $ioHeader.Contains('bool m_shutdown = false') -or -not $ioHeader.Contains('void shutdown()')) {
+            throw 'P3 transport shutdown API/state missing'
+          }
+          if (-not $managerHeader.Contains('void shutdown();') -or -not $managerHeader.Contains('bool m_shuttingDown = false')) {
+            throw 'P3 device shutdown API/state missing'
+          }
+          foreach ($token in @('disconnect(m_controller, &K500Controller::frameReady','setLiveEnabled(false)','m_responseTimer.stop()','m_probeDelayTimer.stop()','m_heartbeatTimer.stop()','m_io.shutdown()')) {
+            if (-not $shutdown.Contains($token)) { throw "P3 shutdown sequencing regression: missing '$token'" }
+          }
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
         with:
@@ -28,12 +48,20 @@ jobs:
         shell: pwsh
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
 
-      - name: Build P3 resource guard harness
+      - name: Build P3 qualification harnesses
         shell: pwsh
-        run: cmake --build build --config Release --target k500_p3_win_resource_test
+        run: |
+          cmake --build build --config Release --target k500_p3_win_resource_test
+          cmake --build build --config Release --target k500_p3_transport_shutdown_test
 
       - name: Run RAII resource stress
         shell: pwsh
         run: |
           & build/k500_p3_win_resource_test.exe
           if ($LASTEXITCODE -ne 0) { throw "P3 Windows RAII self-test failed with exit code $LASTEXITCODE" }
+
+      - name: Run deterministic shutdown stress
+        shell: pwsh
+        run: |
+          & build/k500_p3_transport_shutdown_test.exe
+          if ($LASTEXITCODE -ne 0) { throw "P3 transport shutdown self-test failed with exit code $LASTEXITCODE" }
