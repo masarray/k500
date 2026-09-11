@@ -9,6 +9,7 @@ on:
       - 'src/k500/P42BatchTestMain.cpp'
       - 'src/k500/K500PresetManager.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'tests/fixtures/*.k500'
       - 'CMakeLists.txt'
@@ -20,6 +21,7 @@ on:
       - 'src/k500/P42BatchTestMain.cpp'
       - 'src/k500/K500PresetManager.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'tests/fixtures/*.k500'
       - 'CMakeLists.txt'
@@ -37,7 +39,7 @@ jobs:
         run: |
           $batch = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
           $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $manager = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
           $test = Get-Content 'src/k500/P42BatchTestMain.cpp' -Raw
