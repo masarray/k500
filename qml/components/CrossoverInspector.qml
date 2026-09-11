@@ -98,14 +98,7 @@ Item {
                     model: root.typeOptions
                     value: root.bypassed ? "Bypass" : root.filterType
                     accentColor: root.accentColor
-                    // SECTION_EQGRAPH_BYPASS_COMPAT_V1
-                    // The current graph controller historically used an exact
-                    // "Bypass" string as the old edge-frequency shortcut. A trailing
-                    // space deliberately routes this selection through the normal
-                    // type setter instead; protocol/renderer normalize whitespace.
-                    // This preserves the cutoff anchor until the graph controller is
-                    // fully simplified in a later accepted refactor.
-                    onValueEdited: function(v) { root.typeEdited(v === "Bypass" ? "Bypass " : v) }
+                    onValueEdited: function(v) { root.typeEdited(v) }
                 }
             }
         }
