@@ -3,6 +3,8 @@ name: Guard native control parity
 on:
   pull_request:
     paths:
+      - 'src/k500/K500Protocol.cpp'
+      - 'src/EqCurveItem.cpp'
       - 'qml/components/SectionEqGraph.qml'
       - 'qml/components/SectionEqGraphHost.qml'
       - 'qml/components/EqGraph.qml'
@@ -10,6 +12,7 @@ on:
       - 'qml/components/RackFilterPanel.qml'
       - 'qml/components/RackFaderPanel.qml'
       - 'qml/components/CrossoverInspector.qml'
+      - 'qml/components/ParameterSlider.qml'
       - '.github/workflows/native-control-parity.yml'
 
 jobs:
@@ -22,22 +25,30 @@ jobs:
         run: |
           from pathlib import Path
 
+          protocol = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          native_curve = Path('src/EqCurveItem.cpp').read_text(encoding='utf-8')
           graph = Path('qml/components/SectionEqGraph.qml').read_text(encoding='utf-8')
           host = Path('qml/components/SectionEqGraphHost.qml').read_text(encoding='utf-8')
           music_filter = Path('qml/components/FilterPanel.qml').read_text(encoding='utf-8')
           rack_filter = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
           rack_fader = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
           inspector = Path('qml/components/CrossoverInspector.qml').read_text(encoding='utf-8')
+          slider = Path('qml/components/ParameterSlider.qml').read_text(encoding='utf-8')
 
           checks = {
               'VST compare contract': 'VST_COMPARE_AND_EQ_BYPASS_V1' in graph and 'toggleCompare()' in graph and 'setFlatAudition' in graph,
               'Mic selector identity': 'MIC_SELECTOR_IDENTITY_V1' in graph and '#55E58A' in graph and '#FF626E' in graph,
               'Mic link is switch': 'MIC_EQ_LINK_TOGGLE_V2' in graph and 'eqLinkRequested(!root.eqLinked)' in graph,
               'Fixed graph lifetime preserved': 'CRASH_SAFE_FIXED_EQ_PAGES_V1' in host and host.count('SectionEqGraph {') == 8,
-              'Safe crossover bypass': 'CROSSOVER_EDGE_BYPASS_V1' in music_filter and 'CROSSOVER_EDGE_BYPASS_V1' in rack_filter,
-              'No guessed bypass protocol byte': '0x00' not in music_filter and '0x00' not in rack_filter,
+              'Native bypass type code is explicit': 'CROSSOVER_NATIVE_BYPASS_TYPE0_V1' in protocol and 'normalized == QStringLiteral("BYPASS")' in protocol,
+              'Native renderer bypass is flat': 'CROSSOVER_BYPASS_FLAT_RESPONSE_V1' in native_curve and 'return 0.0;' in native_curve,
+              'Music bypass changes type not cutoff': 'CROSSOVER_TYPE_BYPASS_V2' in music_filter and 'root.engine.hpType = value' in music_filter and 'root.engine.lpType = value' in music_filter,
+              'Rack crossover layout normalized': 'CROSSOVER_RACK_LAYOUT_V2' in rack_filter and 'SURROUND_DELAY_VERIFIED_V1' in rack_filter,
+              'Responsive crossover slider': 'RESPONSIVE_PARAMETER_SLIDER_V1' in slider and 'captionWidth' in slider and 'readoutWidth' in slider,
               'Bypass visible in all selectors': '"Bypass"' in music_filter and '"Bypass"' in rack_filter and '"Bypass"' in inspector,
+              'Inspector preserves cutoff on bypass': 'SECTION_EQGRAPH_BYPASS_COMPAT_V1' in inspector,
               'Output mute uses verified floor': 'OUTPUT_MUTE_VERIFIED_FLOOR_V1' in rack_fader and 'channel.muteFloor' in rack_fader,
+              'Mute lives in mixer header': 'MIXER_HEADER_MUTE_V2' in rack_fader and 'name: "volume-x"' in rack_fader,
               'No raw device access from QML': 'K500WinIo' not in graph + host + music_filter + rack_filter + rack_fader,
           }
 
