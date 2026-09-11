@@ -1,0 +1,64 @@
+name: P4 Sanitizer Fuzz
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500ResponseParser.*'
+      - 'src/k500/K500Frame.*'
+      - 'src/k500/P4ParserFuzzSelfTestMain.cpp'
+      - 'tests/p4/**'
+      - '.github/workflows/p4-sanitizer-fuzz.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500ResponseParser.*'
+      - 'src/k500/K500Frame.*'
+      - 'src/k500/P4ParserFuzzSelfTestMain.cpp'
+      - 'tests/p4/**'
+      - '.github/workflows/p4-sanitizer-fuzz.yml'
+
+jobs:
+  parser-asan-fuzz:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard diagnostic-only P4 contract
+        shell: pwsh
+        run: |
+          $fuzz = Get-Content 'src/k500/P4ParserFuzzSelfTestMain.cpp' -Raw
+          $cmake = Get-Content 'tests/p4/CMakeLists.txt' -Raw
+          foreach ($token in @('P4_PARSER_FUZZ_V1','FuzzIterations = 60000','InitialSeed = 0x4B353030u','exhaustiveValidSplits','malformedLengthRecovery','deterministicFuzz')) {
+            if (-not $fuzz.Contains($token)) { throw "P4 fuzz regression: missing '$token'" }
+          }
+          foreach ($token in @('P4_MSVC_ASAN_V1','/fsanitize=address','K500ResponseParser.cpp','K500Frame.cpp')) {
+            if (-not $cmake.Contains($token)) { throw "P4 ASan regression: missing '$token'" }
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure isolated ASan harness
+        shell: pwsh
+        run: cmake -S tests/p4 -B build-p4 -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build ASan parser fuzz harness
+        shell: pwsh
+        run: cmake --build build-p4 --config RelWithDebInfo
+
+      - name: Run malformed-frame fuzz under AddressSanitizer
+        shell: pwsh
+        run: |
+          $env:ASAN_OPTIONS = 'halt_on_error=1:abort_on_error=1'
+          & build-p4/k500_p4_parser_fuzz.exe
+          if ($LASTEXITCODE -ne 0) { throw "P4 ASan parser fuzz failed with exit code $LASTEXITCODE" }
