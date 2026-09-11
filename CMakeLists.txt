@@ -14,6 +14,8 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/AppVersionInit.cpp
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/EqCurveItem.cpp
+    src/EqCurveItem.h
     src/k500/K500Frame.cpp
     src/k500/K500Frame.h
     src/k500/K500Protocol.cpp
