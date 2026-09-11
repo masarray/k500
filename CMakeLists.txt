@@ -44,6 +44,19 @@ qt_add_executable(sonkupik_studio_native WIN32
 )
 target_compile_definitions(sonkupik_studio_native PRIVATE SONKUPIK_VERSION=\"${PROJECT_VERSION}\")
 
+# P0_RUNTIME_TELEMETRY_V1 — deterministic, hardware-free resource qualification.
+add_executable(k500_p0_perf_selftest
+    src/P0PerfSelfTestMain.cpp
+    src/RuntimeMetrics.cpp
+    src/RuntimeMetrics.h
+    src/StudioEngine.cpp
+    src/StudioEngine.h
+)
+target_link_libraries(k500_p0_perf_selftest PRIVATE Qt6::Core)
+if(WIN32)
+    target_link_libraries(k500_p0_perf_selftest PRIVATE psapi)
+endif()
+
 add_executable(k500_p2_selftest
     src/k500/P2SelfTestMain.cpp
     src/k500/K500Frame.cpp
