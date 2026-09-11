@@ -407,6 +407,11 @@ double EqCurveItem::besselMagnitude(int order, double ratio)
 double EqCurveItem::crossoverOneDb(bool lowPass, const QString &label, double cutoff, double frequency)
 {
     const QString upper = label.trimmed().toUpper();
+    // CROSSOVER_BYPASS_FLAT_RESPONSE_V1
+    // Bypass is a filter-type state. It never moves the cutoff anchor and it
+    // contributes exactly 0 dB to the response, matching the native K500 UI.
+    if (upper == QStringLiteral("BYPASS"))
+        return 0.0;
     const int order = upper.contains(QStringLiteral("24")) ? 4 : upper.contains(QStringLiteral("18")) ? 3 : 2;
     const double ratio = lowPass ? std::max(frequency, 1.0) / std::max(cutoff, 1.0)
                                  : std::max(cutoff, 1.0) / std::max(frequency, 1.0);
@@ -429,10 +434,12 @@ float EqCurveItem::calculateCrossoverDb(double frequency) const
     double db = 0.0;
     const double hpf = m_bandModel->hpfHz();
     const double lpf = m_bandModel->lpfHz();
-    if (hpf > 20.001)
-        db += crossoverOneDb(false, m_bandModel->hpType(), hpf, frequency);
-    if (lpf < 19999.999)
-        db += crossoverOneDb(true, m_bandModel->lpType(), lpf, frequency);
+    const QString hpType = m_bandModel->hpType().trimmed().toUpper();
+    const QString lpType = m_bandModel->lpType().trimmed().toUpper();
+    if (hpType != QStringLiteral("BYPASS"))
+        db += crossoverOneDb(false, hpType, hpf, frequency);
+    if (lpType != QStringLiteral("BYPASS"))
+        db += crossoverOneDb(true, lpType, lpf, frequency);
     return static_cast<float>(db);
 }
 
