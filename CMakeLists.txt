@@ -41,6 +41,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500WinIo.h
     src/k500/K500DeviceManager.cpp
     src/k500/K500DeviceManager.h
+    src/k500/K500DeviceManagerShutdown.cpp
 )
 target_compile_definitions(sonkupik_studio_native PRIVATE SONKUPIK_VERSION=\"${PROJECT_VERSION}\")
 target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
@@ -83,6 +84,19 @@ if(WIN32)
     )
     target_include_directories(k500_p3_win_resource_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
     target_link_libraries(k500_p3_win_resource_test PRIVATE Qt6::Core setupapi hid psapi)
+
+    add_executable(k500_p3_transport_shutdown_test
+        src/k500/P3TransportShutdownSelfTestMain.cpp
+        src/k500/K500WinIo.cpp
+        src/k500/K500WinIo.h
+        src/k500/K500Frame.cpp
+        src/k500/K500Frame.h
+        src/k500/WinResourceGuards.h
+        src/RuntimeMetrics.cpp
+        src/RuntimeMetrics.h
+    )
+    target_include_directories(k500_p3_transport_shutdown_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(k500_p3_transport_shutdown_test PRIVATE Qt6::Core setupapi hid psapi)
 endif()
 
 add_executable(k500_p2_selftest
