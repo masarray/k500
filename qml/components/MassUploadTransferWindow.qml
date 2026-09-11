@@ -19,6 +19,32 @@ Window {
     title: "Mass Upload Presets"
     visible: false
 
+    // MASS_UPLOAD_FIRST_FRAME_GATE_V1
+    // A native Windows dialog can become compositor-visible before Qt Quick has
+    // submitted its first dark scene-graph frame. Keep the HWND transparent for
+    // a short first-frame warmup, then reveal it atomically. This removes the
+    // default white client-area flash without changing transfer/preset behavior.
+    opacity: 0.0
+
+    Timer {
+        id: firstFrameRevealTimer
+        interval: 50
+        repeat: false
+        onTriggered: {
+            if (!root.visible)
+                return
+            root.opacity = 1.0
+            root.requestActivate()
+        }
+    }
+
+    onVisibleChanged: {
+        if (!visible) {
+            firstFrameRevealTimer.stop()
+            opacity = 0.0
+        }
+    }
+
     property int sourceIndex: -1
     property int targetIndex: -1
     readonly property int maxSlots: 10
@@ -36,8 +62,11 @@ Window {
             fileBridge.refreshPresetFolder()
             fileBridge.syncOfficialPresets()
         }
+        // Show only to the renderer/compositor while fully transparent. The
+        // reveal timer fires after the first dark scene has had time to submit.
+        opacity = 0.0
         visible = true
-        requestActivate()
+        firstFrameRevealTimer.restart()
     }
 
     function targetContains(path) {
