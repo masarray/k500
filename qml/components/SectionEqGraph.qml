@@ -24,7 +24,15 @@ StudioPanel {
     readonly property real topPad: 24 * virtualScaleY
     readonly property real bottomPad: 38 * virtualScaleY
     readonly property real plotBottom: Math.max(topPad + 120 * virtualScaleY, graph.height - bottomPad)
-    readonly property var colors: [Theme.accent, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber, Theme.amber]
+
+    // PEQ_PREMIUM_JEWEL_NODES_V1
+    // Professional EQs make control points read as small floating instruments,
+    // not flat buttons. Each band keeps a restrained jewel identity while the
+    // global cyan focus ring remains the single selection language of SonKuPik.
+    readonly property var colors: [
+        "#A977FF", "#E86A92", "#FF7659", "#F5B94C", "#9AD654",
+        "#55D6A0", "#42C7D9", "#5B9CFF", "#7C78FF", "#F58A45"
+    ]
     readonly property real inspectorFrequency: selectedTarget === "hpf" ? Number(bands.hpfHz) : selectedTarget === "lpf" ? Number(bands.lpfHz) : selectedFreq
 
     signal micChannelRequested(int channel)
@@ -271,15 +279,37 @@ StudioPanel {
                 Item {
                     id:hpfGuide
                     readonly property bool selected:root.selectedTarget==="hpf"
-                    width:24*root.virtualScaleX;height:root.plotBottom-root.topPad
+                    width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.35}}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.28}}
                     Text{x:parent.width/2+12*root.virtualScaleX;y:6*root.virtualScaleY;text:Math.round(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
-                    Rectangle {
-                        anchors.horizontalCenter:parent.horizontalCenter;y:root.yFor(0)-root.topPad-height/2
-                        width:(hpfGuide.selected?24:18)*root.nodeScale;height:width;radius:width/2
-                        color:hpfGuide.selected?Theme.accent:Theme.amber;border.width:1.5;border.color:"#090805"
-                        Text{anchors.centerIn:parent;text:"HP";color:"#071012";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
+                    Item {
+                        id:hpfNode
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        y:root.yFor(0)-root.topPad-height/2
+                        width:30*root.nodeScale;height:width
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:(hpfGuide.selected?30:23)*root.nodeScale;height:width;radius:width/2
+                            color:Theme.amber;opacity:hpfGuide.selected?.15:.055;antialiasing:true
+                            Behavior on width{NumberAnimation{duration:75}}
+                        }
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:(hpfGuide.selected?24:20)*root.nodeScale;height:width;radius:width/2
+                            color:"transparent";border.width:hpfGuide.selected?1.8:1.2
+                            border.color:hpfGuide.selected?Theme.accent:Theme.amber;antialiasing:true
+                            Behavior on width{NumberAnimation{duration:75}}
+                            Behavior on border.color{ColorAnimation{duration:75}}
+                        }
+                        Rectangle {
+                            id:hpfCore
+                            anchors.centerIn:parent
+                            width:(hpfGuide.selected?18:16)*root.nodeScale;height:width;radius:width/2
+                            color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
+                            Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:hpfGuide.selected?.38:.20;antialiasing:true}
+                            Text{anchors.centerIn:parent;text:"HP";color:hpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
+                        }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("hpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}}}
                 }
@@ -287,15 +317,36 @@ StudioPanel {
                 Item {
                     id:lpfGuide
                     readonly property bool selected:root.selectedTarget==="lpf"
-                    width:24*root.virtualScaleX;height:root.plotBottom-root.topPad
+                    width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.35}}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.28}}
                     Text{anchors.right:parent.horizontalCenter;anchors.rightMargin:12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
-                    Rectangle {
-                        anchors.horizontalCenter:parent.horizontalCenter;y:root.yFor(0)-root.topPad-height/2
-                        width:(lpfGuide.selected?24:18)*root.nodeScale;height:width;radius:width/2
-                        color:lpfGuide.selected?Theme.accent:Theme.amber;border.width:1.5;border.color:"#090805"
-                        Text{anchors.centerIn:parent;text:"LP";color:"#071012";font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.italic:true}
+                    Item {
+                        id:lpfNode
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        y:root.yFor(0)-root.topPad-height/2
+                        width:30*root.nodeScale;height:width
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:(lpfGuide.selected?30:23)*root.nodeScale;height:width;radius:width/2
+                            color:Theme.amber;opacity:lpfGuide.selected?.15:.055;antialiasing:true
+                            Behavior on width{NumberAnimation{duration:75}}
+                        }
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:(lpfGuide.selected?24:20)*root.nodeScale;height:width;radius:width/2
+                            color:"transparent";border.width:lpfGuide.selected?1.8:1.2
+                            border.color:lpfGuide.selected?Theme.accent:Theme.amber;antialiasing:true
+                            Behavior on width{NumberAnimation{duration:75}}
+                            Behavior on border.color{ColorAnimation{duration:75}}
+                        }
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:(lpfGuide.selected?18:16)*root.nodeScale;height:width;radius:width/2
+                            color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
+                            Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:lpfGuide.selected?.38:.20;antialiasing:true}
+                            Text{anchors.centerIn:parent;text:"LP";color:lpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
+                        }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("lpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}}}
                 }
@@ -312,14 +363,71 @@ StudioPanel {
                         property real dragLastX:0
                         property real dragLastY:0
                         readonly property bool selected:root.selectedTarget==="band"&&index===root.selectedIndex
-                        readonly property real haloVirtual:selected?36:26
-                        readonly property real coreVirtual:selected?21:16
-                        width:haloVirtual*root.nodeScale;height:width
+                        readonly property bool hovered:bandMouse.containsMouse
+                        readonly property color bandColor:root.colorFor(index)
+                        readonly property real haloVirtual:selected?33:hovered?28:24
+                        readonly property real ringVirtual:selected?27:hovered?23:20
+                        readonly property real coreVirtual:selected?21:hovered?19:17
+                        width:36*root.nodeScale;height:width
                         x:root.xFor(freq)-width/2;y:root.yFor(gain)-height/2
-                        Rectangle{anchors.centerIn:parent;width:parent.haloVirtual*root.nodeScale;height:width;radius:width/2;color:parent.selected?Theme.accent:Theme.amber;opacity:parent.selected?.17:.12}
-                        Rectangle{anchors.centerIn:parent;width:parent.coreVirtual*root.nodeScale;height:width;radius:width/2;color:parent.selected?Theme.accent:Theme.amber;border.width:1.5;border.color:"#07090A";Text{anchors.centerIn:parent;text:index+1;color:"#070A0C";font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
+
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:parent.haloVirtual*root.nodeScale;height:width;radius:width/2
+                            color:parent.bandColor
+                            opacity:parent.selected?.16:parent.hovered?.10:.045
+                            antialiasing:true
+                            Behavior on width{NumberAnimation{duration:70;easing.type:Easing.OutQuad}}
+                            Behavior on opacity{NumberAnimation{duration:70}}
+                        }
+                        Rectangle {
+                            anchors.centerIn:parent
+                            width:parent.ringVirtual*root.nodeScale;height:width;radius:width/2
+                            color:"transparent"
+                            border.width:parent.selected?1.9:parent.hovered?1.5:1.15
+                            border.color:parent.selected?Theme.accent:Qt.rgba(parent.bandColor.r,parent.bandColor.g,parent.bandColor.b,parent.hovered?.95:.78)
+                            antialiasing:true
+                            Behavior on width{NumberAnimation{duration:70;easing.type:Easing.OutQuad}}
+                            Behavior on border.color{ColorAnimation{duration:70}}
+                        }
+                        Rectangle {
+                            id:bandCore
+                            anchors.centerIn:parent
+                            width:parent.coreVirtual*root.nodeScale;height:width;radius:width/2
+                            color:"#070B0E"
+                            border.width:1
+                            border.color:Qt.rgba(parent.bandColor.r,parent.bandColor.g,parent.bandColor.b,parent.selected?.78:.48)
+                            antialiasing:true
+                            Behavior on width{NumberAnimation{duration:70;easing.type:Easing.OutQuad}}
+
+                            Rectangle {
+                                anchors.centerIn:parent
+                                width:Math.max(5,parent.width-5*root.nodeScale)
+                                height:width;radius:width/2
+                                color:bandNode.bandColor
+                                opacity:bandNode.selected?.14:bandNode.hovered?.10:.07
+                                antialiasing:true
+                            }
+                            Rectangle {
+                                width:4.4*root.nodeScale;height:2.1*root.nodeScale;radius:height/2
+                                x:3.1*root.nodeScale;y:2.7*root.nodeScale
+                                color:"#FFFFFF";opacity:bandNode.selected?.42:bandNode.hovered?.30:.20
+                                antialiasing:true
+                            }
+                            Text {
+                                anchors.centerIn:parent
+                                text:index+1
+                                color:bandNode.selected?Theme.text:bandNode.bandColor
+                                style:Text.Outline;styleColor:"#B0000000"
+                                font.family:Theme.monoFamily
+                                font.pixelSize:bandNode.selected?9:8
+                                font.weight:Font.Bold
+                            }
+                        }
                         MouseArea {
+                            id:bandMouse
                             anchors.fill:parent
+                            hoverEnabled:true
                             cursorShape:Qt.SizeAllCursor
                             preventStealing:true
                             onPressed:function(e){
@@ -409,13 +517,14 @@ StudioPanel {
                     required property real q
                     required property string typeName
                     readonly property bool selected:root.selectedTarget==="band"&&index===root.selectedIndex
+                    readonly property color bandColor:root.colorFor(index)
                     Layout.fillWidth:true;Layout.preferredHeight:43;radius:10
                     gradient:Gradient{GradientStop{position:0;color:bandPill.selected?"#103136":"#11171C"}GradientStop{position:1;color:bandPill.selected?"#081719":"#090D11"}}
                     border.width:1;border.color:bandPill.selected?Theme.accentSoft:"#242C33"
                     Column {
                         anchors.fill:parent;anchors.margins:6;spacing:0
-                        Row{width:parent.width;Text{text:"B"+(index+1);color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}Item{width:Math.max(0,parent.width-34);height:1}Text{text:root.typeShort(typeName);color:bandPill.selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
-                        Row{width:parent.width;Text{text:root.fmtF(freq);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Item{width:Math.max(0,parent.width-54);height:1}Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9}}
+                        Row{width:parent.width;Text{text:"B"+(index+1);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-34);height:1}Text{text:root.typeShort(typeName);color:bandPill.selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
+                        Row{width:parent.width;Text{text:root.fmtF(freq);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Item{width:Math.max(0,parent.width-54);height:1}Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9}}
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectBand(index)}
                 }
