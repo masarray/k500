@@ -73,6 +73,18 @@ if(WIN32)
     target_link_libraries(k500_p2_transport_lifecycle_test PRIVATE Qt6::Core setupapi hid psapi)
 endif()
 
+# P3_WINDOWS_RAII_V1 — mechanical native-resource ownership qualification.
+if(WIN32)
+    add_executable(k500_p3_win_resource_test
+        src/k500/P3WinResourceSelfTestMain.cpp
+        src/k500/WinResourceGuards.h
+        src/RuntimeMetrics.cpp
+        src/RuntimeMetrics.h
+    )
+    target_include_directories(k500_p3_win_resource_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(k500_p3_win_resource_test PRIVATE Qt6::Core setupapi hid psapi)
+endif()
+
 add_executable(k500_p2_selftest
     src/k500/P2SelfTestMain.cpp
     src/k500/K500Frame.cpp
