@@ -1,0 +1,64 @@
+name: P0 Runtime Telemetry
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - 'perf/**'
+    paths:
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p0-runtime-telemetry.yml'
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/p0-runtime-telemetry.yml'
+
+jobs:
+  runtime-health:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build P0 telemetry harness
+        shell: pwsh
+        run: cmake --build build --config Release --target k500_p0_perf_selftest
+
+      - name: Run steady-state runtime qualification
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path performance | Out-Null
+          $output = & build/k500_p0_perf_selftest.exe
+          $exitCode = $LASTEXITCODE
+          $output | Set-Content -Encoding utf8 performance/p0-runtime-health.json
+          Write-Host $output
+          if ($exitCode -ne 0) {
+            throw "P0 runtime telemetry failed with exit code $exitCode"
+          }
+
+      - name: Upload P0 telemetry
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: K500-P0-Runtime-Telemetry
+          path: performance/p0-runtime-health.json
+          if-no-files-found: error
