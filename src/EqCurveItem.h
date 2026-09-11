@@ -9,7 +9,7 @@
 
 #include "StudioEngine.h"
 
-class EqCurveItem final : public QQuickItem
+class EqCurveItem : public QQuickItem
 {
     Q_OBJECT
     QML_ELEMENT
