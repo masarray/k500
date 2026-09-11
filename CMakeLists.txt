@@ -43,6 +43,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500DeviceManager.h
 )
 target_compile_definitions(sonkupik_studio_native PRIVATE SONKUPIK_VERSION=\"${PROJECT_VERSION}\")
+target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # P0_RUNTIME_TELEMETRY_V1 — deterministic, hardware-free resource qualification.
 add_executable(k500_p0_perf_selftest
@@ -111,6 +112,7 @@ set_source_files_properties(qml/theme/Theme.qml
 qt_add_qml_module(sonkupik_studio_native
     URI SonkupikStudio
     VERSION 1.0
+    DEPENDENCIES QtQuick
     QML_FILES
         qml/Main.qml
         qml/theme/Theme.qml
