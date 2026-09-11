@@ -18,31 +18,29 @@ public:
     explicit CurveSceneNode(int bandCount, int sampleCount)
         : bandCount(bandCount)
     {
-        fill = createNode(sampleCount * 2);
+        fill = createFillNode(sampleCount);
         appendChildNode(fill);
 
         bands.reserve(bandCount);
         for (int i = 0; i < bandCount; ++i) {
-            auto *node = createNode(sampleCount * 2);
+            auto *node = createStrokeNode(sampleCount);
             bands.push_back(node);
             appendChildNode(node);
         }
 
-        crossover = createNode(sampleCount * 2);
-        totalShadow = createNode(sampleCount * 2);
-        totalGlow = createNode(sampleCount * 2);
-        total = createNode(sampleCount * 2);
+        crossover = createStrokeNode(sampleCount);
+        totalShadow = createStrokeNode(sampleCount);
+        totalGlow = createStrokeNode(sampleCount);
+        total = createStrokeNode(sampleCount);
         appendChildNode(crossover);
         appendChildNode(totalShadow);
         appendChildNode(totalGlow);
         appendChildNode(total);
     }
 
-    static QSGGeometryNode *createNode(int vertexCount)
+    static QSGGeometryNode *createNode(QSGGeometry *geometry)
     {
         auto *node = new QSGGeometryNode;
-        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), vertexCount);
-        geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
         auto *material = new QSGVertexColorMaterial;
         material->setFlag(QSGMaterial::Blending, true);
         node->setGeometry(geometry);
@@ -50,6 +48,50 @@ public:
         node->setFlag(QSGNode::OwnsGeometry, true);
         node->setFlag(QSGNode::OwnsMaterial, true);
         return node;
+    }
+
+    static QSGGeometryNode *createFillNode(int sampleCount)
+    {
+        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), sampleCount * 2);
+        geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
+        geometry->setVertexDataPattern(QSGGeometry::DynamicPattern);
+        return createNode(geometry);
+    }
+
+    // P1_NATIVE_PEQ_ANALYTIC_AA_V1
+    // Each stroke owns four vertices per response sample: transparent outer,
+    // opaque inner, opaque inner, transparent outer. Three indexed quads per
+    // segment form a feathered edge/core/edge strip. This is the same basic
+    // vertex-AA principle Qt uses for clean primitive edges, but scoped only to
+    // the PEQ geometry: no full-window MSAA, no Canvas and no offscreen layer.
+    static QSGGeometryNode *createStrokeNode(int sampleCount)
+    {
+        constexpr int VerticesPerSample = 4;
+        constexpr int IndicesPerSegment = 18;
+        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(),
+                                         sampleCount * VerticesPerSample,
+                                         std::max(0, sampleCount - 1) * IndicesPerSegment,
+                                         QSGGeometry::UnsignedShortType);
+        geometry->setDrawingMode(QSGGeometry::DrawTriangles);
+        geometry->setVertexDataPattern(QSGGeometry::DynamicPattern);
+        geometry->setIndexDataPattern(QSGGeometry::StaticPattern);
+
+        auto *indices = geometry->indexDataAsUShort();
+        for (int i = 0; i < sampleCount - 1; ++i) {
+            const quint16 a = static_cast<quint16>(i * VerticesPerSample);
+            const quint16 b = static_cast<quint16>((i + 1) * VerticesPerSample);
+            const quint16 pattern[IndicesPerSegment] = {
+                static_cast<quint16>(a + 0), static_cast<quint16>(b + 0), static_cast<quint16>(a + 1),
+                static_cast<quint16>(a + 1), static_cast<quint16>(b + 0), static_cast<quint16>(b + 1),
+                static_cast<quint16>(a + 1), static_cast<quint16>(b + 1), static_cast<quint16>(a + 2),
+                static_cast<quint16>(a + 2), static_cast<quint16>(b + 1), static_cast<quint16>(b + 2),
+                static_cast<quint16>(a + 2), static_cast<quint16>(b + 2), static_cast<quint16>(a + 3),
+                static_cast<quint16>(a + 3), static_cast<quint16>(b + 2), static_cast<quint16>(b + 3)
+            };
+            std::copy(std::begin(pattern), std::end(pattern), indices);
+            indices += IndicesPerSegment;
+        }
+        return createNode(geometry);
     }
 
     int bandCount = 0;
@@ -483,11 +525,12 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         return m_leftPad + static_cast<qreal>(sample) / static_cast<qreal>(SampleCount - 1) * plotWidth;
     };
 
-    auto writeStroke = [&](QSGGeometryNode *node, const QVector<float> &response, qreal thickness,
-                           const auto &colorAt) {
+    auto writeStroke = [&](QSGGeometryNode *node, const QVector<float> &response,
+                           qreal thickness, qreal feather, const auto &colorAt) {
         auto *geometry = node->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const qreal half = thickness * 0.5;
+        const qreal innerHalf = std::max<qreal>(0.05, thickness * 0.5);
+        const qreal outerHalf = innerHalf + std::max<qreal>(0.4, feather);
         for (int i = 0; i < SampleCount; ++i) {
             const int previous = std::max(0, i - 1);
             const int next = std::min(SampleCount - 1, i + 1);
@@ -496,54 +539,56 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
             const qreal dx = xForSample(next) - xForSample(previous);
             const qreal dy = yForDb(response.value(next)) - yForDb(response.value(previous));
             const qreal length = std::max<qreal>(0.0001, std::hypot(dx, dy));
-            const qreal nx = -dy / length * half;
-            const qreal ny = dx / length * half;
+            const qreal nx = -dy / length;
+            const qreal ny = dx / length;
             const QColor color = colorAt(i);
-            setVertex(vertices[i * 2], x + nx, y + ny, color);
-            setVertex(vertices[i * 2 + 1], x - nx, y - ny, color);
+            QColor edgeColor = color;
+            edgeColor.setAlpha(0);
+
+            setVertex(vertices[i * 4 + 0], x + nx * outerHalf, y + ny * outerHalf, edgeColor);
+            setVertex(vertices[i * 4 + 1], x + nx * innerHalf, y + ny * innerHalf, color);
+            setVertex(vertices[i * 4 + 2], x - nx * innerHalf, y - ny * innerHalf, color);
+            setVertex(vertices[i * 4 + 3], x - nx * outerHalf, y - ny * outerHalf, edgeColor);
         }
-        node->markDirty(QSGNode::DirtyGeometry | QSGNode::DirtyMaterial);
+        node->markDirty(QSGNode::DirtyGeometry);
     };
 
-    // VST-style hierarchy: the response shape is present, but deliberately
-    // restrained so the grid, individual bands and control nodes remain clear.
+    // Professional EQ hierarchy: one clean composite response carries the eye;
+    // fill, individual filters, crossover and glow only support it. The feather
+    // geometry keeps all strokes smooth without a full-window MSAA tax.
     {
         auto *geometry = root->fill->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const QColor topColor = withAlpha(m_accentColor, 30);
+        const QColor topColor = withAlpha(m_accentColor, 20);
         const QColor bottomColor = withAlpha(m_accentColor, 0);
         for (int i = 0; i < SampleCount; ++i) {
             const qreal x = xForSample(i);
             setVertex(vertices[i * 2], x, yForDb(m_totalResponse[i]), topColor);
             setVertex(vertices[i * 2 + 1], x, zeroY, bottomColor);
         }
-        root->fill->markDirty(QSGNode::DirtyGeometry | QSGNode::DirtyMaterial);
+        root->fill->markDirty(QSGNode::DirtyGeometry);
     }
 
     for (int band = 0; band < bandCount; ++band) {
         const bool active = std::any_of(m_bandResponses[band].cbegin(), m_bandResponses[band].cend(),
                                         [](float value) { return std::abs(value) > 0.001f; });
         const bool selected = active && m_selectedTarget == QStringLiteral("band") && band == m_selectedIndex;
-        const QColor color = active ? withAlpha(selected ? m_amberColor : m_accentColor,
-                                                 selected ? 158 : 24)
+        const QColor color = active ? withAlpha(m_amberColor, selected ? 150 : 22)
                                     : QColor(0, 0, 0, 0);
-        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.45 : 0.85,
-                    [color](int) { return color; });
+        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.35 : 0.75,
+                    selected ? 0.80 : 0.65, [color](int) { return color; });
     }
 
-    writeStroke(root->crossover, m_crossoverResponse, 1.05,
-                [this](int) { return withAlpha(m_amberColor, 78); });
-    writeStroke(root->totalShadow, m_totalResponse, 4.8,
-                [](int) { return QColor(1, 2, 3, 204); });
-    writeStroke(root->totalGlow, m_totalResponse, 5.8,
-                [this](int) { return withAlpha(m_accentColor, 28); });
-    writeStroke(root->total, m_totalResponse, 2.6,
-                [this](int sample) {
-                    const double t = static_cast<double>(sample) / static_cast<double>(SampleCount - 1);
-                    if (t <= 0.55)
-                        return interpolate(m_accentColor, m_amberColor, t / 0.55);
-                    return interpolate(m_amberColor, m_accentColor, (t - 0.55) / 0.45);
-                });
+    writeStroke(root->crossover, m_crossoverResponse, 0.90, 0.70,
+                [this](int) { return withAlpha(m_amberColor, 68); });
+    writeStroke(root->totalShadow, m_totalResponse, 3.6, 1.00,
+                [](int) { return QColor(1, 2, 3, 164); });
+    writeStroke(root->totalGlow, m_totalResponse, 4.6, 1.25,
+                [this](int) { return withAlpha(m_accentColor, 22); });
+
+    const QColor compositeColor = interpolate(m_accentColor, QColor(220, 253, 255), 0.16);
+    writeStroke(root->total, m_totalResponse, 2.15, 0.82,
+                [compositeColor](int) { return compositeColor; });
 
     return root;
 }
