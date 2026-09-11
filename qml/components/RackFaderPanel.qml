@@ -14,8 +14,6 @@ StudioPanel {
     accentTop: false
 
     // P1_RACK_FADER_LIVE_BRIDGE_V1
-    // Reusable rack panels resolve the owning StudioEngine through the visual
-    // parent chain. They never reference Controller/DeviceManager/I/O directly.
     function studioEngine() {
         var p = root
         while (p) {
@@ -38,7 +36,7 @@ StudioPanel {
         else if (t === "Surround Bus") section = "surround"
         else if (t === "Center Bus") section = "center"
         else if (t === "Subwoofer Bus") section = "sub"
-        if (!section.length) return "" // Reverb/Echo detail writes are not verified.
+        if (!section.length) return ""
 
         if (l === "L") return "outputs." + section + ".lVolDb"
         if (l === "R") return "outputs." + section + ".rVolDb"
@@ -110,10 +108,9 @@ StudioPanel {
                     readonly property real muteFloor: Number(modelData.from)
 
                     // OUTPUT_MUTE_VERIFIED_FLOOR_V1
-                    // Native per-channel mute flag bytes have never been donor-captured.
-                    // Do not invent them. Use the already verified output-volume field and
-                    // its raw-zero floor (-37.5 dB) as a reversible audition mute. The
-                    // fader retains the user's target value; unmute restores it exactly.
+                    // Per-output native mute flag bytes still need donor capture. Until
+                    // then the button uses only the verified output-volume field and its
+                    // raw-zero floor, preserving/restoring the user's target fader value.
                     function setMuted(next) {
                         if (!channel.canMute || channel.muted === next) return
                         channel.muted = next
@@ -125,10 +122,10 @@ StudioPanel {
                         anchors.fill: parent
                         spacing: 3
 
-                        // MIXER_HEADER_MUTE_V1
-                        // Mute belongs with the channel identity, not below the value
-                        // readout. This keeps every fader column the same height and gives
-                        // L/R/CTR/SUB the familiar mixer-channel affordance.
+                        // MIXER_HEADER_MUTE_V2
+                        // Use the project's canonical Lucide volume-x glyph beside the
+                        // channel caption. Bottom fader geometry stays uniform for every
+                        // channel; no isolated MUTE button creates visual congestion.
                         Item {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: Math.max(48,channel.width-4)
@@ -175,27 +172,12 @@ StudioPanel {
                                     border.width: 1
                                     border.color: channel.muted ? Theme.amber : mutePointer.containsMouse ? Theme.textDim : "#273038"
 
-                                    Item {
+                                    LucideIcon {
                                         anchors.centerIn: parent
-                                        width: 12; height: 12
-                                        opacity: channel.muted ? 1 : .82
-                                        Rectangle {
-                                            x: 1; y: 4; width: 3; height: 5; radius: 1
-                                            color: channel.muted ? Theme.amber : Theme.textSoft
-                                        }
-                                        Rectangle {
-                                            x: 4; y: 3; width: 6; height: 6; radius: 1
-                                            rotation: 45
-                                            color: channel.muted ? Theme.amber : Theme.textSoft
-                                            transformOrigin: Item.Center
-                                        }
-                                        Rectangle {
-                                            visible: channel.muted
-                                            x: 0; y: 5.2; width: 13; height: 1.4; radius: .7
-                                            rotation: 45
-                                            color: "#FF665B"
-                                            transformOrigin: Item.Center
-                                        }
+                                        width: 13; height: 13
+                                        name: "volume-x"
+                                        color: channel.muted ? Theme.amber : Theme.textSoft
+                                        strokeWidth: channel.muted ? 2.1 : 1.8
                                     }
                                     MouseArea {
                                         id: mutePointer
@@ -262,7 +244,7 @@ StudioPanel {
                                     Behavior on color { ColorAnimation { duration:75 } }
                                 }
                             }
-                            Behavior on border.color { ColorAnimation { duration: 75 } }
+                            Behavior on border.color { ColorAnimation { duration:75 } }
                         }
 
                         Item { Layout.fillHeight: true }
