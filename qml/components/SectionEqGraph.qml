@@ -385,6 +385,10 @@ StudioPanel {
                 border.color:"#010203"
                 clip:true
 
+                // PEQ_INTERACTION_PARITY_V1
+                // Keep the Qt graph aligned with the web/FabFilter-style workflow:
+                // wheel = selected-band Q, Shift = fine, Ctrl/Cmd + vertical drag = Q,
+                // normal drag = frequency/gain with magnetic 0 dB snap.
                 WheelHandler {
                     id:peqWheelHandler
                     target:null
