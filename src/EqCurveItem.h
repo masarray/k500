@@ -5,12 +5,14 @@
 #include <QQuickItem>
 #include <QString>
 #include <QVector>
+#include <QtQml/qqmlregistration.h>
 
 #include "StudioEngine.h"
 
 class EqCurveItem final : public QQuickItem
 {
     Q_OBJECT
+    QML_ELEMENT
     Q_PROPERTY(EqBandModel *bandModel READ bandModel WRITE setBandModel NOTIFY bandModelChanged)
     Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
     Q_PROPERTY(QString selectedTarget READ selectedTarget WRITE setSelectedTarget NOTIFY selectedTargetChanged)
