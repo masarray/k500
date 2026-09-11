@@ -1,0 +1,55 @@
+name: Guard Mass Upload first frame
+
+on:
+  push:
+    paths:
+      - 'qml/components/MassUploadTransferWindow.qml'
+      - '.github/workflows/mass-upload-first-frame.yml'
+  pull_request:
+    paths:
+      - 'qml/components/MassUploadTransferWindow.qml'
+      - '.github/workflows/mass-upload-first-frame.yml'
+
+jobs:
+  first-frame-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Guard dark first-frame contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          text = Path('qml/components/MassUploadTransferWindow.qml').read_text(encoding='utf-8')
+          required = [
+              'MASS_UPLOAD_FIRST_FRAME_GATE_V1',
+              'opacity: 0.0',
+              'id: firstFrameRevealTimer',
+              'interval: 50',
+              'root.opacity = 1.0',
+              'firstFrameRevealTimer.restart()',
+              'onVisibleChanged:',
+          ]
+          for token in required:
+              if token not in text:
+                  raise SystemExit(f"Mass Upload first-frame regression: missing {token!r}")
+
+          open_start = text.index('function openTransfer()')
+          open_end = text.index('function targetContains', open_start)
+          body = text[open_start:open_end]
+          expected_order = ['opacity = 0.0', 'visible = true', 'firstFrameRevealTimer.restart()']
+          positions = [body.find(token) for token in expected_order]
+          if any(pos < 0 for pos in positions) or positions != sorted(positions):
+              raise SystemExit('Mass Upload must become compositor-visible only while transparent, then arm reveal')
+
+          timer_start = text.index('Timer {\n        id: firstFrameRevealTimer')
+          timer_end = text.index('    onVisibleChanged:', timer_start)
+          timer_body = text[timer_start:timer_end]
+          if 'root.requestActivate()' not in timer_body:
+              raise SystemExit('Mass Upload activation must occur after first-frame reveal')
+          if 'requestActivate()' in body:
+              raise SystemExit('Mass Upload may not activate before the dark first-frame gate completes')
+
+          print('Mass Upload dark first-frame contract OK')
