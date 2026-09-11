@@ -18,8 +18,8 @@ Item {
 
     readonly property bool highPass: root.mode === "hpf"
     readonly property var typeOptions: highPass
-        ? ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
-        : ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
+        ? ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
+        : ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
 
     ColumnLayout {
         anchors.fill: parent
@@ -41,8 +41,10 @@ Item {
                     font.letterSpacing: 1.2
                 }
                 Text {
-                    text: root.highPass ? "High Pass Filter" : "Low Pass Filter"
-                    color: Theme.text
+                    text: root.filterType === "Bypass"
+                          ? (root.highPass ? "High Pass · Bypassed" : "Low Pass · Bypassed")
+                          : (root.highPass ? "High Pass Filter" : "Low Pass Filter")
+                    color: root.filterType === "Bypass" ? Theme.amber : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
