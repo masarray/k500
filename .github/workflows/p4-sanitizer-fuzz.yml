@@ -6,19 +6,25 @@ on:
     paths:
       - 'src/k500/K500ResponseParser.*'
       - 'src/k500/K500Frame.*'
-      - 'src/k500/P4ParserFuzzSelfTestMain.cpp'
+      - 'src/k500/K500PresetCodec.*'
+      - 'src/k500/K500WinIo.*'
+      - 'src/k500/WinResourceGuards.h'
+      - 'src/k500/P4*SelfTestMain.cpp'
       - 'tests/p4/**'
       - '.github/workflows/p4-sanitizer-fuzz.yml'
   pull_request:
     paths:
       - 'src/k500/K500ResponseParser.*'
       - 'src/k500/K500Frame.*'
-      - 'src/k500/P4ParserFuzzSelfTestMain.cpp'
+      - 'src/k500/K500PresetCodec.*'
+      - 'src/k500/K500WinIo.*'
+      - 'src/k500/WinResourceGuards.h'
+      - 'src/k500/P4*SelfTestMain.cpp'
       - 'tests/p4/**'
       - '.github/workflows/p4-sanitizer-fuzz.yml'
 
 jobs:
-  parser-asan-fuzz:
+  sanitizer-fuzz-soak:
     runs-on: windows-2022
     steps:
       - name: Checkout
@@ -27,12 +33,20 @@ jobs:
       - name: Guard diagnostic-only P4 contract
         shell: pwsh
         run: |
-          $fuzz = Get-Content 'src/k500/P4ParserFuzzSelfTestMain.cpp' -Raw
+          $parser = Get-Content 'src/k500/P4ParserFuzzSelfTestMain.cpp' -Raw
+          $preset = Get-Content 'src/k500/P4PresetCodecFuzzSelfTestMain.cpp' -Raw
+          $lifecycle = Get-Content 'src/k500/P4LifecycleAsanSelfTestMain.cpp' -Raw
           $cmake = Get-Content 'tests/p4/CMakeLists.txt' -Raw
           foreach ($token in @('P4_PARSER_FUZZ_V1','FuzzIterations = 60000','InitialSeed = 0x4B353030u','exhaustiveValidSplits','malformedLengthRecovery','deterministicFuzz')) {
-            if (-not $fuzz.Contains($token)) { throw "P4 fuzz regression: missing '$token'" }
+            if (-not $parser.Contains($token)) { throw "P4 parser fuzz regression: missing '$token'" }
           }
-          foreach ($token in @('P4_MSVC_ASAN_V1','/fsanitize=address','K500ResponseParser.cpp','K500Frame.cpp')) {
+          foreach ($token in @('P4_PRESET_CODEC_FUZZ_V1','FuzzIterations = 40000','deterministicPresetFuzz','applyWhitelistedPatches','buildDeviceSlotImage')) {
+            if (-not $preset.Contains($token)) { throw "P4 preset fuzz regression: missing '$token'" }
+          }
+          foreach ($token in @('P4_LIFECYCLE_ASAN_V1','LifecycleCycles = 384','io.shutdown()','COM65535')) {
+            if (-not $lifecycle.Contains($token)) { throw "P4 lifecycle soak regression: missing '$token'" }
+          }
+          foreach ($token in @('P4_MSVC_ASAN_V1','/fsanitize=address','k500_p4_parser_fuzz','k500_p4_preset_codec_fuzz','k500_p4_lifecycle_asan')) {
             if (-not $cmake.Contains($token)) { throw "P4 ASan regression: missing '$token'" }
           }
 
@@ -48,17 +62,31 @@ jobs:
         with:
           arch: x64
 
-      - name: Configure isolated ASan harness
+      - name: Configure isolated ASan harnesses
         shell: pwsh
         run: cmake -S tests/p4 -B build-p4 -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_CXX_COMPILER=cl
 
-      - name: Build ASan parser fuzz harness
+      - name: Build ASan harnesses
         shell: pwsh
         run: cmake --build build-p4 --config RelWithDebInfo
 
-      - name: Run malformed-frame fuzz under AddressSanitizer
+      - name: Run parser malformed-frame fuzz under AddressSanitizer
         shell: pwsh
         run: |
           $env:ASAN_OPTIONS = 'halt_on_error=1:abort_on_error=1'
           & build-p4/k500_p4_parser_fuzz.exe
           if ($LASTEXITCODE -ne 0) { throw "P4 ASan parser fuzz failed with exit code $LASTEXITCODE" }
+
+      - name: Run preset codec fuzz under AddressSanitizer
+        shell: pwsh
+        run: |
+          $env:ASAN_OPTIONS = 'halt_on_error=1:abort_on_error=1'
+          & build-p4/k500_p4_preset_codec_fuzz.exe
+          if ($LASTEXITCODE -ne 0) { throw "P4 ASan preset codec fuzz failed with exit code $LASTEXITCODE" }
+
+      - name: Run transport lifecycle soak under AddressSanitizer
+        shell: pwsh
+        run: |
+          $env:ASAN_OPTIONS = 'halt_on_error=1:abort_on_error=1'
+          & build-p4/k500_p4_lifecycle_asan.exe
+          if ($LASTEXITCODE -ne 0) { throw "P4 ASan lifecycle soak failed with exit code $LASTEXITCODE" }
