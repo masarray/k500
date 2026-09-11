@@ -28,6 +28,11 @@ public:
                     QString *deviceLabel = nullptr, QString *error = nullptr);
     void close();
 
+    // P3_DETERMINISTIC_SHUTDOWN_V1
+    // Permanently stops accepting new work, closes native resources on the
+    // transport worker, then joins the worker. Safe to call repeatedly.
+    void shutdown();
+
     bool isOpen() const;
     Kind kind() const;
     QString label() const;
@@ -55,4 +60,5 @@ private:
     Kind m_kind = Kind::None;
     QString m_label;
     bool m_open = false;
+    bool m_shutdown = false;
 };
