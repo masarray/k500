@@ -14,8 +14,6 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/AppVersionInit.cpp
     src/StudioEngine.cpp
     src/StudioEngine.h
-    src/EqCurveItem.cpp
-    src/EqCurveItem.h
     src/k500/K500Frame.cpp
     src/k500/K500Frame.h
     src/k500/K500Protocol.cpp
@@ -149,6 +147,9 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/SystemWorkspace.qml
         qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
+    SOURCES
+        src/EqCurveItem.cpp
+        src/EqCurveItem.h
 )
 
 # BRAND_SONKUPIK_K500_V1 — one authoritative visual identity for app/header/web.
