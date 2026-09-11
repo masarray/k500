@@ -17,6 +17,7 @@ Item {
     implicitHeight: 86
 
     readonly property bool highPass: root.mode === "hpf"
+    readonly property bool bypassed: String(root.filterType).trim().toUpperCase() === "BYPASS"
     readonly property var typeOptions: highPass
         ? ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
         : ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
@@ -41,10 +42,10 @@ Item {
                     font.letterSpacing: 1.2
                 }
                 Text {
-                    text: root.filterType === "Bypass"
+                    text: root.bypassed
                           ? (root.highPass ? "High Pass · Bypassed" : "Low Pass · Bypassed")
                           : (root.highPass ? "High Pass Filter" : "Low Pass Filter")
-                    color: root.filterType === "Bypass" ? Theme.amber : Theme.text
+                    color: root.bypassed ? Theme.amber : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -95,9 +96,16 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     model: root.typeOptions
-                    value: root.filterType
+                    value: root.bypassed ? "Bypass" : root.filterType
                     accentColor: root.accentColor
-                    onValueEdited: function(v) { root.typeEdited(v) }
+                    // SECTION_EQGRAPH_BYPASS_COMPAT_V1
+                    // The current graph controller historically used an exact
+                    // "Bypass" string as the old edge-frequency shortcut. A trailing
+                    // space deliberately routes this selection through the normal
+                    // type setter instead; protocol/renderer normalize whitespace.
+                    // This preserves the cutoff anchor until the graph controller is
+                    // fully simplified in a later accepted refactor.
+                    onValueEdited: function(v) { root.typeEdited(v === "Bypass" ? "Bypass " : v) }
                 }
             }
         }
