@@ -13,7 +13,7 @@ class EqCurveItem final : public QQuickItem
 {
     Q_OBJECT
     QML_ELEMENT
-    Q_PROPERTY(QObject *bandModel READ bandModel WRITE setBandModel NOTIFY bandModelChanged)
+    Q_PROPERTY(EqBandModel *bandModel READ bandModel WRITE setBandModel NOTIFY bandModelChanged)
     Q_PROPERTY(int selectedIndex READ selectedIndex WRITE setSelectedIndex NOTIFY selectedIndexChanged)
     Q_PROPERTY(QString selectedTarget READ selectedTarget WRITE setSelectedTarget NOTIFY selectedTargetChanged)
     Q_PROPERTY(qreal leftPad READ leftPad WRITE setLeftPad NOTIFY geometryParametersChanged)
@@ -27,7 +27,7 @@ public:
     explicit EqCurveItem(QQuickItem *parent = nullptr);
     ~EqCurveItem() override = default;
 
-    QObject *bandModel() const { return m_bandModel; }
+    EqBandModel *bandModel() const { return m_bandModel; }
     int selectedIndex() const { return m_selectedIndex; }
     QString selectedTarget() const { return m_selectedTarget; }
     qreal leftPad() const { return m_leftPad; }
@@ -37,7 +37,7 @@ public:
     QColor accentColor() const { return m_accentColor; }
     QColor amberColor() const { return m_amberColor; }
 
-    void setBandModel(QObject *model);
+    void setBandModel(EqBandModel *model);
     void setSelectedIndex(int value);
     void setSelectedTarget(const QString &value);
     void setLeftPad(qreal value);
