@@ -251,40 +251,21 @@ StudioPanel {
                     }
                 }
 
-                Canvas {
+                // P1_NATIVE_PEQ_SCENEGRAPH_V1
+                // Response math is cached in C++ and the curve is retained as
+                // scene-graph geometry. QML still owns every interaction/handle.
+                EqCurveItem {
                     id:curve
                     anchors.fill:parent
-                    antialiasing:true
-                    onWidthChanged:requestPaint()
-                    onHeightChanged:requestPaint()
-                    onPaint:{
-                        var c=getContext("2d");c.reset()
-                        var n=Math.max(280,Math.floor(width/3)),i,t,f,x,y,zero=root.yFor(0)
-                        c.beginPath()
-                        for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.lineTo(width-root.rightPad,zero);c.lineTo(root.leftPad,zero);c.closePath()
-                        var fill=c.createLinearGradient(0,root.topPad,0,root.plotBottom)
-                        fill.addColorStop(0,"rgba(36,233,242,0.24)");fill.addColorStop(.55,"rgba(36,233,242,0.08)");fill.addColorStop(1,"rgba(36,233,242,0)")
-                        c.fillStyle=fill;c.fill()
-
-                        for(var b=0;b<root.bands.count;++b){
-                            var band=root.bands.get(b);if(Math.abs(band.gain)<.05)continue
-                            var bandSelected=root.selectedTarget==="band"&&b===root.selectedIndex
-                            c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.bandDb(band,f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                            c.globalAlpha=bandSelected?.65:.13;c.lineWidth=bandSelected?1.6:1.0;c.strokeStyle=bandSelected?Theme.amber.toString():Theme.accent.toString();c.stroke()
-                        }
-
-                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.crossDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=.40;c.lineWidth=1.2;c.strokeStyle=Theme.amber.toString();c.stroke()
-
-                        c.beginPath();for(i=0;i<=n;++i){t=i/n;f=root.freq(t);x=root.leftPad+t*(width-root.leftPad-root.rightPad);y=root.yFor(root.totalDb(f));if(i===0)c.moveTo(x,y);else c.lineTo(x,y)}
-                        c.globalAlpha=.88;c.lineWidth=6.2;c.strokeStyle="#010203";c.stroke()
-                        c.globalAlpha=.18;c.lineWidth=8;c.strokeStyle=Theme.accent.toString();c.stroke()
-                        c.globalAlpha=1;c.lineWidth=3.2
-                        var stroke=c.createLinearGradient(root.leftPad,0,width-root.rightPad,0)
-                        stroke.addColorStop(0,Theme.accent.toString());stroke.addColorStop(.55,Theme.amber.toString());stroke.addColorStop(1,Theme.accent.toString())
-                        c.strokeStyle=stroke;c.stroke();c.globalAlpha=1
-                    }
+                    bandModel:root.bands
+                    selectedIndex:root.selectedIndex
+                    selectedTarget:root.selectedTarget
+                    leftPad:root.leftPad
+                    rightPad:root.rightPad
+                    topPad:root.topPad
+                    plotBottom:root.plotBottom
+                    accentColor:Theme.accent
+                    amberColor:Theme.amber
                 }
 
                 Item {
