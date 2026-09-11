@@ -24,6 +24,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.micAEqBands
         sectionLabel: "Mic A"
         showMicSelector: true
@@ -37,6 +38,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.micBEqBands
         sectionLabel: "Mic B"
         showMicSelector: true
@@ -50,6 +52,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.reverbEqBands
         sectionLabel: "Reverb"
         Layout.fillWidth: true
@@ -58,6 +61,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.echoEqBands
         sectionLabel: "Echo"
         Layout.fillWidth: true
@@ -66,6 +70,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.mainEqBands
         sectionLabel: "Main"
         Layout.fillWidth: true
@@ -74,6 +79,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.surroundEqBands
         sectionLabel: "Surround"
         Layout.fillWidth: true
@@ -82,6 +88,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.centerEqBands
         sectionLabel: "Center"
         Layout.fillWidth: true
@@ -90,6 +97,7 @@ StackLayout {
     }
 
     SectionEqGraph {
+        engine: root.engine
         bandModel: root.engine.subEqBands
         sectionLabel: "Subwoofer"
         Layout.fillWidth: true
