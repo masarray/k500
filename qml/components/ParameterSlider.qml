@@ -14,6 +14,16 @@ Item {
     property color accentColor: Theme.accent
     property bool logarithmic: false
     property bool dragging: false
+
+    // RESPONSIVE_PARAMETER_SLIDER_V1
+    // Wide mixer controls keep the established proportions. Narrow crossover
+    // cards explicitly opt into smaller caption/readout widths so the track can
+    // never sit underneath the numeric readout.
+    property real captionWidth: 76
+    property real readoutWidth: 72
+    property real controlGap: 8
+    property real trackGap: 6
+
     readonly property bool hovered: pointer.containsMouse
     readonly property bool highlighted: hovered || dragging || activeFocus
     signal valueEdited(real newValue)
@@ -40,7 +50,7 @@ Item {
         id:caption
         anchors.left:parent.left
         anchors.verticalCenter:parent.verticalCenter
-        width:76
+        width:root.captionWidth
         text:root.label
         color:root.highlighted ? root.accentColor : Theme.textDim
         style:root.highlighted ? Text.Outline : Text.Normal
@@ -50,6 +60,7 @@ Item {
         font.weight:root.highlighted ? Font.DemiBold : Font.Medium
         font.letterSpacing:.8
         elide:Text.ElideRight
+        verticalAlignment:Text.AlignVCenter
         Behavior on color { ColorAnimation { duration:75 } }
         Behavior on styleColor { ColorAnimation { duration:75 } }
     }
@@ -57,9 +68,9 @@ Item {
     Rectangle {
         id:track
         anchors.left:parent.left
-        anchors.leftMargin:82
+        anchors.leftMargin:root.captionWidth + root.trackGap
         anchors.right:readout.left
-        anchors.rightMargin:8
+        anchors.rightMargin:root.controlGap
         anchors.verticalCenter:parent.verticalCenter
         height:root.highlighted ? 8 : 7
         radius:4
@@ -86,7 +97,7 @@ Item {
         id:readout
         anchors.right:parent.right
         anchors.verticalCenter:parent.verticalCenter
-        width:72;height:25;radius:7
+        width:root.readoutWidth;height:25;radius:7
         color:"#06090C";border.width:1;border.color:root.highlighted?root.accentColor:"#1B242B"
         Behavior on border.color { ColorAnimation { duration:75 } }
         Row {
@@ -103,7 +114,7 @@ Item {
         hoverEnabled:true
         preventStealing:true
         cursorShape:Qt.PointingHandCursor
-        function setFromX(sceneX){var p=mapToItem(track,sceneX,0);root.valueEdited(root.quantize(root.normToValue(p.x/track.width),false))}
+        function setFromX(sceneX){var p=mapToItem(track,sceneX,0);root.valueEdited(root.quantize(root.normToValue(p.x/Math.max(1,track.width)),false))}
         onPressed:function(event){root.forceActiveFocus();root.dragging=true;setFromX(event.x);event.accepted=true}
         onPositionChanged:function(event){if(pressed)setFromX(event.x)}
         onReleased:function(event){root.dragging=false;event.accepted=true}
