@@ -8,12 +8,16 @@
 #include <QTimer>
 
 #ifdef Q_OS_WIN
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <hidsdi.h>
 #include <hidpi.h>
 #include <setupapi.h>
 #include <QWinEventNotifier>
+
+#include "WinResourceGuards.h"
 
 #include <algorithm>
 #include <cstring>
@@ -30,7 +34,9 @@ public:
 
     ~Impl() override
     {
+#ifdef Q_OS_WIN
         closeTransport();
+#endif
     }
 
     K500WinIo *q = nullptr;
@@ -38,19 +44,22 @@ public:
     QString label;
 
 #ifdef Q_OS_WIN
-    HANDLE handle = INVALID_HANDLE_VALUE;
+    // P3_WINDOWS_RAII_V1
+    // Persistent native resources are move-only and close mechanically on every
+    // early return, normal disconnect and final worker destruction.
+    UniqueWinHandle handle;
     bool closing = false;
 
     QTimer *serialPoll = nullptr;
 
-    HANDLE hidReadEvent = nullptr;
+    UniqueWinHandle hidReadEvent;
     OVERLAPPED hidReadOverlapped{};
     QWinEventNotifier *hidReadNotifier = nullptr;
     QByteArray hidReadBuffer;
     int hidInputReportLength = 65;
     bool hidReadPending = false;
 
-    HANDLE hidWriteEvent = nullptr;
+    UniqueWinHandle hidWriteEvent;
     OVERLAPPED hidWriteOverlapped{};
     QWinEventNotifier *hidWriteNotifier = nullptr;
     QByteArray hidWriteBuffer;
@@ -86,12 +95,10 @@ public:
                           | FORMAT_MESSAGE_IGNORE_INSERTS;
         FormatMessageW(flags, nullptr, code, 0,
                        reinterpret_cast<wchar_t *>(&message), 0, nullptr);
-        const QString detail = message
+        UniqueLocalBuffer messageBuffer(message);
+        return message
             ? QString::fromWCharArray(message).trimmed()
             : QStringLiteral("Windows error %1").arg(code);
-        if (message)
-            LocalFree(message);
-        return detail;
     }
 
     void emitWinError(const QString &prefix, DWORD code = GetLastError())
@@ -101,12 +108,12 @@ public:
 
     void pollSerial()
     {
-        if (closing || kind != Kind::Serial || handle == INVALID_HANDLE_VALUE)
+        if (closing || kind != Kind::Serial || !handle)
             return;
 
         DWORD errors = 0;
         COMSTAT stat{};
-        if (!ClearCommError(handle, &errors, &stat)) {
+        if (!ClearCommError(handle.get(), &errors, &stat)) {
             emitWinError(QStringLiteral("Serial status failed"));
             return;
         }
@@ -115,7 +122,7 @@ public:
 
         QByteArray data(static_cast<int>(qMin<DWORD>(stat.cbInQue, 4096)), Qt::Uninitialized);
         DWORD read = 0;
-        if (!ReadFile(handle, data.data(), static_cast<DWORD>(data.size()), &read, nullptr)) {
+        if (!ReadFile(handle.get(), data.data(), static_cast<DWORD>(data.size()), &read, nullptr)) {
             emitWinError(QStringLiteral("Serial read failed"));
             return;
         }
@@ -139,17 +146,17 @@ public:
 
     void issueHidRead()
     {
-        if (closing || kind != Kind::UsbHid || handle == INVALID_HANDLE_VALUE)
+        if (closing || kind != Kind::UsbHid || !handle || !hidReadEvent)
             return;
 
         hidReadBuffer.resize(qMax(2, hidInputReportLength));
-        ResetEvent(hidReadEvent);
+        ResetEvent(hidReadEvent.get());
         ZeroMemory(&hidReadOverlapped, sizeof(hidReadOverlapped));
-        hidReadOverlapped.hEvent = hidReadEvent;
+        hidReadOverlapped.hEvent = hidReadEvent.get();
         hidReadPending = false;
 
         DWORD bytesRead = 0;
-        const BOOL ok = ReadFile(handle, hidReadBuffer.data(),
+        const BOOL ok = ReadFile(handle.get(), hidReadBuffer.data(),
                                  static_cast<DWORD>(hidReadBuffer.size()),
                                  &bytesRead, &hidReadOverlapped);
         if (ok) {
@@ -170,13 +177,13 @@ public:
 
     void completeHidRead()
     {
-        if (closing || handle == INVALID_HANDLE_VALUE)
+        if (closing || !handle)
             return;
         if (hidReadNotifier)
             hidReadNotifier->setEnabled(false);
 
         DWORD bytesRead = 0;
-        if (!GetOverlappedResult(handle, &hidReadOverlapped, &bytesRead, FALSE)) {
+        if (!GetOverlappedResult(handle.get(), &hidReadOverlapped, &bytesRead, FALSE)) {
             const DWORD code = GetLastError();
             if (code == ERROR_IO_INCOMPLETE) {
                 if (hidReadNotifier)
@@ -199,18 +206,18 @@ public:
     // preserves K500 command/report ordering without any GUI-thread wait.
     void startNextHidWrite()
     {
-        if (closing || kind != Kind::UsbHid || handle == INVALID_HANDLE_VALUE
+        if (closing || kind != Kind::UsbHid || !handle || !hidWriteEvent
             || hidWritePending || hidWriteQueue.isEmpty()) {
             return;
         }
 
         hidWriteBuffer = hidWriteQueue.dequeue();
-        ResetEvent(hidWriteEvent);
+        ResetEvent(hidWriteEvent.get());
         ZeroMemory(&hidWriteOverlapped, sizeof(hidWriteOverlapped));
-        hidWriteOverlapped.hEvent = hidWriteEvent;
+        hidWriteOverlapped.hEvent = hidWriteEvent.get();
 
         DWORD written = 0;
-        const BOOL ok = WriteFile(handle, hidWriteBuffer.constData(),
+        const BOOL ok = WriteFile(handle.get(), hidWriteBuffer.constData(),
                                   static_cast<DWORD>(hidWriteBuffer.size()),
                                   &written, &hidWriteOverlapped);
         if (ok) {
@@ -241,13 +248,13 @@ public:
 
     void completeHidWrite()
     {
-        if (closing || handle == INVALID_HANDLE_VALUE)
+        if (closing || !handle)
             return;
         if (hidWriteNotifier)
             hidWriteNotifier->setEnabled(false);
 
         DWORD written = 0;
-        if (!GetOverlappedResult(handle, &hidWriteOverlapped, &written, FALSE)) {
+        if (!GetOverlappedResult(handle.get(), &hidWriteOverlapped, &written, FALSE)) {
             const DWORD code = GetLastError();
             if (code == ERROR_IO_INCOMPLETE) {
                 if (hidWriteNotifier)
@@ -277,14 +284,14 @@ public:
 
     void enqueueProtocolFrame(const QByteArray &btFrame)
     {
-        if (closing || handle == INVALID_HANDLE_VALUE || kind == Kind::None) {
+        if (closing || !handle || kind == Kind::None) {
             publishError(QStringLiteral("K500 transport is not open"));
             return;
         }
 
         if (kind == Kind::Serial) {
             DWORD written = 0;
-            const BOOL ok = WriteFile(handle, btFrame.constData(),
+            const BOOL ok = WriteFile(handle.get(), btFrame.constData(),
                                       static_cast<DWORD>(btFrame.size()),
                                       &written, nullptr);
             if (!ok || written != static_cast<DWORD>(btFrame.size())) {
@@ -316,10 +323,10 @@ public:
         closeTransport();
 
         const QString path = QStringLiteral("\\\\.\\%1").arg(portName);
-        HANDLE newHandle = CreateFileW(reinterpret_cast<LPCWSTR>(path.utf16()),
-                                       GENERIC_READ | GENERIC_WRITE,
-                                       0, nullptr, OPEN_EXISTING, 0, nullptr);
-        if (newHandle == INVALID_HANDLE_VALUE) {
+        UniqueWinHandle newHandle(CreateFileW(reinterpret_cast<LPCWSTR>(path.utf16()),
+                                              GENERIC_READ | GENERIC_WRITE,
+                                              0, nullptr, OPEN_EXISTING, 0, nullptr));
+        if (!newHandle) {
             if (error)
                 *error = QStringLiteral("Cannot open %1 (Windows error %2)")
                              .arg(portName).arg(GetLastError());
@@ -328,9 +335,8 @@ public:
 
         DCB dcb{};
         dcb.DCBlength = sizeof(dcb);
-        if (!GetCommState(newHandle, &dcb)) {
+        if (!GetCommState(newHandle.get(), &dcb)) {
             const DWORD code = GetLastError();
-            CloseHandle(newHandle);
             if (error)
                 *error = QStringLiteral("GetCommState %1 failed (%2)").arg(portName).arg(code);
             return false;
@@ -350,16 +356,15 @@ public:
         dcb.fDtrControl = DTR_CONTROL_ENABLE;
         dcb.fRtsControl = RTS_CONTROL_ENABLE;
 
-        if (!SetCommState(newHandle, &dcb)) {
+        if (!SetCommState(newHandle.get(), &dcb)) {
             const DWORD code = GetLastError();
-            CloseHandle(newHandle);
             if (error)
                 *error = QStringLiteral("SetCommState %1 failed (%2)").arg(portName).arg(code);
             return false;
         }
 
-        SetupComm(newHandle, 4096, 4096);
-        PurgeComm(newHandle, PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
+        SetupComm(newHandle.get(), 4096, 4096);
+        PurgeComm(newHandle.get(), PURGE_RXABORT | PURGE_RXCLEAR | PURGE_TXABORT | PURGE_TXCLEAR);
 
         COMMTIMEOUTS timeouts{};
         timeouts.ReadIntervalTimeout = MAXDWORD;
@@ -367,9 +372,9 @@ public:
         timeouts.ReadTotalTimeoutConstant = 0;
         timeouts.WriteTotalTimeoutMultiplier = 0;
         timeouts.WriteTotalTimeoutConstant = 900;
-        SetCommTimeouts(newHandle, &timeouts);
+        SetCommTimeouts(newHandle.get(), &timeouts);
 
-        handle = newHandle;
+        handle = std::move(newHandle);
         kind = Kind::Serial;
         label = portName.toUpper();
         closing = false;
@@ -388,9 +393,9 @@ public:
 
         GUID hidGuid{};
         HidD_GetHidGuid(&hidGuid);
-        HDEVINFO devices = SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr,
-                                                DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-        if (devices == INVALID_HANDLE_VALUE) {
+        UniqueDeviceInfoSet devices(SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr,
+                                                         DIGCF_PRESENT | DIGCF_DEVICEINTERFACE));
+        if (!devices) {
             if (error)
                 *error = QStringLiteral("Cannot enumerate HID devices");
             return false;
@@ -400,43 +405,41 @@ public:
         for (DWORD index = 0;; ++index) {
             SP_DEVICE_INTERFACE_DATA iface{};
             iface.cbSize = sizeof(iface);
-            if (!SetupDiEnumDeviceInterfaces(devices, nullptr, &hidGuid, index, &iface)) {
+            if (!SetupDiEnumDeviceInterfaces(devices.get(), nullptr, &hidGuid, index, &iface)) {
                 if (GetLastError() == ERROR_NO_MORE_ITEMS)
                     break;
                 continue;
             }
 
             DWORD required = 0;
-            SetupDiGetDeviceInterfaceDetailW(devices, &iface, nullptr, 0, &required, nullptr);
+            SetupDiGetDeviceInterfaceDetailW(devices.get(), &iface, nullptr, 0, &required, nullptr);
             if (required == 0)
                 continue;
 
             std::vector<unsigned char> storage(required);
             auto *detail = reinterpret_cast<PSP_DEVICE_INTERFACE_DETAIL_DATA_W>(storage.data());
             detail->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA_W);
-            if (!SetupDiGetDeviceInterfaceDetailW(devices, &iface, detail, required,
+            if (!SetupDiGetDeviceInterfaceDetailW(devices.get(), &iface, detail, required,
                                                   nullptr, nullptr)) {
                 continue;
             }
 
-            HANDLE probe = CreateFileW(detail->DevicePath, 0,
-                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                       nullptr, OPEN_EXISTING, 0, nullptr);
-            if (probe == INVALID_HANDLE_VALUE)
+            UniqueWinHandle probe(CreateFileW(detail->DevicePath, 0,
+                                              FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                              nullptr, OPEN_EXISTING, 0, nullptr));
+            if (!probe)
                 continue;
 
             HIDD_ATTRIBUTES attributes{};
             attributes.Size = sizeof(attributes);
-            const bool match = HidD_GetAttributes(probe, &attributes)
+            const bool match = HidD_GetAttributes(probe.get(), &attributes)
                             && attributes.VendorID == vendorId
                             && attributes.ProductID == productId;
-            CloseHandle(probe);
             if (match) {
                 matchedPath = QString::fromWCharArray(detail->DevicePath);
                 break;
             }
         }
-        SetupDiDestroyDeviceInfoList(devices);
 
         if (matchedPath.isEmpty()) {
             if (error)
@@ -446,11 +449,12 @@ public:
             return false;
         }
 
-        HANDLE newHandle = CreateFileW(reinterpret_cast<LPCWSTR>(matchedPath.utf16()),
-                                       GENERIC_READ | GENERIC_WRITE,
-                                       FILE_SHARE_READ | FILE_SHARE_WRITE,
-                                       nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
-        if (newHandle == INVALID_HANDLE_VALUE) {
+        UniqueWinHandle newHandle(CreateFileW(reinterpret_cast<LPCWSTR>(matchedPath.utf16()),
+                                              GENERIC_READ | GENERIC_WRITE,
+                                              FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                              nullptr, OPEN_EXISTING,
+                                              FILE_FLAG_OVERLAPPED, nullptr));
+        if (!newHandle) {
             if (error)
                 *error = QStringLiteral("K500 USB HID is present but cannot be opened. Close the original K500 app and retry. Windows error %1")
                              .arg(GetLastError());
@@ -459,7 +463,7 @@ public:
 
         QString detectedLabel = QStringLiteral("USB HID DSP AUDIO");
         wchar_t product[256]{};
-        if (HidD_GetProductString(newHandle, product, sizeof(product))) {
+        if (HidD_GetProductString(newHandle.get(), product, sizeof(product))) {
             const QString detected = QString::fromWCharArray(product).trimmed();
             if (!detected.isEmpty())
                 detectedLabel = detected;
@@ -467,24 +471,24 @@ public:
 
         hidInputReportLength = 65;
         hidOutputReportLength = 65;
-        PHIDP_PREPARSED_DATA preparsed = nullptr;
+        PHIDP_PREPARSED_DATA rawPreparsed = nullptr;
         HIDP_CAPS caps{};
-        if (HidD_GetPreparsedData(newHandle, &preparsed)) {
-            if (HidP_GetCaps(preparsed, &caps) == HIDP_STATUS_SUCCESS) {
+        if (HidD_GetPreparsedData(newHandle.get(), &rawPreparsed)) {
+            UniqueHidPreparsedData preparsed(rawPreparsed);
+            if (HidP_GetCaps(preparsed.get(), &caps) == HIDP_STATUS_SUCCESS) {
                 hidInputReportLength = qMax<int>(2, caps.InputReportByteLength);
                 hidOutputReportLength = qMax<int>(2, caps.OutputReportByteLength);
             }
-            HidD_FreePreparsedData(preparsed);
         }
 
-        handle = newHandle;
+        handle = std::move(newHandle);
         kind = Kind::UsbHid;
         label = detectedLabel;
         closing = false;
-        HidD_SetNumInputBuffers(handle, 64);
+        HidD_SetNumInputBuffers(handle.get(), 64);
 
-        hidReadEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
-        hidWriteEvent = CreateEventW(nullptr, TRUE, FALSE, nullptr);
+        hidReadEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        hidWriteEvent.reset(CreateEventW(nullptr, TRUE, FALSE, nullptr));
         if (!hidReadEvent || !hidWriteEvent) {
             const DWORD code = GetLastError();
             closeTransport();
@@ -493,12 +497,12 @@ public:
             return false;
         }
 
-        hidReadNotifier = new QWinEventNotifier(hidReadEvent, this);
+        hidReadNotifier = new QWinEventNotifier(hidReadEvent.get(), this);
         hidReadNotifier->setEnabled(false);
         connect(hidReadNotifier, &QWinEventNotifier::activated,
                 this, [this] { completeHidRead(); });
 
-        hidWriteNotifier = new QWinEventNotifier(hidWriteEvent, this);
+        hidWriteNotifier = new QWinEventNotifier(hidWriteEvent.get(), this);
         hidWriteNotifier->setEnabled(false);
         connect(hidWriteNotifier, &QWinEventNotifier::activated,
                 this, [this] { completeHidWrite(); });
@@ -511,6 +515,10 @@ public:
 
     void closeTransport()
     {
+        // P3_DETERMINISTIC_SHUTDOWN_V1
+        // 1) stop producing work, 2) disable Qt callbacks, 3) cancel/complete
+        // outstanding native I/O, 4) release HANDLEs/events, 5) reset state.
+        // All of this runs on the worker thread and is safe to repeat.
         closing = true;
 
         if (serialPoll) {
@@ -531,21 +539,17 @@ public:
 
         hidWriteQueue.clear();
 
-        if (handle != INVALID_HANDLE_VALUE) {
-            if (kind == Kind::UsbHid) {
-                if (hidReadPending)
-                    CancelIoEx(handle, &hidReadOverlapped);
-                if (hidWritePending)
-                    CancelIoEx(handle, &hidWriteOverlapped);
+        if (handle && kind == Kind::UsbHid) {
+            if (hidReadPending)
+                CancelIoEx(handle.get(), &hidReadOverlapped);
+            if (hidWritePending)
+                CancelIoEx(handle.get(), &hidWriteOverlapped);
 
-                DWORD ignored = 0;
-                if (hidReadPending)
-                    GetOverlappedResult(handle, &hidReadOverlapped, &ignored, TRUE);
-                if (hidWritePending)
-                    GetOverlappedResult(handle, &hidWriteOverlapped, &ignored, TRUE);
-            }
-            CloseHandle(handle);
-            handle = INVALID_HANDLE_VALUE;
+            DWORD ignored = 0;
+            if (hidReadPending)
+                GetOverlappedResult(handle.get(), &hidReadOverlapped, &ignored, TRUE);
+            if (hidWritePending)
+                GetOverlappedResult(handle.get(), &hidWriteOverlapped, &ignored, TRUE);
         }
 
         hidReadPending = false;
@@ -553,14 +557,11 @@ public:
         hidReadBuffer.clear();
         hidWriteBuffer.clear();
 
-        if (hidReadEvent) {
-            CloseHandle(hidReadEvent);
-            hidReadEvent = nullptr;
-        }
-        if (hidWriteEvent) {
-            CloseHandle(hidWriteEvent);
-            hidWriteEvent = nullptr;
-        }
+        // HANDLE must be released after pending OVERLAPPED operations have
+        // completed/cancelled, and before their event HANDLEs disappear.
+        handle.reset();
+        hidReadEvent.reset();
+        hidWriteEvent.reset();
         ZeroMemory(&hidReadOverlapped, sizeof(hidReadOverlapped));
         ZeroMemory(&hidWriteOverlapped, sizeof(hidWriteOverlapped));
 
@@ -583,21 +584,7 @@ K500WinIo::K500WinIo(QObject *parent)
 
 K500WinIo::~K500WinIo()
 {
-    m_open = false;
-    m_kind = Kind::None;
-    m_label.clear();
-
-    if (d && m_workerThread.isRunning()) {
-        Impl *worker = d;
-        QMetaObject::invokeMethod(worker, [worker] {
-#ifdef Q_OS_WIN
-            worker->closeTransport();
-#endif
-        }, Qt::BlockingQueuedConnection);
-        m_workerThread.quit();
-        m_workerThread.wait();
-    }
-    d = nullptr;
+    shutdown();
 }
 
 QStringList K500WinIo::serialPorts()
@@ -633,7 +620,7 @@ bool K500WinIo::openSerial(const QString &portName, QString *error)
 {
     close();
 #ifdef Q_OS_WIN
-    if (!d || !m_workerThread.isRunning()) {
+    if (m_shutdown || !d || !m_workerThread.isRunning()) {
         if (error)
             *error = QStringLiteral("K500 transport worker is not running");
         return false;
@@ -672,7 +659,7 @@ bool K500WinIo::openUsbHid(quint16 vendorId, quint16 productId,
 {
     close();
 #ifdef Q_OS_WIN
-    if (!d || !m_workerThread.isRunning()) {
+    if (m_shutdown || !d || !m_workerThread.isRunning()) {
         if (error)
             *error = QStringLiteral("K500 transport worker is not running");
         return false;
@@ -715,13 +702,38 @@ void K500WinIo::close()
     m_label.clear();
 
 #ifdef Q_OS_WIN
-    if (!d || !m_workerThread.isRunning())
+    if (m_shutdown || !d || !m_workerThread.isRunning())
         return;
     Impl *worker = d;
     QMetaObject::invokeMethod(worker, [worker] {
         worker->closeTransport();
     }, Qt::QueuedConnection);
 #endif
+}
+
+void K500WinIo::shutdown()
+{
+    if (m_shutdown)
+        return;
+
+    // Stop accepting new writes before crossing to the worker. This makes the
+    // GUI-side admission state authoritative during application teardown.
+    m_shutdown = true;
+    m_open = false;
+    m_kind = Kind::None;
+    m_label.clear();
+
+    if (d && m_workerThread.isRunning()) {
+        Impl *worker = d;
+        QMetaObject::invokeMethod(worker, [worker] {
+#ifdef Q_OS_WIN
+            worker->closeTransport();
+#endif
+        }, Qt::BlockingQueuedConnection);
+        m_workerThread.quit();
+        m_workerThread.wait();
+    }
+    d = nullptr;
 }
 
 bool K500WinIo::isOpen() const
@@ -742,7 +754,7 @@ QString K500WinIo::label() const
 bool K500WinIo::writeProtocolFrame(const QByteArray &btFrame, QString *error)
 {
 #ifdef Q_OS_WIN
-    if (!m_open || m_kind == Kind::None || !d || !m_workerThread.isRunning()) {
+    if (m_shutdown || !m_open || m_kind == Kind::None || !d || !m_workerThread.isRunning()) {
         if (error)
             *error = QStringLiteral("K500 transport is not open");
         return false;
