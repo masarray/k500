@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DevicePerformanceMonitor.h"
 #include "K500ResponseParser.h"
 #include "K500WinIo.h"
 
@@ -127,6 +128,7 @@ private:
     void resetConnectionState(bool keepError = false);
 
     K500Controller *m_controller = nullptr;
+    DevicePerformanceMonitor m_performanceMonitor{this, m_controller};
     K500WinIo m_io;
     K500ResponseParser m_parser;
     QObject *m_presetManager = nullptr;
