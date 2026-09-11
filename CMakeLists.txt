@@ -58,6 +58,21 @@ if(WIN32)
     target_link_libraries(k500_p0_perf_selftest PRIVATE psapi)
 endif()
 
+# P2_TRANSPORT_LIFECYCLE_STRESS_V1 — hardware-free worker lifecycle qualification.
+if(WIN32)
+    add_executable(k500_p2_transport_lifecycle_test
+        src/k500/P2TransportLifecycleSelfTestMain.cpp
+        src/k500/K500WinIo.cpp
+        src/k500/K500WinIo.h
+        src/k500/K500Frame.cpp
+        src/k500/K500Frame.h
+        src/RuntimeMetrics.cpp
+        src/RuntimeMetrics.h
+    )
+    target_include_directories(k500_p2_transport_lifecycle_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(k500_p2_transport_lifecycle_test PRIVATE Qt6::Core setupapi hid psapi)
+endif()
+
 add_executable(k500_p2_selftest
     src/k500/P2SelfTestMain.cpp
     src/k500/K500Frame.cpp
