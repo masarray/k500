@@ -2,9 +2,20 @@
 
 #include "K500Controller.h"
 
+#include <QCoreApplication>
+
 // P3_DETERMINISTIC_SHUTDOWN_V1
 // Keep teardown in a tiny translation unit so shutdown sequencing remains easy
 // to audit independently from the protocol/readback state machine.
+
+K500DeviceManager::AppShutdownHook::AppShutdownHook(K500DeviceManager *owner)
+{
+    if (auto *app = QCoreApplication::instance()) {
+        connection = QObject::connect(app, &QCoreApplication::aboutToQuit,
+                                      owner, &K500DeviceManager::shutdown,
+                                      Qt::DirectConnection);
+    }
+}
 
 K500DeviceManager::~K500DeviceManager()
 {
