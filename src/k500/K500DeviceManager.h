@@ -31,6 +31,7 @@ class K500DeviceManager final : public QObject
 
 public:
     explicit K500DeviceManager(K500Controller *controller, QObject *parent = nullptr);
+    ~K500DeviceManager() override;
 
     QString transportMode() const { return m_transportMode; }
     QString status() const { return m_status; }
@@ -60,6 +61,11 @@ public:
 
 public slots:
     void sendLiveFrame(const QByteArray &frame, const QString &label);
+
+    // P3_DETERMINISTIC_SHUTDOWN_V1
+    // Idempotent application-teardown entry point. It stops timers and live
+    // writes before synchronously closing/joining the transport worker.
+    void shutdown();
 
 signals:
     void transportModeChanged();
@@ -127,6 +133,7 @@ private:
     QStringList m_diagnosticLog;
     bool m_liveEnabled = false;
     bool m_muted = false;
+    bool m_shuttingDown = false;
 
     Stage m_stage = Stage::Idle;
     QStringList m_serialCandidates;
