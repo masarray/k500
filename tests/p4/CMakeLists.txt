@@ -8,6 +8,19 @@ set(CMAKE_AUTOMOC OFF)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS Core)
 
+# P3_SHUTDOWN_COMPILE_PROBE_V1
+# P4 is stacked directly on P3, so this small object target gives fast compile
+# coverage for the final P3 aboutToQuit/shutdown translation unit while the full
+# packaging matrix runs independently.
+add_library(k500_p3_shutdown_compile_probe OBJECT
+    ../../src/k500/K500DeviceManagerShutdown.cpp
+    ../../src/k500/K500DeviceManager.h
+    ../../src/k500/K500WinIo.h
+    ../../src/k500/K500Controller.h
+)
+target_include_directories(k500_p3_shutdown_compile_probe PRIVATE ../../src ../../src/k500)
+target_link_libraries(k500_p3_shutdown_compile_probe PRIVATE Qt6::Core)
+
 # P4_MSVC_ASAN_V1
 # Keep sanitizer instrumentation isolated from the shipping executable and Qt
 # binaries. This target instruments only first-party parser/frame/harness code.
