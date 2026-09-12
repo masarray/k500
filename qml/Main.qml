@@ -37,6 +37,7 @@ ApplicationWindow {
             Layout.minimumHeight: 52
             Layout.maximumHeight: 52
             deviceManager: root.deviceManager
+            engine: root.studioEngine
         }
 
         RowLayout {

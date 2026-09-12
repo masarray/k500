@@ -1,0 +1,40 @@
+name: Guard P0 topbar semantic truth
+
+on:
+  pull_request:
+    paths:
+      - 'qml/Main.qml'
+      - 'qml/components/TopBar.qml'
+      - '.github/workflows/p0-topbar-semantic-truth.yml'
+
+jobs:
+  topbar-semantic-truth:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard preset and live state semantics
+        shell: python
+        run: |
+          import re
+          from pathlib import Path
+
+          main = Path('qml/Main.qml').read_text(encoding='utf-8')
+          topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'semantic truth contract token': 'P0_TOPBAR_SEMANTIC_TRUTH_V1' in topbar,
+              'hard-coded DEFAULT FLAT UI removed': re.search(r'text\s*:\s*["\']DEFAULT FLAT["\']', topbar) is None,
+              'topbar receives authoritative engine state': 'required property var engine' in topbar and 'engine: root.studioEngine' in main,
+              'device slot context is authoritative': 'manager.activeSlot' in topbar and 'deviceModeNames' in topbar and 'DEVICE SLOT ' in topbar,
+              'PC staged and preview remain distinct': 'PC STAGED' in topbar and 'PC PREVIEW' in topbar and 'editPersistenceEnabled' in topbar,
+              'dirty preview is explicit': 'PC PREVIEW · EDITED' in topbar and 'bridge.dirty' in topbar,
+              'preset context is passive': 'id: presetContextChip' in topbar and 'acceptedButtons: Qt.NoButton' in topbar,
+              'offline cannot claim LIVE': 'visible: root.deviceManager.liveEnabled' in topbar,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('P0 topbar semantic truth guard failed: ' + ', '.join(failed))
+          print('ALL P0 TOPBAR SEMANTIC TRUTH GUARDS PASSED')
