@@ -14,11 +14,16 @@ Item {
     property string valuePrefix: ""
     property bool logarithmic: false
     property bool compact: false
+    property bool premium: false
     property color accentColor: Theme.accent
     signal valueEdited(real newValue)
 
-    implicitWidth: compact ? 72 : 80
-    implicitHeight: compact ? 102 : 110
+    // PREMIUM_FX_KNOB_V1
+    // FX racks can opt into a slightly larger, instrument-like dial with a
+    // luminous value arc and restrained tick halo. It remains the same control
+    // semantics and interaction model as the canonical StudioKnob.
+    implicitWidth: premium ? 92 : (compact ? 72 : 80)
+    implicitHeight: premium ? 118 : (compact ? 102 : 110)
 
     property real previewValue: value
     property bool dragging: false
@@ -48,6 +53,7 @@ Item {
     onValueChanged: if(!dragging)previewValue=value
     onPreviewValueChanged: dial.requestPaint()
     onAccentColorChanged: dial.requestPaint()
+    onPremiumChanged: dial.requestPaint()
 
     // CONTROL_CAPTION_AWARENESS_V1: captions follow the control under the pointer.
     Text {
@@ -59,19 +65,19 @@ Item {
         style:root.highlighted ? Text.Outline : Text.Normal
         styleColor:root.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
         font.family:Theme.monoFamily
-        font.pixelSize:9
+        font.pixelSize:root.premium ? 9 : 9
         font.weight:root.highlighted ? Font.DemiBold : Font.Medium
-        font.letterSpacing:.75
+        font.letterSpacing:root.premium ? .95 : .75
         Behavior on color { ColorAnimation { duration:75 } }
         Behavior on styleColor { ColorAnimation { duration:75 } }
     }
 
     Item {
         id:knobBox
-        width:64
-        height:64
+        width:root.premium ? 74 : 64
+        height:width
         anchors.top:titleLabel.bottom
-        anchors.topMargin:3
+        anchors.topMargin:root.premium ? 4 : 3
         anchors.horizontalCenter:parent.horizontalCenter
 
         Canvas {
@@ -82,36 +88,65 @@ Item {
                 var ctx=getContext("2d");ctx.reset()
                 var cx=width/2,cy=height*.50,norm=root.valueToNorm(root.previewValue)
                 var start=Math.PI*.75,sweep=Math.PI*1.5,end=start+sweep,activeEnd=start+sweep*norm
-                var arcR=width*.36
+                var arcR=width*(root.premium?.35:.36)
+
+                if(root.premium){
+                    ctx.lineCap="round"
+                    ctx.strokeStyle="#85939C"
+                    ctx.lineWidth=1
+                    for(var ti=0;ti<=16;++ti){
+                        var ta=start+sweep*ti/16
+                        var tr0=arcR+7,tr1=arcR+(ti%4===0?11:9)
+                        ctx.globalAlpha=ti%4===0?.28:.15
+                        ctx.beginPath()
+                        ctx.moveTo(cx+Math.cos(ta)*tr0,cy+Math.sin(ta)*tr0)
+                        ctx.lineTo(cx+Math.cos(ta)*tr1,cy+Math.sin(ta)*tr1)
+                        ctx.stroke()
+                    }
+                }
 
                 ctx.lineCap="round"
                 ctx.globalAlpha=1
-                ctx.lineWidth=2.6
+                ctx.lineWidth=root.premium?3.2:2.6
                 ctx.strokeStyle="#020304"
                 ctx.beginPath();ctx.arc(cx,cy,arcR,start,end,false);ctx.stroke()
 
-                ctx.globalAlpha=.16
-                ctx.lineWidth=5.1
+                ctx.globalAlpha=root.premium?.18:.16
+                ctx.lineWidth=root.premium?7.2:5.1
                 ctx.strokeStyle=root.accentColor.toString()
                 ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
 
                 ctx.globalAlpha=1
-                ctx.lineWidth=2.6
+                ctx.lineWidth=root.premium?3.1:2.6
                 ctx.strokeStyle=root.accentColor.toString()
                 ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
 
-                var capR=width*.245
+                var capR=width*(root.premium?.255:.245)
                 var g=ctx.createRadialGradient(cx-capR*.30,cy-capR*.42,1,cx,cy,capR)
-                g.addColorStop(0,"#555E66");g.addColorStop(.28,"#30383F");g.addColorStop(.72,"#181E23");g.addColorStop(1,"#0C1014")
+                g.addColorStop(0,root.premium?"#68737B":"#555E66")
+                g.addColorStop(.25,root.premium?"#39434B":"#30383F")
+                g.addColorStop(.72,"#181E23")
+                g.addColorStop(1,"#0A0E12")
                 ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,capR,0,Math.PI*2);ctx.fill()
-                ctx.strokeStyle="#020304";ctx.lineWidth=1;ctx.stroke()
+                ctx.strokeStyle=root.highlighted?root.accentColor.toString():"#020304"
+                ctx.globalAlpha=root.highlighted?.72:1
+                ctx.lineWidth=root.premium?1.3:1
+                ctx.stroke()
+
+                if(root.premium){
+                    ctx.globalAlpha=.20
+                    ctx.strokeStyle="#FFFFFF"
+                    ctx.lineWidth=1
+                    ctx.beginPath();ctx.arc(cx-capR*.08,cy-capR*.10,capR*.72,Math.PI*1.05,Math.PI*1.63,false);ctx.stroke()
+                }
 
                 var a2=activeEnd
+                ctx.globalAlpha=1
                 ctx.strokeStyle=Theme.amber.toString()
-                ctx.lineWidth=1.9
+                ctx.lineWidth=root.premium?2.25:1.9
                 ctx.beginPath()
-                ctx.moveTo(cx+Math.cos(a2)*capR*.42,cy+Math.sin(a2)*capR*.42)
-                ctx.lineTo(cx+Math.cos(a2)*capR*.88,cy+Math.sin(a2)*capR*.88)
+                ctx.moveTo(cx+Math.cos(a2)*capR*.38,cy+Math.sin(a2)*capR*.38)
+                ctx.lineTo(cx+Math.cos(a2)*capR*.90,cy+Math.sin(a2)*capR*.90)
                 ctx.stroke()
             }
         }
@@ -132,12 +167,12 @@ Item {
 
     Rectangle {
         anchors.top:knobBox.bottom
-        anchors.topMargin:1
+        anchors.topMargin:root.premium ? 2 : 1
         anchors.horizontalCenter:parent.horizontalCenter
-        width:64
-        height:20
+        width:root.premium ? 72 : 64
+        height:root.premium ? 22 : 20
         radius:7
-        color:"#05080A"
+        color:root.premium ? "#04080B" : "#05080A"
         border.width:1
         border.color:root.dragging||root.hovered?root.accentColor:root.activeFocus?Theme.focus:"#020304"
         Behavior on border.color { ColorAnimation { duration:75 } }
