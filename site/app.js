@@ -19,6 +19,8 @@
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
     if (!finePointer.matches) return;
 
+    const toleranceX = 80;
+    const toleranceY = 36;
     let frame = 0;
     let pendingPoint = null;
 
@@ -62,9 +64,26 @@
       }
     };
 
+    const insideTolerance = (event) => {
+      const rect = source.getBoundingClientRect();
+      return (
+        event.clientX >= rect.left - toleranceX &&
+        event.clientX <= rect.right + toleranceX &&
+        event.clientY >= rect.top - toleranceY &&
+        event.clientY <= rect.bottom + toleranceY
+      );
+    };
+
     source.addEventListener('pointerenter', show);
-    source.addEventListener('pointermove', queuePoint);
-    source.addEventListener('pointerleave', hide);
+    document.addEventListener('pointermove', (event) => {
+      if (!root.classList.contains('is-active')) return;
+      if (!insideTolerance(event)) {
+        hide();
+        return;
+      }
+      queuePoint(event);
+    }, { passive: true });
+
     source.addEventListener('focus', () => {
       root.classList.add('is-active');
       pane.setAttribute('aria-hidden', 'false');
@@ -78,6 +97,7 @@
         source.blur();
       }
     });
+    window.addEventListener('blur', hide);
   };
 
   const syncRelease = async () => {
