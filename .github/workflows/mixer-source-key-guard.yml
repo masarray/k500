@@ -29,8 +29,9 @@ jobs:
               'pressed/active face scales inward': 'root.mixerDepressed ? .982 : 1' in button,
               'reversed inset bevel exists': 'Dark top/left + bright bottom/right' in button,
               'active legend is dark': 'root.mixerLit ? "#031013"' in button,
-              'source fader opts into mixer style': 'mixerSelect: true' in fader,
-              'shared digital source keys opt into mixer style': panel.count('mixerSelect: true') >= 2,
+              'fader exposes mixer-style bridge': 'property bool sourceButtonMixerSelect: false' in fader and 'mixerSelect: root.sourceButtonMixerSelect' in fader,
+              'four direct source keys opt into mixer style': panel.count('sourceButtonMixerSelect:true') == 4,
+              'shared digital source keys opt into mixer style': panel.count('mixerSelect: true') >= 1,
               'six-way source exclusivity remains': '["INPUT1", "INPUT2", "BT", "UDISK", "OPTIC", "UAUDIO"]' in panel and 'checked: root.selectedSource === index' in panel,
           }
 
