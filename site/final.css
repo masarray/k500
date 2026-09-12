@@ -43,9 +43,7 @@
   .home-page .hero-visual{min-height:auto}
   .product-zoom{height:auto;display:block}
   .home-page .app-shot-main.zoom-source{position:relative;left:auto;top:auto;width:100%;transform:none;cursor:default}
-  .zoom-pane,.zoom-lens{display:none}
-  .zoom-hint{left:10px;bottom:10px}
-  .zoom-hint span{font-size:8px}.zoom-hint small{display:none}
+  .zoom-pane,.zoom-lens,.zoom-hint{display:none}
 }
 @media (prefers-reduced-motion:reduce){
   .home-page .app-shot-main.zoom-source,.zoom-pane,.zoom-hint,.zoom-lens{transition:none}
