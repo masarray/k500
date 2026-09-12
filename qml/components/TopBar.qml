@@ -9,6 +9,7 @@ StudioPanel {
     implicitHeight: 52
 
     required property var deviceManager
+    required property var engine
     property bool transportPlaying: false
     readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
     readonly property string deviceStatusText: deviceManager.status === "connected" ? "ONLINE"
@@ -16,6 +17,64 @@ StudioPanel {
                                                 : deviceManager.status === "syncing" ? "SYNC"
                                                 : deviceManager.status === "error" ? "ERROR"
                                                 : "OFFLINE"
+
+    // P0_TOPBAR_SEMANTIC_TRUTH_V1
+    // The toolbar never claims DEFAULT FLAT unless that state is actually known.
+    // Its context chip is read-only and derives only from authoritative device
+    // slot state or the validated PC preset bridge. Staging and Preview remain
+    // visibly distinct so a PC file can never masquerade as the live K500 state.
+    readonly property var presetManager: root.deviceManager ? root.deviceManager.presetManager : null
+    readonly property var presetFileBridge: root.deviceManager ? root.deviceManager.presetFileBridge : null
+
+    function slotLabel(slotOneBased) {
+        var slot = Math.max(0, Math.round(Number(slotOneBased) || 0))
+        return slot > 0 ? (slot < 10 ? "0" + slot : String(slot)) : ""
+    }
+    function deviceModeName(slotOneBased) {
+        var slot = Math.round(Number(slotOneBased) || 0)
+        if (slot < 1) return ""
+        var state = root.engine && root.engine.deviceState ? root.engine.deviceState : null
+        var system = state ? state.system : null
+        var names = system ? system.deviceModeNames : null
+        if (!names || slot > names.length) return ""
+        return String(names[slot - 1] || "").trim()
+    }
+    function pcPresetName() {
+        var bridge = root.presetFileBridge
+        if (!bridge || !bridge.loaded) return ""
+        var preset = String(bridge.presetName || "").trim()
+        if (preset.length) return preset
+        var source = String(bridge.sourceName || "").trim()
+        if (source.toLowerCase().endsWith(".k500")) source = source.slice(0, -5)
+        return source
+    }
+
+    readonly property string presetContextKind: {
+        var manager = root.presetManager
+        if (root.deviceManager.connected && manager && Number(manager.activeSlot) > 0)
+            return "DEVICE SLOT " + root.slotLabel(manager.activeSlot)
+        var bridge = root.presetFileBridge
+        if (bridge && bridge.loaded)
+            return bridge.editPersistenceEnabled ? (bridge.dirty ? "PC PREVIEW · EDITED" : "PC PREVIEW") : "PC STAGED"
+        return root.deviceManager.connected ? "DEVICE STATE" : "NO PRESET"
+    }
+    readonly property string presetContextName: {
+        var manager = root.presetManager
+        if (root.deviceManager.connected && manager && Number(manager.activeSlot) > 0) {
+            var mode = root.deviceModeName(manager.activeSlot)
+            return mode.length ? mode : "SLOT " + root.slotLabel(manager.activeSlot)
+        }
+        var pcName = root.pcPresetName()
+        if (pcName.length) return pcName
+        return root.deviceManager.connected ? "CURRENT DEVICE" : "OFFLINE"
+    }
+    readonly property color presetContextAccent: {
+        var bridge = root.presetFileBridge
+        if (root.deviceManager.connected) return Theme.accent
+        if (bridge && bridge.loaded && bridge.dirty) return Theme.amber
+        if (bridge && bridge.loaded) return Theme.accent
+        return Theme.textDim
+    }
 
     FileDialog {
         id: supportReportDialog
@@ -120,29 +179,82 @@ StudioPanel {
             }
         }
 
-        SoftButton {
-            Layout.preferredWidth: 124
-            Layout.preferredHeight: 32
-            text: "DEFAULT FLAT"
-            compact: true
-            toolbar: true
-            amber: true
-            checked: true
+        Rectangle {
+            id: presetContextChip
+            Layout.preferredWidth: 144
+            Layout.preferredHeight: 34
+            radius: 9
+            color: "#080D11"
+            border.width: 1
+            border.color: Qt.rgba(root.presetContextAccent.r, root.presetContextAccent.g, root.presetContextAccent.b,
+                                  root.presetContextKind === "NO PRESET" ? .18 : .42)
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: 8
+                anchors.rightMargin: 8
+                anchors.topMargin: 1
+                height: 1
+                color: root.presetContextAccent
+                opacity: root.presetContextKind === "NO PRESET" ? .07 : .18
+            }
+
+            Column {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.leftMargin: 10
+                anchors.rightMargin: 10
+                spacing: -1
+                Text {
+                    width: parent.width
+                    text: root.presetContextKind
+                    color: root.presetContextAccent
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 7
+                    font.weight: Font.Bold
+                    font.letterSpacing: .75
+                    elide: Text.ElideRight
+                }
+                Text {
+                    width: parent.width
+                    text: root.presetContextName
+                    color: root.presetContextKind === "NO PRESET" ? Theme.textDim : Theme.text
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 9
+                    font.weight: Font.DemiBold
+                    elide: Text.ElideRight
+                }
+            }
+
+            ToolTip.visible: presetContextHover.containsMouse
+            ToolTip.text: root.presetContextKind + " — " + root.presetContextName
+            ToolTip.delay: 350
+            MouseArea {
+                id: presetContextHover
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+                cursorShape: Qt.ArrowCursor
+            }
         }
 
         RowLayout {
             spacing: 5
-            Rectangle {
-                width:6;height:6;radius:3
-                color: root.deviceManager.liveEnabled ? Theme.accent
-                     : root.deviceBusy ? Theme.amber
-                     : root.deviceManager.status === "error" ? "#FF6868"
-                     : Theme.textFaint
-            }
-            Text {
-                text:"LIVE"
-                color:root.deviceManager.liveEnabled ? Theme.accent : Theme.textDim
-                font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7
+            RowLayout {
+                visible: root.deviceManager.liveEnabled
+                spacing: 5
+                Rectangle {
+                    width:6;height:6;radius:3
+                    color: Theme.accent
+                }
+                Text {
+                    text:"LIVE"
+                    color:Theme.accent
+                    font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7
+                }
             }
             SoftButton {
                 Layout.preferredWidth:50;Layout.preferredHeight:29;text:"BT";iconName:"bluetooth";compact:true;toolbar:true
