@@ -1,0 +1,105 @@
+name: Guard qualified UX baseline
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/TopBar.qml'
+      - 'qml/components/StudioFader.qml'
+      - 'qml/components/SectionEqGraph.qml'
+      - 'qml/components/SoftButton.qml'
+      - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/MassUploadTransferWindow.qml'
+      - '.github/workflows/ux-baseline-regression-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  qualified-ux-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard accepted premium UX contracts
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def text(path):
+              return Path(path).read_text(encoding='utf-8')
+
+          topbar = text('qml/components/TopBar.qml')
+          fader = text('qml/components/StudioFader.qml')
+          peq = text('qml/components/SectionEqGraph.qml')
+          button = text('qml/components/SoftButton.qml')
+          fx = text('qml/components/RackFaderPanel.qml')
+          master = text('qml/components/MasterStripPanel.qml')
+          mass = text('qml/components/MassUploadTransferWindow.qml')
+
+          checks = {
+              'TopBar reports authoritative preset/session context':
+                  'P0_TOPBAR_SEMANTIC_TRUTH_V1' in topbar
+                  and 'readonly property string presetContextKind' in topbar
+                  and 'PC PREVIEW' in topbar
+                  and 'NO PRESET' in topbar,
+
+              'Only one fader owns the strong focus highlight':
+                  'FADER_SINGLE_ACTIVE_FOCUS_V1' in fader
+                  and 'readonly property bool interactionActive: dragging || activeFocus' in fader
+                  and 'readonly property bool highlighted: interactionActive' in fader,
+
+              'PEQ keeps premium jewel identity nodes':
+                  'PEQ_PREMIUM_JEWEL_NODES_V1' in peq
+                  and 'readonly property var colors:' in peq,
+
+              'Music source keys keep recessed illuminated selection':
+                  'MIXER_SOURCE_ILLUMINATED_SELECT_V2' in button
+                  and 'readonly property bool mixerDepressed: root.mixerLit' in button
+                  and 'root.mixerDepressed ? .982 : 1' in button,
+
+              'Reverb field keeps zero-level hard hide':
+                  'FX_FIELD_ZERO_LEVEL_HIDE_V2' in fx
+                  and 'readonly property bool fxVisualActive: root.fxVisual0 > 0.0001' in fx
+                  and 'visible: root.fxVisualActive' in fx,
+
+              'Reverb field keeps accepted decay/pre-delay mapping':
+                  'REVERB_DECAY_PREDELAY_MAPPING_V3' in fx
+                  and 'readonly property int ringCount: 2 + Math.round(decayNorm * 6)' in fx
+                  and 'readonly property int particleCount: 4 + Math.round(decayNorm * 10)' in fx
+                  and 'readonly property real preGap: 4 + preNorm * 76' in fx
+                  and 'id: drySource' in fx
+                  and 'id: preDelayGuide' in fx
+                  and 'id: reverbBloom' in fx,
+
+              'FX field remains aligned to Master Strip caption baseline':
+                  'FX_FIELD_MASTER_CAPTION_BASELINE_V3' in fx
+                  and 'anchors.topMargin: 4' in fx
+                  and 'height: 220' in fx,
+
+              'Echo remains calm and stationary':
+                  'STATIC_ECHO_TAIL_V2' in fx
+                  and 'id: echoTrain' in fx
+                  and 'NumberAnimation on x' not in fx,
+
+              'Master Strip keeps fixed right-column geometry':
+                  'RIGHT_COLUMN_WIDTH_PARITY_V1' in master
+                  and 'implicitWidth: 216' in master
+                  and 'Layout.minimumWidth: 216' in master
+                  and 'Layout.maximumWidth: 216' in master,
+
+              'Mass Upload keeps flash-free first-frame gate':
+                  'MASS_UPLOAD_FIRST_FRAME_GATE_V1' in mass
+                  and 'opacity: 0.0' in mass
+                  and 'interval: 50' in mass
+                  and 'root.opacity = 1.0' in mass,
+
+              'Premium FX field avoids continuous Canvas repaint':
+                  'Canvas {' not in fx,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+
+          if failed:
+              raise SystemExit('Qualified UX baseline regression: ' + ', '.join(failed))
+
+          print('ALL QUALIFIED UX BASELINE GUARDS PASSED')
