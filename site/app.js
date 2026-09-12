@@ -6,6 +6,80 @@
     if (node && href) node.href = href;
   };
 
+  const initProductZoom = () => {
+    const root = document.querySelector('[data-product-zoom]');
+    const source = root?.querySelector('[data-zoom-source]');
+    const pane = root?.querySelector('[data-zoom-pane]');
+    const lens = root?.querySelector('[data-zoom-lens]');
+    const image = source?.querySelector('img');
+    if (!root || !source || !pane || !lens || !image) return;
+
+    pane.style.backgroundImage = `url("${image.currentSrc || image.src}")`;
+
+    const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
+    if (!finePointer.matches) return;
+
+    let frame = 0;
+    let pendingPoint = null;
+
+    const render = () => {
+      frame = 0;
+      if (!pendingPoint) return;
+
+      const rect = source.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+
+      const x = Math.min(1, Math.max(0, (pendingPoint.x - rect.left) / rect.width));
+      const y = Math.min(1, Math.max(0, (pendingPoint.y - rect.top) / rect.height));
+      const lensWidth = lens.offsetWidth;
+      const lensHeight = lens.offsetHeight;
+      const lensX = Math.min(rect.width - lensWidth, Math.max(0, (x * rect.width) - (lensWidth / 2)));
+      const lensY = Math.min(rect.height - lensHeight, Math.max(0, (y * rect.height) - (lensHeight / 2)));
+
+      pane.style.setProperty('--zoom-x', `${(x * 100).toFixed(2)}%`);
+      pane.style.setProperty('--zoom-y', `${(y * 100).toFixed(2)}%`);
+      lens.style.transform = `translate3d(${lensX.toFixed(1)}px,${lensY.toFixed(1)}px,0)`;
+    };
+
+    const queuePoint = (event) => {
+      pendingPoint = { x: event.clientX, y: event.clientY };
+      if (!frame) frame = window.requestAnimationFrame(render);
+    };
+
+    const show = (event) => {
+      root.classList.add('is-active');
+      pane.setAttribute('aria-hidden', 'false');
+      if (event?.clientX != null) queuePoint(event);
+    };
+
+    const hide = () => {
+      root.classList.remove('is-active');
+      pane.setAttribute('aria-hidden', 'true');
+      pendingPoint = null;
+      if (frame) {
+        window.cancelAnimationFrame(frame);
+        frame = 0;
+      }
+    };
+
+    source.addEventListener('pointerenter', show);
+    source.addEventListener('pointermove', queuePoint);
+    source.addEventListener('pointerleave', hide);
+    source.addEventListener('focus', () => {
+      root.classList.add('is-active');
+      pane.setAttribute('aria-hidden', 'false');
+      const rect = source.getBoundingClientRect();
+      queuePoint({ clientX: rect.left + (rect.width / 2), clientY: rect.top + (rect.height / 2) });
+    });
+    source.addEventListener('blur', hide);
+    source.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') {
+        hide();
+        source.blur();
+      }
+    });
+  };
+
   const syncRelease = async () => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 3200);
@@ -39,6 +113,7 @@
   };
 
   const schedule = () => {
+    initProductZoom();
     if ('requestIdleCallback' in window) {
       window.requestIdleCallback(syncRelease, { timeout: 2200 });
     } else {
