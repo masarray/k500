@@ -19,10 +19,12 @@
     const finePointer = window.matchMedia('(hover: hover) and (pointer: fine)');
     if (!finePointer.matches) return;
 
-    const toleranceX = 80;
-    const toleranceY = 36;
+    const toleranceX = 180;
+    const toleranceY = 90;
+    const exitDelayMs = 240;
     let frame = 0;
     let pendingPoint = null;
+    let hideTimer = 0;
 
     const render = () => {
       frame = 0;
@@ -48,13 +50,21 @@
       if (!frame) frame = window.requestAnimationFrame(render);
     };
 
+    const cancelHide = () => {
+      if (!hideTimer) return;
+      window.clearTimeout(hideTimer);
+      hideTimer = 0;
+    };
+
     const show = (event) => {
+      cancelHide();
       root.classList.add('is-active');
       pane.setAttribute('aria-hidden', 'false');
       if (event?.clientX != null) queuePoint(event);
     };
 
     const hide = () => {
+      cancelHide();
       root.classList.remove('is-active');
       pane.setAttribute('aria-hidden', 'true');
       pendingPoint = null;
@@ -62,6 +72,14 @@
         window.cancelAnimationFrame(frame);
         frame = 0;
       }
+    };
+
+    const scheduleHide = () => {
+      if (hideTimer) return;
+      hideTimer = window.setTimeout(() => {
+        hideTimer = 0;
+        hide();
+      }, exitDelayMs);
     };
 
     const insideTolerance = (event) => {
@@ -77,14 +95,16 @@
     source.addEventListener('pointerenter', show);
     document.addEventListener('pointermove', (event) => {
       if (!root.classList.contains('is-active')) return;
-      if (!insideTolerance(event)) {
-        hide();
+      if (insideTolerance(event)) {
+        cancelHide();
+        queuePoint(event);
         return;
       }
-      queuePoint(event);
+      scheduleHide();
     }, { passive: true });
 
     source.addEventListener('focus', () => {
+      cancelHide();
       root.classList.add('is-active');
       pane.setAttribute('aria-hidden', 'false');
       const rect = source.getBoundingClientRect();
