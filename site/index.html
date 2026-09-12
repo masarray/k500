@@ -4,24 +4,35 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#081117">
+  <meta name="robots" content="index,follow">
   <meta name="description" content="SonKuPik K500 is a free native Windows app for controlling music, microphones, vocal effects, every speaker output, and presets on K500 karaoke processors.">
+  <link rel="canonical" href="https://sonkupik-k500.pages.dev/">
   <meta property="og:title" content="SonKuPik K500 — Complete Windows control for your K500">
   <meta property="og:description" content="Tune music and vocals, shape Main, Center, Surround and Subwoofer outputs, and manage K500 presets from one clear native Windows app.">
   <meta property="og:type" content="website">
-  <meta property="og:image" content="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Music%20Setting%20Section.png">
+  <meta property="og:url" content="https://sonkupik-k500.pages.dev/">
+  <meta property="og:site_name" content="SonKuPik K500">
+  <meta property="og:image" content="https://sonkupik-k500.pages.dev/assets/music.webp">
+  <meta property="og:image:alt" content="SonKuPik K500 music tuning interface">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="SonKuPik K500 — Complete Windows control for your K500">
+  <meta name="twitter:description" content="Tune music, microphones, effects, every speaker output and presets from one native Windows app.">
+  <meta name="twitter:image" content="https://sonkupik-k500.pages.dev/assets/music.webp">
   <title>SonKuPik K500 — Complete Windows Control for K500</title>
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <link rel="preload" as="image" href="assets/music.webp" type="image/webp" fetchpriority="high">
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+
   <header class="site-header">
     <div class="shell nav-shell">
       <a class="brand" href="#top" aria-label="SonKuPik K500 home">
-        <img src="https://raw.githubusercontent.com/masarray/k500/main/assets/SonKuPik-k500-logo.png" alt="SonKuPik K500" width="36" height="36">
+        <img src="assets/sonkupik-k500-logo.webp" alt="SonKuPik K500" width="36" height="36">
         <span><strong>SonKuPik</strong><small>K500</small></span>
       </a>
       <nav class="nav-links" aria-label="Primary navigation">
@@ -34,12 +45,13 @@
     </div>
   </header>
 
-  <main id="top">
+  <main id="main-content">
+    <div id="top" aria-hidden="true"></div>
     <section class="hero shell">
       <div class="hero-copy">
         <div class="eyebrow"><span class="status-dot"></span><span id="release-label">Stable v1.0.0</span> · Windows 10/11</div>
         <h1>Your K500,<br><span>finally easy to control.</span></h1>
-        <p class="hero-lead">SonKuPik K500 brings the whole karaoke signal chain into one clear native Windows app — music, microphones, vocal effects, Main, Center, Surround, Subwoofer, device modes, and presets.</p>
+        <p class="hero-lead">SonKuPik K500 brings the whole karaoke signal chain into one clear native Windows app — music, two microphone paths, vocal effects, Main, Center, Surround, Subwoofer, device modes, and presets.</p>
         <div class="hero-actions">
           <a id="download-setup" class="button button-primary" href="https://github.com/masarray/k500/releases/download/v1.0.0/SonKuPik-K500-v1.0.0-Windows-Setup.exe">Download for Windows</a>
           <a class="button button-ghost" href="#screens">Explore every section</a>
@@ -54,17 +66,18 @@
       <div class="hero-visual">
         <div class="app-shot app-shot-main">
           <div class="shot-bar"><i></i><i></i><i></i><span>Music tuning</span></div>
-          <img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Music%20Setting%20Section.png" alt="SonKuPik K500 music tuning screen" loading="eager">
+          <img src="assets/music.webp" alt="SonKuPik K500 music tuning screen" loading="eager" decoding="async" fetchpriority="high">
         </div>
-        <div class="device-float">
-          <img src="assets/k500-device.webp" alt="K500 karaoke processor device" loading="eager" decoding="async">
-        </div>
+        <figure class="device-float">
+          <img src="assets/k500-device.webp" alt="K500 karaoke processor hardware" loading="eager" decoding="async">
+          <figcaption><strong>K500 processor</strong><span>The hardware SonKuPik controls</span></figcaption>
+        </figure>
       </div>
     </section>
 
     <section class="proof-strip">
       <div class="shell proof-grid">
-        <div><strong>Complete signal control</strong><span>Music, mic, effects and every speaker path</span></div>
+        <div><strong>Complete signal control</strong><span>Music, dual mic paths, effects and every speaker path</span></div>
         <div><strong>Real hardware state</strong><span>Reads the connected K500 before live editing</span></div>
         <div><strong>Safe preset workflow</strong><span>Preview first, write only when you choose</span></div>
         <div><strong>No browser layer</strong><span>Native Qt 6 desktop application</span></div>
@@ -86,8 +99,8 @@
         </article>
         <article class="benefit">
           <div class="benefit-icon">M</div>
-          <h3>Polish your vocals</h3>
-          <p>Tune microphone tone, dynamics, reverb, and echo from dedicated screens instead of one crowded panel.</p>
+          <h3>Tune both microphone paths</h3>
+          <p>Keep Mic A and Mic B visible as separate signal paths, then shape vocal tone and dynamics without mixing them into the music controls.</p>
         </article>
         <article class="benefit">
           <div class="benefit-icon">◎</div>
@@ -125,27 +138,30 @@
             <ul><li>Visual PEQ response</li><li>Music tone and balance in one place</li><li>Live device-aware editing</li></ul>
           </div>
           <div class="screenshot-frame">
-            <img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Music%20Setting%20Section.png" alt="Music Setting section" loading="lazy">
+            <img src="assets/music.webp" alt="Music Setting section" loading="lazy" decoding="async">
           </div>
         </div>
 
         <div class="screen-grid source-grid">
           <article class="screen-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Mic%20Setting%20Section.png" alt="Microphone setting section" loading="lazy"></div>
-            <div class="screen-copy"><span>02 · Microphone</span><h3>Make vocals clearer and more comfortable to sing with.</h3><p>Dedicated microphone controls keep vocal tone and dynamics separate from music and speaker-output settings.</p></div>
+            <div class="screenshot-frame"><img src="assets/mic-a.webp" alt="Microphone A setting section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>02 · Microphone A</span><h3>Build the main vocal tone deliberately.</h3><p>Mic A keeps its vocal EQ and dynamics in a focused workspace, separate from music, effects, and speaker outputs.</p></div>
           </article>
           <article class="screen-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Vocal%20Effect%20Reverb%20Section.png" alt="Vocal reverb section" loading="lazy"></div>
-            <div class="screen-copy"><span>03 · Reverb</span><h3>Add room and polish without washing out the voice.</h3><p>Shape the reverb return independently so ambience can feel bigger while the lead vocal stays intelligible.</p></div>
+            <div class="screenshot-frame"><img src="assets/mic-b.webp" alt="Microphone B setting section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>03 · Microphone B</span><h3>Give the second microphone its own treatment.</h3><p>See and tune the second microphone path independently instead of assuming both singers need identical tonal settings.</p></div>
           </article>
           <article class="screen-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Vocal%20Echo%20Delay%20Section.png" alt="Vocal echo delay section" loading="lazy"></div>
-            <div class="screen-copy"><span>04 · Echo / Delay</span><h3>Dial in the familiar karaoke echo with less guesswork.</h3><p>Keep delay and tone adjustments in one focused effect screen, separate from reverb and dry microphone tone.</p></div>
+            <div class="screenshot-frame"><img src="assets/reverb.webp" alt="Vocal reverb section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>04 · Reverb</span><h3>Add room and polish without washing out the voice.</h3><p>Shape the reverb return independently so ambience can feel bigger while the lead vocal stays intelligible.</p></div>
           </article>
-          <article class="screen-card mini-benefit-card">
-            <div class="mini-benefit-content"><span>WHY THIS MATTERS</span><h3>Inputs and effects stay independent.</h3><p>Music, dry microphone, reverb, and echo are not forced into one confusing page. You can solve one audible problem at a time and keep the rest untouched.</p></div>
+          <article class="screen-card">
+            <div class="screenshot-frame"><img src="assets/echo-delay.webp" alt="Vocal echo delay section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>05 · Echo / Delay</span><h3>Dial in the familiar karaoke echo with less guesswork.</h3><p>Keep delay and tone adjustments in one focused effect screen, separate from reverb and dry microphone tone.</p></div>
           </article>
         </div>
+
+        <div class="source-note"><strong>Why separate pages matter:</strong><span>Music, Mic A, Mic B, reverb, and echo stay independent, so you can solve one audible problem without disturbing the rest of the system.</span></div>
 
         <div class="tour-divider"></div>
         <div class="tour-label output-label">
@@ -160,23 +176,23 @@
 
         <div class="output-grid">
           <article class="screen-card output-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Main%20Output%20Section.png" alt="Main output section" loading="lazy"></div>
-            <div class="screen-copy"><span>05 · Main output</span><h3>Set the tonal foundation of the main speakers.</h3><p>Main is the primary front image. Fine-tune its output EQ and speaker path so music and vocals arrive balanced before the other channels add support.</p><ul class="benefit-list"><li>Primary front-speaker tone</li><li>Independent output shaping</li><li>Better overall system balance</li></ul></div>
+            <div class="screenshot-frame"><img src="assets/main-output.webp" alt="Main output section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>06 · Main output</span><h3>Set the tonal foundation of the main speakers.</h3><p>Main is the primary front image. Fine-tune its output EQ and speaker path so music and vocals arrive balanced before the other channels add support.</p><ul class="benefit-list"><li>Primary front-speaker tone</li><li>Independent output shaping</li><li>Better overall system balance</li></ul></div>
           </article>
 
           <article class="screen-card output-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Center%20Section.png" alt="Center output section" loading="lazy"></div>
-            <div class="screen-copy"><span>06 · Center</span><h3>Keep the lead vocal anchored and intelligible.</h3><p>The Center path can support the vocal image without forcing the Main speakers to do everything. Tune its tone separately to strengthen presence and focus where the singer should feel centered.</p><ul class="benefit-list"><li>Stronger vocal anchor</li><li>Independent center-speaker EQ</li><li>Clearer front-stage focus</li></ul></div>
+            <div class="screenshot-frame"><img src="assets/center.webp" alt="Center output section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>07 · Center</span><h3>Keep the lead vocal anchored and intelligible.</h3><p>The Center path can support the vocal image without forcing the Main speakers to do everything. Tune its tone separately to strengthen presence and focus where the singer should feel centered.</p><ul class="benefit-list"><li>Stronger vocal anchor</li><li>Independent center-speaker EQ</li><li>Clearer front-stage focus</li></ul></div>
           </article>
 
           <article class="screen-card output-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Surround%20Section.png" alt="Surround output section" loading="lazy"></div>
-            <div class="screen-copy"><span>07 · Surround</span><h3>Add width and ambience without muddying the front.</h3><p>Surround has a different job from Main. Shape it independently to support spaciousness, room coverage, and ambience while keeping the primary vocal image clean up front.</p><ul class="benefit-list"><li>Wider listening experience</li><li>Controlled ambience and air</li><li>Less competition with the lead vocal</li></ul></div>
+            <div class="screenshot-frame"><img src="assets/surround.webp" alt="Surround output section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>08 · Surround</span><h3>Add width and ambience without muddying the front.</h3><p>Surround has a different job from Main. Shape it independently to support spaciousness, room coverage, and ambience while keeping the primary vocal image clean up front.</p><ul class="benefit-list"><li>Wider listening experience</li><li>Controlled ambience and air</li><li>Less competition with the lead vocal</li></ul></div>
           </article>
 
           <article class="screen-card output-card">
-            <div class="screenshot-frame"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Subwoofer%20Section.png" alt="Subwoofer output section" loading="lazy"></div>
-            <div class="screen-copy"><span>08 · Subwoofer</span><h3>Give the system deep bass without making it boomy.</h3><p>Tune the low-frequency path separately instead of boosting bass everywhere. This gives you more control over weight, punch, and integration with the main speakers.</p><ul class="benefit-list"><li>Dedicated low-frequency tuning</li><li>Tighter bass integration</li><li>More impact with less muddiness</li></ul></div>
+            <div class="screenshot-frame"><img src="assets/subwoofer.webp" alt="Subwoofer output section" loading="lazy" decoding="async"></div>
+            <div class="screen-copy"><span>09 · Subwoofer</span><h3>Give the system deep bass without making it boomy.</h3><p>Tune the low-frequency path separately instead of boosting bass everywhere. This gives you more control over weight, punch, and integration with the main speakers.</p><ul class="benefit-list"><li>Dedicated low-frequency tuning</li><li>Tighter bass integration</li><li>More impact with less muddiness</li></ul></div>
           </article>
         </div>
 
@@ -188,7 +204,7 @@
 
         <div class="showcase system-showcase">
           <div class="showcase-copy">
-            <span class="number">09 · System & Presets</span>
+            <span class="number">10 · System & Presets</span>
             <h3>Move from tuning to repeatable setups.</h3>
             <p>The System section is where SonKuPik becomes more than a live editor. Work with K500 equipment modes and your PC preset library while keeping preview, staging, and permanent upload clearly separated.</p>
             <ul>
@@ -199,13 +215,13 @@
             </ul>
           </div>
           <div class="screenshot-frame">
-            <img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/System%20Section.png" alt="SonKuPik K500 System and preset management section" loading="lazy">
+            <img src="assets/system.webp" alt="SonKuPik K500 System and preset management section" loading="lazy" decoding="async">
           </div>
         </div>
 
         <div class="capability-summary" aria-label="SonKuPik K500 capability summary">
           <div><strong>Music</strong><span>Shape the backing track</span></div>
-          <div><strong>Mic</strong><span>Refine vocal tone</span></div>
+          <div><strong>Mic A + B</strong><span>Tune both vocal paths</span></div>
           <div><strong>Reverb + Echo</strong><span>Build the vocal space</span></div>
           <div><strong>Main + Center</strong><span>Focus the front image</span></div>
           <div><strong>Surround</strong><span>Add width and ambience</span></div>
@@ -223,7 +239,7 @@
       <div class="steps">
         <article><span>1</span><div><h3>Install</h3><p>Download the Windows Setup package and install SonKuPik K500.</p></div></article>
         <article><span>2</span><div><h3>Connect</h3><p>Connect the K500 by USB. The app reads the processor state before enabling live editing.</p></div></article>
-        <article><span>3</span><div><h3>Tune or load a preset</h3><p>Work from Music and Mic through every output section, or preview a preset before a permanent upload.</p></div></article>
+        <article><span>3</span><div><h3>Tune or load a preset</h3><p>Work from Music and both Mic paths through every output section, or preview a preset before a permanent upload.</p></div></article>
       </div>
       <p class="help-link">Need more detail? <a href="https://github.com/masarray/k500/blob/main/docs/USER_GUIDE.md">Open the user guide →</a></p>
     </section>
@@ -249,7 +265,7 @@
         <div>
           <div class="eyebrow">READY TO USE</div>
           <h2 id="release-title">SonKuPik K500 v1.0.0</h2>
-          <p>Stable support is qualified for Windows 10/11 x64 with K500 over USB HID.</p>
+          <p>Stable support is qualified for Windows 10/11 x64 with K500 over USB HID. Bluetooth SPP is experimental and is not part of the stable hardware-qualified support claim.</p>
         </div>
         <div class="download-actions">
           <a id="download-setup-bottom" class="button button-primary" href="https://github.com/masarray/k500/releases/download/v1.0.0/SonKuPik-K500-v1.0.0-Windows-Setup.exe">Download Windows Setup</a>
@@ -263,7 +279,7 @@
 
   <footer>
     <div class="shell footer-inner">
-      <div class="brand footer-brand"><img src="https://raw.githubusercontent.com/masarray/k500/main/assets/SonKuPik-k500-logo.png" alt="" width="30" height="30"><span><strong>SonKuPik K500</strong><small>Independent open-source project</small></span></div>
+      <div class="brand footer-brand"><img src="assets/sonkupik-k500-logo.webp" alt="" width="30" height="30"><span><strong>SonKuPik K500</strong><small>Independent open-source project</small></span></div>
       <div class="footer-links"><a href="https://github.com/masarray/k500">Source</a><a href="https://github.com/masarray/k500/blob/main/docs/README.md">Docs</a><a href="https://github.com/masarray/k500/issues">Support</a><a href="https://github.com/masarray/k500/blob/main/LICENSE">GPL-3.0+</a></div>
     </div>
   </footer>
