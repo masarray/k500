@@ -16,12 +16,19 @@ Rectangle {
     property bool accentIcon: false
     property bool toolbar: false
     property bool contextHighlighted: false
+    property bool mixerSelect: false
     signal clicked()
 
+    // MIXER_SOURCE_ILLUMINATED_SELECT_V1
+    // Digital-console source selectors read like hardware lamps: ON = solid cyan
+    // with dark legend, OFF = black key with a white legend. Keep this opt-in so
+    // ordinary toolbar/transport buttons retain their existing visual grammar.
+    readonly property bool mixerLit: root.mixerSelect && root.checked
     readonly property bool activeAccent: root.checked || root.neonAccent
     readonly property color resolvedAccent: root.amber ? Theme.amber : Theme.accent
     readonly property real activeBorderAlpha: root.amber ? .44 : .54
-    readonly property bool labelHighlighted: root.contextHighlighted || root.activeAccent || root.activeFocus
+    readonly property bool labelHighlighted: root.mixerSelect ? root.mixerLit
+                                                               : root.contextHighlighted || root.activeAccent || root.activeFocus
 
     activeFocusOnTab: true
     clip: false
@@ -32,7 +39,10 @@ Rectangle {
     scale: mouse.pressed ? .982 : 1
 
     border.width: 1
-    border.color: root.activeFocus ? root.resolvedAccent
+    border.color: root.mixerSelect ? (root.mixerLit ? "#8AFAFD"
+                                      : root.activeFocus ? "#56666F"
+                                      : mouse.containsMouse ? "#43515A" : "#1D272E")
+                 : root.activeFocus ? root.resolvedAccent
                  : root.danger ? "#71323A"
                  : root.activeAccent ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.activeBorderAlpha)
                  : mouse.containsMouse ? (root.toolbar ? "#46545E" : "#3B4851")
@@ -41,7 +51,10 @@ Rectangle {
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: root.danger ? "#31181E"
+            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#20D7DF" : "#56F3F7")
+                                                      : mouse.pressed ? "#151C21"
+                                                      : mouse.containsMouse ? "#182128" : "#0E1419")
+                 : root.danger ? "#31181E"
                  : root.activeAccent ? (root.amber ? "#2B2818" : "#193B40")
                  : mouse.pressed ? "#171D22"
                  : mouse.containsMouse ? (root.toolbar ? "#313A42" : "#343E45")
@@ -49,22 +62,28 @@ Rectangle {
         }
         GradientStop {
             position: .22
-            color: root.danger ? "#231218"
+            color: root.mixerSelect ? (root.mixerLit ? "#34E8EE" : "#0B1115")
+                 : root.danger ? "#231218"
                  : root.activeAccent ? (root.amber ? "#18170E" : "#132D32")
                  : mouse.containsMouse ? "#283139"
                  : root.toolbar ? "#1A2228" : "#222A30"
         }
         GradientStop {
             position: .70
-            color: root.danger ? "#10090C"
+            color: root.mixerSelect ? (root.mixerLit ? "#25D9E0" : "#070B0E")
+                 : root.danger ? "#10090C"
                  : root.activeAccent ? (root.amber ? "#0C0D08" : "#0C2024")
                  : "#12181D"
         }
-        GradientStop { position: 1; color: root.danger ? "#070507" : "#080C10" }
+        GradientStop {
+            position: 1
+            color: root.mixerSelect ? (root.mixerLit ? "#1FC9D1" : "#04070A")
+                 : root.danger ? "#070507" : "#080C10"
+        }
     }
 
     Rectangle {
-        visible: root.toolbar && root.activeAccent
+        visible: root.toolbar && root.activeAccent && !root.mixerSelect
         anchors.fill: parent
         anchors.margins: -1
         radius: parent.radius + 1
@@ -80,7 +99,8 @@ Rectangle {
         radius: Math.max(3,parent.radius-1)
         color: "transparent"
         border.width: 1
-        border.color: root.activeAccent
+        border.color: root.mixerSelect ? (root.mixerLit ? "#66FFFFFF" : "#10FFFFFF")
+                      : root.activeAccent
                       ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber ? .13 : .16)
                       : root.toolbar ? "#0EFFFFFF" : "#12FFFFFF"
     }
@@ -94,8 +114,11 @@ Rectangle {
         anchors.topMargin: 1
         height: 1
         radius: 1
-        color: root.activeAccent ? root.resolvedAccent : "#FFFFFF"
-        opacity: root.activeAccent ? (root.amber ? .18 : .22) : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
+        color: root.mixerSelect && root.mixerLit ? "#E4FFFF"
+             : root.activeAccent ? root.resolvedAccent : "#FFFFFF"
+        opacity: root.mixerSelect && root.mixerLit ? .52
+               : root.activeAccent ? (root.amber ? .18 : .22)
+               : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
     }
 
     Rectangle {
@@ -107,12 +130,12 @@ Rectangle {
         anchors.bottomMargin: 1
         height: 1
         radius: 1
-        color: "#000000"
+        color: root.mixerSelect && root.mixerLit ? "#08737A" : "#000000"
         opacity: mouse.pressed ? .18 : .50
     }
 
     Rectangle {
-        visible: root.activeAccent
+        visible: root.activeAccent && !root.mixerSelect
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         anchors.bottomMargin: 2
@@ -133,7 +156,8 @@ Rectangle {
             height: width
             anchors.verticalCenter: parent.verticalCenter
             name: root.iconName
-            color: root.danger ? "#FFD8D8"
+            color: root.mixerLit ? "#031013"
+                 : root.danger ? "#FFD8D8"
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
                  : root.toolbar ? "#C3CFD5" : "#D5DDE1"
             strokeWidth: root.transport ? 1.75 : root.toolbar ? 1.70 : 1.75
@@ -144,16 +168,19 @@ Rectangle {
             id: label
             visible: !root.iconOnly && text.length > 0
             anchors.verticalCenter: parent.verticalCenter
-            color: root.danger ? "#FFD8D8"
+            color: root.mixerSelect ? (root.mixerLit ? "#031013" : "#EFF5F7")
+                 : root.danger ? "#FFD8D8"
                  : root.contextHighlighted ? root.resolvedAccent
                  : root.amber && root.activeAccent ? Theme.amber
                  : root.checked ? "#EEF5F6"
                  : root.activeAccent ? "#DDF9F6" : root.toolbar ? "#D2DADF" : "#D8DFE4"
-            style: root.contextHighlighted ? Text.Outline : Text.Normal
-            styleColor: root.contextHighlighted ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.32) : "transparent"
+            style: !root.mixerSelect && root.contextHighlighted ? Text.Outline : Text.Normal
+            styleColor: !root.mixerSelect && root.contextHighlighted
+                        ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.32)
+                        : "transparent"
             font.family: Theme.fontFamily
             font.pixelSize: root.compact ? Theme.textXS : Theme.textS
-            font.weight: root.labelHighlighted ? Font.DemiBold : Font.Medium
+            font.weight: root.mixerLit ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
             font.letterSpacing: .12
             Behavior on color { ColorAnimation { duration:75 } }
             Behavior on styleColor { ColorAnimation { duration:75 } }
