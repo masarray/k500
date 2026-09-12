@@ -115,6 +115,18 @@ a{color:inherit;text-decoration:none}
 .value-grid strong{display:block;font-size:13px;font-weight:610;color:#d6e2e3}
 .value-grid p{margin:3px 0 0;color:#6f858b;font-size:10px;line-height:1.55}
 
+.hardware{padding:72px 0 0}
+.hardware-card{display:grid;grid-template-columns:minmax(320px,.88fr) minmax(0,1.12fr);overflow:hidden;border:1px solid var(--line);border-radius:16px;background:linear-gradient(145deg,rgba(16,29,39,.72),rgba(8,17,25,.72));box-shadow:inset 0 1px 0 rgba(255,255,255,.018)}
+.hardware-image{min-height:350px;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 45%,rgba(91,212,188,.055),transparent 48%),#09121a;border-right:1px solid rgba(255,255,255,.05)}
+.hardware-image img{width:100%;height:100%;max-height:350px;display:block;object-fit:contain}
+.hardware-copy{padding:42px;display:flex;flex-direction:column;justify-content:center}
+.hardware-copy h2{margin:11px 0 12px;max-width:560px;font-size:clamp(28px,3vw,40px);line-height:1.13;letter-spacing:-.038em;font-weight:540}
+.hardware-copy>p:not(.kicker){max-width:610px;margin:0;color:#8ea2a8;font-size:14px;line-height:1.75}
+.hardware-facts{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:26px}
+.hardware-facts span{padding:12px;border:1px solid rgba(255,255,255,.055);border-radius:9px;background:rgba(255,255,255,.012);display:flex;flex-direction:column}
+.hardware-facts strong{font-size:10px;font-weight:620;color:#c6d5d7}
+.hardware-facts small{margin-top:2px;color:#647980;font-size:8px;line-height:1.4}
+
 .section{padding:94px 0}
 .section-soft{border-block:1px solid rgba(255,255,255,.05);background:linear-gradient(180deg,rgba(255,255,255,.014),rgba(255,255,255,.006))}
 .section-intro{max-width:660px;margin-bottom:34px}
@@ -201,6 +213,9 @@ footer{padding:0 0 32px}
   .hero{grid-template-columns:1fr;gap:42px;padding-top:66px}
   .hero-copy{max-width:720px}
   .hero-product{max-width:900px;width:100%}
+  .hardware-card{grid-template-columns:.9fr 1.1fr}
+  .hardware-copy{padding:32px}
+  .hardware-facts{grid-template-columns:1fr}
   .use-grid{grid-template-columns:repeat(2,1fr)}
   .preset-layout{gap:50px}
   .trust-card{grid-template-columns:1fr;gap:34px}
@@ -220,6 +235,11 @@ footer{padding:0 0 32px}
   .value-grid{grid-template-columns:1fr}
   .value-grid>div{min-height:auto;padding:17px 0;border-right:0;border-bottom:1px solid rgba(255,255,255,.05)}
   .value-grid>div:last-child{border-bottom:0}
+  .hardware{padding-top:52px}
+  .hardware-card{grid-template-columns:1fr}
+  .hardware-image{min-height:260px;border-right:0;border-bottom:1px solid rgba(255,255,255,.05)}
+  .hardware-image img{max-height:280px}
+  .hardware-copy{padding:26px 22px}
   .section{padding:72px 0}
   .section-intro.centered{text-align:left;margin-inline:0}
   .use-grid,.steps-grid,.showcase-grid{grid-template-columns:1fr}
