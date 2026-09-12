@@ -32,10 +32,12 @@ public:
         totalShadow = createStrokeNode(sampleCount);
         totalGlow = createStrokeNode(sampleCount);
         total = createStrokeNode(sampleCount);
+        totalRidge = createStrokeNode(sampleCount);
         appendChildNode(crossover);
         appendChildNode(totalShadow);
         appendChildNode(totalGlow);
         appendChildNode(total);
+        appendChildNode(totalRidge);
     }
 
     static QSGGeometryNode *createNode(QSGGeometry *geometry)
@@ -101,6 +103,7 @@ public:
     QSGGeometryNode *totalShadow = nullptr;
     QSGGeometryNode *totalGlow = nullptr;
     QSGGeometryNode *total = nullptr;
+    QSGGeometryNode *totalRidge = nullptr;
 };
 
 QColor withAlpha(const QColor &color, int alpha)
@@ -568,8 +571,8 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
     {
         auto *geometry = root->fill->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const QColor topColor = withAlpha(m_accentColor, 46);
-        const QColor bottomColor = withAlpha(m_accentColor, 4);
+        const QColor topColor = withAlpha(m_accentColor, 60);
+        const QColor bottomColor = withAlpha(m_accentColor, 3);
         for (int i = 0; i < SampleCount; ++i) {
             const qreal x = xForSample(i);
             setVertex(vertices[i * 2], x, yForDb(m_totalResponse[i]), topColor);
@@ -582,22 +585,34 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         const bool active = std::any_of(m_bandResponses[band].cbegin(), m_bandResponses[band].cend(),
                                         [](float value) { return std::abs(value) > 0.001f; });
         const bool selected = active && m_selectedTarget == QStringLiteral("band") && band == m_selectedIndex;
-        const QColor color = active ? withAlpha(m_amberColor, selected ? 150 : 22)
+        const QColor color = active ? withAlpha(m_amberColor, selected ? 132 : 18)
                                     : QColor(0, 0, 0, 0);
-        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.35 : 0.75,
-                    selected ? 0.80 : 0.65, [color](int) { return color; });
+        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.25 : 0.70,
+                    selected ? 0.78 : 0.62, [color](int) { return color; });
     }
 
-    writeStroke(root->crossover, m_crossoverResponse, 0.90, 0.70,
-                [this](int) { return withAlpha(m_amberColor, 68); });
-    writeStroke(root->totalShadow, m_totalResponse, 3.9, 1.00,
-                [](int) { return QColor(1, 3, 4, 138); });
-    writeStroke(root->totalGlow, m_totalResponse, 5.4, 1.30,
-                [this](int) { return withAlpha(m_accentColor, 34); });
+    writeStroke(root->crossover, m_crossoverResponse, 0.86, 0.66,
+                [this](int) { return withAlpha(m_amberColor, 58); });
 
-    const QColor compositeColor = interpolate(m_accentColor, QColor(220, 253, 255), 0.20);
-    writeStroke(root->total, m_totalResponse, 2.25, 0.82,
+    // P1_NATIVE_PEQ_PREMIUM_RIDGE_V2
+    // 720 analytic samples are already denser than the graph pixel pitch. Rather
+    // than increasing CPU/vertex count or enabling full-window MSAA, use a fixed
+    // retained multi-layer optical stack: dark separation, broad low-alpha glow,
+    // exact-color core and a sub-pixel pale ridge. Geometry is allocated once and
+    // reused, so the extra polish costs one tiny retained stroke and no hot-path
+    // heap churn while preserving the exact unsmoothed DSP response coordinates.
+    writeStroke(root->totalShadow, m_totalResponse, 3.5, 0.95,
+                [](int) { return QColor(1, 3, 4, 112); });
+    writeStroke(root->totalGlow, m_totalResponse, 6.0, 1.35,
+                [this](int) { return withAlpha(m_accentColor, 30); });
+
+    const QColor compositeColor = interpolate(m_accentColor, QColor(222, 253, 255), 0.16);
+    writeStroke(root->total, m_totalResponse, 2.10, 0.78,
                 [compositeColor](int) { return compositeColor; });
+
+    const QColor ridgeColor = withAlpha(interpolate(m_accentColor, QColor(244, 255, 255), 0.62), 176);
+    writeStroke(root->totalRidge, m_totalResponse, 0.72, 0.48,
+                [ridgeColor](int) { return ridgeColor; });
 
     return root;
 }
