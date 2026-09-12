@@ -7,11 +7,13 @@ on:
       - 'src/k500/K500PresetFileBridge.cpp'
       - 'src/k500/K500Protocol.cpp'
       - 'src/EqCurveItem.cpp'
+      - 'qml/Main.qml'
       - 'qml/components/SectionEqGraph.qml'
       - 'qml/components/SectionEqGraphHost.qml'
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/EqGraph.qml'
       - 'qml/components/FilterPanel.qml'
+      - 'qml/components/MasterStripPanel.qml'
       - 'qml/components/RackDynamicsPanel.qml'
       - 'qml/components/RackFilterPanel.qml'
       - 'qml/components/RackFaderPanel.qml'
@@ -33,10 +35,12 @@ jobs:
           preset_bridge = Path('src/k500/K500PresetFileBridge.cpp').read_text(encoding='utf-8')
           protocol = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
           native_curve = Path('src/EqCurveItem.cpp').read_text(encoding='utf-8')
+          main = Path('qml/Main.qml').read_text(encoding='utf-8')
           graph = Path('qml/components/SectionEqGraph.qml').read_text(encoding='utf-8')
           host = Path('qml/components/SectionEqGraphHost.qml').read_text(encoding='utf-8')
           workspace = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
           music_filter = Path('qml/components/FilterPanel.qml').read_text(encoding='utf-8')
+          master_strip = Path('qml/components/MasterStripPanel.qml').read_text(encoding='utf-8')
           rack_dynamics = Path('qml/components/RackDynamicsPanel.qml').read_text(encoding='utf-8')
           rack_filter = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
           rack_fader = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
@@ -63,8 +67,9 @@ jobs:
               'Graph bypass preserves anchors': 'CROSSOVER_BYPASS_TYPE_STATE_V2' in graph and 'bands.setHpfHz(20)' not in graph.split('function setCrossoverType',1)[1].split('function resetCrossover',1)[0] and 'bands.setLpfHz(20000)' not in graph.split('function setCrossoverType',1)[1].split('function resetCrossover',1)[0],
               'Music bypass changes type not cutoff': 'CROSSOVER_TYPE_BYPASS_V2' in music_filter and 'root.engine.hpType = value' in music_filter and 'root.engine.lpType = value' in music_filter,
               'Rack crossover layout normalized': 'CROSSOVER_RACK_LAYOUT_V3' in rack_filter and 'SURROUND_DELAY_VERIFIED_V1' in rack_filter,
-              'Lower rack consumes vertical space': 'LOWER_RACK_SPACE_UTILIZATION_V2' in rack_dynamics and 'GridLayout {' in rack_dynamics and 'columns: root.includeGate ? 3 : 2' in rack_dynamics and 'Layout.preferredHeight: 150' not in rack_dynamics and 'Layout.preferredHeight: 104' not in rack_dynamics,
-              'Lower rack widths are rebalanced': 'LOWER_RACK_SPACE_UTILIZATION_V2' in workspace and 'readonly property int masterWidth: 216' in workspace and 'Layout.preferredWidth: 216' in workspace and 'Layout.preferredWidth:228' in workspace,
+              'Compressor graph stops on caption baseline': 'COMPRESSOR_GRAPH_CAPTION_BASELINE_V1' in rack_dynamics and 'Layout.preferredHeight: 227' in rack_dynamics and 'Layout.minimumHeight: 227' in rack_dynamics and 'Layout.maximumHeight: 227' in rack_dynamics and 'Layout.alignment: Qt.AlignTop' in rack_dynamics and 'Layout.fillHeight: true\n                radius: 8\n                color: "#040608"' not in rack_dynamics,
+              'Master strip width is invariant': 'MASTER_STRIP_FIXED_WIDTH_V1' in workspace and 'readonly property int masterWidth: 188' in workspace and 'Layout.minimumWidth: root.masterWidth' in workspace and 'Layout.maximumWidth: root.masterWidth' in workspace and 'implicitWidth: 188' in master_strip and 'Layout.minimumWidth: 188' in master_strip and 'Layout.preferredWidth: 188' in master_strip and 'Layout.maximumWidth: 188' in master_strip and 'Layout.preferredWidth: 188' in main and 'Layout.minimumWidth: 188' in main and 'Layout.maximumWidth: 188' in main,
+              'Lower rack widths retain crossover travel': 'LOWER_RACK_SPACE_UTILIZATION_V2' in workspace and 'Layout.preferredWidth: 216' in workspace and 'Layout.preferredWidth:228' in workspace,
               'Output delay UI parity is evidence gated': 'OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1' in workspace and workspace.count('editable:false') >= 4 and 'ctx.sectionIndex !== 5' in rack_filter,
               'Responsive crossover slider': 'RESPONSIVE_PARAMETER_SLIDER_V1' in slider and 'property bool editable: true' in slider and 'captionWidth' in slider and 'readoutWidth' in slider,
               'Bypass visible in all selectors': '"Bypass"' in music_filter and '"Bypass"' in rack_filter and '"Bypass"' in inspector,
