@@ -17,6 +17,11 @@ Item {
     implicitWidth: 320
     implicitHeight: 86
 
+    // FINAL_INSPECTOR_SCOPE_COPY_V1
+    // The page toolbar already owns EQ RESET (all PEQ bands). Keep the floating
+    // inspector action explicitly band-scoped so rapid mixer work never makes a
+    // single-band reset look like another global reset affordance.
+
     function shortType() {
         if (!bandModel) return "P"
         var t = String(bandModel.get(bandIndex).typeName || "BELL")
@@ -59,9 +64,9 @@ Item {
             Item { Layout.fillWidth: true }
 
             SoftButton {
-                Layout.preferredWidth: 46
+                Layout.preferredWidth: 74
                 Layout.preferredHeight: 23
-                text: "Reset"
+                text: "RESET BAND"
                 compact: true
                 onClicked: root.resetRequested()
             }
