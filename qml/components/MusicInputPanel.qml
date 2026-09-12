@@ -60,7 +60,10 @@ StudioPanel {
 
         RowLayout {
             // MUSIC_SOURCE_OVER_FADER_LAYOUT_V1
+            // MIXER_SOURCE_ILLUMINATED_SELECT_V1
             // Source selectors stay directly above the gain path they control.
+            // Active source reads like a digital-console lamp: solid cyan + dark
+            // legend. Inactive sources remain black + white for instant scanning.
             // OPTIC + UAUDIO form one exclusive pair over the shared DIGITAL gain.
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -73,6 +76,7 @@ StudioPanel {
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"INPUT1 GAIN"; sourceText:"INPUT1"; active:root.selectedSource===0
+                sourceButtonMixerSelect:true
                 value:root.engine.input1Gain; from:-12; to:12
                 selected:root.selectedFader===0
                 onSourceRequested:root.chooseSource(0)
@@ -83,6 +87,7 @@ StudioPanel {
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"INPUT2 GAIN"; sourceText:"INPUT2"; active:root.selectedSource===1
+                sourceButtonMixerSelect:true
                 value:root.engine.input2Gain; from:-12; to:12
                 selected:root.selectedFader===1
                 onSourceRequested:root.chooseSource(1)
@@ -93,6 +98,7 @@ StudioPanel {
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"BT GAIN"; sourceText:"BT"; active:root.selectedSource===2
+                sourceButtonMixerSelect:true
                 value:root.engine.bluetoothGain; from:-12; to:12
                 selected:root.selectedFader===2
                 onSourceRequested:root.chooseSource(2)
@@ -103,6 +109,7 @@ StudioPanel {
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"UDISK GAIN"; sourceText:"UDISK"; active:root.selectedSource===3
+                sourceButtonMixerSelect:true
                 value:root.engine.uDiskGain; from:-12; to:12
                 selected:root.selectedFader===3
                 onSourceRequested:root.chooseSource(3)
@@ -133,7 +140,7 @@ StudioPanel {
                             text: modelData
                             compact: true
                             checked: root.selectedSource === index
-                            neonAccent: root.selectedSource === index
+                            mixerSelect: true
                             onClicked: root.chooseSource(index)
                         }
                     }
