@@ -121,23 +121,21 @@ StudioPanel {
                     Layout.preferredHeight: 25
                     spacing: 4
 
-                    SoftButton {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 25
-                        text: "OPTIC"
-                        compact: true
-                        checked: root.selectedSource === 4
-                        neonAccent: root.selectedSource === 4
-                        onClicked: root.chooseSource(4)
-                    }
-                    SoftButton {
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 25
-                        text: "UAUDIO"
-                        compact: true
-                        checked: root.selectedSource === 5
-                        neonAccent: root.selectedSource === 5
-                        onClicked: root.chooseSource(5)
+                    Repeater {
+                        model: root.sourceOptions
+                        delegate: SoftButton {
+                            required property int index
+                            required property string modelData
+                            visible: index >= 4
+                            Layout.fillWidth: visible
+                            Layout.preferredWidth: visible ? 58 : 0
+                            Layout.preferredHeight: visible ? 25 : 0
+                            text: modelData
+                            compact: true
+                            checked: root.selectedSource === index
+                            neonAccent: root.selectedSource === index
+                            onClicked: root.chooseSource(index)
+                        }
                     }
                 }
 
