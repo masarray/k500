@@ -72,7 +72,7 @@ StudioPanel {
 
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
-                label:"INPUT1"; active:root.selectedSource===0
+                label:"INPUT1 GAIN"; sourceText:"INPUT1"; active:root.selectedSource===0
                 value:root.engine.input1Gain; from:-12; to:12
                 selected:root.selectedFader===0
                 onSourceRequested:root.chooseSource(0)
@@ -82,7 +82,7 @@ StudioPanel {
             }
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
-                label:"INPUT2"; active:root.selectedSource===1
+                label:"INPUT2 GAIN"; sourceText:"INPUT2"; active:root.selectedSource===1
                 value:root.engine.input2Gain; from:-12; to:12
                 selected:root.selectedFader===1
                 onSourceRequested:root.chooseSource(1)
@@ -92,7 +92,7 @@ StudioPanel {
             }
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
-                label:"BT"; active:root.selectedSource===2
+                label:"BT GAIN"; sourceText:"BT"; active:root.selectedSource===2
                 value:root.engine.bluetoothGain; from:-12; to:12
                 selected:root.selectedFader===2
                 onSourceRequested:root.chooseSource(2)
@@ -102,7 +102,7 @@ StudioPanel {
             }
             InputFader {
                 Layout.fillWidth:true; Layout.fillHeight:true
-                label:"UDISK"; active:root.selectedSource===3
+                label:"UDISK GAIN"; sourceText:"UDISK"; active:root.selectedSource===3
                 value:root.engine.uDiskGain; from:-12; to:12
                 selected:root.selectedFader===3
                 onSourceRequested:root.chooseSource(3)
