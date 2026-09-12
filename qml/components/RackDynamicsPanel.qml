@@ -89,9 +89,9 @@ StudioPanel {
         }
 
         // LOWER_RACK_SPACE_UTILIZATION_V2
-        // Use the complete 304px rack body: a tall transfer graph is the visual
-        // anchor and the controls populate a real grid instead of leaving a dead
-        // strip below a 104px single-row knob bar.
+        // Controls stay in a balanced two-row grid. The graph is deliberately
+        // shorter than the rack body so its bottom edge aligns with the value
+        // caption/readout baseline of the second knob row.
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -102,10 +102,17 @@ StudioPanel {
             spacing: 10
 
             Rectangle {
+                // COMPRESSOR_GRAPH_CAPTION_BASELINE_V1
+                // 227 px from the common 8 px rack top margin lands on the same
+                // optical baseline as the ATTACK/RELEASE value captions. Do not
+                // stretch this graph to the 251 px rack body again.
                 Layout.preferredWidth: root.includeGate ? 194 : 184
                 Layout.minimumWidth: 164
                 Layout.maximumWidth: 216
-                Layout.fillHeight: true
+                Layout.preferredHeight: 227
+                Layout.minimumHeight: 227
+                Layout.maximumHeight: 227
+                Layout.alignment: Qt.AlignTop
                 radius: 8
                 color: "#040608"
                 border.width: 1
