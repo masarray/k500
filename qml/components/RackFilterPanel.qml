@@ -31,6 +31,15 @@ StudioPanel {
     readonly property int hpfIndex: fieldIndex("HPF")
     readonly property int lpfIndex: fieldIndex("LPF")
     readonly property bool hasDelay: monoDelayIndex >= 0 || leftDelayIndex >= 0 || rightDelayIndex >= 0
+    // P3_DELAY_READONLY_AWARENESS_V1
+    // Main/Center/Sub expose native-looking delay slots before their write offsets
+    // are donor-verified. A visibly disabled slider alone is ambiguous in a mixer
+    // UI, so surface the read-only state explicitly. Surround stays unbadged because
+    // both of its delay fields are verified/editable.
+    readonly property bool hasReadOnlyDelay:
+        (monoDelayIndex >= 0 && !editableAt(monoDelayIndex))
+        || (leftDelayIndex >= 0 && !editableAt(leftDelayIndex))
+        || (rightDelayIndex >= 0 && !editableAt(rightDelayIndex))
 
     function fieldIndex(label) {
         var wanted = String(label).toUpperCase()
@@ -112,16 +121,41 @@ StudioPanel {
             Layout.bottomMargin: 8
             spacing: 4
 
-            Text {
+            RowLayout {
                 visible: root.hasDelay
                 Layout.fillWidth: true
-                Layout.preferredHeight: visible ? 11 : 0
-                text: "OUTPUT DELAY"
-                color: Theme.textDim
-                font.family: Theme.monoFamily
-                font.pixelSize: 8
-                font.weight: Font.DemiBold
-                font.letterSpacing: .9
+                Layout.preferredHeight: visible ? 16 : 0
+                spacing: 6
+
+                Text {
+                    Layout.fillWidth: true
+                    text: "OUTPUT DELAY"
+                    color: Theme.textDim
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 8
+                    font.weight: Font.DemiBold
+                    font.letterSpacing: .9
+                    verticalAlignment: Text.AlignVCenter
+                }
+
+                Rectangle {
+                    visible: root.hasReadOnlyDelay
+                    Layout.preferredWidth: visible ? 62 : 0
+                    Layout.preferredHeight: visible ? 16 : 0
+                    radius: 5
+                    color: "#090D11"
+                    border.width: 1
+                    border.color: Theme.borderSoft
+                    Text {
+                        anchors.centerIn: parent
+                        text: "READ ONLY"
+                        color: Theme.textDim
+                        font.family: Theme.monoFamily
+                        font.pixelSize: 7
+                        font.weight: Font.Bold
+                        font.letterSpacing: .45
+                    }
+                }
             }
 
             ParameterSlider {
