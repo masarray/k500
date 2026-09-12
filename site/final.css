@@ -3,6 +3,9 @@
 .feature-card{contain-intrinsic-size:auto 620px}
 .feature-nav-wrap{scrollbar-width:none}
 .feature-nav-wrap::-webkit-scrollbar{display:none}
+.button-icon{display:block;flex:0 0 auto}
+.button-hero .button-icon{margin-right:8px}
+.button-hero>span{white-space:nowrap}
 
 /* Homepage hero: slow compositor-only cinematic pan so the K500 UI can be enjoyed in detail. */
 .home-page .app-shot-main{--hero-pan-width:114%;--hero-pan-shift:-12.28%}
