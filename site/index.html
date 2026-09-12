@@ -36,6 +36,10 @@
         <img src="/favicon-32x32.png" alt="" width="32" height="32">
         <span><strong>SonKuPik</strong><small>K500</small></span>
       </a>
+      <div class="nav-hardware" aria-label="K500 karaoke processor hardware">
+        <img src="/assets/k500-device.webp" alt="K500 karaoke processor hardware" width="160" height="40" decoding="async">
+        <span>K500 processor</span>
+      </div>
       <nav class="nav-links" aria-label="Primary navigation">
         <a href="/features/">Features</a>
         <a href="/download/">Download</a>
@@ -67,13 +71,16 @@
       </div>
 
       <div class="hero-visual" aria-label="SonKuPik K500 application preview">
-        <div class="app-shot app-shot-main">
-          <img src="/assets/music.webp" alt="SonKuPik K500 music tuning interface" width="1280" height="800" decoding="async" fetchpriority="high">
+        <div class="product-zoom" data-product-zoom>
+          <figure class="app-shot app-shot-main zoom-source" data-zoom-source tabindex="0" aria-label="SonKuPik K500 interface. Hover and move the pointer to inspect details.">
+            <img src="/assets/music.webp" alt="SonKuPik K500 music tuning interface" width="1280" height="800" decoding="async" fetchpriority="high" draggable="false">
+            <span class="zoom-lens" data-zoom-lens aria-hidden="true"></span>
+            <figcaption class="zoom-hint"><span>Inspect UI</span><small>Hover and move</small></figcaption>
+          </figure>
+          <div class="zoom-pane" data-zoom-pane aria-hidden="true">
+            <div class="zoom-pane-meta"><span>DETAIL VIEW</span><small>Move across the preview</small></div>
+          </div>
         </div>
-        <figure class="device-float">
-          <img src="/assets/k500-device.webp" alt="K500 karaoke processor hardware" width="640" height="220" loading="lazy" decoding="async" fetchpriority="low">
-          <figcaption><strong>K500 processor</strong><span>Hardware controlled by SonKuPik</span></figcaption>
-        </figure>
       </div>
     </section>
 
