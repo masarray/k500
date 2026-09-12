@@ -7,22 +7,45 @@
 .button-hero .button-icon{margin-right:8px}
 .button-hero>span{white-space:nowrap}
 
-/* Homepage hero: slow compositor-only cinematic pan from the full left edge to the full right edge. */
-.home-page .app-shot-main{--hero-pan-width:126%;--hero-pan-shift:-20.635%;background:#081118}
-.home-page .app-shot-main img{width:var(--hero-pan-width);max-width:none;animation:hero-ui-pan 22s cubic-bezier(.42,0,.58,1) infinite;backface-visibility:hidden;will-change:transform}
-.home-page .app-shot-main:hover img{animation-play-state:paused}
-@keyframes hero-ui-pan{
-  0%,9%{transform:translate3d(0,0,0)}
-  46%,54%{transform:translate3d(var(--hero-pan-shift),0,0)}
-  91%,100%{transform:translate3d(0,0,0)}
-}
+/* Keep the physical K500 present without covering the hero artwork. */
+.nav-hardware{height:38px;min-width:164px;padding:4px 10px 4px 12px;border-left:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px;color:#688087}
+.nav-hardware img{width:112px;height:26px;max-width:none;object-fit:contain;filter:saturate(.9) brightness(.92)}
+.nav-hardware span{white-space:nowrap;font-size:8px;letter-spacing:.04em;color:#5f767c}
 
+/* Marketplace-style product inspection: a stable preview plus a pointer-driven detail pane. */
+.home-page .hero-visual{min-height:470px}
+.product-zoom{position:relative;height:470px;isolation:isolate}
+.home-page .app-shot-main.zoom-source{left:0;right:auto;top:50%;width:57%;transform:translateY(-50%);overflow:hidden;cursor:zoom-in;box-shadow:0 18px 52px rgba(0,0,0,.28);transition:border-color .18s ease,box-shadow .18s ease}
+.home-page .app-shot-main.zoom-source img{width:100%;max-width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;animation:none;transform:none;will-change:auto;user-select:none}
+.zoom-source:hover,.zoom-source:focus-visible,.product-zoom.is-active .zoom-source{border-color:rgba(98,216,191,.42);box-shadow:0 20px 58px rgba(0,0,0,.34),0 0 0 1px rgba(98,216,191,.07)}
+.zoom-hint{position:absolute;left:12px;bottom:11px;z-index:2;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(5,13,18,.78);backdrop-filter:blur(12px);display:flex;align-items:baseline;gap:7px;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
+.zoom-hint span{font-size:9px;font-weight:650;color:#d8e7e5}.zoom-hint small{font-size:8px;color:#6e878b}
+.product-zoom.is-active .zoom-hint{opacity:0;transform:translateY(3px)}
+.zoom-lens{position:absolute;z-index:3;width:31%;height:31%;left:0;top:0;border:1px solid rgba(131,232,211,.72);border-radius:8px;background:rgba(98,216,191,.085);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);pointer-events:none;opacity:0;transform:translate3d(0,0,0);transition:opacity .12s ease}
+.product-zoom.is-active .zoom-lens{opacity:1}
+.zoom-pane{--zoom-x:50%;--zoom-y:50%;position:absolute;z-index:6;right:0;top:50%;width:62%;aspect-ratio:16/11;transform:translate3d(10px,-50%,0) scale(.985);overflow:hidden;border:1px solid rgba(129,211,204,.3);border-radius:16px;background-color:#081118;background-image:url('/assets/music.webp');background-repeat:no-repeat;background-size:235% auto;background-position:var(--zoom-x) var(--zoom-y);box-shadow:0 30px 90px rgba(0,0,0,.5),0 0 0 1px rgba(98,216,191,.05);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .2s ease,visibility 0s linear .2s}
+.product-zoom.is-active .zoom-pane{opacity:1;visibility:visible;transform:translate3d(0,-50%,0) scale(1);transition-delay:0s}
+.zoom-pane::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 38px rgba(1,8,12,.22);pointer-events:none}
+.zoom-pane-meta{position:absolute;z-index:2;left:12px;right:12px;top:11px;display:flex;justify-content:space-between;gap:10px;align-items:center;pointer-events:none}
+.zoom-pane-meta span,.zoom-pane-meta small{padding:5px 8px;border-radius:7px;background:rgba(4,11,15,.78);backdrop-filter:blur(10px)}
+.zoom-pane-meta span{font-size:8px;letter-spacing:.12em;color:#8ddccb}.zoom-pane-meta small{font-size:8px;color:#75898e}
+
+@media (max-width:1040px){
+  .nav-hardware{margin-right:auto}.nav-links{margin-left:0}
+  .home-page .hero-visual{min-height:430px}
+  .product-zoom{height:430px}
+  .home-page .app-shot-main.zoom-source{width:55%}
+  .zoom-pane{width:60%}
+}
 @media (max-width:760px){
   .tour-section{scroll-margin-top:112px;contain-intrinsic-size:auto 1200px}
-  .home-page .app-shot-main{--hero-pan-width:118%;--hero-pan-shift:-15.254%}
-  .home-page .app-shot-main img{animation-duration:24s}
+  .nav-hardware{display:none}
+  .home-page .hero-visual{min-height:auto}
+  .product-zoom{height:auto;display:block}
+  .home-page .app-shot-main.zoom-source{position:relative;left:auto;top:auto;width:100%;transform:none;cursor:default}
+  .zoom-pane,.zoom-lens,.zoom-hint{display:none}
 }
 @media (prefers-reduced-motion:reduce){
-  .home-page .app-shot-main img{width:100%;max-width:100%;animation:none;transform:none;will-change:auto}
+  .home-page .app-shot-main.zoom-source,.zoom-pane,.zoom-hint,.zoom-lens{transition:none}
 }
 @media (forced-colors:active){:where(a,button,[tabindex]):focus-visible{outline:2px solid Highlight}}
