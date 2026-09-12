@@ -4,9 +4,38 @@ import QtQuick.Layouts
 StudioPanel {
     id: root
     required property var engine
-    property int selectedFader: 2
+    property int selectedFader: 0
+    property int selectedSource: 0
+    readonly property var sourceOptions: ["INPUT1", "INPUT2", "BT", "UDISK", "OPTIC", "UAUDIO"]
     implicitHeight: 304
     accentTop: false
+
+    // MUSIC_SOURCE_SINGLE_CHOICE_V1
+    // Native K500 exposes six mutually-exclusive playback sources but only five
+    // gain trims. OPTIC and UAUDIO intentionally share the DIGITAL gain trim.
+    function sourceFromDevice() {
+        var state = root.engine && root.engine.deviceState ? root.engine.deviceState : null
+        var music = state ? state.music : null
+        var raw = music ? Number(music.sourceRaw) : 0
+        return isFinite(raw) && raw >= 0 && raw <= 5 ? Math.round(raw) : 0
+    }
+
+    function chooseSource(index) {
+        var next = Math.max(0, Math.min(5, Number(index)))
+        if (root.selectedSource === next)
+            return
+        root.selectedSource = next
+        root.engine.editDevicePath("music.sourceRaw", next)
+    }
+
+    Component.onCompleted: root.selectedSource = root.sourceFromDevice()
+
+    Connections {
+        target: root.engine
+        function onDeviceStateChanged() {
+            root.selectedSource = root.sourceFromDevice()
+        }
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -29,20 +58,94 @@ StudioPanel {
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
         }
 
-        RowLayout {
+        ColumnLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: 12
             Layout.rightMargin: 12
-            Layout.topMargin: 10
+            Layout.topMargin: 9
             Layout.bottomMargin: 10
-            spacing: 0
+            spacing: 6
 
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"IN 1";value:root.engine.input1Gain;from:-12;to:12;selected:root.selectedFader===0;onActivated:root.selectedFader=0;onValueEdited:function(v){root.engine.input1Gain=v};accentColor:Theme.blue }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"IN 2";value:root.engine.input2Gain;from:-12;to:12;selected:root.selectedFader===1;onActivated:root.selectedFader=1;onValueEdited:function(v){root.engine.input2Gain=v};accentColor:Theme.blue }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"BT";value:root.engine.bluetoothGain;from:-12;to:12;selected:root.selectedFader===2;onActivated:root.selectedFader=2;onValueEdited:function(v){root.engine.bluetoothGain=v};active:true;accentColor:Theme.accent }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"UDISK";value:root.engine.uDiskGain;from:-12;to:12;selected:root.selectedFader===3;onActivated:root.selectedFader=3;onValueEdited:function(v){root.engine.uDiskGain=v};accentColor:Theme.violet }
-            InputFader { Layout.fillWidth:true;Layout.fillHeight:true;label:"DIG";value:root.engine.digitalGain;from:-12;to:12;selected:root.selectedFader===4;onActivated:root.selectedFader=4;onValueEdited:function(v){root.engine.digitalGain=v};accentColor:Theme.amber }
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 27
+                spacing: 5
+
+                Repeater {
+                    model: root.sourceOptions
+                    delegate: SoftButton {
+                        required property int index
+                        required property string modelData
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 27
+                        text: modelData
+                        compact: true
+                        checked: root.selectedSource === index
+                        neonAccent: root.selectedSource === index
+                        onClicked: root.chooseSource(index)
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 1
+                color: Theme.borderSoft
+                opacity: .5
+            }
+
+            RowLayout {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                spacing: 0
+
+                InputFader {
+                    Layout.fillWidth:true; Layout.fillHeight:true
+                    sourceButtonVisible:false; label:"INPUT1 GAIN"
+                    value:root.engine.input1Gain; from:-12; to:12
+                    selected:root.selectedFader===0
+                    onActivated:root.selectedFader=0
+                    onValueEdited:function(v){root.engine.input1Gain=v}
+                    accentColor:Theme.blue
+                }
+                InputFader {
+                    Layout.fillWidth:true; Layout.fillHeight:true
+                    sourceButtonVisible:false; label:"INPUT2 GAIN"
+                    value:root.engine.input2Gain; from:-12; to:12
+                    selected:root.selectedFader===1
+                    onActivated:root.selectedFader=1
+                    onValueEdited:function(v){root.engine.input2Gain=v}
+                    accentColor:Theme.blue
+                }
+                InputFader {
+                    Layout.fillWidth:true; Layout.fillHeight:true
+                    sourceButtonVisible:false; label:"BT GAIN"
+                    value:root.engine.bluetoothGain; from:-12; to:12
+                    selected:root.selectedFader===2
+                    onActivated:root.selectedFader=2
+                    onValueEdited:function(v){root.engine.bluetoothGain=v}
+                    accentColor:Theme.accent
+                }
+                InputFader {
+                    Layout.fillWidth:true; Layout.fillHeight:true
+                    sourceButtonVisible:false; label:"UDISK GAIN"
+                    value:root.engine.uDiskGain; from:-12; to:12
+                    selected:root.selectedFader===3
+                    onActivated:root.selectedFader=3
+                    onValueEdited:function(v){root.engine.uDiskGain=v}
+                    accentColor:Theme.violet
+                }
+                InputFader {
+                    Layout.fillWidth:true; Layout.fillHeight:true
+                    sourceButtonVisible:false; label:"DIGITAL GAIN"
+                    value:root.engine.digitalGain; from:-12; to:12
+                    selected:root.selectedFader===4
+                    onActivated:root.selectedFader=4
+                    onValueEdited:function(v){root.engine.digitalGain=v}
+                    accentColor:Theme.amber
+                }
+            }
         }
     }
 }
