@@ -9,7 +9,11 @@ Item {
     property int micChannel: 0
     property bool micEqLinked: Boolean(groupValue("mic", "eqLink", false))
     readonly property int lowerRackHeight: 304
-    readonly property int masterWidth: 188
+    readonly property int masterWidth: 216
+
+    // LOWER_RACK_SPACE_UTILIZATION_V2
+    // Keep the rack height fixed while reserving useful horizontal travel for
+    // crossover/delay controls and a more legible master strip.
 
     // K500_DEVICE_STATE_BINDINGS_V1
     function groupValue(group, key, fallback) {
@@ -92,8 +96,8 @@ Item {
                                 RackFaderPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.preferredWidth: 289
-                                    Layout.minimumWidth: 248
+                                    Layout.preferredWidth: 284
+                                    Layout.minimumWidth: 246
                                     title: "Mic Inputs"
                                     channels: [
                                         {label:"MIC A",value:Number(root.groupValue("mic","micAVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
@@ -104,8 +108,8 @@ Item {
                                 RackDynamicsPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.preferredWidth: 607
-                                    Layout.minimumWidth: 390
+                                    Layout.preferredWidth: 520
+                                    Layout.minimumWidth: 400
                                     title: "Vocal Dynamics"
                                     includeGate: true
                                     gate: Number(root.groupValue("mic","noiseGateDb",-70))
@@ -115,9 +119,9 @@ Item {
                                     release: Number(root.groupValue("mic","releaseSec",0.2)) * 1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 158
-                                    Layout.minimumWidth: 158
-                                    Layout.maximumWidth: 158
+                                    Layout.preferredWidth: 216
+                                    Layout.minimumWidth: 190
+                                    Layout.maximumWidth: 250
                                     Layout.fillHeight: true
                                     title: "Band Limits"
                                     fields: [
@@ -140,7 +144,7 @@ Item {
                                 RackFaderPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.minimumWidth: 380
+                                    Layout.minimumWidth: 360
                                     title: "Reverb"
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
@@ -149,9 +153,9 @@ Item {
                                     ]
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 214
-                                    Layout.minimumWidth: 214
-                                    Layout.maximumWidth: 214
+                                    Layout.preferredWidth: 222
+                                    Layout.minimumWidth: 200
+                                    Layout.maximumWidth: 244
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
@@ -174,7 +178,7 @@ Item {
                                 RackFaderPanel {
                                     Layout.fillWidth: true
                                     Layout.fillHeight: true
-                                    Layout.minimumWidth: 380
+                                    Layout.minimumWidth: 360
                                     title: "Echo"
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","echo","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
@@ -183,9 +187,9 @@ Item {
                                     ]
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 214
-                                    Layout.minimumWidth: 214
-                                    Layout.maximumWidth: 214
+                                    Layout.preferredWidth: 222
+                                    Layout.minimumWidth: 200
+                                    Layout.maximumWidth: 244
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
@@ -206,7 +210,7 @@ Item {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 371; Layout.minimumWidth: 320
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 348; Layout.minimumWidth: 310
                                     title: "Main Bus"
                                     channels: [
                                         {label:"L",value:Number(root.nestedValue("outputs","main","lVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -218,7 +222,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 471; Layout.minimumWidth: 360
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 440; Layout.minimumWidth: 340
                                     title: "Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","main","compThresholdDb",-3))
                                     ratio:Number(root.nestedValue("outputs","main","compRatio",18))
@@ -226,7 +230,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","main","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
+                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
                                     title: "Band Limits / Delay"
                                     // OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1
                                     // Native exposes Main L/R delay. Until a donor delta capture proves the
@@ -250,7 +254,7 @@ Item {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:348; Layout.minimumWidth:310
                                     title:"Surround Bus"
                                     channels:[
                                         {label:"L",value:Number(root.nestedValue("outputs","surround","lVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -262,7 +266,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:340
                                     title:"Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","surround","compThresholdDb",-20))
                                     ratio:Number(root.nestedValue("outputs","surround","compRatio",100))
@@ -270,7 +274,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","surround","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
+                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"L DELAY",value:Number(root.nestedValue("outputs","surround","lDelayMs",3)),from:0,to:50,step:1,unit:"ms",decimals:0},
@@ -291,7 +295,7 @@ Item {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:348; Layout.minimumWidth:310
                                     title:"Center Bus"
                                     channels:[
                                         {label:"CTR",value:Number(root.nestedValue("outputs","center","outputVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -302,7 +306,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:340
                                     title:"Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","center","compThresholdDb",-20))
                                     ratio:Number(root.nestedValue("outputs","center","compRatio",100))
@@ -310,7 +314,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","center","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
+                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
@@ -330,7 +334,7 @@ Item {
                                 anchors.fill: parent
                                 spacing: 12
                                 RackFaderPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:371; Layout.minimumWidth:320
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:348; Layout.minimumWidth:310
                                     title:"Subwoofer Bus"
                                     channels:[
                                         {label:"SUB",value:Number(root.nestedValue("outputs","sub","outputVolDb",12)),from:-37.5,to:24,step:.5,unit:"dB",decimals:1},
@@ -341,7 +345,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:471; Layout.minimumWidth:360
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:340
                                     title:"Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","sub","compThresholdDb",-20))
                                     ratio:Number(root.nestedValue("outputs","sub","compRatio",100))
@@ -349,7 +353,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","sub","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
+                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
@@ -368,8 +372,8 @@ Item {
                     MasterStripPanel {
                         engine: root.engine
                         Layout.preferredWidth: root.masterWidth
-                        Layout.minimumWidth: root.masterWidth
-                        Layout.maximumWidth: root.masterWidth
+                        Layout.minimumWidth: 196
+                        Layout.maximumWidth: 236
                         Layout.fillHeight: true
                     }
                 }
