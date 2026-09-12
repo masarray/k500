@@ -11,7 +11,14 @@ StudioPanel {
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
     readonly property real faderHeight: 160
+    readonly property real compactChannelWidth: 100
     accentTop: false
+
+    // P1_FX_FADER_CLUSTER_CENTERING_V1
+    // Reverb/Echo expose only three controls inside a deliberately wide rack.
+    // Keep the shared rack geometry, but center a compact ~300 px three-strip
+    // cluster instead of pinning the faders to the left and leaving accidental
+    // looking dead space on the right. Other rack sections retain fill layout.
 
     // P1_RACK_FADER_LIVE_BRIDGE_V1
     function studioEngine() {
@@ -91,6 +98,12 @@ StudioPanel {
             Layout.bottomMargin: 8
             spacing: 2
 
+            Item {
+                visible: root.compactCluster
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
+
             Repeater {
                 model: root.channels
                 delegate: Item {
@@ -98,8 +111,9 @@ StudioPanel {
                     required property int index
                     required property var modelData
                     Layout.fillWidth: !root.compactCluster
-                    Layout.preferredWidth: root.compactCluster ? 62 : -1
-                    Layout.minimumWidth: root.compactCluster ? 62 : 48
+                    Layout.preferredWidth: root.compactCluster ? root.compactChannelWidth : -1
+                    Layout.minimumWidth: root.compactCluster ? root.compactChannelWidth : 48
+                    Layout.maximumWidth: root.compactCluster ? root.compactChannelWidth : Number.POSITIVE_INFINITY
                     Layout.fillHeight: true
                     property real localValue: Number(modelData.value)
                     property bool muted: false
@@ -252,7 +266,11 @@ StudioPanel {
                 }
             }
 
-            Item { visible: root.compactCluster; Layout.fillWidth: true; Layout.fillHeight: true }
+            Item {
+                visible: root.compactCluster
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+            }
         }
     }
 }
