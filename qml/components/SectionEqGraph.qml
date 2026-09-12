@@ -29,6 +29,22 @@ StudioPanel {
     property var bypassSnapshot: null
     property bool eqBypassActive: false
 
+    // PEQ_AB_AUTO_ACTIVE_V2
+    // A is a real active workspace from first frame, not a lazy snapshot created
+    // on the first A/B click. User band edits continuously refresh the selected
+    // side. Authoritative model sync (dataChanged without bandChanged) refreshes
+    // BOTH sides so a later device hydration cannot leave stale offline snapshots.
+    property bool compareApplying: false
+    property bool compareUsed: false
+    property int modelDataSerial: 0
+    property int lastUserBandSerial: 0
+
+    // HPF_LPF_STARTUP_DEFAULT_BYPASS_V1
+    // New/offline PEQ pages start with filter TYPE bypassed while preserving their
+    // frequency anchors. This priming happens once per persistent graph before the
+    // user can connect. Device readback remains authoritative and can replace it.
+    property bool startupCrossoverPrimed: false
+
     // CROSSOVER_BYPASS_TYPE_STATE_V2
     // Bypass is a filter type, never a magic edge frequency. The HP/LP anchor
     // remains exactly where the user placed it while the response contribution
@@ -183,6 +199,12 @@ StudioPanel {
         curve.requestPaint()
     }
 
+    function ensureStartupCrossoverDefaults(){
+        if(startupCrossoverPrimed)return
+        startupCrossoverPrimed=true
+        if(String(bands.hpType).trim().toUpperCase()!=="BYPASS")bands.setHpType("Bypass")
+        if(String(bands.lpType).trim().toUpperCase()!=="BYPASS")bands.setLpType("Bypass")
+    }
     function captureEqState(){
         var result={bands:[]}
         for(var i=0;i<bands.count;++i){
@@ -192,25 +214,38 @@ StudioPanel {
         return result
     }
     function cloneState(state){return state?JSON.parse(JSON.stringify(state)):null}
+    function primeCompareFromCurrent(){
+        var current=captureEqState()
+        compareA=cloneState(current)
+        compareB=cloneState(current)
+        compareSide="A"
+    }
+    function updateActiveCompareSnapshot(){
+        if(compareApplying||eqBypassActive)return
+        var current=captureEqState()
+        if(compareSide==="B")compareB=cloneState(current);else compareA=cloneState(current)
+    }
     function applyEqState(state){
         if(!state)return
-        for(var i=0;i<bands.count&&i<state.bands.length;++i){
-            var b=state.bands[i]
-            bands.setBand(i,Number(b.freq),Number(b.gain),Number(b.q))
-            bands.setBandType(i,String(b.typeName))
+        compareApplying=true
+        try {
+            for(var i=0;i<bands.count&&i<state.bands.length;++i){
+                var b=state.bands[i]
+                bands.setBand(i,Number(b.freq),Number(b.gain),Number(b.q))
+                bands.setBandType(i,String(b.typeName))
+            }
+        } finally {
+            compareApplying=false
         }
         selectBand(Math.min(selectedIndex,bands.count-1))
     }
     function initializeCompareIfNeeded(){
         if(compareA!==null&&compareB!==null)return
-        var initial=captureEqState()
-        compareA=cloneState(initial)
-        compareB=cloneState(initial)
-        compareSide="A"
+        primeCompareFromCurrent()
     }
     function saveCompareSide(){
         initializeCompareIfNeeded()
-        if(compareSide==="B")compareB=captureEqState();else compareA=captureEqState()
+        updateActiveCompareSnapshot()
     }
     function setEqBypass(enabled){
         if(enabled===eqBypassActive)return
@@ -227,6 +262,7 @@ StudioPanel {
             eqBypassActive=false
             bypassSnapshot=null
             applyEqState(restore)
+            updateActiveCompareSnapshot()
         }
         curve.requestPaint()
     }
@@ -235,6 +271,7 @@ StudioPanel {
         if(eqBypassActive)setEqBypass(false)
         initializeCompareIfNeeded()
         saveCompareSide()
+        compareUsed=true
         if(target===compareSide)return
         compareSide=target
         applyEqState(compareSide==="A"?compareA:compareB)
@@ -245,21 +282,48 @@ StudioPanel {
         if(eqBypassActive)setEqBypass(false)
         for(var i=0;i<bands.count;++i)bands.resetBand(i)
         selectBand(0)
-        initializeCompareIfNeeded()
-        if(compareSide==="B")compareB=captureEqState();else compareA=captureEqState()
+        updateActiveCompareSnapshot()
         curve.requestPaint()
     }
 
     Connections {
         target: bands
+        // syncBand() hydration emits dataChanged but not bandChanged. Delay the
+        // decision one turn so a normal user setBand() can mark the same serial
+        // as user-owned before this callback runs. Pure hydration then primes A/B
+        // together from device truth, while live edits only refresh the active side.
+        function onDataChanged(){
+            if(root.compareApplying||root.eqBypassActive)return
+            var serial=++root.modelDataSerial
+            Qt.callLater(function(){
+                if(root.compareApplying||root.eqBypassActive)return
+                if(root.lastUserBandSerial<serial){
+                    root.primeCompareFromCurrent()
+                    root.compareUsed=false
+                }
+            })
+        }
         function onBandChanged(){
+            if(!root.compareApplying&&!root.eqBypassActive){
+                root.lastUserBandSerial=root.modelDataSerial
+                root.updateActiveCompareSnapshot()
+            }
             if(root.selectedTarget==="band")root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
             else curve.requestPaint()
         }
         function onCrossoverChanged(){curve.requestPaint()}
     }
-    onBandModelChanged: Qt.callLater(function(){root.compareA=null;root.compareB=null;root.compareSide="A";root.eqBypassActive=false;root.bypassSnapshot=null;root.selectBand(0);curve.requestPaint()})
-    Component.onCompleted: selectBand(0)
+    onBandModelChanged: Qt.callLater(function(){
+        root.compareA=null;root.compareB=null;root.compareSide="A";root.compareUsed=false
+        root.compareApplying=false;root.eqBypassActive=false;root.bypassSnapshot=null
+        root.modelDataSerial=0;root.lastUserBandSerial=0
+        root.selectBand(0);root.primeCompareFromCurrent();curve.requestPaint()
+    })
+    Component.onCompleted: {
+        ensureStartupCrossoverDefaults()
+        selectBand(0)
+        Qt.callLater(function(){root.primeCompareFromCurrent()})
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -754,6 +818,47 @@ StudioPanel {
                     }
                     onTypeEdited:function(v){root.setCrossoverType(root.selectedTarget,v)}
                     onResetRequested:root.resetCrossover(root.selectedTarget)
+                }
+
+                // PEQ_BYPASS_AWARENESS_V1
+                // A professional bypass state must be obvious at a glance when the
+                // user moves rapidly between processors. This is a zero-input visual
+                // overlay only: no MouseArea, blur or offscreen layer, so interaction
+                // routing and retained-QSG performance remain untouched.
+                Rectangle {
+                    anchors.fill:parent
+                    visible:root.eqBypassActive
+                    z:90
+                    color:"#020406"
+                    opacity:.22
+                }
+                Column {
+                    anchors.centerIn:parent
+                    visible:root.eqBypassActive
+                    z:91
+                    spacing:4
+                    Text {
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        text:"EQ BYPASS"
+                        color:Theme.text
+                        opacity:.38
+                        style:Text.Outline
+                        styleColor:"#B0000000"
+                        font.family:Theme.displayFamily
+                        font.pixelSize:Math.max(34,Math.min(54,48*root.nodeScale))
+                        font.weight:Font.Bold
+                        font.letterSpacing:3.2
+                    }
+                    Text {
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        text:"PARAMETRIC EQ DISENGAGED"
+                        color:Theme.accent
+                        opacity:.42
+                        font.family:Theme.monoFamily
+                        font.pixelSize:9
+                        font.weight:Font.DemiBold
+                        font.letterSpacing:1.7
+                    }
                 }
             }
         }
