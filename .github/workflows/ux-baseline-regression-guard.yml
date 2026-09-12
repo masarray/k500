@@ -5,8 +5,11 @@ on:
     paths:
       - 'qml/components/TopBar.qml'
       - 'qml/components/StudioFader.qml'
+      - 'qml/components/StudioKnob.qml'
       - 'qml/components/SectionEqGraph.qml'
+      - 'qml/components/SectionEqGraphHost.qml'
       - 'qml/components/SoftButton.qml'
+      - 'qml/components/RackDynamicsPanel.qml'
       - 'qml/components/RackFaderPanel.qml'
       - 'qml/components/MasterStripPanel.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
@@ -28,8 +31,11 @@ jobs:
 
           topbar = text('qml/components/TopBar.qml')
           fader = text('qml/components/StudioFader.qml')
+          knob = text('qml/components/StudioKnob.qml')
           peq = text('qml/components/SectionEqGraph.qml')
+          host = text('qml/components/SectionEqGraphHost.qml')
           button = text('qml/components/SoftButton.qml')
+          dynamics = text('qml/components/RackDynamicsPanel.qml')
           fx = text('qml/components/RackFaderPanel.qml')
           master = text('qml/components/MasterStripPanel.qml')
           mass = text('qml/components/MassUploadTransferWindow.qml')
@@ -41,6 +47,17 @@ jobs:
                   and 'PC PREVIEW' in topbar
                   and 'NO PRESET' in topbar,
 
+              'Connect action uses illuminated recessed mixer-key semantics':
+                  'CONNECT_MIXER_KEY_V1' in topbar
+                  and 'mixerSelect:true' in topbar
+                  and 'checked:root.deviceManager.connected' in topbar,
+
+              'Device status is passive display telemetry':
+                  'DEVICE_STATUS_DISPLAY_V1' in topbar
+                  and 'id: statusDisplay' in topbar
+                  and 'acceptedButtons:Qt.NoButton' in topbar
+                  and 'id: statusButton' not in topbar,
+
               'Only one fader owns the strong focus highlight':
                   'FADER_SINGLE_ACTIVE_FOCUS_V1' in fader
                   and 'readonly property bool interactionActive: dragging || activeFocus' in fader
@@ -50,10 +67,37 @@ jobs:
                   'PEQ_PREMIUM_JEWEL_NODES_V1' in peq
                   and 'readonly property var colors:' in peq,
 
-              'Music source keys keep recessed illuminated selection':
-                  'MIXER_SOURCE_ILLUMINATED_SELECT_V2' in button
+              'Configured crossover types recover after legacy startup priming':
+                  'CROSSOVER_STARTUP_DEVICE_SEMANTICS_V2' in host
+                  and 'restoreConfiguredCrossoverTypes' in host
+                  and 'root.engine.musicEqBands.setHpType("HP Butter 12")' in host
+                  and 'root.engine.micAEqBands.setHpType("HP LR 24")' in host
+                  and 'root.engine.surroundEqBands.setHpType("HP Bessel 12")' in host
+                  and 'root.engine.subEqBands.setHpType("HP Butter 24")' in host,
+
+              'Music source keys keep full-face illuminated selection':
+                  'MIXER_SOURCE_ILLUMINATED_SELECT_V3' in button
+                  and 'MIXER_FULL_FACE_ACTIVE_V1' in button
                   and 'readonly property bool mixerDepressed: root.mixerLit' in button
-                  and 'root.mixerDepressed ? .982 : 1' in button,
+                  and 'scale: mouse.pressed ? .985 : 1' in button
+                  and 'border.width: root.mixerLit ? 0 : 1' in button,
+
+              'Unsupported premium FX knobs fail closed as read-only':
+                  'FX_DETAIL_READ_ONLY_TRUTH_V1' in knob
+                  and 'property bool editable: !premium' in knob
+                  and 'enabled:root.editable' in knob,
+
+              'Compressor controls route from stable window context':
+                  'P1_RACK_DYNAMICS_LIVE_BRIDGE_V2' in dynamics
+                  and 'root.Window.window' in dynamics
+                  and 'w["studioEngine"]' in dynamics
+                  and 'w["selectedSection"]' in dynamics,
+
+              'Compressor graph accepts a real zero-dB threshold':
+                  'COMPRESSOR_GRAPH_ZERO_THRESHOLD_V2' in dynamics
+                  and 'function finiteOr(v,fallback)' in dynamics
+                  and 'clamp(finiteOr(root.threshold,-20),minDb,maxDb)' in dynamics
+                  and 'Number(root.threshold)||-20' not in dynamics,
 
               'Reverb field keeps zero-level hard hide':
                   'FX_FIELD_ZERO_LEVEL_HIDE_V2' in fx
