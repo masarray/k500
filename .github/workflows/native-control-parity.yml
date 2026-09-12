@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'src/StudioEngine.h'
+      - 'src/k500/K500Controller.cpp'
       - 'src/k500/K500PresetFileBridge.cpp'
       - 'src/k500/K500Protocol.cpp'
       - 'src/EqCurveItem.cpp'
@@ -13,7 +14,9 @@ on:
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/EqGraph.qml'
       - 'qml/components/FilterPanel.qml'
+      - 'qml/components/InputFader.qml'
       - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/MusicInputPanel.qml'
       - 'qml/components/RackDynamicsPanel.qml'
       - 'qml/components/RackFilterPanel.qml'
       - 'qml/components/RackFaderPanel.qml'
@@ -32,6 +35,7 @@ jobs:
           from pathlib import Path
 
           engine_header = Path('src/StudioEngine.h').read_text(encoding='utf-8')
+          controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
           preset_bridge = Path('src/k500/K500PresetFileBridge.cpp').read_text(encoding='utf-8')
           protocol = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
           native_curve = Path('src/EqCurveItem.cpp').read_text(encoding='utf-8')
@@ -40,7 +44,9 @@ jobs:
           host = Path('qml/components/SectionEqGraphHost.qml').read_text(encoding='utf-8')
           workspace = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
           music_filter = Path('qml/components/FilterPanel.qml').read_text(encoding='utf-8')
+          input_fader = Path('qml/components/InputFader.qml').read_text(encoding='utf-8')
           master_strip = Path('qml/components/MasterStripPanel.qml').read_text(encoding='utf-8')
+          music_input = Path('qml/components/MusicInputPanel.qml').read_text(encoding='utf-8')
           rack_dynamics = Path('qml/components/RackDynamicsPanel.qml').read_text(encoding='utf-8')
           rack_filter = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
           rack_fader = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
@@ -66,6 +72,8 @@ jobs:
               'Native PEQ premium ridge stays retained': 'P1_NATIVE_PEQ_PREMIUM_RIDGE_V2' in native_curve and 'totalRidge' in native_curve and '0.72, 0.48' in native_curve and 'SampleCount' in native_curve,
               'Graph bypass preserves anchors': 'CROSSOVER_BYPASS_TYPE_STATE_V2' in graph and 'bands.setHpfHz(20)' not in graph.split('function setCrossoverType',1)[1].split('function resetCrossover',1)[0] and 'bands.setLpfHz(20000)' not in graph.split('function setCrossoverType',1)[1].split('function resetCrossover',1)[0],
               'Music bypass changes type not cutoff': 'CROSSOVER_TYPE_BYPASS_V2' in music_filter and 'root.engine.hpType = value' in music_filter and 'root.engine.lpType = value' in music_filter,
+              'Music source is six-way exclusive': 'MUSIC_SOURCE_SINGLE_CHOICE_V1' in music_input and '["INPUT1", "INPUT2", "BT", "UDISK", "OPTIC", "UAUDIO"]' in music_input and 'checked: root.selectedSource === index' in music_input and 'root.engine.editDevicePath("music.sourceRaw", next)' in music_input and 'root.active = !root.active' not in input_fader and 'else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);' in controller and 'MUSIC_SOURCE_SIX_WAY_V1' in protocol and 'qBound(0, state.sourceRaw, 5)' in protocol,
+              'Music keeps five gain trims with shared digital trim': music_input.count('InputFader {') == 5 and 'label:"INPUT1 GAIN"' in music_input and 'label:"INPUT2 GAIN"' in music_input and 'label:"BT GAIN"' in music_input and 'label:"UDISK GAIN"' in music_input and 'label:"DIGITAL GAIN"' in music_input,
               'Rack crossover layout normalized': 'CROSSOVER_RACK_LAYOUT_V3' in rack_filter and 'SURROUND_DELAY_VERIFIED_V1' in rack_filter,
               'Compressor graph stops on caption baseline': 'COMPRESSOR_GRAPH_CAPTION_BASELINE_V1' in rack_dynamics and 'Layout.preferredHeight: 227' in rack_dynamics and 'Layout.minimumHeight: 227' in rack_dynamics and 'Layout.maximumHeight: 227' in rack_dynamics and 'Layout.alignment: Qt.AlignTop' in rack_dynamics and 'Layout.fillHeight: true\n                radius: 8\n                color: "#040608"' not in rack_dynamics,
               'Right columns follow Mic 216px reference': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in workspace and 'readonly property int rightPanelWidth: 216' in workspace and 'readonly property int masterWidth: rightPanelWidth' in workspace and 'Layout.preferredWidth: root.rightPanelWidth' in workspace and 'Layout.minimumWidth: root.rightPanelWidth' in workspace and 'Layout.maximumWidth: root.rightPanelWidth' in workspace and 'Layout.preferredWidth:root.rightPanelWidth' in workspace and 'Layout.minimumWidth:root.rightPanelWidth' in workspace and 'Layout.maximumWidth:root.rightPanelWidth' in workspace and 'Layout.preferredWidth:228' not in workspace and 'Layout.preferredWidth: 222' not in workspace,
@@ -77,7 +85,7 @@ jobs:
               'Inspector emits real bypass value': 'root.typeEdited(v)' in inspector and 'Bypass ' not in inspector,
               'Output mute uses verified floor': 'OUTPUT_MUTE_VERIFIED_FLOOR_V1' in rack_fader and 'channel.muteFloor' in rack_fader,
               'Mute lives in mixer header': 'MIXER_HEADER_MUTE_V2' in rack_fader and 'name: "volume-x"' in rack_fader,
-              'No raw device access from QML': 'K500WinIo' not in graph + host + workspace + music_filter + rack_dynamics + rack_filter + rack_fader,
+              'No raw device access from QML': 'K500WinIo' not in graph + host + workspace + music_filter + music_input + input_fader + rack_dynamics + rack_filter + rack_fader,
           }
 
           failed = [name for name, ok in checks.items() if not ok]
