@@ -1,0 +1,57 @@
+name: Guard P3 delay read-only awareness
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/RackFilterPanel.qml'
+      - 'qml/components/SectionWorkspace.qml'
+      - '.github/workflows/p3-delay-readonly-awareness.yml'
+  push:
+    branches:
+      - 'fix/p3-delay-readonly-awareness'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify evidence-gated delay UX
+        shell: python
+        run: |
+          from pathlib import Path
+
+          rack = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
+          section = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+
+          required_rack = [
+              'P3_DELAY_READONLY_AWARENESS_V1',
+              'readonly property bool hasReadOnlyDelay',
+              'visible: root.hasReadOnlyDelay',
+              'text: "READ ONLY"',
+              'editable: root.editableAt(root.monoDelayIndex)',
+              'editable: root.editableAt(root.leftDelayIndex)',
+              'editable: root.editableAt(root.rightDelayIndex)',
+              'SURROUND_DELAY_VERIFIED_V1',
+          ]
+          for token in required_rack:
+              assert token in rack, f'missing RackFilterPanel invariant: {token}'
+
+          # Main/Center/Sub remain evidence-gated and cannot gain writes by accident.
+          assert section.count('editable:false') >= 4, 'expected Main L/R + Center + Sub read-only delay fields'
+          assert '{label:"L DELAY",value:Number(root.nestedValue("outputs","main"' in section
+          assert '{label:"R DELAY",value:Number(root.nestedValue("outputs","main"' in section
+          assert '{label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center"' in section
+          assert '{label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub"' in section
+
+          # Surround remains the only verified/editable output delay bridge.
+          assert 'outputs.surround.lDelayMs' in rack
+          assert 'outputs.surround.rDelayMs' in rack
+          surround_block = section.split('title:"Surround Bus"', 1)[1].split('title:"Center Bus"', 1)[0]
+          assert 'L DELAY' in surround_block and 'R DELAY' in surround_block
+          assert 'editable:false' not in surround_block, 'Surround verified delays must remain editable'
+
+          # Avoid suggesting that the entire Band Limits panel is read-only.
+          assert 'title: "Band Limits / Delay · READ ONLY"' not in section
+          assert 'title:"Band Limits / Delay · READ ONLY"' not in section
+
+          print('P3 delay read-only awareness guard passed')
