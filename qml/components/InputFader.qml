@@ -4,6 +4,7 @@ import QtQuick.Layouts
 Item {
     id: root
     property string label: "INPUT"
+    property string sourceText: ""
     property real value: -3
     property real from: -12
     property real to: 12
@@ -31,7 +32,7 @@ Item {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 58
             Layout.preferredHeight: 25
-            text: root.label
+            text: root.sourceText.length > 0 ? root.sourceText : root.label
             compact: true
             checked: root.active
             contextHighlighted: inputFader.highlighted
