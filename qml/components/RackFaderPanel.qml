@@ -19,10 +19,16 @@ StudioPanel {
     // parameter-driven visual field at the right. The field is not an analyzer;
     // it visualizes the actual exposed K500 parameters without inventing Size,
     // Diffusion, Width or other unsupported controls.
+    // FX_FIELD_ZERO_LEVEL_HIDE_V2 — LEVEL 0 means no visible effect field at all.
+    // FX_FIELD_CAPTION_BASELINE_V2 — the field card bottom follows the 118px
+    // premium knob/value capsule bottom instead of filling the complete rack.
+    // STATIC_ECHO_TAIL_V2 — Echo uses a calm stationary tap-tail, never a travelling dot.
     property real fxVisual0: 0
     property real fxVisual1: 0
     property real fxVisual2: 0
     readonly property bool reverbMode: root.title === "Reverb"
+    readonly property real fxLevelNorm: root.clamp(root.fxVisual0 / 100.0, 0, 1)
+    readonly property bool fxVisualActive: root.fxVisual0 > 0.0001
 
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
     function syncFxVisuals() {
@@ -177,293 +183,318 @@ StudioPanel {
                     }
                 }
 
-                Rectangle {
-                    id: fieldCard
+                Item {
+                    id: fieldSlot
                     Layout.fillWidth: true
                     Layout.fillHeight: true
                     Layout.minimumWidth: 310
-                    radius: 10
-                    border.width: 1
-                    border.color: fieldMouse.containsMouse ? Theme.accentSoft : "#18242B"
-                    clip: true
-                    gradient: Gradient {
-                        GradientStop { position: 0.0; color: "#081015" }
-                        GradientStop { position: 0.52; color: "#050A0E" }
-                        GradientStop { position: 1.0; color: "#030609" }
-                    }
-                    Behavior on border.color { ColorAnimation { duration: 100 } }
-
-                    MouseArea {
-                        id: fieldMouse
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        acceptedButtons: Qt.NoButton
-                    }
 
                     Rectangle {
+                        id: fieldCard
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.top: parent.top
-                        height: 1
-                        color: Theme.accent
-                        opacity: .16
-                    }
+                        anchors.verticalCenter: parent.verticalCenter
+                        // Premium knob implicitHeight is 118. This upward offset makes
+                        // the card bottom land exactly on the value-capsule bottom.
+                        anchors.verticalCenterOffset: -(fieldCard.height - 118) / 2
+                        height: 180
+                        radius: 10
+                        border.width: 1
+                        border.color: fieldMouse.containsMouse ? Theme.accentSoft : "#18242B"
+                        clip: true
+                        gradient: Gradient {
+                            GradientStop { position: 0.0; color: "#081015" }
+                            GradientStop { position: 0.52; color: "#050A0E" }
+                            GradientStop { position: 1.0; color: "#030609" }
+                        }
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
 
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.leftMargin: 12
-                        anchors.rightMargin: 12
-                        anchors.topMargin: 9
-                        anchors.bottomMargin: 9
-                        spacing: 3
-
-                        RowLayout {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 27
-                            spacing: 8
-
-                            ColumnLayout {
-                                spacing: -1
-                                Text {
-                                    text: root.reverbMode ? "REVERB FIELD" : "ECHO FIELD"
-                                    color: Theme.text
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                    font.letterSpacing: 1.15
-                                }
-                                Text {
-                                    text: "PARAMETER RESPONSE"
-                                    color: Theme.textFaint
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 7
-                                    font.weight: Font.Medium
-                                    font.letterSpacing: .9
-                                }
-                            }
-
-                            Item { Layout.fillWidth: true }
-
-                            Rectangle {
-                                Layout.preferredWidth: root.reverbMode ? 88 : 92
-                                Layout.preferredHeight: 23
-                                radius: 7
-                                color: "#061014"
-                                border.width: 1
-                                border.color: "#17333A"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: root.reverbMode
-                                          ? "DECAY  " + (root.fxVisual1/1000).toFixed(2) + " s"
-                                          : "DELAY  " + Math.round(root.fxVisual2) + " ms"
-                                    color: Theme.accent
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 8
-                                    font.weight: Font.Bold
-                                }
-                            }
-
-                            Rectangle {
-                                Layout.preferredWidth: 70
-                                Layout.preferredHeight: 23
-                                radius: 7
-                                color: "#0D0B05"
-                                border.width: 1
-                                border.color: "#392D10"
-                                Text {
-                                    anchors.centerIn: parent
-                                    text: root.reverbMode
-                                          ? "WET  " + Math.round(root.fxVisual0) + "%"
-                                          : "REP  " + Math.round(root.fxVisual1)
-                                    color: Theme.amber
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 8
-                                    font.weight: Font.Bold
-                                }
-                            }
+                        MouseArea {
+                            id: fieldMouse
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            acceptedButtons: Qt.NoButton
                         }
 
-                        Item {
-                            id: fieldStage
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
+                        Rectangle {
+                            anchors.left: parent.left
+                            anchors.right: parent.right
+                            anchors.top: parent.top
+                            height: 1
+                            color: Theme.accent
+                            opacity: .16
+                        }
 
-                            Rectangle {
-                                anchors.horizontalCenter: parent.horizontalCenter
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: parent.width * .78
-                                height: 1
-                                color: Theme.accent
-                                opacity: .07
-                            }
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 12
+                            anchors.rightMargin: 12
+                            anchors.topMargin: 9
+                            anchors.bottomMargin: 9
+                            spacing: 3
 
-                            // Reverb: an orbital decay field. Ring size follows decay,
-                            // spread follows pre-delay and luminance follows wet level.
-                            Item {
-                                id: reverbField
-                                visible: root.reverbMode
-                                width: Math.min(fieldStage.width * .70, 330)
-                                height: Math.min(fieldStage.height * .90, 190)
-                                anchors.centerIn: parent
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 27
+                                spacing: 8
 
-                                Repeater {
-                                    model: 6
-                                    delegate: Rectangle {
-                                        required property int index
-                                        readonly property real decayNorm: root.clamp((root.fxVisual1-100)/4900,0,1)
-                                        readonly property real preNorm: root.clamp(root.fxVisual2/300,0,1)
-                                        width: reverbField.width * (.30 + index*.095 + decayNorm*.035)
-                                        height: reverbField.height * (.19 + index*.075 + preNorm*.018)
-                                        anchors.centerIn: parent
-                                        radius: height/2
-                                        color: "transparent"
-                                        border.width: index < 2 ? 1.3 : 1.0
-                                        border.color: index % 3 === 0 ? Theme.amber : Theme.accent
-                                        opacity: (.09 + (5-index)*.018) * (.55 + root.clamp(root.fxVisual0/100,0,1)*.75)
-                                        rotation: index*23
-                                        NumberAnimation on rotation {
-                                            from: index*23
-                                            to: index*23 + (index%2===0 ? 360 : -360)
-                                            duration: 9000 + index*1900 + Math.round(root.clamp(root.fxVisual1,100,5000)*1.2)
-                                            loops: Animation.Infinite
-                                            running: root.visible && reverbField.visible
-                                        }
-                                    }
-                                }
-
-                                Item {
-                                    id: particleOrbit
-                                    anchors.fill: parent
-                                    opacity: .38 + root.clamp(root.fxVisual0/100,0,1)*.34
-                                    Repeater {
-                                        model: 10
-                                        delegate: Rectangle {
-                                            required property int index
-                                            width: index%3===0 ? 4 : 3
-                                            height: width
-                                            radius: width/2
-                                            color: index%4===0 ? Theme.amber : Theme.accent
-                                            x: particleOrbit.width/2 + Math.cos(index*Math.PI*2/10) * particleOrbit.width*.36 - width/2
-                                            y: particleOrbit.height/2 + Math.sin(index*Math.PI*2/10) * particleOrbit.height*.28 - height/2
-                                            opacity: .22 + (index%4)*.10
-                                        }
-                                    }
-                                    NumberAnimation on rotation {
-                                        from: 0; to: 360
-                                        duration: 15000 + Math.round(root.clamp(root.fxVisual1,100,5000))
-                                        loops: Animation.Infinite
-                                        running: root.visible && reverbField.visible
-                                    }
-                                }
-
-                                Rectangle {
-                                    anchors.centerIn: parent
-                                    width: 74; height: 74; radius: 37
-                                    color: Theme.accent
-                                    opacity: .045 + root.clamp(root.fxVisual0/100,0,1)*.055
-                                    border.width: 1
-                                    border.color: Theme.accentSoft
-                                    ScaleAnimator on scale {
-                                        from: .92; to: 1.08
-                                        duration: 1800 + Math.round(root.clamp(root.fxVisual1,100,5000)*.18)
-                                        loops: Animation.Infinite
-                                        running: root.visible && reverbField.visible
-                                    }
-                                }
-                                Rectangle {
-                                    anchors.centerIn: parent
-                                    width: 38; height: 38; radius: 19
-                                    color: "#071418"
-                                    border.width: 1
-                                    border.color: Theme.accent
+                                ColumnLayout {
+                                    spacing: -1
                                     Text {
-                                        anchors.centerIn: parent
-                                        text: "SPACE"
-                                        color: Theme.accent
+                                        text: root.reverbMode ? "REVERB FIELD" : "ECHO FIELD"
+                                        color: Theme.text
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 9
+                                        font.weight: Font.Bold
+                                        font.letterSpacing: 1.15
+                                    }
+                                    Text {
+                                        text: "PARAMETER RESPONSE"
+                                        color: Theme.textFaint
                                         font.family: Theme.monoFamily
                                         font.pixelSize: 7
+                                        font.weight: Font.Medium
+                                        font.letterSpacing: .9
+                                    }
+                                }
+
+                                Item { Layout.fillWidth: true }
+
+                                Rectangle {
+                                    Layout.preferredWidth: root.reverbMode ? 88 : 92
+                                    Layout.preferredHeight: 23
+                                    radius: 7
+                                    color: "#061014"
+                                    border.width: 1
+                                    border.color: "#17333A"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: root.reverbMode
+                                              ? "DECAY  " + (root.fxVisual1/1000).toFixed(2) + " s"
+                                              : "DELAY  " + Math.round(root.fxVisual2) + " ms"
+                                        color: Theme.accent
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
                                         font.weight: Font.Bold
-                                        font.letterSpacing: .8
+                                    }
+                                }
+
+                                Rectangle {
+                                    Layout.preferredWidth: 70
+                                    Layout.preferredHeight: 23
+                                    radius: 7
+                                    color: "#0D0B05"
+                                    border.width: 1
+                                    border.color: "#392D10"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: root.reverbMode
+                                              ? "WET  " + Math.round(root.fxVisual0) + "%"
+                                              : "REP  " + Math.round(root.fxVisual1)
+                                        color: Theme.amber
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
+                                        font.weight: Font.Bold
                                     }
                                 }
                             }
 
-                            // Echo: a repeat train. Spacing/sweep time follows Delay,
-                            // persistence follows Repeat, and brightness follows Level.
                             Item {
-                                id: echoField
-                                visible: !root.reverbMode
-                                width: Math.min(fieldStage.width * .82, 380)
-                                height: Math.min(fieldStage.height * .76, 150)
-                                anchors.centerIn: parent
+                                id: fieldStage
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
 
-                                Rectangle {
-                                    id: echoTrack
-                                    anchors.left: parent.left
-                                    anchors.right: parent.right
-                                    anchors.verticalCenter: parent.verticalCenter
-                                    height: 1
-                                    color: Theme.accent
-                                    opacity: .13
-                                }
+                                // The whole visual response disappears at LEVEL 0. The card,
+                                // labels and parameter readouts remain so the layout never jumps.
+                                Item {
+                                    id: activeFieldVisual
+                                    anchors.fill: parent
+                                    visible: root.fxVisualActive
+                                    opacity: .35 + root.fxLevelNorm * .65
+                                    Behavior on opacity { NumberAnimation { duration: 90 } }
 
-                                Repeater {
-                                    model: 7
-                                    delegate: Item {
-                                        required property int index
-                                        width: 36; height: 36
-                                        x: index * Math.max(1,(echoField.width-width)/6)
+                                    Rectangle {
+                                        anchors.horizontalCenter: parent.horizontalCenter
                                         anchors.verticalCenter: parent.verticalCenter
-                                        opacity: {
-                                            var persistence = root.clamp(root.fxVisual1/100,0,1)
-                                            return Math.max(.10,Math.pow(Math.max(.12,persistence),index*.48)) * (.48 + root.clamp(root.fxVisual0/100,0,1)*.52)
+                                        width: parent.width * .78
+                                        height: 1
+                                        color: Theme.accent
+                                        opacity: .07
+                                    }
+
+                                    // Reverb: an orbital decay field. Ring size follows decay,
+                                    // spread follows pre-delay and the complete field follows LEVEL.
+                                    Item {
+                                        id: reverbField
+                                        visible: root.reverbMode
+                                        width: Math.min(activeFieldVisual.width * .70, 330)
+                                        height: Math.min(activeFieldVisual.height * .90, 116)
+                                        anchors.centerIn: parent
+
+                                        Repeater {
+                                            model: 6
+                                            delegate: Rectangle {
+                                                required property int index
+                                                readonly property real decayNorm: root.clamp((root.fxVisual1-100)/4900,0,1)
+                                                readonly property real preNorm: root.clamp(root.fxVisual2/300,0,1)
+                                                width: reverbField.width * (.30 + index*.095 + decayNorm*.035)
+                                                height: reverbField.height * (.19 + index*.075 + preNorm*.018)
+                                                anchors.centerIn: parent
+                                                radius: height/2
+                                                color: "transparent"
+                                                border.width: index < 2 ? 1.3 : 1.0
+                                                border.color: index % 3 === 0 ? Theme.amber : Theme.accent
+                                                opacity: .09 + (5-index)*.018
+                                                rotation: index*23
+                                                NumberAnimation on rotation {
+                                                    from: index*23
+                                                    to: index*23 + (index%2===0 ? 360 : -360)
+                                                    duration: 9000 + index*1900 + Math.round(root.clamp(root.fxVisual1,100,5000)*1.2)
+                                                    loops: Animation.Infinite
+                                                    running: root.visible && root.fxVisualActive && reverbField.visible
+                                                }
+                                            }
+                                        }
+
+                                        Item {
+                                            id: particleOrbit
+                                            anchors.fill: parent
+                                            opacity: .48
+                                            Repeater {
+                                                model: 10
+                                                delegate: Rectangle {
+                                                    required property int index
+                                                    width: index%3===0 ? 4 : 3
+                                                    height: width
+                                                    radius: width/2
+                                                    color: index%4===0 ? Theme.amber : Theme.accent
+                                                    x: particleOrbit.width/2 + Math.cos(index*Math.PI*2/10) * particleOrbit.width*.36 - width/2
+                                                    y: particleOrbit.height/2 + Math.sin(index*Math.PI*2/10) * particleOrbit.height*.28 - height/2
+                                                    opacity: .22 + (index%4)*.10
+                                                }
+                                            }
+                                            NumberAnimation on rotation {
+                                                from: 0; to: 360
+                                                duration: 15000 + Math.round(root.clamp(root.fxVisual1,100,5000))
+                                                loops: Animation.Infinite
+                                                running: root.visible && root.fxVisualActive && reverbField.visible
+                                            }
+                                        }
+
+                                        Rectangle {
+                                            anchors.centerIn: parent
+                                            width: 66; height: 66; radius: 33
+                                            color: Theme.accent
+                                            opacity: .075
+                                            border.width: 1
+                                            border.color: Theme.accentSoft
+                                            ScaleAnimator on scale {
+                                                from: .94; to: 1.06
+                                                duration: 1800 + Math.round(root.clamp(root.fxVisual1,100,5000)*.18)
+                                                loops: Animation.Infinite
+                                                running: root.visible && root.fxVisualActive && reverbField.visible
+                                            }
                                         }
                                         Rectangle {
                                             anchors.centerIn: parent
-                                            width: 34-index*2.2
-                                            height: width
-                                            radius: width/2
-                                            color: "transparent"
-                                            border.width: index===0 ? 1.6 : 1.0
-                                            border.color: index%3===0 ? Theme.amber : Theme.accent
-                                        }
-                                        Rectangle {
-                                            anchors.centerIn: parent
-                                            width: Math.max(4,10-index)
-                                            height: width
-                                            radius: width/2
-                                            color: index===0 ? Theme.amber : Theme.accent
-                                            opacity: index===0 ? .88 : .58
+                                            width: 34; height: 34; radius: 17
+                                            color: "#071418"
+                                            border.width: 1
+                                            border.color: Theme.accent
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: "SPACE"
+                                                color: Theme.accent
+                                                font.family: Theme.monoFamily
+                                                font.pixelSize: 7
+                                                font.weight: Font.Bold
+                                                font.letterSpacing: .8
+                                            }
                                         }
                                     }
-                                }
 
-                                Rectangle {
-                                    id: echoSweep
-                                    width: 9; height: 9; radius: 5
-                                    y: echoField.height/2-height/2
-                                    color: Theme.accent
-                                    opacity: .78
-                                    Rectangle { anchors.centerIn: parent; width: 23; height: 23; radius: 12; color: Theme.accent; opacity: .10 }
-                                    NumberAnimation on x {
-                                        from: 0
-                                        to: Math.max(0,echoField.width-echoSweep.width)
-                                        duration: 900 + Math.round(root.clamp(root.fxVisual2,0,1000)*2.1)
-                                        loops: Animation.Infinite
-                                        running: root.visible && echoField.visible
+                                    // Echo: stationary temporal tap-tail. Delay controls total span,
+                                    // Repeat controls persistence. Nothing travels across the panel.
+                                    Item {
+                                        id: echoField
+                                        visible: !root.reverbMode
+                                        width: Math.min(activeFieldVisual.width * .84, 390)
+                                        height: Math.min(activeFieldVisual.height * .82, 110)
+                                        anchors.centerIn: parent
+                                        readonly property real delayNorm: root.clamp(root.fxVisual2 / 1000.0, 0, 1)
+                                        readonly property real repeatNorm: root.clamp(root.fxVisual1 / 100.0, 0, 1)
+
+                                        Item {
+                                            id: echoTrain
+                                            width: echoField.width * (.50 + echoField.delayNorm * .38)
+                                            height: echoField.height * .66
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            anchors.verticalCenterOffset: -4
+
+                                            Rectangle {
+                                                anchors.left: parent.left
+                                                anchors.right: parent.right
+                                                anchors.verticalCenter: parent.verticalCenter
+                                                height: 1
+                                                color: Theme.accent
+                                                opacity: .10
+                                            }
+
+                                            Repeater {
+                                                model: 7
+                                                delegate: Item {
+                                                    required property int index
+                                                    width: 24
+                                                    height: echoTrain.height
+                                                    x: index * Math.max(1,(echoTrain.width-width)/6)
+                                                    readonly property real persistence: Math.max(.08, echoField.repeatNorm)
+                                                    readonly property real tapOpacity: index === 0
+                                                                                       ? .92
+                                                                                       : Math.max(.08, Math.pow(persistence, .32 + index*.26))
+
+                                                    Rectangle {
+                                                        anchors.horizontalCenter: parent.horizontalCenter
+                                                        anchors.verticalCenter: parent.verticalCenter
+                                                        width: index === 0 ? 4 : 3
+                                                        height: Math.max(12, echoTrain.height * (.76 - index*.075))
+                                                        radius: width/2
+                                                        color: index === 0 ? Theme.amber : Theme.accent
+                                                        opacity: parent.tapOpacity
+                                                    }
+                                                    Rectangle {
+                                                        anchors.centerIn: parent
+                                                        width: Math.max(7, 19-index*1.6)
+                                                        height: width
+                                                        radius: width/2
+                                                        color: "transparent"
+                                                        border.width: 1
+                                                        border.color: index === 0 ? Theme.amber : Theme.accent
+                                                        opacity: parent.tapOpacity * .42
+                                                    }
+                                                    Rectangle {
+                                                        anchors.centerIn: parent
+                                                        width: index === 0 ? 7 : 5
+                                                        height: width
+                                                        radius: width/2
+                                                        color: index === 0 ? Theme.amber : Theme.accent
+                                                        opacity: parent.tapOpacity * .82
+                                                    }
+                                                }
+                                            }
+                                        }
+
+                                        Text {
+                                            anchors.horizontalCenter: parent.horizontalCenter
+                                            anchors.bottom: parent.bottom
+                                            text: "TIME  /  REPEAT TAIL"
+                                            color: Theme.textFaint
+                                            font.family: Theme.monoFamily
+                                            font.pixelSize: 7
+                                            font.weight: Font.DemiBold
+                                            font.letterSpacing: 1.1
+                                        }
                                     }
-                                }
-
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    anchors.top: parent.verticalCenter
-                                    anchors.topMargin: 31
-                                    text: "TIME  /  REPEAT"
-                                    color: Theme.textFaint
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 7
-                                    font.weight: Font.DemiBold
-                                    font.letterSpacing: 1.1
                                 }
                             }
                         }
