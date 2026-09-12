@@ -47,6 +47,27 @@ bool readValidPreset(const QString &path, QByteArray *bytes)
         *bytes = candidate;
     return true;
 }
+
+QString crossoverFilterLabel(quint16 raw, bool hpf)
+{
+    const quint16 expectedFamily = hpf ? 0x0400 : 0x0300;
+    if ((raw & 0xFF00) != expectedFamily)
+        return {};
+
+    const char *shape = nullptr;
+    switch (raw & 0x00FF) {
+    case 0x01: shape = "Bessel 12"; break;
+    case 0x02: shape = "Butter 12"; break;
+    case 0x03: shape = "Bessel 18"; break;
+    case 0x04: shape = "Butter 18"; break;
+    case 0x05: shape = "Bessel 24"; break;
+    case 0x06: shape = "Butter 24"; break;
+    case 0x07: shape = "LR 24"; break;
+    default: return {};
+    }
+    return QStringLiteral("%1 %2")
+        .arg(hpf ? QStringLiteral("HP") : QStringLiteral("LP"), QString::fromLatin1(shape));
+}
 }
 
 K500PresetFileBridge::K500PresetFileBridge(QObject *parent)
@@ -529,6 +550,23 @@ bool K500PresetFileBridge::previewLoadedPreset()
     QByteArray preview(ActiveMemorySize, char(0));
     std::copy(slot.cbegin(), slot.cend(), preview.begin());
     m_engine->hydrateFromDeviceMemory(preview);
+
+    // PRESET_PREVIEW_CROSSOVER_OVERLAY_V1
+    // The native 0x0290 slot image intentionally contains PEQ bands/scalars but
+    // not the .k500 crossover TYPE footers. Overlay the full-file authoritative
+    // HPF/LPF type + anchor metadata after scalar hydration. Unknown raw type
+    // families are deliberately left unchanged rather than guessed.
+    const K500PresetCodec::Document document(m_sourceBytes);
+    for (const K500PresetCodec::EqSection &section : document.eqSections()) {
+        if (section.key.endsWith(QStringLiteral("Alt")))
+            continue;
+        m_engine->syncPresetCrossover(
+            section.key,
+            section.crossover.hpfHz,
+            section.crossover.lpfHz,
+            crossoverFilterLabel(section.crossover.hpTypeRaw, true),
+            crossoverFilterLabel(section.crossover.lpTypeRaw, false));
+    }
 
     // P3_4_OFFLINE_EDIT_SESSION_V1
     // Explicit Preview is the opt-in boundary for controlled offline editing.
