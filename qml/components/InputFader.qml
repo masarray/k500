@@ -13,6 +13,7 @@ Item {
     property bool selected: false
     property bool sourceButtonVisible: true
     property bool headerVisible: true
+    property bool sourceButtonMixerSelect: false
     signal valueEdited(real newValue)
     signal activated()
     signal sourceRequested()
@@ -35,6 +36,7 @@ Item {
             text: root.sourceText.length > 0 ? root.sourceText : root.label
             compact: true
             checked: root.active
+            mixerSelect: root.sourceButtonMixerSelect
             contextHighlighted: inputFader.highlighted
             onClicked: root.sourceRequested()
         }
