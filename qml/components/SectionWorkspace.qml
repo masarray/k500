@@ -9,15 +9,15 @@ Item {
     property int micChannel: 0
     property bool micEqLinked: Boolean(groupValue("mic", "eqLink", false))
     readonly property int lowerRackHeight: 304
-    readonly property int masterWidth: 188
+    readonly property int rightPanelWidth: 216
+    readonly property int masterWidth: rightPanelWidth
 
     // LOWER_RACK_SPACE_UTILIZATION_V2
-    // Keep the rack height fixed while reserving useful horizontal travel for
-    // crossover/delay controls.
-    // MASTER_STRIP_FIXED_WIDTH_V1
-    // Master Strip is a global control surface, so its width must not jump when
-    // the user switches Music/Mic/FX/output/System pages. 188 px is the original
-    // canonical width already used by Music, System and MasterStripPanel itself.
+    // Keep the rack height fixed while reserving useful horizontal travel.
+    // RIGHT_COLUMN_WIDTH_PARITY_V1
+    // Mic is the geometry reference: the two right-most columns are always
+    // 216 px + 216 px (crossover/tone + Master Strip) on every processor page.
+    // This prevents the right side from looking thin or jumping between pages.
 
     // K500_DEVICE_STATE_BINDINGS_V1
     function groupValue(group, key, fallback) {
@@ -123,9 +123,9 @@ Item {
                                     release: Number(root.groupValue("mic","releaseSec",0.2)) * 1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 216
-                                    Layout.minimumWidth: 190
-                                    Layout.maximumWidth: 250
+                                    Layout.preferredWidth: root.rightPanelWidth
+                                    Layout.minimumWidth: root.rightPanelWidth
+                                    Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Band Limits"
                                     fields: [
@@ -157,9 +157,9 @@ Item {
                                     ]
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 222
-                                    Layout.minimumWidth: 200
-                                    Layout.maximumWidth: 244
+                                    Layout.preferredWidth: root.rightPanelWidth
+                                    Layout.minimumWidth: root.rightPanelWidth
+                                    Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
@@ -191,9 +191,9 @@ Item {
                                     ]
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth: 222
-                                    Layout.minimumWidth: 200
-                                    Layout.maximumWidth: 244
+                                    Layout.preferredWidth: root.rightPanelWidth
+                                    Layout.minimumWidth: root.rightPanelWidth
+                                    Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
@@ -234,7 +234,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","main","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
+                                    Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title: "Band Limits / Delay"
                                     // OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1
                                     // Native exposes Main L/R delay. Until a donor delta capture proves the
@@ -278,7 +278,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","surround","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
+                                    Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"L DELAY",value:Number(root.nestedValue("outputs","surround","lDelayMs",3)),from:0,to:50,step:1,unit:"ms",decimals:0},
@@ -318,7 +318,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","center","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
+                                    Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
@@ -357,7 +357,7 @@ Item {
                                     release:Number(root.nestedValue("outputs","sub","releaseSec",0.1))*1000
                                 }
                                 RackFilterPanel {
-                                    Layout.preferredWidth:228; Layout.minimumWidth:210; Layout.maximumWidth:250; Layout.fillHeight:true
+                                    Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
                                         {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
@@ -375,9 +375,9 @@ Item {
 
                     MasterStripPanel {
                         engine: root.engine
-                        Layout.preferredWidth: root.masterWidth
-                        Layout.minimumWidth: root.masterWidth
-                        Layout.maximumWidth: root.masterWidth
+                        Layout.preferredWidth: root.rightPanelWidth
+                        Layout.minimumWidth: root.rightPanelWidth
+                        Layout.maximumWidth: root.rightPanelWidth
                         Layout.fillHeight: true
                     }
                 }
