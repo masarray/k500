@@ -10,8 +10,10 @@ Item {
     property color accentColor: Theme.accent
     property bool active: false
     property bool selected: false
+    property bool sourceButtonVisible: true
     signal valueEdited(real newValue)
     signal activated()
+    signal sourceRequested()
 
     implicitWidth: 76
     implicitHeight: 238
@@ -20,7 +22,11 @@ Item {
         anchors.fill: parent
         spacing: 4
 
+        // MUSIC_SOURCE_SINGLE_CHOICE_V1
+        // `active` is authoritative state supplied by the parent. Never toggle it
+        // locally: a source selector is radio/exclusive semantics, not a latch.
         SoftButton {
+            visible: root.sourceButtonVisible
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 58
             Layout.preferredHeight: 25
@@ -28,10 +34,21 @@ Item {
             compact: true
             checked: root.active
             contextHighlighted: inputFader.highlighted
-            onClicked: {
-                root.active = !root.active
-                root.activated()
-            }
+            onClicked: root.sourceRequested()
+        }
+
+        Text {
+            visible: !root.sourceButtonVisible
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredHeight: 25
+            text: root.label
+            color: inputFader.highlighted ? root.accentColor : Theme.textDim
+            font.family: Theme.monoFamily
+            font.pixelSize: 8
+            font.weight: Font.DemiBold
+            font.letterSpacing: .45
+            verticalAlignment: Text.AlignVCenter
+            Behavior on color { ColorAnimation { duration:75 } }
         }
 
         Item { Layout.preferredHeight: 4 }
