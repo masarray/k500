@@ -560,14 +560,16 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         node->markDirty(QSGNode::DirtyGeometry);
     };
 
-    // Professional EQ hierarchy: one clean composite response carries the eye;
-    // fill, individual filters, crossover and glow only support it. The feather
-    // geometry keeps all strokes smooth without a full-window MSAA tax.
+    // P1_NATIVE_PEQ_LUXURY_FILL_V1
+    // Keep premultiplied-alpha correctness, but restore the richer visual depth
+    // of the earlier graph: a clearly readable translucent response body plus a
+    // restrained halo/core stack. This is still retained QSG geometry only --
+    // no Canvas, blur layer, offscreen target or per-frame allocation is added.
     {
         auto *geometry = root->fill->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const QColor topColor = withAlpha(m_accentColor, 20);
-        const QColor bottomColor = withAlpha(m_accentColor, 0);
+        const QColor topColor = withAlpha(m_accentColor, 46);
+        const QColor bottomColor = withAlpha(m_accentColor, 4);
         for (int i = 0; i < SampleCount; ++i) {
             const qreal x = xForSample(i);
             setVertex(vertices[i * 2], x, yForDb(m_totalResponse[i]), topColor);
@@ -588,13 +590,13 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
 
     writeStroke(root->crossover, m_crossoverResponse, 0.90, 0.70,
                 [this](int) { return withAlpha(m_amberColor, 68); });
-    writeStroke(root->totalShadow, m_totalResponse, 3.6, 1.00,
-                [](int) { return QColor(1, 2, 3, 164); });
-    writeStroke(root->totalGlow, m_totalResponse, 4.6, 1.25,
-                [this](int) { return withAlpha(m_accentColor, 22); });
+    writeStroke(root->totalShadow, m_totalResponse, 3.9, 1.00,
+                [](int) { return QColor(1, 3, 4, 138); });
+    writeStroke(root->totalGlow, m_totalResponse, 5.4, 1.30,
+                [this](int) { return withAlpha(m_accentColor, 34); });
 
-    const QColor compositeColor = interpolate(m_accentColor, QColor(220, 253, 255), 0.16);
-    writeStroke(root->total, m_totalResponse, 2.15, 0.82,
+    const QColor compositeColor = interpolate(m_accentColor, QColor(220, 253, 255), 0.20);
+    writeStroke(root->total, m_totalResponse, 2.25, 0.82,
                 [compositeColor](int) { return compositeColor; });
 
     return root;
