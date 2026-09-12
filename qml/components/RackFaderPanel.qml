@@ -20,9 +20,11 @@ StudioPanel {
     // it visualizes the actual exposed K500 parameters without inventing Size,
     // Diffusion, Width or other unsupported controls.
     // FX_FIELD_ZERO_LEVEL_HIDE_V2 — LEVEL 0 means no visible effect field at all.
-    // FX_FIELD_CAPTION_BASELINE_V2 — the field card bottom follows the 118px
-    // premium knob/value capsule bottom instead of filling the complete rack.
     // STATIC_ECHO_TAIL_V2 — Echo uses a calm stationary tap-tail, never a travelling dot.
+    // FX_FIELD_MASTER_CAPTION_BASELINE_V3 — the 220px field begins 4px below
+    // rack content so its lower edge matches the Master Strip value capsule.
+    // REVERB_DECAY_PREDELAY_MAPPING_V3 — Decay strongly controls field width,
+    // density and persistence; PRE creates a visible dry-to-reverb onset gap.
     property real fxVisual0: 0
     property real fxVisual1: 0
     property real fxVisual2: 0
@@ -193,11 +195,11 @@ StudioPanel {
                         id: fieldCard
                         anchors.left: parent.left
                         anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
-                        // Premium knob implicitHeight is 118. This upward offset makes
-                        // the card bottom land exactly on the value-capsule bottom.
-                        anchors.verticalCenterOffset: -(fieldCard.height - 118) / 2
-                        height: 180
+                        anchors.top: parent.top
+                        anchors.topMargin: 4
+                        // MasterStripPanel uses the same rack content origin. Its value
+                        // capsule ends 224px below that origin; 4 + 220 lands on it.
+                        height: 220
                         radius: 10
                         border.width: 1
                         border.color: fieldMouse.containsMouse ? Theme.accentSoft : "#18242B"
@@ -280,6 +282,24 @@ StudioPanel {
                                 }
 
                                 Rectangle {
+                                    visible: root.reverbMode
+                                    Layout.preferredWidth: 70
+                                    Layout.preferredHeight: 23
+                                    radius: 7
+                                    color: "#070D10"
+                                    border.width: 1
+                                    border.color: "#24333A"
+                                    Text {
+                                        anchors.centerIn: parent
+                                        text: "PRE  " + Math.round(root.fxVisual2) + " ms"
+                                        color: Theme.textSoft
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
+                                        font.weight: Font.Bold
+                                    }
+                                }
+
+                                Rectangle {
                                     Layout.preferredWidth: 70
                                     Layout.preferredHeight: 23
                                     radius: 7
@@ -316,99 +336,189 @@ StudioPanel {
                                     Rectangle {
                                         anchors.horizontalCenter: parent.horizontalCenter
                                         anchors.verticalCenter: parent.verticalCenter
-                                        width: parent.width * .78
+                                        width: parent.width * .84
                                         height: 1
                                         color: Theme.accent
-                                        opacity: .07
+                                        opacity: .055
                                     }
 
-                                    // Reverb: an orbital decay field. Ring size follows decay,
-                                    // spread follows pre-delay and the complete field follows LEVEL.
+                                    // Reverb semantic map:
+                                    // - LEVEL gates/brightens the complete field.
+                                    // - DECAY expands stage width, vertical bloom, layer count and tail density.
+                                    // - PRE is a real onset gap between the dry source and the late field.
                                     Item {
                                         id: reverbField
                                         visible: root.reverbMode
-                                        width: Math.min(activeFieldVisual.width * .70, 330)
-                                        height: Math.min(activeFieldVisual.height * .90, 116)
+                                        width: Math.min(activeFieldVisual.width * .96, 440)
+                                        height: Math.min(activeFieldVisual.height * .96, 154)
                                         anchors.centerIn: parent
+                                        readonly property real decayNorm: root.clamp((root.fxVisual1 - 100) / 4900.0, 0, 1)
+                                        readonly property real preNorm: root.clamp(root.fxVisual2 / 300.0, 0, 1)
+                                        readonly property real decayShape: Math.sqrt(decayNorm)
+                                        readonly property int ringCount: 2 + Math.round(decayNorm * 6)
+                                        readonly property int particleCount: 4 + Math.round(decayNorm * 10)
+                                        readonly property real dryCenterX: 18
+                                        readonly property real preGap: 4 + preNorm * 76
+                                        readonly property real bloomWidth: Math.max(110, Math.min(width - dryCenterX - preGap - 8,
+                                                                                                  width * (.38 + decayShape * .54)))
+                                        readonly property real bloomHeight: height * (.34 + decayNorm * .58)
+                                        readonly property real bloomStartX: Math.min(width - bloomWidth - 6,
+                                                                                   dryCenterX + preGap)
 
-                                        Repeater {
-                                            model: 6
-                                            delegate: Rectangle {
-                                                required property int index
-                                                readonly property real decayNorm: root.clamp((root.fxVisual1-100)/4900,0,1)
-                                                readonly property real preNorm: root.clamp(root.fxVisual2/300,0,1)
-                                                width: reverbField.width * (.30 + index*.095 + decayNorm*.035)
-                                                height: reverbField.height * (.19 + index*.075 + preNorm*.018)
+                                        // Dry source: stays fixed. PRE moves only the reverb onset,
+                                        // so increasing pre-delay creates visible separation instead
+                                        // of merely changing an orbit's aspect ratio.
+                                        Rectangle {
+                                            id: drySource
+                                            x: reverbField.dryCenterX - width/2
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: 14; height: 14; radius: 7
+                                            color: "#071418"
+                                            border.width: 1
+                                            border.color: Theme.amber
+                                            opacity: .92
+                                            Rectangle {
                                                 anchors.centerIn: parent
-                                                radius: height/2
-                                                color: "transparent"
-                                                border.width: index < 2 ? 1.3 : 1.0
-                                                border.color: index % 3 === 0 ? Theme.amber : Theme.accent
-                                                opacity: .09 + (5-index)*.018
-                                                rotation: index*23
+                                                width: 4; height: 4; radius: 2
+                                                color: Theme.amber
+                                            }
+                                        }
+                                        Text {
+                                            anchors.horizontalCenter: drySource.horizontalCenter
+                                            anchors.top: drySource.bottom
+                                            anchors.topMargin: 3
+                                            text: "DRY"
+                                            color: Theme.textFaint
+                                            font.family: Theme.monoFamily
+                                            font.pixelSize: 6
+                                            font.weight: Font.DemiBold
+                                            font.letterSpacing: .7
+                                        }
+
+                                        Rectangle {
+                                            id: preDelayGuide
+                                            x: reverbField.dryCenterX + 7
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: Math.max(1, reverbField.bloomStartX - x)
+                                            height: 1
+                                            color: Theme.amber
+                                            opacity: .10 + reverbField.preNorm * .28
+                                        }
+                                        Rectangle {
+                                            x: reverbField.bloomStartX - 1
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            width: 1
+                                            height: parent.height * (.34 + reverbField.preNorm * .26)
+                                            color: Theme.amber
+                                            opacity: .12 + reverbField.preNorm * .32
+                                        }
+                                        Text {
+                                            visible: reverbField.preNorm > .06
+                                            x: preDelayGuide.x + Math.max(0,(preDelayGuide.width-width)/2)
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            anchors.verticalCenterOffset: -13
+                                            text: "PRE"
+                                            color: Theme.amber
+                                            opacity: .42 + reverbField.preNorm * .40
+                                            font.family: Theme.monoFamily
+                                            font.pixelSize: 6
+                                            font.weight: Font.Bold
+                                            font.letterSpacing: .8
+                                        }
+
+                                        Item {
+                                            id: reverbBloom
+                                            x: reverbField.bloomStartX
+                                            width: reverbField.bloomWidth
+                                            height: reverbField.bloomHeight
+                                            anchors.verticalCenter: parent.verticalCenter
+                                            Behavior on x { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                                            Behavior on width { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+                                            Behavior on height { NumberAnimation { duration: 110; easing.type: Easing.OutCubic } }
+
+                                            Repeater {
+                                                model: 8
+                                                delegate: Rectangle {
+                                                    required property int index
+                                                    visible: index < reverbField.ringCount
+                                                    width: reverbBloom.width * Math.min(.98, .38 + index * .085)
+                                                    height: reverbBloom.height * Math.min(.94, .27 + index * .095)
+                                                    anchors.centerIn: parent
+                                                    radius: height/2
+                                                    color: "transparent"
+                                                    border.width: index < 2 ? 1.35 : 1.0
+                                                    border.color: index % 3 === 0 ? Theme.amber : Theme.accent
+                                                    opacity: .10 + reverbField.decayNorm * .085 + (7-index)*.010
+                                                    rotation: index*19 + (index%2===0 ? -7 : 7)
+                                                    NumberAnimation on rotation {
+                                                        from: index*19 + (index%2===0 ? -7 : 7)
+                                                        to: index*19 + (index%2===0 ? 353 : -353)
+                                                        duration: 8500 + index*1500 + Math.round(reverbField.decayNorm*6500)
+                                                        loops: Animation.Infinite
+                                                        running: root.visible && root.fxVisualActive && reverbField.visible && visible
+                                                    }
+                                                }
+                                            }
+
+                                            Item {
+                                                id: lateParticles
+                                                anchors.fill: parent
+                                                opacity: .30 + reverbField.decayNorm * .28
+                                                Repeater {
+                                                    model: 14
+                                                    delegate: Rectangle {
+                                                        required property int index
+                                                        visible: index < reverbField.particleCount
+                                                        readonly property real angle: index * Math.PI * 2 / 14
+                                                        readonly property real lane: .50 + (index % 4) * .12
+                                                        width: index%4===0 ? 4 : 3
+                                                        height: width
+                                                        radius: width/2
+                                                        color: index%5===0 ? Theme.amber : Theme.accent
+                                                        x: lateParticles.width/2 + Math.cos(angle) * lateParticles.width * (.18 + reverbField.decayNorm*.28) * lane - width/2
+                                                        y: lateParticles.height/2 + Math.sin(angle) * lateParticles.height * (.18 + reverbField.decayNorm*.26) * lane - height/2
+                                                        opacity: .20 + (index%4)*.09
+                                                    }
+                                                }
                                                 NumberAnimation on rotation {
-                                                    from: index*23
-                                                    to: index*23 + (index%2===0 ? 360 : -360)
-                                                    duration: 9000 + index*1900 + Math.round(root.clamp(root.fxVisual1,100,5000)*1.2)
+                                                    from: 0; to: 360
+                                                    duration: 14000 + Math.round(reverbField.decayNorm*9000)
                                                     loops: Animation.Infinite
                                                     running: root.visible && root.fxVisualActive && reverbField.visible
                                                 }
                                             }
-                                        }
 
-                                        Item {
-                                            id: particleOrbit
-                                            anchors.fill: parent
-                                            opacity: .48
-                                            Repeater {
-                                                model: 10
-                                                delegate: Rectangle {
-                                                    required property int index
-                                                    width: index%3===0 ? 4 : 3
-                                                    height: width
-                                                    radius: width/2
-                                                    color: index%4===0 ? Theme.amber : Theme.accent
-                                                    x: particleOrbit.width/2 + Math.cos(index*Math.PI*2/10) * particleOrbit.width*.36 - width/2
-                                                    y: particleOrbit.height/2 + Math.sin(index*Math.PI*2/10) * particleOrbit.height*.28 - height/2
-                                                    opacity: .22 + (index%4)*.10
+                                            Rectangle {
+                                                anchors.centerIn: parent
+                                                width: reverbBloom.width * (.18 + reverbField.decayNorm*.10)
+                                                height: width
+                                                radius: width/2
+                                                color: Theme.accent
+                                                opacity: .045 + reverbField.decayNorm*.050
+                                                border.width: 1
+                                                border.color: Theme.accentSoft
+                                                ScaleAnimator on scale {
+                                                    from: .95; to: 1.05
+                                                    duration: 1700 + Math.round(reverbField.decayNorm*1800)
+                                                    loops: Animation.Infinite
+                                                    running: root.visible && root.fxVisualActive && reverbField.visible
                                                 }
                                             }
-                                            NumberAnimation on rotation {
-                                                from: 0; to: 360
-                                                duration: 15000 + Math.round(root.clamp(root.fxVisual1,100,5000))
-                                                loops: Animation.Infinite
-                                                running: root.visible && root.fxVisualActive && reverbField.visible
-                                            }
-                                        }
-
-                                        Rectangle {
-                                            anchors.centerIn: parent
-                                            width: 66; height: 66; radius: 33
-                                            color: Theme.accent
-                                            opacity: .075
-                                            border.width: 1
-                                            border.color: Theme.accentSoft
-                                            ScaleAnimator on scale {
-                                                from: .94; to: 1.06
-                                                duration: 1800 + Math.round(root.clamp(root.fxVisual1,100,5000)*.18)
-                                                loops: Animation.Infinite
-                                                running: root.visible && root.fxVisualActive && reverbField.visible
-                                            }
-                                        }
-                                        Rectangle {
-                                            anchors.centerIn: parent
-                                            width: 34; height: 34; radius: 17
-                                            color: "#071418"
-                                            border.width: 1
-                                            border.color: Theme.accent
-                                            Text {
+                                            Rectangle {
                                                 anchors.centerIn: parent
-                                                text: "SPACE"
-                                                color: Theme.accent
-                                                font.family: Theme.monoFamily
-                                                font.pixelSize: 7
-                                                font.weight: Font.Bold
-                                                font.letterSpacing: .8
+                                                width: 34; height: 34; radius: 17
+                                                color: "#071418"
+                                                border.width: 1
+                                                border.color: Theme.accent
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: "SPACE"
+                                                    color: Theme.accent
+                                                    font.family: Theme.monoFamily
+                                                    font.pixelSize: 7
+                                                    font.weight: Font.Bold
+                                                    font.letterSpacing: .8
+                                                }
                                             }
                                         }
                                     }
@@ -419,7 +529,7 @@ StudioPanel {
                                         id: echoField
                                         visible: !root.reverbMode
                                         width: Math.min(activeFieldVisual.width * .84, 390)
-                                        height: Math.min(activeFieldVisual.height * .82, 110)
+                                        height: Math.min(activeFieldVisual.height * .82, 128)
                                         anchors.centerIn: parent
                                         readonly property real delayNorm: root.clamp(root.fxVisual2 / 1000.0, 0, 1)
                                         readonly property real repeatNorm: root.clamp(root.fxVisual1 / 100.0, 0, 1)
