@@ -29,7 +29,7 @@ jobs:
       - name: Install Pillow
         run: python -m pip install --disable-pip-version-check pillow
 
-      - name: Generate favicon and WebP device image
+      - name: Generate and wire optimized site assets
         shell: bash
         run: |
           python - <<'PY'
@@ -70,7 +70,22 @@ jobs:
               device = device.convert('RGBA' if 'transparency' in device.info else 'RGB')
           device.save(site / 'assets' / 'k500-device.webp', format='WEBP', quality=84, method=6)
 
-          # Remove the old synthetic SVG favicon and temporary trigger/workflow from the final branch.
+          # Wire the generated assets into the landing page.
+          index_path = site / 'index.html'
+          html = index_path.read_text(encoding='utf-8')
+          html = html.replace(
+              '<link rel="icon" href="favicon.svg" type="image/svg+xml">',
+              '<link rel="icon" href="favicon.ico" sizes="any">\n'
+              '  <link rel="icon" href="favicon-32x32.png" type="image/png" sizes="32x32">\n'
+              '  <link rel="apple-touch-icon" href="apple-touch-icon.png">',
+          )
+          html = html.replace(
+              '<img src="https://raw.githubusercontent.com/masarray/k500/main/assets/k500%20screenshot/Ktv-device.png" alt="K500 karaoke processor device">',
+              '<img src="assets/k500-device.webp" alt="K500 karaoke processor device" loading="eager" decoding="async">',
+          )
+          index_path.write_text(html, encoding='utf-8')
+
+          # Remove the old synthetic SVG favicon and temporary automation from the final branch.
           for temporary in (
               site / 'favicon.svg',
               site / '.asset-build-trigger',
