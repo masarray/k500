@@ -22,6 +22,11 @@ Item {
         ? ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
         : ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
 
+    // FINAL_INSPECTOR_SCOPE_COPY_V1
+    // This action returns only the selected crossover edge frequency to its
+    // boundary. It does not change filter TYPE, so label it RESET EDGE rather
+    // than a generic Reset/Reset Filter action.
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 5
@@ -55,9 +60,9 @@ Item {
             Item { Layout.fillWidth: true }
 
             SoftButton {
-                Layout.preferredWidth: 46
+                Layout.preferredWidth: 74
                 Layout.preferredHeight: 23
-                text: "Reset"
+                text: "RESET EDGE"
                 compact: true
                 onClicked: root.resetRequested()
             }
