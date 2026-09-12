@@ -119,27 +119,35 @@ StudioPanel {
                 onValueEdited:function(v){root.engine.uDiskGain=v}
                 accentColor:Theme.violet
             }
-            InputFader {
-                Layout.fillWidth:true; Layout.fillHeight:true
-                label:"OPTIC GAIN"; sourceText:"OPTIC"; active:root.selectedSource===4
-                sourceButtonMixerSelect:true
-                value:root.engine.digitalGain; from:-12; to:12
-                selected:root.selectedFader===4
-                onSourceRequested:root.chooseSource(4)
-                onActivated:root.selectedFader=4
-                onValueEdited:function(v){root.engine.digitalGain=v}
-                accentColor:Theme.amber
-            }
-            InputFader {
-                Layout.fillWidth:true; Layout.fillHeight:true
-                label:"UAUDIO GAIN"; sourceText:"UAUDIO"; active:root.selectedSource===5
-                sourceButtonMixerSelect:true
-                value:root.engine.digitalGain; from:-12; to:12
-                selected:root.selectedFader===5
-                onSourceRequested:root.chooseSource(5)
-                onActivated:root.selectedFader=5
-                onValueEdited:function(v){root.engine.digitalGain=v}
-                accentColor:Theme.amber
+
+            Repeater {
+                model: root.sourceOptions
+
+                delegate: Item {
+                    required property int index
+                    required property string modelData
+                    readonly property bool checked: root.selectedSource === index
+                    visible: index >= 4
+                    Layout.fillWidth: visible
+                    Layout.fillHeight: visible
+                    Layout.preferredWidth: visible ? 76 : 0
+                    Layout.minimumWidth: visible ? 54 : 0
+                    Layout.maximumWidth: visible ? 16777215 : 0
+
+                    InputFader {
+                        anchors.fill: parent
+                        label:"DIGITAL GAIN"
+                        sourceText:modelData
+                        active:parent.checked
+                        sourceButtonMixerSelect: true
+                        value:root.engine.digitalGain; from:-12; to:12
+                        selected:root.selectedFader===parent.index
+                        onSourceRequested:root.chooseSource(parent.index)
+                        onActivated:root.selectedFader=parent.index
+                        onValueEdited:function(v){root.engine.digitalGain=v}
+                        accentColor:Theme.amber
+                    }
+                }
             }
         }
     }
