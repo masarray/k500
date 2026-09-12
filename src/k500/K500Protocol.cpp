@@ -221,7 +221,8 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(K500Frame::clampByte(qBound(0, state.topMusicVol, TopVolumeMax))));
     body.append(char(mirrored(0x03, state.musicInitVol)));
     body.append(char(mirrored(0x04, TopVolumeMax)));
-    body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 4))));
+    // MUSIC_SOURCE_SIX_WAY_V1 — INPUT1, INPUT2, BT, UDISK, OPTIC, UAUDIO.
+    body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 5))));
     body.append(char(K500Frame::clampByte(qRound(state.input1GainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.input2GainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.bluetoothGainDb + 12.0))));
