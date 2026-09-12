@@ -9,11 +9,15 @@ Item {
     property int micChannel: 0
     property bool micEqLinked: Boolean(groupValue("mic", "eqLink", false))
     readonly property int lowerRackHeight: 304
-    readonly property int masterWidth: 216
+    readonly property int masterWidth: 188
 
     // LOWER_RACK_SPACE_UTILIZATION_V2
     // Keep the rack height fixed while reserving useful horizontal travel for
-    // crossover/delay controls and a more legible master strip.
+    // crossover/delay controls.
+    // MASTER_STRIP_FIXED_WIDTH_V1
+    // Master Strip is a global control surface, so its width must not jump when
+    // the user switches Music/Mic/FX/output/System pages. 188 px is the original
+    // canonical width already used by Music, System and MasterStripPanel itself.
 
     // K500_DEVICE_STATE_BINDINGS_V1
     function groupValue(group, key, fallback) {
@@ -372,8 +376,8 @@ Item {
                     MasterStripPanel {
                         engine: root.engine
                         Layout.preferredWidth: root.masterWidth
-                        Layout.minimumWidth: 196
-                        Layout.maximumWidth: 236
+                        Layout.minimumWidth: root.masterWidth
+                        Layout.maximumWidth: root.masterWidth
                         Layout.fillHeight: true
                     }
                 }
