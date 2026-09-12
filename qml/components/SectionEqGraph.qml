@@ -17,22 +17,17 @@ StudioPanel {
     property real selectedQ: 1
     readonly property var bands: bandModel
 
-    // VST_COMPARE_AND_EQ_BYPASS_V1
-    // Music gets two temporary A/B snapshots plus an independent FLAT audition.
-    // Output sections get a reversible EQ BYPASS that zeros PEQ gains only.
-    // All transitions use the existing EqBandModel setters, so the verified live
-    // write/coalescing path remains authoritative and no protocol shortcut exists.
+    // PEQ_UNIFIED_BYPASS_RESET_AB_V1
+    // Every PEQ page owns the same local audition controls: reversible EQ bypass,
+    // EQ reset and an A/B compare pair. They operate only on PEQ bands; HPF/LPF
+    // crossover state is deliberately untouched. All transitions still use the
+    // existing EqBandModel setters so verified live-write/coalescing remains the
+    // only hardware path and each persistent graph keeps independent A/B memory.
     property var compareA: null
     property var compareB: null
     property string compareSide: "A"
-    property var flatSnapshot: null
-    property bool flatActive: false
-    readonly property bool isMusic: root.sectionLabel === "Music"
-    readonly property bool isOutputEq: root.sectionLabel === "Main"
-                                       || root.sectionLabel === "Surround"
-                                       || root.sectionLabel === "Center"
-                                       || root.sectionLabel === "Subwoofer"
-    readonly property bool isEffectEq: root.sectionLabel === "Reverb" || root.sectionLabel === "Echo"
+    property var bypassSnapshot: null
+    property bool eqBypassActive: false
 
     // CROSSOVER_BYPASS_TYPE_STATE_V2
     // Bypass is a filter type, never a magic edge frequency. The HP/LP anchor
@@ -188,8 +183,8 @@ StudioPanel {
         curve.requestPaint()
     }
 
-    function captureState(){
-        var result={bands:[],hpfHz:Number(bands.hpfHz),lpfHz:Number(bands.lpfHz),hpType:String(bands.hpType),lpType:String(bands.lpType)}
+    function captureEqState(){
+        var result={bands:[]}
         for(var i=0;i<bands.count;++i){
             var b=bands.get(i)
             result.bands.push({freq:Number(b.freq),gain:Number(b.gain),q:Number(b.q),typeName:String(b.typeName)})
@@ -197,56 +192,62 @@ StudioPanel {
         return result
     }
     function cloneState(state){return state?JSON.parse(JSON.stringify(state)):null}
-    function applyState(state){
+    function applyEqState(state){
         if(!state)return
         for(var i=0;i<bands.count&&i<state.bands.length;++i){
             var b=state.bands[i]
             bands.setBand(i,Number(b.freq),Number(b.gain),Number(b.q))
             bands.setBandType(i,String(b.typeName))
         }
-        bands.setHpfHz(Number(state.hpfHz))
-        bands.setLpfHz(Number(state.lpfHz))
-        if(typeof bands.setHpType==="function")bands.setHpType(String(state.hpType))
-        if(typeof bands.setLpType==="function")bands.setLpType(String(state.lpType))
         selectBand(Math.min(selectedIndex,bands.count-1))
     }
-    function saveCompareSide(){
-        if(!isMusic)return
-        if(compareSide==="B")compareB=captureState();else compareA=captureState()
+    function initializeCompareIfNeeded(){
+        if(compareA!==null&&compareB!==null)return
+        var initial=captureEqState()
+        compareA=cloneState(initial)
+        compareB=cloneState(initial)
+        compareSide="A"
     }
-    function setFlatAudition(enabled){
-        if(enabled===flatActive)return
+    function saveCompareSide(){
+        initializeCompareIfNeeded()
+        if(compareSide==="B")compareB=captureEqState();else compareA=captureEqState()
+    }
+    function setEqBypass(enabled){
+        if(enabled===eqBypassActive)return
         if(enabled){
-            if(isMusic)saveCompareSide()
-            flatSnapshot=captureState()
-            flatActive=true
-            for(var i=0;i<bands.count;++i){var b=bands.get(i);bands.setBand(i,Number(b.freq),0,Number(b.q))}
+            saveCompareSide()
+            bypassSnapshot=captureEqState()
+            eqBypassActive=true
+            for(var i=0;i<bands.count;++i){
+                var b=bands.get(i)
+                bands.setBand(i,Number(b.freq),0,Number(b.q))
+            }
         }else{
-            var restore=cloneState(flatSnapshot)
-            flatActive=false
-            flatSnapshot=null
-            applyState(restore)
+            var restore=cloneState(bypassSnapshot)
+            eqBypassActive=false
+            bypassSnapshot=null
+            applyEqState(restore)
         }
         curve.requestPaint()
     }
-    function toggleCompare(){
-        if(!isMusic)return
-        if(flatActive)setFlatAudition(false)
-        if(compareA===null){
-            compareA=captureState()
-            compareB=cloneState(compareA)
-            compareSide="A"
-        }
+    function selectCompareSide(side){
+        var target=String(side).toUpperCase()==="B"?"B":"A"
+        if(eqBypassActive)setEqBypass(false)
+        initializeCompareIfNeeded()
         saveCompareSide()
-        compareSide=compareSide==="A"?"B":"A"
-        applyState(compareSide==="A"?compareA:compareB)
+        if(target===compareSide)return
+        compareSide=target
+        applyEqState(compareSide==="A"?compareA:compareB)
+        curve.requestPaint()
     }
+    function toggleCompare(){selectCompareSide(compareSide==="A"?"B":"A")}
     function resetAllVerified(){
-        flatActive=false
-        flatSnapshot=null
+        if(eqBypassActive)setEqBypass(false)
         for(var i=0;i<bands.count;++i)bands.resetBand(i)
-        if(isMusic){compareA=null;compareB=null;compareSide="A"}
         selectBand(0)
+        initializeCompareIfNeeded()
+        if(compareSide==="B")compareB=captureEqState();else compareA=captureEqState()
+        curve.requestPaint()
     }
 
     Connections {
@@ -257,7 +258,7 @@ StudioPanel {
         }
         function onCrossoverChanged(){curve.requestPaint()}
     }
-    onBandModelChanged: Qt.callLater(function(){root.compareA=null;root.compareB=null;root.flatActive=false;root.flatSnapshot=null;root.selectBand(0);curve.requestPaint()})
+    onBandModelChanged: Qt.callLater(function(){root.compareA=null;root.compareB=null;root.compareSide="A";root.eqBypassActive=false;root.bypassSnapshot=null;root.selectBand(0);curve.requestPaint()})
     Component.onCompleted: selectBand(0)
 
     ColumnLayout {
@@ -329,41 +330,128 @@ StudioPanel {
                 }
             }
 
+            // PEQ_TOOLBAR_ALL_SECTIONS_V1
+            // Uniform order on every PEQ page: EQ BYPASS -> EQ RESET -> A | B.
+            // Mic A/B channel selection and EQ LINK stay separate to avoid
+            // conflating input-channel identity with the local compare slots.
             RowLayout {
-                visible: !root.showMicSelector
-                spacing: 7
+                spacing:7
+
+                Rectangle {
+                    id:eqBypassToggle
+                    Layout.preferredWidth:116
+                    Layout.preferredHeight:28
+                    radius:8
+                    color:root.eqBypassActive?"#102C30":(eqBypassMouse.containsMouse?"#121B21":"#0C1217")
+                    border.width:1
+                    border.color:root.eqBypassActive?Theme.accent:"#2A353D"
+                    Behavior on color{ColorAnimation{duration:90}}
+                    Behavior on border.color{ColorAnimation{duration:90}}
+
+                    RowLayout {
+                        anchors.fill:parent
+                        anchors.leftMargin:10
+                        anchors.rightMargin:7
+                        spacing:7
+                        Text {
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            text:"EQ BYPASS"
+                            color:root.eqBypassActive?Theme.accent:Theme.textSoft
+                            verticalAlignment:Text.AlignVCenter
+                            horizontalAlignment:Text.AlignHCenter
+                            font.family:Theme.fontFamily
+                            font.pixelSize:9
+                            font.weight:Font.DemiBold
+                        }
+                        Rectangle {
+                            Layout.preferredWidth:31
+                            Layout.preferredHeight:16
+                            Layout.alignment:Qt.AlignVCenter
+                            radius:8
+                            color:root.eqBypassActive?"#174148":"#070B0E"
+                            border.width:1
+                            border.color:root.eqBypassActive?Theme.accent:"#36424A"
+                            Rectangle {
+                                width:12;height:12;radius:6;y:2
+                                x:root.eqBypassActive?17:2
+                                color:root.eqBypassActive?Theme.accent:"#77858E"
+                                Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
+                                Behavior on color{ColorAnimation{duration:90}}
+                            }
+                        }
+                    }
+                    MouseArea {
+                        id:eqBypassMouse
+                        anchors.fill:parent
+                        hoverEnabled:true
+                        cursorShape:Qt.PointingHandCursor
+                        onClicked:root.setEqBypass(!root.eqBypassActive)
+                    }
+                }
+
                 SoftButton {
-                    visible:root.isMusic
-                    Layout.preferredWidth:58
-                    text:"FLAT"
+                    Layout.preferredWidth:80
+                    Layout.preferredHeight:28
+                    text:"EQ RESET"
                     compact:true
                     amber:true
-                    checked:root.flatActive
-                    onClicked:root.setFlatAudition(!root.flatActive)
-                }
-                SoftButton {
-                    visible:root.isMusic
-                    Layout.preferredWidth:72
-                    text:"A/B · "+root.compareSide
-                    compact:true
-                    checked:root.compareA!==null&&root.compareSide==="B"
-                    onClicked:root.toggleCompare()
-                }
-                SoftButton {
-                    visible:root.isOutputEq
-                    Layout.preferredWidth:88
-                    text:"EQ BYPASS"
-                    compact:true
-                    amber:true
-                    checked:root.flatActive
-                    onClicked:root.setFlatAudition(!root.flatActive)
-                }
-                SoftButton {
-                    visible:root.isOutputEq||root.isEffectEq
-                    Layout.preferredWidth:58
-                    text:"RESET"
-                    compact:true
                     onClicked:root.resetAllVerified()
+                }
+
+                Rectangle {
+                    id:abToggle
+                    Layout.preferredWidth:86
+                    Layout.preferredHeight:28
+                    radius:8
+                    color:abMouse.containsMouse?"#111A20":"#0B1014"
+                    border.width:1
+                    border.color:"#2C3941"
+                    clip:true
+                    Behavior on color{ColorAnimation{duration:80}}
+
+                    Rectangle {
+                        id:abSelection
+                        y:2
+                        x:root.compareSide==="B"?parent.width/2:2
+                        width:parent.width/2-2
+                        height:parent.height-4
+                        radius:6
+                        color:"#12343A"
+                        border.width:1
+                        border.color:Theme.accentSoft
+                        Behavior on x{NumberAnimation{duration:110;easing.type:Easing.OutCubic}}
+                    }
+                    Row {
+                        anchors.fill:parent
+                        Text {
+                            width:parent.width/2;height:parent.height
+                            text:"A"
+                            color:root.compareSide==="A"?Theme.accent:Theme.textDim
+                            horizontalAlignment:Text.AlignHCenter
+                            verticalAlignment:Text.AlignVCenter
+                            font.family:Theme.monoFamily
+                            font.pixelSize:10
+                            font.weight:Font.Bold
+                        }
+                        Text {
+                            width:parent.width/2;height:parent.height
+                            text:"B"
+                            color:root.compareSide==="B"?Theme.accent:Theme.textDim
+                            horizontalAlignment:Text.AlignHCenter
+                            verticalAlignment:Text.AlignVCenter
+                            font.family:Theme.monoFamily
+                            font.pixelSize:10
+                            font.weight:Font.Bold
+                        }
+                    }
+                    MouseArea {
+                        id:abMouse
+                        anchors.fill:parent
+                        hoverEnabled:true
+                        cursorShape:Qt.PointingHandCursor
+                        onClicked:function(event){root.selectCompareSide(event.x<width/2?"A":"B")}
+                    }
                 }
             }
         }
