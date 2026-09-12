@@ -228,12 +228,17 @@ Item {
                                 RackFilterPanel {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title: "Band Limits / Delay"
+                                    // OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1
+                                    // Native exposes Main L/R delay. Until a donor delta capture proves the
+                                    // write/read offsets, show the native control slots but keep them inert.
                                     fields:[
+                                        {label:"L DELAY",value:Number(root.nestedValue("outputs","main","lDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
+                                        {label:"R DELAY",value:Number(root.nestedValue("outputs","main","rDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
                                         {label:"HPF",value:root.engine.mainEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.mainEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
                                     hpType:root.engine.mainEqBands.hpType; lpType:root.engine.mainEqBands.lpType
-                                    onFieldEdited:function(index,value){if(index===0)root.engine.mainEqBands.setHpfHz(value);else root.engine.mainEqBands.setLpfHz(value)}
+                                    onFieldEdited:function(index,value){if(index===2)root.engine.mainEqBands.setHpfHz(value);else if(index===3)root.engine.mainEqBands.setLpfHz(value)}
                                     onHpTypeEdited:function(value){root.engine.mainEqBands.setHpType(value)}
                                     onLpTypeEdited:function(value){root.engine.mainEqBands.setLpType(value)}
                                 }
@@ -308,11 +313,12 @@ Item {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
+                                        {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
                                         {label:"HPF",value:root.engine.centerEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.centerEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
                                     hpType:root.engine.centerEqBands.hpType; lpType:root.engine.centerEqBands.lpType
-                                    onFieldEdited:function(index,value){if(index===0)root.engine.centerEqBands.setHpfHz(value);else root.engine.centerEqBands.setLpfHz(value)}
+                                    onFieldEdited:function(index,value){if(index===1)root.engine.centerEqBands.setHpfHz(value);else if(index===2)root.engine.centerEqBands.setLpfHz(value)}
                                     onHpTypeEdited:function(value){root.engine.centerEqBands.setHpType(value)}
                                     onLpTypeEdited:function(value){root.engine.centerEqBands.setLpType(value)}
                                 }
@@ -346,11 +352,12 @@ Item {
                                     Layout.preferredWidth:212; Layout.minimumWidth:212; Layout.maximumWidth:212; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
+                                        {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
                                         {label:"HPF",value:root.engine.subEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.subEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
                                     hpType:root.engine.subEqBands.hpType; lpType:root.engine.subEqBands.lpType
-                                    onFieldEdited:function(index,value){if(index===0)root.engine.subEqBands.setHpfHz(value);else root.engine.subEqBands.setLpfHz(value)}
+                                    onFieldEdited:function(index,value){if(index===1)root.engine.subEqBands.setHpfHz(value);else if(index===2)root.engine.subEqBands.setLpfHz(value)}
                                     onHpTypeEdited:function(value){root.engine.subEqBands.setHpType(value)}
                                     onLpTypeEdited:function(value){root.engine.subEqBands.setLpType(value)}
                                 }
