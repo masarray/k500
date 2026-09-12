@@ -14,6 +14,7 @@ Item {
     property color accentColor: Theme.accent
     property bool logarithmic: false
     property bool dragging: false
+    property bool editable: true
 
     // RESPONSIVE_PARAMETER_SLIDER_V1
     // Wide mixer controls keep the established proportions. Narrow crossover
@@ -25,21 +26,23 @@ Item {
     property real trackGap: 6
 
     readonly property bool hovered: pointer.containsMouse
-    readonly property bool highlighted: hovered || dragging || activeFocus
+    readonly property bool highlighted: root.editable && (hovered || dragging || activeFocus)
     signal valueEdited(real newValue)
 
     implicitHeight: 32
     implicitWidth: 250
-    activeFocusOnTab: true
+    activeFocusOnTab: root.editable
+    opacity: root.editable ? 1.0 : 0.58
 
     function clamp(v){return Math.max(from,Math.min(to,v))}
     function valueToNorm(v){if(logarithmic)return Math.log(Math.max(from,v)/from)/Math.log(to/from);return(v-from)/(to-from)}
     function normToValue(n){n=Math.max(0,Math.min(1,n));return logarithmic?from*Math.pow(to/from,n):from+n*(to-from)}
     function quantize(v,fine){var s=fine?step/10:step;return Number(clamp(Math.round(v/s)*s).toFixed(Math.max(decimals+1,3)))}
-    function nudge(direction,fine){valueEdited(quantize(value+direction*(fine?step/10:step),fine))}
+    function nudge(direction,fine){if(root.editable)valueEdited(quantize(value+direction*(fine?step/10:step),fine))}
     function display(v){if(unit==="Hz"&&v>=1000)return(v/1000).toFixed(v>=10000?1:2)+"k";return Number(v).toFixed(decimals)}
 
     Keys.onPressed:function(event){
+        if(!root.editable){event.accepted=true;return}
         if(event.key===Qt.Key_Up||event.key===Qt.Key_Right){nudge(1,(event.modifiers&Qt.ShiftModifier)!==0);event.accepted=true}
         else if(event.key===Qt.Key_Down||event.key===Qt.Key_Left){nudge(-1,(event.modifiers&Qt.ShiftModifier)!==0);event.accepted=true}
         else if(event.key===Qt.Key_Home){valueEdited(defaultValue);event.accepted=true}
@@ -111,9 +114,10 @@ Item {
     MouseArea {
         id:pointer
         anchors.left:track.left;anchors.right:readout.right;anchors.top:parent.top;anchors.bottom:parent.bottom
-        hoverEnabled:true
+        enabled:root.editable
+        hoverEnabled:root.editable
         preventStealing:true
-        cursorShape:Qt.PointingHandCursor
+        cursorShape:root.editable?Qt.PointingHandCursor:Qt.ArrowCursor
         function setFromX(sceneX){var p=mapToItem(track,sceneX,0);root.valueEdited(root.quantize(root.normToValue(p.x/Math.max(1,track.width)),false))}
         onPressed:function(event){root.forceActiveFocus();root.dragging=true;setFromX(event.x);event.accepted=true}
         onPositionChanged:function(event){if(pressed)setFromX(event.x)}
