@@ -471,7 +471,9 @@ StudioPanel {
                 }
             }
 
-            // Canonical mixer fader layout for every non-FX rack.
+            // MIXER_HEADER_MUTE_V2
+            // Canonical mixer fader layout for every non-FX rack. Verified mute
+            // controls remain in each channel header beside the caption.
             RowLayout {
                 anchors.fill: parent
                 anchors.leftMargin: 10
