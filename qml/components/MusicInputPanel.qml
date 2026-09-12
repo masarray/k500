@@ -12,7 +12,11 @@ StudioPanel {
 
     // MUSIC_SOURCE_SINGLE_CHOICE_V1
     // Native K500 exposes six mutually-exclusive playback sources but only five
-    // gain trims. OPTIC and UAUDIO intentionally share the DIGITAL gain trim.
+    // physical gain parameters. OPTIC and UAUDIO intentionally share DIGITAL gain.
+    // MUSIC_DIGITAL_GAIN_MIRROR_V1
+    // Present that one DIGITAL gain as two synchronized visual strips so every
+    // source key has an unambiguous fader directly below it. No extra protocol
+    // parameter is invented: both strips read/write engine.digitalGain.
     function sourceFromDevice() {
         var state = root.engine && root.engine.deviceState ? root.engine.deviceState : null
         var music = state ? state.music : null
@@ -59,12 +63,10 @@ StudioPanel {
         }
 
         RowLayout {
-            // MUSIC_SOURCE_OVER_FADER_LAYOUT_V1
+            // MUSIC_SOURCE_OVER_FADER_LAYOUT_V2
             // MIXER_SOURCE_ILLUMINATED_SELECT_V1
-            // Source selectors stay directly above the gain path they control.
-            // Active source reads like a digital-console lamp: solid cyan + dark
-            // legend. Inactive sources remain black + white for instant scanning.
-            // OPTIC + UAUDIO form one exclusive pair over the shared DIGITAL gain.
+            // Six source keys now each own a visually direct fader strip.
+            // OPTIC + UAUDIO are two UI mirrors of the same native DIGITAL gain.
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: 12
@@ -117,45 +119,27 @@ StudioPanel {
                 onValueEdited:function(v){root.engine.uDiskGain=v}
                 accentColor:Theme.violet
             }
-
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
-                spacing: 4
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 25
-                    spacing: 4
-
-                    Repeater {
-                        model: root.sourceOptions
-                        delegate: SoftButton {
-                            required property int index
-                            required property string modelData
-                            visible: index >= 4
-                            Layout.fillWidth: visible
-                            Layout.preferredWidth: visible ? 58 : 0
-                            Layout.preferredHeight: visible ? 25 : 0
-                            text: modelData
-                            compact: true
-                            checked: root.selectedSource === index
-                            mixerSelect: true
-                            onClicked: root.chooseSource(index)
-                        }
-                    }
-                }
-
-                InputFader {
-                    id: digitalGainFader
-                    Layout.fillWidth:true; Layout.fillHeight:true
-                    headerVisible:false; sourceButtonVisible:false; label:"DIGITAL GAIN"
-                    value:root.engine.digitalGain; from:-12; to:12
-                    selected:root.selectedFader===4
-                    onActivated:root.selectedFader=4
-                    onValueEdited:function(v){root.engine.digitalGain=v}
-                    accentColor:Theme.amber
-                }
+            InputFader {
+                Layout.fillWidth:true; Layout.fillHeight:true
+                label:"OPTIC GAIN"; sourceText:"OPTIC"; active:root.selectedSource===4
+                sourceButtonMixerSelect:true
+                value:root.engine.digitalGain; from:-12; to:12
+                selected:root.selectedFader===4
+                onSourceRequested:root.chooseSource(4)
+                onActivated:root.selectedFader=4
+                onValueEdited:function(v){root.engine.digitalGain=v}
+                accentColor:Theme.amber
+            }
+            InputFader {
+                Layout.fillWidth:true; Layout.fillHeight:true
+                label:"UAUDIO GAIN"; sourceText:"UAUDIO"; active:root.selectedSource===5
+                sourceButtonMixerSelect:true
+                value:root.engine.digitalGain; from:-12; to:12
+                selected:root.selectedFader===5
+                onSourceRequested:root.chooseSource(5)
+                onActivated:root.selectedFader=5
+                onValueEdited:function(v){root.engine.digitalGain=v}
+                accentColor:Theme.amber
             }
         }
     }
