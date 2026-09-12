@@ -613,6 +613,10 @@ Item {
                 Layout.preferredWidth: 355
                 spacing: 12
 
+                // P2_SYSTEM_READONLY_AFFORDANCE_V1
+                // These native-app surfaces are display-only until donor captures
+                // prove the corresponding rename/reset/credential write traffic.
+                // Never render enabled controls for an operation we cannot perform.
                 StudioPanel {
                     Layout.fillWidth:true
                     Layout.preferredHeight:212
@@ -620,15 +624,69 @@ Item {
                     ColumnLayout {
                         anchors.fill:parent
                         spacing:0
-                        Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT NAME";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                        Item {
+                            Layout.fillWidth:true
+                            Layout.preferredHeight:35
+                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT / BLE IDENTITY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}
+                            Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
+                        }
                         ColumnLayout {
-                            Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:12;spacing:8
-                            Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
-                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:String(root.systemValue("btName","KTV_BT_00AB12"));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            Layout.margins:12
+                            spacing:7
+                            RowLayout {
+                                Layout.fillWidth:true
+                                Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                                Item{Layout.fillWidth:true}
+                                Text{text:"READ ONLY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
+                            }
+                            Rectangle {
+                                Layout.fillWidth:true
+                                Layout.preferredHeight:29
+                                radius:6
+                                color:"#080C10"
+                                border.width:1
+                                border.color:Theme.borderSoft
+                                Text{
+                                    anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter
+                                    text:root.deviceConnected ? String(root.systemValue("btName","NOT READ")) : "CONNECT K500 TO READ"
+                                    color:root.deviceConnected ? Theme.amber : Theme.textDim
+                                    font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold
+                                }
+                            }
                             Text{text:"BLE NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
-                            Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:String(root.systemValue("bleName","KTV_BLE_00AB12"));color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}}
+                            Rectangle {
+                                Layout.fillWidth:true
+                                Layout.preferredHeight:29
+                                radius:6
+                                color:"#080C10"
+                                border.width:1
+                                border.color:Theme.borderSoft
+                                Text{
+                                    anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter
+                                    text:root.deviceConnected ? String(root.systemValue("bleName","NOT READ")) : "CONNECT K500 TO READ"
+                                    color:root.deviceConnected ? Theme.amber : Theme.textDim
+                                    font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold
+                                }
+                            }
+                            Rectangle {
+                                Layout.fillWidth:true
+                                Layout.preferredHeight:31
+                                radius:7
+                                color:"#10161B"
+                                border.width:1
+                                border.color:Theme.borderSoft
+                                RowLayout {
+                                    anchors.fill:parent
+                                    anchors.leftMargin:9
+                                    anchors.rightMargin:9
+                                    spacing:7
+                                    Text{text:"READ ONLY";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
+                                    Text{Layout.fillWidth:true;text:"Rename / reset mapping not verified";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                }
+                            }
                             Item{Layout.fillHeight:true}
-                            RowLayout{Layout.fillWidth:true;spacing:8;SoftButton{Layout.fillWidth:true;text:"Modify";compact:true}SoftButton{Layout.fillWidth:true;text:"Reset";compact:true}}
                         }
                     }
                 }
@@ -640,34 +698,66 @@ Item {
                     ColumnLayout {
                         anchors.fill:parent
                         spacing:0
-                        Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                        Item {
+                            Layout.fillWidth:true
+                            Layout.preferredHeight:35
+                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}
+                            Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
+                        }
                         ColumnLayout {
-                            Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:12;spacing:8
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            Layout.margins:12
+                            spacing:8
                             RowLayout {
-                                Layout.fillWidth:true;spacing:8
-                                ColumnLayout{Layout.fillWidth:true;spacing:4;Text{text:"LOCK KEY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"••••";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10}}}
-                                ColumnLayout{Layout.fillWidth:true;spacing:4;Text{text:"ADMIN";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708";Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:"••••";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10}}}
-                            }
-                            RowLayout {
-                                Layout.fillWidth:true;spacing:9
-                                Repeater {
-                                    model:[{label:"Unlock",on:true},{label:"Lock",on:false},{label:"Admin",on:true}]
-                                    delegate:RowLayout {
-                                        required property var modelData
-                                        spacing:4
-                                        Rectangle{width:13;height:13;radius:2;color:modelData.on?Theme.accent:"#E6E9EB";border.width:1;border.color:modelData.on?Theme.accentSoft:"#B8C0C6";Text{anchors.centerIn:parent;visible:modelData.on;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}}
-                                        Text{text:modelData.label;color:Theme.text;font.family:Theme.fontFamily;font.pixelSize:9}
+                                Layout.fillWidth:true
+                                spacing:8
+                                ColumnLayout {
+                                    Layout.fillWidth:true
+                                    spacing:4
+                                    Text{text:"LOCK KEY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}
+                                    Rectangle {
+                                        Layout.fillWidth:true
+                                        Layout.preferredHeight:29
+                                        radius:6
+                                        color:"#080C10"
+                                        border.width:1
+                                        border.color:Theme.borderSoft
+                                        Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
                                     }
                                 }
-                                Item{Layout.fillWidth:true}
+                                ColumnLayout {
+                                    Layout.fillWidth:true
+                                    spacing:4
+                                    Text{text:"ADMIN";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}
+                                    Rectangle {
+                                        Layout.fillWidth:true
+                                        Layout.preferredHeight:29
+                                        radius:6
+                                        color:"#080C10"
+                                        border.width:1
+                                        border.color:Theme.borderSoft
+                                        Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                    }
+                                }
+                            }
+                            Rectangle {
+                                Layout.fillWidth:true
+                                Layout.preferredHeight:62
+                                radius:8
+                                color:"#10161B"
+                                border.width:1
+                                border.color:Theme.borderSoft
+                                ColumnLayout {
+                                    anchors.fill:parent
+                                    anchors.margins:9
+                                    spacing:3
+                                    Text{text:"READ ONLY · DEVICE MANAGED";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                    Text{Layout.fillWidth:true;text:"Lock state, credentials and password writes are not yet donor-verified.";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;wrapMode:Text.WordWrap}
+                                    Text{Layout.fillWidth:true;text:"Controls stay unavailable until the native write mapping is proven.";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                }
                             }
                             Item{Layout.fillHeight:true}
-                            Text{text:"NEW PASSWORD";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
-                            RowLayout {
-                                Layout.fillWidth:true;spacing:8
-                                Rectangle{Layout.fillWidth:true;Layout.preferredHeight:29;radius:6;color:"#080C10";border.width:1;border.color:"#050708"}
-                                SoftButton{Layout.preferredWidth:58;text:"Modify";compact:true}
-                            }
                         }
                     }
                 }
