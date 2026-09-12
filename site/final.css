@@ -7,43 +7,101 @@
 .button-hero .button-icon{margin-right:8px}
 .button-hero>span{white-space:nowrap}
 
-/* Keep the physical K500 present without covering the hero artwork. */
-.nav-hardware{height:38px;min-width:164px;padding:4px 10px 4px 12px;border-left:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:8px;color:#688087}
-.nav-hardware img{width:112px;height:26px;max-width:none;object-fit:contain;filter:saturate(.9) brightness(.92)}
-.nav-hardware span{white-space:nowrap;font-size:8px;letter-spacing:.04em;color:#5f767c}
+/* Readability pass: keep the site refined, but avoid oversized display text and tiny utility copy. */
+body{font-size:16px;line-height:1.62}
+.nav-shell{height:76px}
+.brand strong{font-size:15px}
+.brand small{font-size:10px}
+.nav-links{font-size:13px}
+.button{font-size:13px}
+.button-small{font-size:12px}
+.eyebrow{font-size:11px}
+.live-line{font-size:11px}
+.hero h1,.page-hero h1,.download-hero h1{font-size:clamp(40px,4.4vw,56px);line-height:1.04;letter-spacing:-.046em}
+.hero-lead{font-size:17px;line-height:1.7}
+.hero-points{font-size:11px}
+.proof-grid strong{font-size:14px}
+.proof-grid span{font-size:11.5px;line-height:1.55}
+.section-heading h2,.final-cta h2{font-size:clamp(28px,3.1vw,39px);line-height:1.15}
+.section-heading p{font-size:15px;line-height:1.7}
+.path-kicker{font-size:10.5px}
+.path-card h3{font-size:20px}
+.path-card p{font-size:13.5px;line-height:1.68}
+.path-card>strong{font-size:12px}
+.signal-flow strong{font-size:11.5px}
+.signal-flow span{font-size:10px}
+.feature-nav a{font-size:11.5px}
+.tour-heading p{font-size:14.5px}
+.feature-copy>span{font-size:10.5px}
+.feature-copy h3{font-size:19px}
+.feature-copy p{font-size:13.5px;line-height:1.68}
+.feature-copy li{font-size:11px}
+.download-hero>p{font-size:15px}
+.choice-label{font-size:10.5px}
+.download-choice p{font-size:13.5px}
+.download-meta-grid strong{font-size:10.5px}
+.download-meta-grid span{font-size:11.5px}
+.footer-brand strong{font-size:12px}
+.footer-brand small{font-size:10px}
+.footer-links{font-size:11px}
 
-/* Marketplace-style product inspection: a stable preview plus a pointer-driven detail pane. */
-.home-page .hero-visual{min-height:470px}
-.product-zoom{position:relative;height:470px;isolation:isolate}
-.home-page .app-shot-main.zoom-source{left:0;right:auto;top:50%;width:57%;transform:translateY(-50%);overflow:hidden;cursor:zoom-in;box-shadow:0 18px 52px rgba(0,0,0,.28);transition:border-color .18s ease,box-shadow .18s ease}
-.home-page .app-shot-main.zoom-source img{width:100%;max-width:100%;aspect-ratio:16/10;object-fit:cover;object-position:top;animation:none;transform:none;will-change:auto;user-select:none}
+/* Keep the physical K500 clearly visible in the header without turning it into a second logo. */
+.nav-hardware{height:62px;min-width:242px;padding:2px 12px;border-left:1px solid rgba(255,255,255,.07);display:flex;align-items:center;gap:10px;color:#789096}
+.nav-hardware img{width:180px;height:auto;max-width:none;object-fit:contain;filter:saturate(.95) brightness(.98)}
+.nav-hardware span{white-space:nowrap;font-size:10.5px;letter-spacing:.025em;color:#71888e}
+
+/* Hero product preview: always show the complete 16:10 screenshot at a calm, readable size. */
+.home-page .hero{grid-template-columns:minmax(0,.94fr) minmax(440px,1.06fr);gap:46px;align-items:center}
+.home-page .hero-visual{min-height:360px;display:flex;align-items:center;justify-content:center;overflow:visible}
+.product-zoom{position:relative;width:min(100%,520px);height:auto;isolation:isolate;margin-inline:auto}
+.home-page .app-shot-main.zoom-source{position:relative;inset:auto;left:auto;right:auto;top:auto;bottom:auto;width:100%;height:auto;transform:none;overflow:hidden;cursor:zoom-in;box-shadow:0 18px 52px rgba(0,0,0,.28);transition:border-color .18s ease,box-shadow .18s ease}
+.home-page .app-shot-main.zoom-source img{display:block;width:100%;height:auto!important;max-width:100%;aspect-ratio:auto!important;object-fit:contain!important;object-position:center;animation:none;transform:none;will-change:auto;user-select:none}
 .zoom-source:hover,.zoom-source:focus-visible,.product-zoom.is-active .zoom-source{border-color:rgba(98,216,191,.42);box-shadow:0 20px 58px rgba(0,0,0,.34),0 0 0 1px rgba(98,216,191,.07)}
-.zoom-hint{position:absolute;left:12px;bottom:11px;z-index:2;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(5,13,18,.78);backdrop-filter:blur(12px);display:flex;align-items:baseline;gap:7px;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
-.zoom-hint span{font-size:9px;font-weight:650;color:#d8e7e5}.zoom-hint small{font-size:8px;color:#6e878b}
+.zoom-hint{position:absolute;left:12px;bottom:11px;z-index:2;padding:8px 10px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:rgba(5,13,18,.8);backdrop-filter:blur(12px);display:flex;align-items:baseline;gap:7px;pointer-events:none;transition:opacity .16s ease,transform .16s ease}
+.zoom-hint span{font-size:12px;font-weight:650;color:#d8e7e5}
+.zoom-hint small{font-size:11px;color:#82999e}
 .product-zoom.is-active .zoom-hint{opacity:0;transform:translateY(3px)}
-.zoom-lens{position:absolute;z-index:3;width:31%;height:31%;left:0;top:0;border:1px solid rgba(131,232,211,.72);border-radius:8px;background:rgba(98,216,191,.085);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);pointer-events:none;opacity:0;transform:translate3d(0,0,0);transition:opacity .12s ease}
+.zoom-lens{position:absolute;z-index:3;width:30%;height:30%;left:0;top:0;border:1px solid rgba(131,232,211,.72);border-radius:8px;background:rgba(98,216,191,.085);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);pointer-events:none;opacity:0;transform:translate3d(0,0,0);transition:opacity .12s ease}
 .product-zoom.is-active .zoom-lens{opacity:1}
-.zoom-pane{--zoom-x:50%;--zoom-y:50%;position:absolute;z-index:6;right:0;top:50%;width:62%;aspect-ratio:16/11;transform:translate3d(10px,-50%,0) scale(.985);overflow:hidden;border:1px solid rgba(129,211,204,.3);border-radius:16px;background-color:#081118;background-image:url('/assets/music.webp');background-repeat:no-repeat;background-size:235% auto;background-position:var(--zoom-x) var(--zoom-y);box-shadow:0 30px 90px rgba(0,0,0,.5),0 0 0 1px rgba(98,216,191,.05);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .2s ease,visibility 0s linear .2s}
-.product-zoom.is-active .zoom-pane{opacity:1;visibility:visible;transform:translate3d(0,-50%,0) scale(1);transition-delay:0s}
+.zoom-pane{--zoom-x:50%;--zoom-y:50%;position:absolute;z-index:20;left:50%;top:50%;width:min(720px,76vw);aspect-ratio:16/10;transform:translate3d(-50%,-48%,0) scale(.985);overflow:hidden;border:1px solid rgba(129,211,204,.32);border-radius:16px;background-color:#081118;background-image:url('/assets/music.webp');background-repeat:no-repeat;background-size:235% auto;background-position:var(--zoom-x) var(--zoom-y);box-shadow:0 30px 90px rgba(0,0,0,.5),0 0 0 1px rgba(98,216,191,.05);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .16s ease,transform .2s ease,visibility 0s linear .2s}
+.product-zoom.is-active .zoom-pane{opacity:1;visibility:visible;transform:translate3d(-50%,-50%,0) scale(1);transition-delay:0s}
 .zoom-pane::after{content:"";position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 38px rgba(1,8,12,.22);pointer-events:none}
 .zoom-pane-meta{position:absolute;z-index:2;left:12px;right:12px;top:11px;display:flex;justify-content:space-between;gap:10px;align-items:center;pointer-events:none}
-.zoom-pane-meta span,.zoom-pane-meta small{padding:5px 8px;border-radius:7px;background:rgba(4,11,15,.78);backdrop-filter:blur(10px)}
-.zoom-pane-meta span{font-size:8px;letter-spacing:.12em;color:#8ddccb}.zoom-pane-meta small{font-size:8px;color:#75898e}
+.zoom-pane-meta span,.zoom-pane-meta small{padding:6px 9px;border-radius:7px;background:rgba(4,11,15,.8);backdrop-filter:blur(10px)}
+.zoom-pane-meta span{font-size:11px;letter-spacing:.1em;color:#8ddccb}
+.zoom-pane-meta small{font-size:10.5px;color:#91a4a8}
 
+@media (max-width:1180px){
+  .nav-hardware{min-width:198px;padding-inline:8px}
+  .nav-hardware img{width:156px}
+  .nav-hardware span{font-size:10px}
+}
 @media (max-width:1040px){
-  .nav-hardware{margin-right:auto}.nav-links{margin-left:0}
-  .home-page .hero-visual{min-height:430px}
-  .product-zoom{height:430px}
-  .home-page .app-shot-main.zoom-source{width:55%}
-  .zoom-pane{width:60%}
+  .nav-hardware{margin-right:auto;min-width:156px}
+  .nav-hardware img{width:148px}
+  .nav-hardware span{display:none}
+  .nav-links{margin-left:0}
+  .home-page .hero{grid-template-columns:1fr;gap:34px}
+  .home-page .hero-copy{max-width:720px}
+  .home-page .hero-visual{min-height:auto}
+  .product-zoom{width:min(100%,620px)}
+  .zoom-pane{width:min(760px,90vw)}
 }
 @media (max-width:760px){
   .tour-section{scroll-margin-top:112px;contain-intrinsic-size:auto 1200px}
+  body{font-size:15.5px}
+  .nav-shell{height:62px}
   .nav-hardware{display:none}
+  .hero h1,.page-hero h1,.download-hero h1{font-size:clamp(36px,10.5vw,48px)}
+  .hero-lead{font-size:16px}
   .home-page .hero-visual{min-height:auto}
-  .product-zoom{height:auto;display:block}
+  .product-zoom{height:auto;display:block;width:100%}
   .home-page .app-shot-main.zoom-source{position:relative;left:auto;top:auto;width:100%;transform:none;cursor:default}
   .zoom-pane,.zoom-lens,.zoom-hint{display:none}
+}
+@media (max-width:430px){
+  .eyebrow,.live-line{font-size:10.5px}
+  .proof-grid span,.path-card p,.feature-copy p,.download-choice p{font-size:13px}
 }
 @media (prefers-reduced-motion:reduce){
   .home-page .app-shot-main.zoom-source,.zoom-pane,.zoom-hint,.zoom-lens{transition:none}
