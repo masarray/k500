@@ -111,7 +111,6 @@ void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)
     m_music.digitalGainDb = static_cast<int>(fileU8(memory, 0x0022, 8)) - 12;
 
     m_mic.topMicVol = fileU8(memory, 0x0009, 35);
-    m_mic.musicInitVol = m_music.musicInitVol;
     m_mic.micInitVol = fileU8(memory, 0x0012, 25);
     m_mic.micAVol = fileU8(memory, 0x0014, 96);
     m_mic.micBVol = fileU8(memory, 0x0015, 96);
