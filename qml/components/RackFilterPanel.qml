@@ -17,15 +17,20 @@ StudioPanel {
     signal lpTypeEdited(string value)
     accentTop: false
 
-    // CROSSOVER_RACK_LAYOUT_V2
-    // A single vertical grammar is used for Mic, effects and output sections:
-    // optional delay controls first, then HPF and LPF, each with a dedicated
-    // responsive slider and type selector. No text field may sit on top of a track.
+    // CROSSOVER_RACK_LAYOUT_V3
+    // One vertical grammar is shared by Mic, FX and output sections: optional
+    // mono/stereo delay controls first, then HPF and LPF. Evidence-gated delay
+    // slots can remain visible but non-editable until their wire offsets are
+    // donor-captured; a disabled UI must never silently invent a protocol write.
+    readonly property int monoDelayIndex: {
+        var index = fieldIndex("OUTPUT DELAY")
+        return index >= 0 ? index : fieldIndex("DELAY")
+    }
     readonly property int leftDelayIndex: fieldIndex("L DELAY")
     readonly property int rightDelayIndex: fieldIndex("R DELAY")
     readonly property int hpfIndex: fieldIndex("HPF")
     readonly property int lpfIndex: fieldIndex("LPF")
-    readonly property bool hasDelay: leftDelayIndex >= 0 || rightDelayIndex >= 0
+    readonly property bool hasDelay: monoDelayIndex >= 0 || leftDelayIndex >= 0 || rightDelayIndex >= 0
 
     function fieldIndex(label) {
         var wanted = String(label).toUpperCase()
@@ -41,6 +46,10 @@ StudioPanel {
         var n = Number(f[key])
         return isFinite(n) ? n : fallback
     }
+    function editableAt(index) {
+        var f = fieldAt(index)
+        return f.editable === undefined ? true : Boolean(f.editable)
+    }
 
     // P1_RACK_FILTER_LIVE_BRIDGE_V1
     // Reusable rack controls resolve StudioEngine through the owning workspace.
@@ -55,17 +64,18 @@ StudioPanel {
         return null
     }
     function dispatchVerifiedAux(index, value) {
-        if (index < 0 || index >= root.fields.length) return
+        if (index < 0 || index >= root.fields.length || !root.editableAt(index)) return
         var label = String(root.fields[index].label || "").toUpperCase()
         if (label !== "L DELAY" && label !== "R DELAY") return
         var ctx = studioContext()
         // SURROUND_DELAY_VERIFIED_V1 — donor captures prove D16/D17 and D18/D19
-        // in Surround CMD 0x0E. No Main/Center delay byte is guessed here.
+        // in Surround CMD 0x0E. Main/Center/Sub delay slots are visual parity
+        // only until equivalent donor delta captures prove their write offsets.
         if (!ctx || ctx.sectionIndex !== 5) return
         ctx.engine.editDevicePath(label === "L DELAY" ? "outputs.surround.lDelayMs" : "outputs.surround.rDelayMs", value)
     }
     function editField(index, value) {
-        if (index < 0) return
+        if (index < 0 || !root.editableAt(index)) return
         root.fieldEdited(index, value)
         root.dispatchVerifiedAux(index, value)
     }
@@ -115,6 +125,24 @@ StudioPanel {
             }
 
             ParameterSlider {
+                visible: root.monoDelayIndex >= 0
+                Layout.fillWidth: true
+                Layout.preferredHeight: visible ? 30 : 0
+                label: "D"
+                value: root.numberAt(root.monoDelayIndex,"value",0)
+                from: root.numberAt(root.monoDelayIndex,"from",0)
+                to: root.numberAt(root.monoDelayIndex,"to",50)
+                step: root.numberAt(root.monoDelayIndex,"step",1)
+                defaultValue: value
+                decimals: root.numberAt(root.monoDelayIndex,"decimals",0)
+                unit: String(root.fieldAt(root.monoDelayIndex).unit || "ms")
+                accentColor: Theme.accent
+                editable: root.editableAt(root.monoDelayIndex)
+                captionWidth: 15; readoutWidth: 50; controlGap: 5; trackGap: 4
+                onValueEdited: function(v){ root.editField(root.monoDelayIndex,v) }
+            }
+
+            ParameterSlider {
                 visible: root.leftDelayIndex >= 0
                 Layout.fillWidth: true
                 Layout.preferredHeight: visible ? 30 : 0
@@ -127,6 +155,7 @@ StudioPanel {
                 decimals: root.numberAt(root.leftDelayIndex,"decimals",0)
                 unit: String(root.fieldAt(root.leftDelayIndex).unit || "ms")
                 accentColor: Theme.accent
+                editable: root.editableAt(root.leftDelayIndex)
                 captionWidth: 15; readoutWidth: 50; controlGap: 5; trackGap: 4
                 onValueEdited: function(v){ root.editField(root.leftDelayIndex,v) }
             }
@@ -144,6 +173,7 @@ StudioPanel {
                 decimals: root.numberAt(root.rightDelayIndex,"decimals",0)
                 unit: String(root.fieldAt(root.rightDelayIndex).unit || "ms")
                 accentColor: Theme.accent
+                editable: root.editableAt(root.rightDelayIndex)
                 captionWidth: 15; readoutWidth: 50; controlGap: 5; trackGap: 4
                 onValueEdited: function(v){ root.editField(root.rightDelayIndex,v) }
             }
@@ -172,6 +202,7 @@ StudioPanel {
                 unit: String(root.fieldAt(root.hpfIndex).unit || "Hz")
                 logarithmic: true
                 accentColor: Theme.amber
+                editable: root.editableAt(root.hpfIndex)
                 captionWidth: 28; readoutWidth: 56; controlGap: 5; trackGap: 4
                 onValueEdited: function(v){ root.editField(root.hpfIndex,v) }
             }
@@ -200,6 +231,7 @@ StudioPanel {
                 unit: String(root.fieldAt(root.lpfIndex).unit || "Hz")
                 logarithmic: true
                 accentColor: Theme.amber
+                editable: root.editableAt(root.lpfIndex)
                 captionWidth: 28; readoutWidth: 56; controlGap: 5; trackGap: 4
                 onValueEdited: function(v){ root.editField(root.lpfIndex,v) }
             }
