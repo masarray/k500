@@ -1,34 +1,43 @@
-name: Guard P1 FX rack centering
+name: Guard premium FX space panel
 
 on:
   pull_request:
     paths:
       - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/StudioKnob.qml'
       - '.github/workflows/p1-fx-rack-centering.yml'
+  workflow_dispatch:
 
 jobs:
-  fx-rack-centering:
+  premium-fx-space:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Guard intentional centered three-strip layout
+      - name: Guard premium FX layout and lightweight visual field
         shell: python
         run: |
           from pathlib import Path
 
-          qml = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          knob = Path('qml/components/StudioKnob.qml').read_text(encoding='utf-8')
+
           checks = {
-              'P1 centering contract token': 'P1_FX_FADER_CLUSTER_CENTERING_V1' in qml,
-              'Reverb and Echo use compact cluster': 'title === "Reverb" || title === "Echo"' in qml,
-              'compact channel width is explicit': 'compactChannelWidth: 100' in qml,
-              'compact channels are fixed width': 'Layout.preferredWidth: root.compactCluster ? root.compactChannelWidth : -1' in qml and 'Layout.minimumWidth: root.compactCluster ? root.compactChannelWidth : 48' in qml,
-              'cluster has symmetric flex gutters': qml.count('visible: root.compactCluster\n                Layout.fillWidth: true\n                Layout.fillHeight: true') >= 2,
-              'legacy 62px shove-left removed': 'root.compactCluster ? 62' not in qml,
+              'premium FX contract token': 'PREMIUM_FX_SPACE_PANEL_V1' in rack,
+              'Reverb and Echo share the FX surface': 'title === "Reverb" || title === "Echo"' in rack,
+              'three premium knobs remain parameter-driven': 'premium: true' in rack and 'model: root.channels' in rack,
+              'reverb semantic field exists': '"REVERB FIELD"' in rack and '"SPACE DESIGN"' in rack,
+              'echo semantic field exists': '"ECHO FIELD"' in rack and '"TIME DESIGN"' in rack,
+              'visual is explicitly parameter response': '"PARAMETER RESPONSE"' in rack,
+              'visual edits do not invent a new transport': 'root.dispatchLive(fxChannel.modelData.label,v)' in rack,
+              'non-FX sections retain canonical faders': 'StudioFader {' in rack and 'visible: !root.compactCluster' in rack,
+              'FX field avoids continuously repainted Canvas': 'Canvas {' not in rack,
+              'premium knob is opt-in': 'property bool premium: false' in knob and 'PREMIUM_FX_KNOB_V1' in knob,
+              'premium knob preserves canonical edit signal': 'signal valueEdited(real newValue)' in knob,
           }
 
           failed = [name for name, ok in checks.items() if not ok]
           for name, ok in checks.items():
               print(('PASS' if ok else 'FAIL') + '  ' + name)
           if failed:
-              raise SystemExit('P1 FX rack centering guard failed: ' + ', '.join(failed))
-          print('ALL P1 FX RACK CENTERING GUARDS PASSED')
+              raise SystemExit('Premium FX space guard failed: ' + ', '.join(failed))
+          print('ALL PREMIUM FX SPACE PANEL GUARDS PASSED')
