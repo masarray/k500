@@ -11,6 +11,7 @@ Item {
     property bool active: false
     property bool selected: false
     property bool sourceButtonVisible: true
+    property bool headerVisible: true
     signal valueEdited(real newValue)
     signal activated()
     signal sourceRequested()
@@ -26,7 +27,7 @@ Item {
         // `active` is authoritative state supplied by the parent. Never toggle it
         // locally: a source selector is radio/exclusive semantics, not a latch.
         SoftButton {
-            visible: root.sourceButtonVisible
+            visible: root.headerVisible && root.sourceButtonVisible
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 58
             Layout.preferredHeight: 25
@@ -38,7 +39,7 @@ Item {
         }
 
         Text {
-            visible: !root.sourceButtonVisible
+            visible: root.headerVisible && !root.sourceButtonVisible
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredHeight: 25
             text: root.label
