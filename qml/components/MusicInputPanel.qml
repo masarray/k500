@@ -58,87 +58,93 @@ StudioPanel {
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.78 }
         }
 
-        ColumnLayout {
+        RowLayout {
+            // MUSIC_SOURCE_OVER_FADER_LAYOUT_V1
+            // Source selectors stay directly above the gain path they control.
+            // OPTIC + UAUDIO form one exclusive pair over the shared DIGITAL gain.
             Layout.fillWidth: true
             Layout.fillHeight: true
             Layout.leftMargin: 12
             Layout.rightMargin: 12
-            Layout.topMargin: 9
+            Layout.topMargin: 10
             Layout.bottomMargin: 10
-            spacing: 6
+            spacing: 0
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 27
-                spacing: 5
-
-                Repeater {
-                    model: root.sourceOptions
-                    delegate: SoftButton {
-                        required property int index
-                        required property string modelData
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 27
-                        text: modelData
-                        compact: true
-                        checked: root.selectedSource === index
-                        neonAccent: root.selectedSource === index
-                        onClicked: root.chooseSource(index)
-                    }
-                }
+            InputFader {
+                Layout.fillWidth:true; Layout.fillHeight:true
+                label:"INPUT1"; active:root.selectedSource===0
+                value:root.engine.input1Gain; from:-12; to:12
+                selected:root.selectedFader===0
+                onSourceRequested:root.chooseSource(0)
+                onActivated:root.selectedFader=0
+                onValueEdited:function(v){root.engine.input1Gain=v}
+                accentColor:Theme.blue
+            }
+            InputFader {
+                Layout.fillWidth:true; Layout.fillHeight:true
+                label:"INPUT2"; active:root.selectedSource===1
+                value:root.engine.input2Gain; from:-12; to:12
+                selected:root.selectedFader===1
+                onSourceRequested:root.chooseSource(1)
+                onActivated:root.selectedFader=1
+                onValueEdited:function(v){root.engine.input2Gain=v}
+                accentColor:Theme.blue
+            }
+            InputFader {
+                Layout.fillWidth:true; Layout.fillHeight:true
+                label:"BT"; active:root.selectedSource===2
+                value:root.engine.bluetoothGain; from:-12; to:12
+                selected:root.selectedFader===2
+                onSourceRequested:root.chooseSource(2)
+                onActivated:root.selectedFader=2
+                onValueEdited:function(v){root.engine.bluetoothGain=v}
+                accentColor:Theme.accent
+            }
+            InputFader {
+                Layout.fillWidth:true; Layout.fillHeight:true
+                label:"UDISK"; active:root.selectedSource===3
+                value:root.engine.uDiskGain; from:-12; to:12
+                selected:root.selectedFader===3
+                onSourceRequested:root.chooseSource(3)
+                onActivated:root.selectedFader=3
+                onValueEdited:function(v){root.engine.uDiskGain=v}
+                accentColor:Theme.violet
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: Theme.borderSoft
-                opacity: .5
-            }
-
-            RowLayout {
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                spacing: 0
+                spacing: 4
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 25
+                    spacing: 4
+
+                    SoftButton {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 25
+                        text: "OPTIC"
+                        compact: true
+                        checked: root.selectedSource === 4
+                        neonAccent: root.selectedSource === 4
+                        onClicked: root.chooseSource(4)
+                    }
+                    SoftButton {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 25
+                        text: "UAUDIO"
+                        compact: true
+                        checked: root.selectedSource === 5
+                        neonAccent: root.selectedSource === 5
+                        onClicked: root.chooseSource(5)
+                    }
+                }
 
                 InputFader {
+                    id: digitalGainFader
                     Layout.fillWidth:true; Layout.fillHeight:true
-                    sourceButtonVisible:false; label:"INPUT1 GAIN"
-                    value:root.engine.input1Gain; from:-12; to:12
-                    selected:root.selectedFader===0
-                    onActivated:root.selectedFader=0
-                    onValueEdited:function(v){root.engine.input1Gain=v}
-                    accentColor:Theme.blue
-                }
-                InputFader {
-                    Layout.fillWidth:true; Layout.fillHeight:true
-                    sourceButtonVisible:false; label:"INPUT2 GAIN"
-                    value:root.engine.input2Gain; from:-12; to:12
-                    selected:root.selectedFader===1
-                    onActivated:root.selectedFader=1
-                    onValueEdited:function(v){root.engine.input2Gain=v}
-                    accentColor:Theme.blue
-                }
-                InputFader {
-                    Layout.fillWidth:true; Layout.fillHeight:true
-                    sourceButtonVisible:false; label:"BT GAIN"
-                    value:root.engine.bluetoothGain; from:-12; to:12
-                    selected:root.selectedFader===2
-                    onActivated:root.selectedFader=2
-                    onValueEdited:function(v){root.engine.bluetoothGain=v}
-                    accentColor:Theme.accent
-                }
-                InputFader {
-                    Layout.fillWidth:true; Layout.fillHeight:true
-                    sourceButtonVisible:false; label:"UDISK GAIN"
-                    value:root.engine.uDiskGain; from:-12; to:12
-                    selected:root.selectedFader===3
-                    onActivated:root.selectedFader=3
-                    onValueEdited:function(v){root.engine.uDiskGain=v}
-                    accentColor:Theme.violet
-                }
-                InputFader {
-                    Layout.fillWidth:true; Layout.fillHeight:true
-                    sourceButtonVisible:false; label:"DIGITAL GAIN"
+                    headerVisible:false; sourceButtonVisible:false; label:"DIGITAL GAIN"
                     value:root.engine.digitalGain; from:-12; to:12
                     selected:root.selectedFader===4
                     onActivated:root.selectedFader=4
