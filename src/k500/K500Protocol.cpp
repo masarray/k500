@@ -167,6 +167,13 @@ QByteArray eqWrite(const QString &section, int bandIndexZeroBased, const K500EqB
 quint8 crossoverFilterCode(const QString &label)
 {
     const QString normalized = label.trimmed().toUpper();
+    // CROSSOVER_NATIVE_BYPASS_TYPE0_V1
+    // Native K500 keeps the cutoff anchor unchanged while the type dropdown is
+    // set to bypass. The preset format uses the same 0x03xx/0x04xx type family,
+    // with active filters occupying contiguous codes 0x01..0x07; code 0x00 is
+    // therefore the native bypass member of that enum. Keep this behind the
+    // physical-device acceptance gate just like every newly replayed command.
+    if (normalized == QStringLiteral("BYPASS")) return 0x00;
     if (normalized.contains(QStringLiteral("BESSEL 12"))) return 0x01;
     if (normalized.contains(QStringLiteral("BUTTER 12"))) return 0x02;
     if (normalized.contains(QStringLiteral("BESSEL 18"))) return 0x03;
@@ -214,7 +221,8 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(K500Frame::clampByte(qBound(0, state.topMusicVol, TopVolumeMax))));
     body.append(char(mirrored(0x03, state.musicInitVol)));
     body.append(char(mirrored(0x04, TopVolumeMax)));
-    body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 4))));
+    // MUSIC_SOURCE_SIX_WAY_V1 — INPUT1, INPUT2, BT, UDISK, OPTIC, UAUDIO.
+    body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 5))));
     body.append(char(K500Frame::clampByte(qRound(state.input1GainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.input2GainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.bluetoothGainDb + 12.0))));
@@ -375,6 +383,7 @@ bool selfTest(QString *error)
     if (!expect(crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x0A, 0x02, 0xE8, 0x03, 0x00, 0xF2}, QStringLiteral("echo HPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0D, 0x02, 0xE8, 0x03, 0x00, 0xEF}, QStringLiteral("center LPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("sub"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0F, 0x02, 0xE8, 0x03, 0x00, 0xED}, QStringLiteral("sub LPF selector"))) return false;
+    if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1474.0, QStringLiteral("Bypass")), {0xAA, 0x06, 0x11, 0x0D, 0x00, 0xC2, 0x05, 0x00, 0x15}, QStringLiteral("center LPF bypass preserves cutoff"))) return false;
     if (!crossoverWrite(QStringLiteral("unknown"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("unsupported crossover section must not produce a frame"));
 
     K500MusicBlockState music;

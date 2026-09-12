@@ -14,8 +14,6 @@ StudioPanel {
     accentTop: false
 
     // P1_RACK_FADER_LIVE_BRIDGE_V1
-    // Reusable rack panels resolve the owning StudioEngine through the visual
-    // parent chain. They never reference Controller/DeviceManager/I/O directly.
     function studioEngine() {
         var p = root
         while (p) {
@@ -38,7 +36,7 @@ StudioPanel {
         else if (t === "Surround Bus") section = "surround"
         else if (t === "Center Bus") section = "center"
         else if (t === "Subwoofer Bus") section = "sub"
-        if (!section.length) return "" // Reverb/Echo detail writes are not verified.
+        if (!section.length) return ""
 
         if (l === "L") return "outputs." + section + ".lVolDb"
         if (l === "R") return "outputs." + section + ".rVolDb"
@@ -53,6 +51,14 @@ StudioPanel {
         var path = livePathFor(label)
         var engine = studioEngine()
         if (path.length && engine) engine.editDevicePath(path, value)
+    }
+    function muteCapable(label) {
+        var t = String(root.title || "")
+        var l = String(label || "").toUpperCase()
+        if (t === "Main Bus" || t === "Surround Bus") return l === "L" || l === "R"
+        if (t === "Center Bus") return l === "CTR"
+        if (t === "Subwoofer Bus") return l === "SUB"
+        return false
     }
 
     ColumnLayout {
@@ -82,7 +88,7 @@ StudioPanel {
             Layout.leftMargin: 10
             Layout.rightMargin: 10
             Layout.topMargin: 10
-            Layout.bottomMargin: 10
+            Layout.bottomMargin: 8
             spacing: 2
 
             Repeater {
@@ -96,46 +102,97 @@ StudioPanel {
                     Layout.minimumWidth: root.compactCluster ? 62 : 48
                     Layout.fillHeight: true
                     property real localValue: Number(modelData.value)
+                    property bool muted: false
                     readonly property bool selected: root.selectedFader === channel.index
+                    readonly property bool canMute: root.muteCapable(modelData.label)
+                    readonly property real muteFloor: Number(modelData.from)
+
+                    // OUTPUT_MUTE_VERIFIED_FLOOR_V1
+                    // Per-output native mute flag bytes still need donor capture. Until
+                    // then the button uses only the verified output-volume field and its
+                    // raw-zero floor, preserving/restoring the user's target fader value.
+                    function setMuted(next) {
+                        if (!channel.canMute || channel.muted === next) return
+                        channel.muted = next
+                        root.dispatchLive(channel.modelData.label,
+                                          next ? channel.muteFloor : channel.localValue)
+                    }
 
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 4
+                        spacing: 3
 
+                        // MIXER_HEADER_MUTE_V2
+                        // Use the project's canonical Lucide volume-x glyph beside the
+                        // channel caption. Bottom fader geometry stays uniform for every
+                        // channel; no isolated MUTE button creates visual congestion.
                         Item {
                             Layout.alignment: Qt.AlignHCenter
                             Layout.preferredWidth: Math.max(48,channel.width-4)
                             Layout.preferredHeight: 25
-                            Column {
+
+                            Row {
                                 anchors.centerIn: parent
-                                spacing: -1
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    text: String(channel.modelData.label || "")
-                                    color: rackFader.highlighted ? rackFader.accentColor : Theme.textDim
-                                    style: rackFader.highlighted ? Text.Outline : Text.Normal
-                                    styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 9
-                                    font.weight: rackFader.highlighted ? Font.Bold : Font.DemiBold
-                                    font.letterSpacing: .35
-                                    Behavior on color { ColorAnimation { duration:75 } }
-                                    Behavior on styleColor { ColorAnimation { duration:75 } }
+                                spacing: channel.canMute ? 4 : 0
+
+                                Column {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    spacing: -1
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        text: String(channel.modelData.label || "")
+                                        color: channel.muted ? Theme.amber : rackFader.highlighted ? rackFader.accentColor : Theme.textDim
+                                        style: rackFader.highlighted ? Text.Outline : Text.Normal
+                                        styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 9
+                                        font.weight: rackFader.highlighted || channel.muted ? Font.Bold : Font.DemiBold
+                                        font.letterSpacing: .35
+                                        Behavior on color { ColorAnimation { duration:75 } }
+                                        Behavior on styleColor { ColorAnimation { duration:75 } }
+                                    }
+                                    Text {
+                                        anchors.horizontalCenter: parent.horizontalCenter
+                                        visible: String(channel.modelData.badge || "").length > 0
+                                        text: String(channel.modelData.badge || "")
+                                        color: rackFader.highlighted ? rackFader.accentColor : Theme.textFaint
+                                        font.family: Theme.monoFamily
+                                        font.pixelSize: 8
+                                        font.weight: rackFader.highlighted ? Font.DemiBold : Font.Normal
+                                        Behavior on color { ColorAnimation { duration:75 } }
+                                    }
                                 }
-                                Text {
-                                    anchors.horizontalCenter: parent.horizontalCenter
-                                    visible: String(channel.modelData.badge || "").length > 0
-                                    text: String(channel.modelData.badge || "")
-                                    color: rackFader.highlighted ? rackFader.accentColor : Theme.textFaint
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 8
-                                    font.weight: rackFader.highlighted ? Font.DemiBold : Font.Normal
+
+                                Rectangle {
+                                    id: muteIconButton
+                                    visible: channel.canMute
+                                    width: 20; height: 20; radius: 6
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    color: channel.muted ? "#211607" : mutePointer.containsMouse ? "#10171C" : "#090D10"
+                                    border.width: 1
+                                    border.color: channel.muted ? Theme.amber : mutePointer.containsMouse ? Theme.textDim : "#273038"
+
+                                    LucideIcon {
+                                        anchors.centerIn: parent
+                                        width: 13; height: 13
+                                        name: "volume-x"
+                                        color: channel.muted ? Theme.amber : Theme.textSoft
+                                        strokeWidth: channel.muted ? 2.1 : 1.8
+                                    }
+                                    MouseArea {
+                                        id: mutePointer
+                                        anchors.fill: parent
+                                        hoverEnabled: true
+                                        cursorShape: Qt.PointingHandCursor
+                                        onClicked: channel.setMuted(!channel.muted)
+                                    }
                                     Behavior on color { ColorAnimation { duration:75 } }
+                                    Behavior on border.color { ColorAnimation { duration:75 } }
                                 }
                             }
                         }
 
-                        Item { Layout.preferredHeight: 4 }
+                        Item { Layout.preferredHeight: 2 }
 
                         StudioFader {
                             id: rackFader
@@ -154,7 +211,8 @@ StudioPanel {
                             onActivated: root.selectedFader = channel.index
                             onValueEdited: function(v) {
                                 channel.localValue = v
-                                root.dispatchLive(channel.modelData.label, v)
+                                root.dispatchLive(channel.modelData.label,
+                                                  channel.muted ? channel.muteFloor : v)
                             }
                         }
 
@@ -163,9 +221,9 @@ StudioPanel {
                             Layout.preferredWidth: 58
                             Layout.preferredHeight: 23
                             radius: 8
-                            color: rackFader.highlighted ? "#081013" : "#05080A"
+                            color: channel.muted ? "#171208" : rackFader.highlighted ? "#081013" : "#05080A"
                             border.width: 1
-                            border.color: rackFader.highlighted ? root.accentColor : "#020304"
+                            border.color: channel.muted ? Theme.amber : rackFader.highlighted ? root.accentColor : "#020304"
                             Row {
                                 anchors.centerIn: parent
                                 spacing: 3
@@ -186,7 +244,7 @@ StudioPanel {
                                     Behavior on color { ColorAnimation { duration:75 } }
                                 }
                             }
-                            Behavior on border.color { ColorAnimation { duration: 75 } }
+                            Behavior on border.color { ColorAnimation { duration:75 } }
                         }
 
                         Item { Layout.fillHeight: true }

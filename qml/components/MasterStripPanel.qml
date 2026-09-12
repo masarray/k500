@@ -5,12 +5,17 @@ StudioPanel {
     id: root
     required property var engine
     property int selectedFader: -1
-    implicitWidth: 188
+    implicitWidth: 216
     implicitHeight: 304
-    Layout.minimumWidth: 188
-    Layout.preferredWidth: 188
-    Layout.maximumWidth: 188
+    Layout.minimumWidth: 216
+    Layout.preferredWidth: 216
+    Layout.maximumWidth: 216
     accentTop: false
+
+    // RIGHT_COLUMN_WIDTH_PARITY_V1
+    // Master Strip is the persistent right-most global control surface. Keep
+    // its geometry identical to the Mic Band Limits reference column so page
+    // switching never makes the right edge look narrower or visually detached.
 
     ColumnLayout {
         anchors.fill: parent

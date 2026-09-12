@@ -8,6 +8,7 @@
 #include <QTextStream>
 #include <QUrl>
 #include <QVariantMap>
+#include <QtGlobal>
 
 namespace {
 int fail(const QString &message)
@@ -32,6 +33,41 @@ void putFixedAscii(QByteArray &memory, int offset, int length, const QByteArray 
     for (int i = 0; i < clipped.size(); ++i)
         memory[offset + i] = clipped.at(i);
 }
+
+QString expectedCrossoverLabel(quint16 raw, bool hpf)
+{
+    const quint16 expectedFamily = hpf ? 0x0400 : 0x0300;
+    if ((raw & 0xFF00) != expectedFamily)
+        return {};
+
+    const char *shape = nullptr;
+    switch (raw & 0x00FF) {
+    case 0x01: shape = "Bessel 12"; break;
+    case 0x02: shape = "Butter 12"; break;
+    case 0x03: shape = "Bessel 18"; break;
+    case 0x04: shape = "Butter 18"; break;
+    case 0x05: shape = "Bessel 24"; break;
+    case 0x06: shape = "Butter 24"; break;
+    case 0x07: shape = "LR 24"; break;
+    default: return {};
+    }
+    return QStringLiteral("%1 %2")
+        .arg(hpf ? QStringLiteral("HP") : QStringLiteral("LP"), QString::fromLatin1(shape));
+}
+
+EqBandModel *modelForSection(StudioEngine &engine, const QString &section)
+{
+    if (section == QStringLiteral("micA")) return engine.micAEqBands();
+    if (section == QStringLiteral("micB")) return engine.micBEqBands();
+    if (section == QStringLiteral("music")) return engine.musicEqBands();
+    if (section == QStringLiteral("main")) return engine.mainEqBands();
+    if (section == QStringLiteral("surround")) return engine.surroundEqBands();
+    if (section == QStringLiteral("center")) return engine.centerEqBands();
+    if (section == QStringLiteral("sub")) return engine.subEqBands();
+    if (section == QStringLiteral("reverb")) return engine.reverbEqBands();
+    if (section == QStringLiteral("echo")) return engine.echoEqBands();
+    return nullptr;
+}
 }
 
 int main(int argc, char **argv)
@@ -46,6 +82,7 @@ int main(int argc, char **argv)
     const QByteArray source = donor.readAll();
     if (!K500PresetCodec::validateChecksum(source))
         return fail(QStringLiteral("donor checksum invalid"));
+    const K500PresetCodec::Document donorDocument(source);
 
     QTemporaryDir dir;
     if (!dir.isValid())
@@ -136,14 +173,57 @@ int main(int argc, char **argv)
     // editor and re-enables only the existing mapper-whitelisted edit persistence.
     const QVariantMap stateImmediatelyBeforePreview = engine.deviceState();
     const QByteArray stagedImageBeforePreview = bridge.deviceSlotImage();
+    int previewEditSignals = 0;
+    const QMetaObject::Connection previewEditConnection = QObject::connect(
+        &engine, &StudioEngine::stateEdited, &engine,
+        [&previewEditSignals](const QString &, const QVariant &) { ++previewEditSignals; });
     if (!bridge.previewLoadedPreset())
         return fail(QStringLiteral("explicit offline preview was rejected"));
+    QObject::disconnect(previewEditConnection);
+    if (previewEditSignals != 0)
+        return fail(QStringLiteral("Preview crossover hydration emitted stateEdited/live-edit semantics"));
     if (engine.deviceState() == stateImmediatelyBeforePreview)
         return fail(QStringLiteral("explicit offline preview did not hydrate StudioEngine"));
     if (bridge.deviceSlotImage() != stagedImageBeforePreview)
         return fail(QStringLiteral("offline preview mutated staged PC preset bytes"));
     if (!bridge.editTracking() || !bridge.editPersistenceEnabled())
         return fail(QStringLiteral("offline Preview did not restore controlled edit persistence"));
+
+    // PRESET_PREVIEW_CROSSOVER_OVERLAY_V1: active filter types live in the full
+    // .k500 EQ footer and are not present in the compact 0x0290 slot image. The
+    // explicit Preview must therefore restore every verified primary-section
+    // footer type + anchor without relying on an invented active-memory offset.
+    int verifiedCrossoverTypes = 0;
+    for (const K500PresetCodec::EqSection &section : donorDocument.eqSections()) {
+        if (section.key.endsWith(QStringLiteral("Alt")))
+            continue;
+        EqBandModel *model = modelForSection(engine, section.key);
+        if (!model)
+            return fail(QStringLiteral("Preview donor section has no editor model: %1").arg(section.key));
+
+        const double expectedHpf = qBound(20.0, static_cast<double>(section.crossover.hpfHz), 20000.0);
+        const double expectedLpf = qBound(20.0, static_cast<double>(section.crossover.lpfHz), 20000.0);
+        if (!qFuzzyCompare(model->hpfHz() + 1000.0, expectedHpf + 1000.0)
+            || !qFuzzyCompare(model->lpfHz() + 1000.0, expectedLpf + 1000.0))
+            return fail(QStringLiteral("Preview crossover anchor mismatch in %1").arg(section.key));
+
+        const QString expectedHpType = expectedCrossoverLabel(section.crossover.hpTypeRaw, true);
+        const QString expectedLpType = expectedCrossoverLabel(section.crossover.lpTypeRaw, false);
+        if (!expectedHpType.isEmpty()) {
+            ++verifiedCrossoverTypes;
+            if (model->hpType() != expectedHpType)
+                return fail(QStringLiteral("Preview HPF type mismatch in %1: %2 != %3")
+                    .arg(section.key, model->hpType(), expectedHpType));
+        }
+        if (!expectedLpType.isEmpty()) {
+            ++verifiedCrossoverTypes;
+            if (model->lpType() != expectedLpType)
+                return fail(QStringLiteral("Preview LPF type mismatch in %1: %2 != %3")
+                    .arg(section.key, model->lpType(), expectedLpType));
+        }
+    }
+    if (verifiedCrossoverTypes == 0)
+        return fail(QStringLiteral("donor fixture did not exercise any verified crossover type"));
 
     const QVariantMap previewSystem = engine.deviceState().value(QStringLiteral("system")).toMap();
     if (!previewSystem.value(QStringLiteral("btName")).toString().isEmpty()
@@ -179,6 +259,6 @@ int main(int argc, char **argv)
     if (!bridge.lastError().contains(QStringLiteral("Checksum"), Qt::CaseInsensitive))
         return fail(QStringLiteral("batch checksum rejection did not surface an error"));
 
-    QTextStream(stdout) << "P4.2 donor batch + transfer staging + offline preview/edit PASS\n";
+    QTextStream(stdout) << "P4.2 donor batch + transfer staging + offline preview/crossover/edit PASS\n";
     return 0;
 }

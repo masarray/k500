@@ -1,0 +1,46 @@
+name: Guard mixer source key UX
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/SoftButton.qml'
+      - 'qml/components/InputFader.qml'
+      - 'qml/components/MusicInputPanel.qml'
+      - '.github/workflows/mixer-source-key-guard.yml'
+
+jobs:
+  mixer-source-key:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard recessed illuminated source selection
+        shell: python
+        run: |
+          from pathlib import Path
+
+          button = Path('qml/components/SoftButton.qml').read_text(encoding='utf-8')
+          fader = Path('qml/components/InputFader.qml').read_text(encoding='utf-8')
+          panel = Path('qml/components/MusicInputPanel.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'mixer key v2 token': 'MIXER_SOURCE_ILLUMINATED_SELECT_V2' in button,
+              'opt-in mixer style': 'property bool mixerSelect: false' in button,
+              'active state is recessed': 'readonly property bool mixerDepressed: root.mixerLit' in button,
+              'pressed/active face scales inward': 'root.mixerDepressed ? .982 : 1' in button,
+              'reversed inset bevel exists': 'Dark top/left + bright bottom/right' in button,
+              'active legend is dark': 'root.mixerLit ? "#031013"' in button,
+              'fader exposes mixer-style bridge': 'property bool sourceButtonMixerSelect: false' in fader and 'mixerSelect: root.sourceButtonMixerSelect' in fader,
+              'four native gain strips use mixer keys': panel.count('sourceButtonMixerSelect:true') == 4,
+              'digital pair uses the same mixer key style': 'sourceButtonMixerSelect: true' in panel,
+              'six-way source exclusivity remains': '["INPUT1", "INPUT2", "BT", "UDISK", "OPTIC", "UAUDIO"]' in panel and 'readonly property bool checked: root.selectedSource === index' in panel,
+              'digital mirror contract exists': 'MUSIC_DIGITAL_GAIN_MIRROR_V1' in panel and 'model: root.sourceOptions' in panel and 'visible: index >= 4' in panel and 'sourceText:modelData' in panel and 'active:parent.checked' in panel,
+              'one native digital gain drives both rendered mirrors': panel.count('value:root.engine.digitalGain') == 1 and panel.count('onValueEdited:function(v){root.engine.digitalGain=v}') == 1,
+              'two digital sources are generated from indexes 4 and 5': 'visible: index >= 4' in panel and 'onSourceRequested:root.chooseSource(parent.index)' in panel and 'selected:root.selectedFader===parent.index' in panel,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('Mixer source-key UX guard failed: ' + ', '.join(failed))
+          print('ALL MIXER SOURCE-KEY UX GUARDS PASSED')

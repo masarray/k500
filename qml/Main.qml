@@ -15,6 +15,7 @@ ApplicationWindow {
     color: Theme.bg
 
     readonly property int lowerRackHeight: 304
+    readonly property int rightPanelWidth: 216
     property int selectedSection: 0
 
     background: Rectangle {
@@ -95,19 +96,22 @@ ApplicationWindow {
                                 Layout.minimumWidth: 224
                             }
 
+                            // RIGHT_COLUMN_WIDTH_PARITY_V1
+                            // Music follows the same two fixed right columns as Mic:
+                            // crossover/filter panel 216 px + Master Strip 216 px.
                             FilterPanel {
                                 engine: root.studioEngine
-                                Layout.preferredWidth: 180
-                                Layout.minimumWidth: 180
-                                Layout.maximumWidth: 180
+                                Layout.preferredWidth: root.rightPanelWidth
+                                Layout.minimumWidth: root.rightPanelWidth
+                                Layout.maximumWidth: root.rightPanelWidth
                                 Layout.fillHeight: true
                             }
 
                             MasterStripPanel {
                                 engine: root.studioEngine
-                                Layout.preferredWidth: 188
-                                Layout.minimumWidth: 188
-                                Layout.maximumWidth: 188
+                                Layout.preferredWidth: root.rightPanelWidth
+                                Layout.minimumWidth: root.rightPanelWidth
+                                Layout.maximumWidth: root.rightPanelWidth
                                 Layout.fillHeight: true
                             }
                         }

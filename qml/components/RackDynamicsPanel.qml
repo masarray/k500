@@ -50,6 +50,9 @@ StudioPanel {
         ctx.engine.editDevicePath(path, field === "release" ? Number(value) / 1000.0 : value)
     }
 
+    onThresholdChanged: if (graph) graph.requestPaint()
+    onRatioChanged: if (graph) graph.requestPaint()
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 0
@@ -85,18 +88,30 @@ StudioPanel {
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
 
+        // LOWER_RACK_SPACE_UTILIZATION_V2
+        // Controls stay in a balanced two-row grid. The graph is deliberately
+        // shorter than the rack body so its bottom edge aligns with the value
+        // caption/readout baseline of the second knob row.
         RowLayout {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            Layout.leftMargin: 15
-            Layout.rightMargin: 15
+            Layout.leftMargin: 12
+            Layout.rightMargin: 12
             Layout.topMargin: 8
             Layout.bottomMargin: 10
-            spacing: 12
+            spacing: 10
 
             Rectangle {
-                Layout.preferredWidth: root.includeGate ? 170 : 122
-                Layout.preferredHeight: 150
+                // COMPRESSOR_GRAPH_CAPTION_BASELINE_V1
+                // 227 px from the common 8 px rack top margin lands on the same
+                // optical baseline as the ATTACK/RELEASE value captions. Do not
+                // stretch this graph to the 251 px rack body again.
+                Layout.preferredWidth: root.includeGate ? 194 : 184
+                Layout.minimumWidth: 164
+                Layout.maximumWidth: 216
+                Layout.preferredHeight: 227
+                Layout.minimumHeight: 227
+                Layout.maximumHeight: 227
                 Layout.alignment: Qt.AlignTop
                 radius: 8
                 color: "#040608"
@@ -159,16 +174,19 @@ StudioPanel {
                 }
             }
 
-            RowLayout {
+            GridLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 104
-                Layout.alignment: Qt.AlignTop
-                Layout.topMargin: 1
-                spacing: 3
+                Layout.fillHeight: true
+                columns: root.includeGate ? 3 : 2
+                columnSpacing: 4
+                rowSpacing: 5
 
                 StudioKnob {
                     visible: root.includeGate
                     Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumWidth: 72
+                    Layout.minimumHeight: 92
                     compact: true
                     title: "GATE"; value: root.gate
                     from: -80; to: 0; step: 1; decimals: 0; unit: "dB"
@@ -176,36 +194,49 @@ StudioPanel {
                     onValueEdited: function(v){ root.gate=v }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true; compact: true
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    Layout.minimumWidth: 72; Layout.minimumHeight: 92
+                    compact: true
                     title: "THRES"; value: root.threshold
                     from: -50; to: 0; step: 1; decimals: 0; unit: "dB"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.threshold=v; root.dispatchLive("threshold",v); graph.requestPaint() }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true; compact: true
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    Layout.minimumWidth: 72; Layout.minimumHeight: 92
+                    compact: true
                     title: "RATIO"; value: root.ratio
                     from: 1; to: 100; step: 1; decimals: 0; unit: ""; valuePrefix: "1:"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.ratio=v; root.dispatchLive("ratio",v); graph.requestPaint() }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true; compact: true
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    Layout.minimumWidth: 72; Layout.minimumHeight: 92
+                    compact: true
                     title: "ATTACK"; value: root.attack
                     from: 1; to: 100; step: 1; decimals: 0; unit: "ms"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.attack=v; root.dispatchLive("attack",v) }
                 }
                 StudioKnob {
-                    Layout.fillWidth: true; compact: true
+                    Layout.fillWidth: true; Layout.fillHeight: true
+                    Layout.minimumWidth: 72; Layout.minimumHeight: 92
+                    compact: true
                     title: "RELEASE"; value: root.release
                     from: 20; to: 5000; step: 10; decimals: 0; unit: "ms"
                     accentColor: root.accentColor
                     onValueEdited: function(v){ root.release=v; root.dispatchLive("release",v) }
                 }
+                Item {
+                    visible: root.includeGate
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    Layout.minimumWidth: 72
+                    Layout.minimumHeight: 92
+                }
             }
-
-            Item { Layout.fillHeight: true; Layout.preferredWidth: 0 }
         }
     }
 }

@@ -5,6 +5,7 @@ StudioPanel {
     id: root
 
     required property var bandModel
+    property var engine: null
     property string sectionLabel: "Mic A"
     property bool showMicSelector: false
     property int micChannel: 0
@@ -16,6 +17,41 @@ StudioPanel {
     property real selectedQ: 1
     readonly property var bands: bandModel
 
+    // PEQ_UNIFIED_BYPASS_RESET_AB_V1
+    // Every PEQ page owns the same local audition controls: reversible EQ bypass,
+    // EQ reset and an A/B compare pair. They operate only on PEQ bands; HPF/LPF
+    // crossover state is deliberately untouched. All transitions still use the
+    // existing EqBandModel setters so verified live-write/coalescing remains the
+    // only hardware path and each persistent graph keeps independent A/B memory.
+    property var compareA: null
+    property var compareB: null
+    property string compareSide: "A"
+    property var bypassSnapshot: null
+    property bool eqBypassActive: false
+
+    // PEQ_AB_AUTO_ACTIVE_V2
+    // A is a real active workspace from first frame, not a lazy snapshot created
+    // on the first A/B click. User band edits continuously refresh the selected
+    // side. Authoritative model sync (dataChanged without bandChanged) refreshes
+    // BOTH sides so a later device hydration cannot leave stale offline snapshots.
+    property bool compareApplying: false
+    property bool compareUsed: false
+    property int modelDataSerial: 0
+    property int lastUserBandSerial: 0
+
+    // HPF_LPF_STARTUP_DEFAULT_BYPASS_V1
+    // New/offline PEQ pages start with filter TYPE bypassed while preserving their
+    // frequency anchors. This priming happens once per persistent graph before the
+    // user can connect. Device readback remains authoritative and can replace it.
+    property bool startupCrossoverPrimed: false
+
+    // CROSSOVER_BYPASS_TYPE_STATE_V2
+    // Bypass is a filter type, never a magic edge frequency. The HP/LP anchor
+    // remains exactly where the user placed it while the response contribution
+    // becomes flat. This mirrors the native K500 app semantics.
+    readonly property bool hpfBypassed: String(root.bands.hpType).trim().toUpperCase() === "BYPASS"
+    readonly property bool lpfBypassed: String(root.bands.lpType).trim().toUpperCase() === "BYPASS"
+
     readonly property real virtualScaleX: graph.width > 0 ? graph.width / 1040.0 : 1.0
     readonly property real virtualScaleY: graph.height > 0 ? graph.height / 354.0 : 1.0
     readonly property real nodeScale: Math.min(virtualScaleX, virtualScaleY)
@@ -26,13 +62,16 @@ StudioPanel {
     readonly property real plotBottom: Math.max(topPad + 120 * virtualScaleY, graph.height - bottomPad)
 
     // PEQ_PREMIUM_JEWEL_NODES_V1
-    // Professional EQs make control points read as small floating instruments,
-    // not flat buttons. Each band keeps a restrained jewel identity while the
-    // global cyan focus ring remains the single selection language of SonKuPik.
     readonly property var colors: [
         "#A977FF", "#E86A92", "#FF7659", "#F5B94C", "#9AD654",
         "#55D6A0", "#42C7D9", "#5B9CFF", "#7C78FF", "#F58A45"
     ]
+    // MIC_SELECTOR_IDENTITY_V1 — native app makes A/B instantly recognizable.
+    // Keep SonKuPik's premium dark language while tinting the composite response
+    // green for Mic A and coral/red for Mic B. Other processors remain cyan.
+    readonly property color curveAccent: root.showMicSelector
+                                         ? (root.micChannel === 0 ? "#55E58A" : "#FF626E")
+                                         : Theme.accent
     readonly property real inspectorFrequency: selectedTarget === "hpf" ? Number(bands.hpfHz) : selectedTarget === "lpf" ? Number(bands.lpfHz) : selectedFreq
 
     signal micChannelRequested(int channel)
@@ -104,7 +143,8 @@ StudioPanel {
         return co[0]/Math.max(1e-12,Math.sqrt(re*re+im*im))
     }
     function crossOne(kind,label,cut,f){
-        label=String(label||"LR 24").toUpperCase()
+        label=String(label||"LR 24").trim().toUpperCase()
+        if(label==="BYPASS")return 0
         var order=label.indexOf("24")>=0?4:label.indexOf("18")>=0?3:2
         var r=kind==="lpf"?Math.max(f,1)/Math.max(cut,1):Math.max(cut,1)/Math.max(f,1),m
         if(label.indexOf("BESSEL")>=0)m=bessel(order,r)
@@ -114,8 +154,8 @@ StudioPanel {
     }
     function crossDb(f){
         var d=0,h=Number(bands.hpfHz)||20,l=Number(bands.lpfHz)||20000
-        if(h>20.001)d+=crossOne("hpf",bands.hpType,h,f)
-        if(l<19999.999)d+=crossOne("lpf",bands.lpType,l,f)
+        if(!root.hpfBypassed)d+=crossOne("hpf",bands.hpType,h,f)
+        if(!root.lpfBypassed)d+=crossOne("lpf",bands.lpType,l,f)
         return d
     }
     function totalDb(f){ var d=crossDb(f); for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f); return clamp(d,-48,48) }
@@ -135,38 +175,155 @@ StudioPanel {
     function setSelectedGain(v){selectedGain=clamp(v,-24,24);updateSelected()}
     function setSelectedQValue(v){selectedQ=clamp(v,0.1,30);updateSelected()}
     function resetSelected(){bands.resetBand(selectedIndex);selectBand(selectedIndex)}
+
+    function crossoverDisplayType(which) {
+        return which === "hpf" ? String(bands.hpType).trim() : String(bands.lpType).trim()
+    }
     function setCrossoverType(which,value){
+        var normalized=String(value).trim()
         if(which==="hpf"){
-            if(typeof bands.setHpType === "function")bands.setHpType(value)
-            else root.crossoverTypeRequested("hpf",value)
+            if(typeof bands.setHpType === "function")bands.setHpType(normalized)
+            else root.crossoverTypeRequested("hpf",normalized)
         }else{
-            if(typeof bands.setLpType === "function")bands.setLpType(value)
-            else root.crossoverTypeRequested("lpf",value)
+            if(typeof bands.setLpType === "function")bands.setLpType(normalized)
+            else root.crossoverTypeRequested("lpf",normalized)
         }
         curve.requestPaint()
     }
     function resetCrossover(which){
         if(which==="hpf"){
-            bands.setHpfHz(Number(bands.defaultHpfHz)||20)
-            setCrossoverType("hpf",String(bands.defaultHpType||"HP Butter 12"))
+            bands.setHpfHz(20)
         } else {
-            bands.setLpfHz(Number(bands.defaultLpfHz)||20000)
-            setCrossoverType("lpf",String(bands.defaultLpType||"LP Butter 12"))
+            bands.setLpfHz(20000)
         }
         curve.requestPaint()
     }
-    function resetAll(){bands.resetAll();selectBand(0)}
+
+    function ensureStartupCrossoverDefaults(){
+        if(startupCrossoverPrimed)return
+        startupCrossoverPrimed=true
+        if(String(bands.hpType).trim().toUpperCase()!=="BYPASS")bands.setHpType("Bypass")
+        if(String(bands.lpType).trim().toUpperCase()!=="BYPASS")bands.setLpType("Bypass")
+    }
+    function captureEqState(){
+        var result={bands:[]}
+        for(var i=0;i<bands.count;++i){
+            var b=bands.get(i)
+            result.bands.push({freq:Number(b.freq),gain:Number(b.gain),q:Number(b.q),typeName:String(b.typeName)})
+        }
+        return result
+    }
+    function cloneState(state){return state?JSON.parse(JSON.stringify(state)):null}
+    function primeCompareFromCurrent(){
+        var current=captureEqState()
+        compareA=cloneState(current)
+        compareB=cloneState(current)
+        compareSide="A"
+    }
+    function updateActiveCompareSnapshot(){
+        if(compareApplying||eqBypassActive)return
+        var current=captureEqState()
+        if(compareSide==="B")compareB=cloneState(current);else compareA=cloneState(current)
+    }
+    function applyEqState(state){
+        if(!state)return
+        compareApplying=true
+        try {
+            for(var i=0;i<bands.count&&i<state.bands.length;++i){
+                var b=state.bands[i]
+                bands.setBand(i,Number(b.freq),Number(b.gain),Number(b.q))
+                bands.setBandType(i,String(b.typeName))
+            }
+        } finally {
+            compareApplying=false
+        }
+        selectBand(Math.min(selectedIndex,bands.count-1))
+    }
+    function initializeCompareIfNeeded(){
+        if(compareA!==null&&compareB!==null)return
+        primeCompareFromCurrent()
+    }
+    function saveCompareSide(){
+        initializeCompareIfNeeded()
+        updateActiveCompareSnapshot()
+    }
+    function setEqBypass(enabled){
+        if(enabled===eqBypassActive)return
+        if(enabled){
+            saveCompareSide()
+            bypassSnapshot=captureEqState()
+            eqBypassActive=true
+            for(var i=0;i<bands.count;++i){
+                var b=bands.get(i)
+                bands.setBand(i,Number(b.freq),0,Number(b.q))
+            }
+        }else{
+            var restore=cloneState(bypassSnapshot)
+            eqBypassActive=false
+            bypassSnapshot=null
+            applyEqState(restore)
+            updateActiveCompareSnapshot()
+        }
+        curve.requestPaint()
+    }
+    function selectCompareSide(side){
+        var target=String(side).toUpperCase()==="B"?"B":"A"
+        if(eqBypassActive)setEqBypass(false)
+        initializeCompareIfNeeded()
+        saveCompareSide()
+        compareUsed=true
+        if(target===compareSide)return
+        compareSide=target
+        applyEqState(compareSide==="A"?compareA:compareB)
+        curve.requestPaint()
+    }
+    function toggleCompare(){selectCompareSide(compareSide==="A"?"B":"A")}
+    function resetAllVerified(){
+        if(eqBypassActive)setEqBypass(false)
+        for(var i=0;i<bands.count;++i)bands.resetBand(i)
+        selectBand(0)
+        updateActiveCompareSnapshot()
+        curve.requestPaint()
+    }
 
     Connections {
         target: bands
+        // syncBand() hydration emits dataChanged but not bandChanged. Delay the
+        // decision one turn so a normal user setBand() can mark the same serial
+        // as user-owned before this callback runs. Pure hydration then primes A/B
+        // together from device truth, while live edits only refresh the active side.
+        function onDataChanged(){
+            if(root.compareApplying||root.eqBypassActive)return
+            var serial=++root.modelDataSerial
+            Qt.callLater(function(){
+                if(root.compareApplying||root.eqBypassActive)return
+                if(root.lastUserBandSerial<serial){
+                    root.primeCompareFromCurrent()
+                    root.compareUsed=false
+                }
+            })
+        }
         function onBandChanged(){
+            if(!root.compareApplying&&!root.eqBypassActive){
+                root.lastUserBandSerial=root.modelDataSerial
+                root.updateActiveCompareSnapshot()
+            }
             if(root.selectedTarget==="band")root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
             else curve.requestPaint()
         }
         function onCrossoverChanged(){curve.requestPaint()}
     }
-    onBandModelChanged: Qt.callLater(function(){root.selectBand(0);curve.requestPaint()})
-    Component.onCompleted: selectBand(0)
+    onBandModelChanged: Qt.callLater(function(){
+        root.compareA=null;root.compareB=null;root.compareSide="A";root.compareUsed=false
+        root.compareApplying=false;root.eqBypassActive=false;root.bypassSnapshot=null
+        root.modelDataSerial=0;root.lastUserBandSerial=0
+        root.selectBand(0);root.primeCompareFromCurrent();curve.requestPaint()
+    })
+    Component.onCompleted: {
+        ensureStartupCrossoverDefaults()
+        selectBand(0)
+        Qt.callLater(function(){root.primeCompareFromCurrent()})
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -185,18 +342,181 @@ StudioPanel {
                 Text { text:root.sectionLabel;color:Theme.text;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.DemiBold }
             }
             Item { Layout.fillWidth: true }
+
             RowLayout {
                 visible: root.showMicSelector
                 spacing: 7
                 SoftButton { Layout.preferredWidth:58;Layout.preferredHeight:27;text:"Mic A";compact:true;checked:root.micChannel===0;onClicked:root.micChannelRequested(0) }
                 SoftButton { Layout.preferredWidth:58;Layout.preferredHeight:27;text:"Mic B";compact:true;checked:root.micChannel===1;onClicked:root.micChannelRequested(1) }
-                SoftButton { Layout.preferredWidth:78;Layout.preferredHeight:27;text:"EQ LINK";compact:true;checked:root.eqLinked;onClicked:root.eqLinkRequested(!root.eqLinked) }
+
+                // MIC_EQ_LINK_TOGGLE_V3 — exclusive A/B selector and an independent
+                // link switch share one optical center line.
+                Rectangle {
+                    Layout.preferredWidth:104
+                    Layout.preferredHeight:27
+                    radius:7
+                    color:root.eqLinked?"#102B2E":"#10161B"
+                    border.width:1
+                    border.color:root.eqLinked?Theme.accentSoft:"#29343C"
+                    RowLayout {
+                        anchors.fill:parent
+                        anchors.leftMargin:9
+                        anchors.rightMargin:7
+                        spacing:7
+                        Text {
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            text:"EQ LINK"
+                            color:root.eqLinked?Theme.accent:Theme.textSoft
+                            verticalAlignment:Text.AlignVCenter
+                            horizontalAlignment:Text.AlignHCenter
+                            font.family:Theme.fontFamily
+                            font.pixelSize:9
+                            font.weight:Font.DemiBold
+                        }
+                        Rectangle {
+                            Layout.preferredWidth:30
+                            Layout.preferredHeight:15
+                            Layout.alignment:Qt.AlignVCenter
+                            radius:8
+                            color:root.eqLinked?"#153F43":"#080C0F"
+                            border.width:1;border.color:root.eqLinked?Theme.accent:"#35414A"
+                            Rectangle {
+                                width:11;height:11;radius:6;y:2
+                                x:root.eqLinked?17:2
+                                color:root.eqLinked?Theme.accent:"#76838C"
+                                Behavior on x{NumberAnimation{duration:90;easing.type:Easing.OutCubic}}
+                                Behavior on color{ColorAnimation{duration:90}}
+                            }
+                        }
+                    }
+                    MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.eqLinkRequested(!root.eqLinked)}
+                }
             }
+
+            // PEQ_TOOLBAR_ALL_SECTIONS_V1
+            // Uniform order on every PEQ page: EQ BYPASS -> EQ RESET -> A | B.
+            // Mic A/B channel selection and EQ LINK stay separate to avoid
+            // conflating input-channel identity with the local compare slots.
             RowLayout {
-                visible: !root.showMicSelector
-                spacing: 7
-                SoftButton { Layout.preferredWidth:50;text:"FLAT";compact:true;onClicked:root.resetAll() }
-                SoftButton { Layout.preferredWidth:50;text:"A/B";compact:true }
+                spacing:7
+
+                Rectangle {
+                    id:eqBypassToggle
+                    Layout.preferredWidth:116
+                    Layout.preferredHeight:28
+                    radius:8
+                    color:root.eqBypassActive?"#102C30":(eqBypassMouse.containsMouse?"#121B21":"#0C1217")
+                    border.width:1
+                    border.color:root.eqBypassActive?Theme.accent:"#2A353D"
+                    Behavior on color{ColorAnimation{duration:90}}
+                    Behavior on border.color{ColorAnimation{duration:90}}
+
+                    RowLayout {
+                        anchors.fill:parent
+                        anchors.leftMargin:10
+                        anchors.rightMargin:7
+                        spacing:7
+                        Text {
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            text:"EQ BYPASS"
+                            color:root.eqBypassActive?Theme.accent:Theme.textSoft
+                            verticalAlignment:Text.AlignVCenter
+                            horizontalAlignment:Text.AlignHCenter
+                            font.family:Theme.fontFamily
+                            font.pixelSize:9
+                            font.weight:Font.DemiBold
+                        }
+                        Rectangle {
+                            Layout.preferredWidth:31
+                            Layout.preferredHeight:16
+                            Layout.alignment:Qt.AlignVCenter
+                            radius:8
+                            color:root.eqBypassActive?"#174148":"#070B0E"
+                            border.width:1
+                            border.color:root.eqBypassActive?Theme.accent:"#36424A"
+                            Rectangle {
+                                width:12;height:12;radius:6;y:2
+                                x:root.eqBypassActive?17:2
+                                color:root.eqBypassActive?Theme.accent:"#77858E"
+                                Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
+                                Behavior on color{ColorAnimation{duration:90}}
+                            }
+                        }
+                    }
+                    MouseArea {
+                        id:eqBypassMouse
+                        anchors.fill:parent
+                        hoverEnabled:true
+                        cursorShape:Qt.PointingHandCursor
+                        onClicked:root.setEqBypass(!root.eqBypassActive)
+                    }
+                }
+
+                SoftButton {
+                    Layout.preferredWidth:80
+                    Layout.preferredHeight:28
+                    text:"EQ RESET"
+                    compact:true
+                    amber:true
+                    onClicked:root.resetAllVerified()
+                }
+
+                Rectangle {
+                    id:abToggle
+                    Layout.preferredWidth:86
+                    Layout.preferredHeight:28
+                    radius:8
+                    color:abMouse.containsMouse?"#111A20":"#0B1014"
+                    border.width:1
+                    border.color:"#2C3941"
+                    clip:true
+                    Behavior on color{ColorAnimation{duration:80}}
+
+                    Rectangle {
+                        id:abSelection
+                        y:2
+                        x:root.compareSide==="B"?parent.width/2:2
+                        width:parent.width/2-2
+                        height:parent.height-4
+                        radius:6
+                        color:"#12343A"
+                        border.width:1
+                        border.color:Theme.accentSoft
+                        Behavior on x{NumberAnimation{duration:110;easing.type:Easing.OutCubic}}
+                    }
+                    Row {
+                        anchors.fill:parent
+                        Text {
+                            width:parent.width/2;height:parent.height
+                            text:"A"
+                            color:root.compareSide==="A"?Theme.accent:Theme.textDim
+                            horizontalAlignment:Text.AlignHCenter
+                            verticalAlignment:Text.AlignVCenter
+                            font.family:Theme.monoFamily
+                            font.pixelSize:10
+                            font.weight:Font.Bold
+                        }
+                        Text {
+                            width:parent.width/2;height:parent.height
+                            text:"B"
+                            color:root.compareSide==="B"?Theme.accent:Theme.textDim
+                            horizontalAlignment:Text.AlignHCenter
+                            verticalAlignment:Text.AlignVCenter
+                            font.family:Theme.monoFamily
+                            font.pixelSize:10
+                            font.weight:Font.Bold
+                        }
+                    }
+                    MouseArea {
+                        id:abMouse
+                        anchors.fill:parent
+                        hoverEnabled:true
+                        cursorShape:Qt.PointingHandCursor
+                        onClicked:function(event){root.selectCompareSide(event.x<width/2?"A":"B")}
+                    }
+                }
             }
         }
 
@@ -254,14 +574,11 @@ StudioPanel {
                     delegate:Item {
                         required property var modelData
                         x:0;y:root.yFor(modelData)-0.5;width:graph.width;height:1
-                        Rectangle{id:hGridLine;x:root.leftPad;y:0;width:graph.width-root.leftPad-root.rightPad;height:modelData===0?1.1:1;color:modelData===0?Theme.accent:"#FFFFFF";opacity:modelData===0?.18:.06}
+                        Rectangle{id:hGridLine;x:root.leftPad;y:0;width:graph.width-root.leftPad-root.rightPad;height:modelData===0?1.1:1;color:modelData===0?root.curveAccent:"#FFFFFF";opacity:modelData===0?.18:.06}
                         Text{anchors.right:hGridLine.left;anchors.rightMargin:10*root.virtualScaleX;anchors.verticalCenter:hGridLine.verticalCenter;text:modelData>0?"+"+modelData:modelData;color:"#A6B1BA";font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Medium}
                     }
                 }
 
-                // P1_NATIVE_PEQ_SCENEGRAPH_V1
-                // Response math is cached in C++ and the curve is retained as
-                // scene-graph geometry. QML still owns every interaction/handle.
                 EqCurveItem {
                     id:curve
                     anchors.fill:parent
@@ -272,7 +589,7 @@ StudioPanel {
                     rightPad:root.rightPad
                     topPad:root.topPad
                     plotBottom:root.plotBottom
-                    accentColor:Theme.accent
+                    accentColor:root.curveAccent
                     amberColor:Theme.amber
                 }
 
@@ -281,8 +598,8 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="hpf"
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.28}}
-                    Text{x:parent.width/2+12*root.virtualScaleX;y:6*root.virtualScaleY;text:Math.round(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.hpfBypassed?.11:.28}}
+                    Text{x:parent.width/2+12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.hpfBypassed?"HP BYPASS · "+root.fmtF(root.bands.hpfHz)+" Hz":root.fmtF(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
                     Item {
                         id:hpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -290,24 +607,22 @@ StudioPanel {
                         width:30*root.nodeScale;height:width
                         Rectangle {
                             anchors.centerIn:parent
-                            width:(hpfGuide.selected?30:23)*root.nodeScale;height:width;radius:width/2
-                            color:Theme.amber;opacity:hpfGuide.selected?.15:.055;antialiasing:true
+                            width:(hpfGuide.selected?28:22)*root.nodeScale;height:width;radius:width/2
+                            color:Theme.amber;opacity:hpfGuide.selected?.12:.045;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
-                            width:(hpfGuide.selected?24:20)*root.nodeScale;height:width;radius:width/2
-                            color:"transparent";border.width:hpfGuide.selected?1.8:1.2
-                            border.color:hpfGuide.selected?Theme.accent:Theme.amber;antialiasing:true
+                            width:(hpfGuide.selected?23:19)*root.nodeScale;height:width;radius:width/2
+                            color:"transparent";border.width:hpfGuide.selected?1.6:1.1
+                            border.color:Theme.amber;opacity:hpfGuide.selected?.92:.72;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
-                            Behavior on border.color{ColorAnimation{duration:75}}
                         }
                         Rectangle {
-                            id:hpfCore
                             anchors.centerIn:parent
-                            width:(hpfGuide.selected?18:16)*root.nodeScale;height:width;radius:width/2
+                            width:(hpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
                             color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
-                            Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:hpfGuide.selected?.38:.20;antialiasing:true}
+                            Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:hpfGuide.selected?.32:.18;antialiasing:true}
                             Text{anchors.centerIn:parent;text:"HP";color:hpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
                     }
@@ -319,8 +634,8 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="lpf"
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:.28}}
-                    Text{anchors.right:parent.horizontalCenter;anchors.rightMargin:12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.lpfBypassed?.11:.28}}
+                    Text{anchors.right:parent.horizontalCenter;anchors.rightMargin:12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.lpfBypassed?"LP BYPASS · "+root.fmtF(root.bands.lpfHz)+" Hz":root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
                     Item {
                         id:lpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -328,23 +643,22 @@ StudioPanel {
                         width:30*root.nodeScale;height:width
                         Rectangle {
                             anchors.centerIn:parent
-                            width:(lpfGuide.selected?30:23)*root.nodeScale;height:width;radius:width/2
-                            color:Theme.amber;opacity:lpfGuide.selected?.15:.055;antialiasing:true
+                            width:(lpfGuide.selected?28:22)*root.nodeScale;height:width;radius:width/2
+                            color:Theme.amber;opacity:lpfGuide.selected?.12:.045;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
-                            width:(lpfGuide.selected?24:20)*root.nodeScale;height:width;radius:width/2
-                            color:"transparent";border.width:lpfGuide.selected?1.8:1.2
-                            border.color:lpfGuide.selected?Theme.accent:Theme.amber;antialiasing:true
+                            width:(lpfGuide.selected?23:19)*root.nodeScale;height:width;radius:width/2
+                            color:"transparent";border.width:lpfGuide.selected?1.6:1.1
+                            border.color:Theme.amber;opacity:lpfGuide.selected?.92:.72;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
-                            Behavior on border.color{ColorAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
-                            width:(lpfGuide.selected?18:16)*root.nodeScale;height:width;radius:width/2
+                            width:(lpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
                             color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
-                            Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:lpfGuide.selected?.38:.20;antialiasing:true}
+                            Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:lpfGuide.selected?.32:.18;antialiasing:true}
                             Text{anchors.centerIn:parent;text:"LP";color:lpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
                     }
@@ -489,7 +803,7 @@ StudioPanel {
                     visible:root.selectedTarget!=="band"
                     mode:root.selectedTarget
                     frequency:root.inspectorFrequency
-                    filterType:root.selectedTarget==="hpf"?String(root.bands.hpType):String(root.bands.lpType)
+                    filterType:root.crossoverDisplayType(root.selectedTarget)
                     accentColor:Theme.amber
                     width:Math.min(320,graph.width-30);height:86
                     x:root.clamp(root.xFor(root.inspectorFrequency)-width/2,15,graph.width-width-15)
@@ -498,9 +812,53 @@ StudioPanel {
                     y:stickyTop?root.topPad+edgeGap:root.plotBottom-height-edgeGap
                     Behavior on x{SmoothedAnimation{velocity:1800}}
                     Behavior on y{SmoothedAnimation{velocity:1400}}
-                    onFrequencyEdited:function(v){if(root.selectedTarget==="hpf")root.bands.setHpfHz(v);else root.bands.setLpfHz(v)}
+                    onFrequencyEdited:function(v){
+                        if(root.selectedTarget==="hpf")root.bands.setHpfHz(v)
+                        else root.bands.setLpfHz(v)
+                    }
                     onTypeEdited:function(v){root.setCrossoverType(root.selectedTarget,v)}
                     onResetRequested:root.resetCrossover(root.selectedTarget)
+                }
+
+                // PEQ_BYPASS_AWARENESS_V1
+                // A professional bypass state must be obvious at a glance when the
+                // user moves rapidly between processors. This is a zero-input visual
+                // overlay only: no MouseArea, blur or offscreen layer, so interaction
+                // routing and retained-QSG performance remain untouched.
+                Rectangle {
+                    anchors.fill:parent
+                    visible:root.eqBypassActive
+                    z:90
+                    color:"#020406"
+                    opacity:.22
+                }
+                Column {
+                    anchors.centerIn:parent
+                    visible:root.eqBypassActive
+                    z:91
+                    spacing:4
+                    Text {
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        text:"EQ BYPASS"
+                        color:Theme.text
+                        opacity:.38
+                        style:Text.Outline
+                        styleColor:"#B0000000"
+                        font.family:Theme.displayFamily
+                        font.pixelSize:Math.max(34,Math.min(54,48*root.nodeScale))
+                        font.weight:Font.Bold
+                        font.letterSpacing:3.2
+                    }
+                    Text {
+                        anchors.horizontalCenter:parent.horizontalCenter
+                        text:"PARAMETRIC EQ DISENGAGED"
+                        color:Theme.accent
+                        opacity:.42
+                        font.family:Theme.monoFamily
+                        font.pixelSize:9
+                        font.weight:Font.DemiBold
+                        font.letterSpacing:1.7
+                    }
                 }
             }
         }
