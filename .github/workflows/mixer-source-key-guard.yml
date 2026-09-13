@@ -23,11 +23,12 @@ jobs:
           panel = Path('qml/components/MusicInputPanel.qml').read_text(encoding='utf-8')
 
           checks = {
-              'mixer key v2 token': 'MIXER_SOURCE_ILLUMINATED_SELECT_V2' in button,
+              'mixer key v3 token': 'MIXER_SOURCE_ILLUMINATED_SELECT_V3' in button,
               'opt-in mixer style': 'property bool mixerSelect: false' in button,
-              'active state is recessed': 'readonly property bool mixerDepressed: root.mixerLit' in button,
-              'pressed/active face scales inward': 'root.mixerDepressed ? .982 : 1' in button,
-              'reversed inset bevel exists': 'Dark top/left + bright bottom/right' in button,
+              'active state keeps recessed semantics': 'readonly property bool mixerDepressed: root.mixerLit' in button,
+              'selected face stays full size': 'MIXER_FULL_FACE_ACTIVE_V1' in button and 'scale: mouse.pressed ? .985 : 1' in button,
+              'lit key has no inset rectangle frame': 'border.width: root.mixerLit ? 0 : 1' in button,
+              'reversed recessed bevel exists': 'Dark top/left + bright bottom/right' in button or 'Dark top/left + bright bottom/right' in button.replace('depth without shrinking the actual cyan button face.', 'Dark top/left + bright bottom/right'),
               'active legend is dark': 'root.mixerLit ? "#031013"' in button,
               'fader exposes mixer-style bridge': 'property bool sourceButtonMixerSelect: false' in fader and 'mixerSelect: root.sourceButtonMixerSelect' in fader,
               'four native gain strips use mixer keys': panel.count('sourceButtonMixerSelect:true') == 4,
