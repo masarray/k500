@@ -57,7 +57,9 @@ WizardSmallImageFile={#WizardSmallImage}
 LicenseFile={#AppDir}\LICENSE
 Compression=lzma2/max
 SolidCompression=yes
-WizardStyle=modern
+; Inno 6.6+ follows the user's Windows light/dark preference. windows11 +
+; hidebevels keeps the shell clean while includetitlebar avoids a mismatched frame.
+WizardStyle=modern dynamic windows11 hidebevels includetitlebar
 WizardSizePercent=112
 SetupLogging=yes
 CloseApplications=yes
