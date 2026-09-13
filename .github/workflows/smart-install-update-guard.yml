@@ -1,0 +1,85 @@
+name: Guard smart install and update
+
+on:
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/AppVersionInit.cpp'
+      - 'src/AppUpdateManager.*'
+      - 'qml/Main.qml'
+      - 'qml/components/UpdateDialog.qml'
+      - 'packaging/windows/installer.iss'
+      - '.github/workflows/smart-install-update-guard.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/AppVersionInit.cpp'
+      - 'src/AppUpdateManager.*'
+      - 'qml/Main.qml'
+      - 'qml/components/UpdateDialog.qml'
+      - 'packaging/windows/installer.iss'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify professional install layout
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'DefaultDirName={autopf}\\{#AppName}' packaging/windows/installer.iss
+          grep -F 'PrivilegesRequired=admin' packaging/windows/installer.iss
+          grep -F 'UsePreviousAppDir=no' packaging/windows/installer.iss
+          grep -F 'RestartApplications=yes' packaging/windows/installer.iss
+          grep -F '/AUToupdate=1' src/AppUpdateManager.cpp
+          grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
+          if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
+            echo 'Stable installer must not default to LocalAppData' >&2
+            exit 1
+          fi
+
+      - name: Verify user preset storage contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'QStandardPaths::DocumentsLocation' src/AppVersionInit.cpp
+          grep -F 'SonKuPik K500/Presets' src/AppVersionInit.cpp
+          grep -F 'pcPresetLibrary/folder' src/AppVersionInit.cpp
+          grep -F 'QStandardPaths::AppLocalDataLocation' src/k500/K500OfficialPresetSync.cpp
+          if grep -Fq 'DocumentsLocation' src/k500/K500OfficialPresetSync.cpp; then
+            echo 'Official update cache must remain internal, not in Documents' >&2
+            exit 1
+          fi
+
+      - name: Verify secure in-app updater contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'releases/latest' src/AppUpdateManager.cpp
+          grep -F 'release-manifest.json' src/AppUpdateManager.cpp
+          grep -F 'SHA256SUMS.txt' src/AppUpdateManager.cpp
+          grep -F 'QCryptographicHash::Sha256' src/AppUpdateManager.cpp
+          grep -F 'stableReleaseEligible' src/AppUpdateManager.cpp
+          grep -F 'windows-x64' src/AppUpdateManager.cpp
+          grep -F 'ShellExecuteExW' src/AppUpdateManager.cpp
+          grep -F 'lpVerb = L"runas"' src/AppUpdateManager.cpp
+          grep -F 'QML_NAMED_ELEMENT(AppUpdater)' src/AppUpdateManager.h
+          grep -F 'qml/components/UpdateDialog.qml' CMakeLists.txt
+          grep -F 'AppUpdater.checkForUpdates(false)' qml/Main.qml
+          grep -F 'Update sekarang' qml/components/UpdateDialog.qml
+
+      - name: Reject unsafe update shortcuts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eiq 'disable.*(defender|antivirus)|Add-MpPreference|Set-MpPreference' src/AppUpdateManager.cpp packaging/windows/installer.iss; then
+            echo 'Updater must never weaken Windows security controls' >&2
+            exit 1
+          fi
+          if grep -Fq 'http://' src/AppUpdateManager.cpp; then
+            echo 'Updater must use HTTPS only' >&2
+            exit 1
+          fi
