@@ -33,7 +33,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Contract | Current truth |
 |---|---|
 | Hardware-qualified baseline | `v1.0.0` |
-| Current public stable | [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Public stable | [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
 | Product download router | [Setup](https://sonkupik-k500.pages.dev/download/windows) · [Portable](https://sonkupik-k500.pages.dev/download/portable) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
