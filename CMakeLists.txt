@@ -169,6 +169,20 @@ add_executable(k500_p42_batch_test
 )
 target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core Qt6::Network)
 
+# UPDATE_METADATA_SELF_TEST_V1 — run the production updater manifest/checksum
+# parser without network access, installer execution, or K500 hardware.
+add_executable(k500_update_selftest
+    src/AppUpdateSelfTestMain.cpp
+    src/AppUpdateManager.cpp
+    src/AppUpdateManagerSelfTest.cpp
+    src/AppUpdateManager.h
+)
+target_include_directories(k500_update_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(k500_update_selftest PRIVATE Qt6::Core Qt6::Network Qt6::Qml)
+if(WIN32)
+    target_link_libraries(k500_update_selftest PRIVATE shell32)
+endif()
+
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
