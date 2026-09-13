@@ -2,6 +2,7 @@
 
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDateTime>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -24,6 +25,8 @@
 namespace {
 const QUrl LatestReleaseUrl(QStringLiteral(
     "https://api.github.com/repos/masarray/k500/releases/latest"));
+constexpr qint64 AutomaticCheckIntervalSecs = 6 * 60 * 60;
+constexpr qint64 MinimumInstallerBytes = 1024 * 1024;
 
 QByteArray normalizedTagVersion(const QString &tag)
 {
@@ -33,6 +36,13 @@ QByteArray normalizedTagVersion(const QString &tag)
     return value.toLatin1();
 }
 
+bool trustedGitHubApi(const QUrl &url)
+{
+    return url.isValid()
+        && url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0
+        && url.host().compare(QStringLiteral("api.github.com"), Qt::CaseInsensitive) == 0;
+}
+
 bool trustedGitHubAsset(const QUrl &url)
 {
     if (!url.isValid() || url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) != 0)
@@ -40,7 +50,27 @@ bool trustedGitHubAsset(const QUrl &url)
     const QString host = url.host().toLower();
     return host == QStringLiteral("github.com")
         || host == QStringLiteral("objects.githubusercontent.com")
-        || host == QStringLiteral("release-assets.githubusercontent.com");
+        || host == QStringLiteral("release-assets.githubusercontent.com")
+        || host == QStringLiteral("github-releases.githubusercontent.com");
+}
+
+bool validSha256Hex(const QByteArray &value)
+{
+    if (value.size() != 64)
+        return false;
+    for (const char ch : value) {
+        const bool decimal = ch >= '0' && ch <= '9';
+        const bool lowerHex = ch >= 'a' && ch <= 'f';
+        const bool upperHex = ch >= 'A' && ch <= 'F';
+        if (!decimal && !lowerHex && !upperHex)
+            return false;
+    }
+    return true;
+}
+
+QString expectedSetupName(const QString &version)
+{
+    return QStringLiteral("SonKuPik-K500-v%1-Windows-Setup.exe").arg(version);
 }
 }
 
@@ -89,7 +119,10 @@ void AppUpdateManager::resetReleaseMetadata()
     m_setupAssetUrl = {};
     m_manifestUrl = {};
     m_checksumsUrl = {};
+    m_manifestSha256.clear();
     m_expectedSha256.clear();
+    m_manifestSetupBytes = -1;
+    m_releaseSetupBytes = -1;
     setProgress(0.0);
     emit updateChanged();
 }
@@ -109,6 +142,20 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
     if (busy())
         return;
 
+    // SMART_UPDATE_THROTTLE_V1 — automatic discovery is deliberately quiet and
+    // bounded. Manual checks always bypass the throttle; failed checks are not
+    // cached, so a transient outage can recover on the next launch.
+    if (!userInitiated) {
+        const QDateTime lastCheck = QSettings().value(
+            QStringLiteral("updates/lastSuccessfulCheckUtc")).toDateTime();
+        if (lastCheck.isValid()
+            && lastCheck.secsTo(QDateTime::currentDateTimeUtc()) >= 0
+            && lastCheck.secsTo(QDateTime::currentDateTimeUtc()) < AutomaticCheckIntervalSecs) {
+            setState(QStringLiteral("idle"));
+            return;
+        }
+    }
+
     resetReleaseMetadata();
     setState(QStringLiteral("checking"), QStringLiteral("Checking for updates…"));
 
@@ -117,14 +164,20 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
         const QByteArray payload = reply->readAll();
         const auto error = reply->error();
         const QString errorString = reply->errorString();
+        const QUrl finalUrl = reply->url();
         reply->deleteLater();
 
-        if (error != QNetworkReply::NoError) {
+        if (error != QNetworkReply::NoError || !trustedGitHubApi(finalUrl)) {
+            const QString reason = error != QNetworkReply::NoError
+                ? errorString : QStringLiteral("Update discovery left the trusted GitHub API endpoint.");
             setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
                      userInitiated ? QStringLiteral("Update check failed") : QString(),
-                     userInitiated ? errorString : QString());
+                     userInitiated ? reason : QString());
             return;
         }
+
+        QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc"),
+                             QDateTime::currentDateTimeUtc());
         handleLatestRelease(payload, userInitiated);
     });
 }
@@ -165,8 +218,10 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
+    const QString requiredSetupName = expectedSetupName(version);
     QString setupName;
     QUrl setupUrl;
+    qint64 setupBytes = -1;
     QUrl manifestUrl;
     QUrl sumsUrl;
     const QJsonArray assets = release.value(QStringLiteral("assets")).toArray();
@@ -176,9 +231,10 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         const QUrl url(asset.value(QStringLiteral("browser_download_url")).toString());
         if (!trustedGitHubAsset(url))
             continue;
-        if (name.endsWith(QStringLiteral("-Windows-Setup.exe"), Qt::CaseInsensitive)) {
+        if (name == requiredSetupName) {
             setupName = name;
             setupUrl = url;
+            setupBytes = qint64(asset.value(QStringLiteral("size")).toDouble(-1));
         } else if (name == QStringLiteral("release-manifest.json")) {
             manifestUrl = url;
         } else if (name == QStringLiteral("SHA256SUMS.txt")) {
@@ -186,7 +242,8 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         }
     }
 
-    if (setupName.isEmpty() || setupUrl.isEmpty() || manifestUrl.isEmpty() || sumsUrl.isEmpty()) {
+    if (setupName.isEmpty() || setupUrl.isEmpty() || setupBytes < MinimumInstallerBytes
+        || manifestUrl.isEmpty() || sumsUrl.isEmpty()) {
         setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
                  userInitiated ? QStringLiteral("Stable update package is incomplete") : QString(),
                  userInitiated ? QStringLiteral("Required setup/manifest/checksum assets were not found.") : QString());
@@ -203,6 +260,7 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
     m_releaseNotes = release.value(QStringLiteral("body")).toString().trimmed();
     m_setupAssetName = setupName;
     m_setupAssetUrl = setupUrl;
+    m_releaseSetupBytes = setupBytes;
     m_manifestUrl = manifestUrl;
     m_checksumsUrl = sumsUrl;
     m_updateAvailable = true;
@@ -250,7 +308,9 @@ void AppUpdateManager::downloadAndInstall()
 {
     if (!m_updateAvailable || busy())
         return;
+    m_manifestSha256.clear();
     m_expectedSha256.clear();
+    m_manifestSetupBytes = -1;
     setProgress(0.0);
     setState(QStringLiteral("preparing"), QStringLiteral("Validating release metadata…"));
     downloadManifest();
@@ -263,10 +323,15 @@ void AppUpdateManager::downloadManifest()
         const QByteArray payload = reply->readAll();
         const auto error = reply->error();
         const QString errorString = reply->errorString();
+        const QUrl finalUrl = reply->url();
         reply->deleteLater();
-        if (error != QNetworkReply::NoError || !validateManifest(payload)) {
-            setState(QStringLiteral("error"), QStringLiteral("Update verification failed"),
-                     error != QNetworkReply::NoError ? errorString : m_errorText);
+        if (error != QNetworkReply::NoError || !trustedGitHubAsset(finalUrl)
+            || !validateManifest(payload)) {
+            const QString reason = error != QNetworkReply::NoError ? errorString
+                : !trustedGitHubAsset(finalUrl)
+                    ? QStringLiteral("Release manifest redirected outside trusted GitHub asset hosts.")
+                    : m_errorText;
+            setState(QStringLiteral("error"), QStringLiteral("Update verification failed"), reason);
             return;
         }
         setProgress(0.08);
@@ -282,30 +347,71 @@ bool AppUpdateManager::validateManifest(const QByteArray &payload)
         m_errorText = QStringLiteral("release-manifest.json is invalid.");
         return false;
     }
+
     const QJsonObject manifest = document.object();
-    if (manifest.value(QStringLiteral("channel")).toString() != QStringLiteral("stable")
+    if (manifest.value(QStringLiteral("schema")).toString()
+            != QStringLiteral("sonkupik-k500-release-manifest-v3")
+        || manifest.value(QStringLiteral("product")).toString() != QStringLiteral("SonKuPik K500")
+        || manifest.value(QStringLiteral("channel")).toString() != QStringLiteral("stable")
         || manifest.value(QStringLiteral("version")).toString() != m_latestVersion
         || !manifest.value(QStringLiteral("stableReleaseEligible")).toBool()
-        || manifest.value(QStringLiteral("target")).toString() != QStringLiteral("windows-x64")) {
+        || manifest.value(QStringLiteral("target")).toString() != QStringLiteral("windows-x64")
+        || manifest.value(QStringLiteral("installerTechnology")).toString() != QStringLiteral("Inno Setup 6")) {
         m_errorText = QStringLiteral("Release manifest does not match this stable Windows update.");
         return false;
     }
+
+    const QString requiredName = expectedSetupName(m_latestVersion);
+    if (m_setupAssetName != requiredName) {
+        m_errorText = QStringLiteral("Setup filename does not match the requested application version.");
+        return false;
+    }
+
+    QByteArray manifestHash;
+    qint64 manifestBytes = -1;
+    const QJsonArray artifacts = manifest.value(QStringLiteral("artifacts")).toArray();
+    for (const QJsonValue &value : artifacts) {
+        const QJsonObject artifact = value.toObject();
+        if (artifact.value(QStringLiteral("file")).toString() != requiredName)
+            continue;
+        manifestHash = artifact.value(QStringLiteral("sha256")).toString().toLatin1().toLower();
+        manifestBytes = qint64(artifact.value(QStringLiteral("bytes")).toDouble(-1));
+        break;
+    }
+
+    if (!validSha256Hex(manifestHash) || manifestBytes < MinimumInstallerBytes) {
+        m_errorText = QStringLiteral("Release manifest is missing a valid Setup artifact identity.");
+        return false;
+    }
+    if (m_releaseSetupBytes > 0 && manifestBytes != m_releaseSetupBytes) {
+        m_errorText = QStringLiteral("GitHub asset size does not match the signed release manifest metadata.");
+        return false;
+    }
+
+    m_manifestSha256 = manifestHash;
+    m_manifestSetupBytes = manifestBytes;
     return true;
 }
 
 void AppUpdateManager::downloadChecksums()
 {
-    setState(QStringLiteral("preparing"), QStringLiteral("Checking release checksum…"));
+    setState(QStringLiteral("preparing"), QStringLiteral("Cross-checking release checksum…"));
     QNetworkReply *reply = get(m_checksumsUrl);
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
         const QByteArray payload = reply->readAll();
         const auto error = reply->error();
         const QString errorString = reply->errorString();
+        const QUrl finalUrl = reply->url();
         reply->deleteLater();
-        if (error != QNetworkReply::NoError || !parseExpectedChecksum(payload)) {
-            setState(QStringLiteral("error"), QStringLiteral("Update verification failed"),
-                     error != QNetworkReply::NoError ? errorString
-                                                     : QStringLiteral("Setup checksum is missing from SHA256SUMS.txt."));
+        if (error != QNetworkReply::NoError || !trustedGitHubAsset(finalUrl)
+            || !parseExpectedChecksum(payload)) {
+            const QString reason = error != QNetworkReply::NoError ? errorString
+                : !trustedGitHubAsset(finalUrl)
+                    ? QStringLiteral("Checksum file redirected outside trusted GitHub asset hosts.")
+                    : (m_errorText.isEmpty()
+                        ? QStringLiteral("Setup checksum is missing from SHA256SUMS.txt.")
+                        : m_errorText);
+            setState(QStringLiteral("error"), QStringLiteral("Update verification failed"), reason);
             return;
         }
         setProgress(0.12);
@@ -318,18 +424,28 @@ bool AppUpdateManager::parseExpectedChecksum(const QByteArray &payload)
     const QList<QByteArray> lines = payload.split('\n');
     for (const QByteArray &lineRaw : lines) {
         const QByteArray line = lineRaw.trimmed();
-        if (line.isEmpty())
+        if (line.size() < 66)
             continue;
-        const int sep = line.indexOf("  ");
-        if (sep <= 0)
+
+        const QByteArray hash = line.left(64).toLower();
+        if (!validSha256Hex(hash))
             continue;
-        const QByteArray hash = line.left(sep).trimmed().toLower();
-        const QString name = QString::fromUtf8(line.mid(sep + 2).trimmed());
-        if (name == m_setupAssetName && hash.size() == 64) {
-            m_expectedSha256 = hash;
-            return true;
+
+        QByteArray tail = line.mid(64).trimmed();
+        if (tail.startsWith('*'))
+            tail.remove(0, 1);
+        const QString name = QString::fromUtf8(tail.trimmed());
+        if (name != m_setupAssetName)
+            continue;
+
+        if (m_manifestSha256.isEmpty() || hash != m_manifestSha256) {
+            m_errorText = QStringLiteral("SHA256SUMS.txt disagrees with release-manifest.json.");
+            return false;
         }
+        m_expectedSha256 = hash;
+        return true;
     }
+    m_errorText = QStringLiteral("Setup checksum is missing from SHA256SUMS.txt.");
     return false;
 }
 
@@ -337,27 +453,63 @@ void AppUpdateManager::downloadInstaller()
 {
     setState(QStringLiteral("downloading"),
              QStringLiteral("Downloading SonKuPik K500 %1…").arg(m_latestVersion));
+
+    QFile::remove(installerPath());
     QNetworkReply *reply = get(m_setupAssetUrl);
+    auto *file = new QSaveFile(reply);
+    file->setFileName(installerPath());
+    if (!file->open(QIODevice::WriteOnly)) {
+        reply->abort();
+        reply->deleteLater();
+        setState(QStringLiteral("error"), QStringLiteral("Could not save the update"), installerPath());
+        return;
+    }
+
+    connect(reply, &QNetworkReply::readyRead, this, [reply, file] {
+        const QByteArray chunk = reply->readAll();
+        if (!chunk.isEmpty() && file->write(chunk) != chunk.size())
+            file->setProperty("sonkupikWriteFailed", true);
+    });
     connect(reply, &QNetworkReply::downloadProgress, this,
             [this](qint64 received, qint64 total) {
-        if (total > 0)
-            setProgress(0.12 + (qreal(received) / qreal(total)) * 0.78);
+        const qint64 expected = m_manifestSetupBytes > 0 ? m_manifestSetupBytes : total;
+        if (expected > 0)
+            setProgress(0.12 + qMin<qreal>(1.0, qreal(received) / qreal(expected)) * 0.78);
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
-        const QByteArray bytes = reply->readAll();
+    connect(reply, &QNetworkReply::finished, this, [this, reply, file] {
+        const QByteArray remaining = reply->readAll();
+        if (!remaining.isEmpty() && file->write(remaining) != remaining.size())
+            file->setProperty("sonkupikWriteFailed", true);
+
         const auto error = reply->error();
         const QString errorString = reply->errorString();
-        reply->deleteLater();
-        if (error != QNetworkReply::NoError) {
-            setState(QStringLiteral("error"), QStringLiteral("Download failed"), errorString);
+        const QUrl finalUrl = reply->url();
+        const bool writeFailed = file->property("sonkupikWriteFailed").toBool();
+
+        if (error != QNetworkReply::NoError || !trustedGitHubAsset(finalUrl) || writeFailed) {
+            file->cancelWriting();
+            reply->deleteLater();
+            const QString reason = error != QNetworkReply::NoError ? errorString
+                : !trustedGitHubAsset(finalUrl)
+                    ? QStringLiteral("Installer download redirected outside trusted GitHub asset hosts.")
+                    : QStringLiteral("Windows could not write the complete update package.");
+            setState(QStringLiteral("error"), QStringLiteral("Download failed"), reason);
             return;
         }
 
-        QSaveFile file(installerPath());
-        if (!file.open(QIODevice::WriteOnly)
-            || file.write(bytes) != bytes.size()
-            || !file.commit()) {
+        if (!file->commit()) {
+            reply->deleteLater();
             setState(QStringLiteral("error"), QStringLiteral("Could not save the update"), installerPath());
+            return;
+        }
+        reply->deleteLater();
+
+        const qint64 downloadedBytes = QFileInfo(installerPath()).size();
+        if (m_manifestSetupBytes <= 0 || downloadedBytes != m_manifestSetupBytes
+            || (m_releaseSetupBytes > 0 && downloadedBytes != m_releaseSetupBytes)) {
+            QFile::remove(installerPath());
+            setState(QStringLiteral("error"), QStringLiteral("Downloaded update failed verification"),
+                     QStringLiteral("Installer size does not match the release metadata."));
             return;
         }
 
@@ -387,13 +539,23 @@ bool AppUpdateManager::verifyInstaller(QString *error) const
         if (error) *error = QStringLiteral("Downloaded installer cannot be opened.");
         return false;
     }
+    if (m_manifestSetupBytes < MinimumInstallerBytes || file.size() != m_manifestSetupBytes) {
+        if (error) *error = QStringLiteral("Downloaded installer size is not the verified release size.");
+        return false;
+    }
+    if (file.read(2) != QByteArrayLiteral("MZ") || !file.seek(0)) {
+        if (error) *error = QStringLiteral("Downloaded package is not a Windows executable.");
+        return false;
+    }
+
     QCryptographicHash hash(QCryptographicHash::Sha256);
     if (!hash.addData(&file)) {
         if (error) *error = QStringLiteral("Could not hash the downloaded installer.");
         return false;
     }
     const QByteArray actual = hash.result().toHex().toLower();
-    if (m_expectedSha256.isEmpty() || actual != m_expectedSha256) {
+    if (m_expectedSha256.isEmpty() || m_manifestSha256.isEmpty()
+        || m_expectedSha256 != m_manifestSha256 || actual != m_expectedSha256) {
         if (error) *error = QStringLiteral("SHA-256 mismatch. The update was not executed.");
         return false;
     }
