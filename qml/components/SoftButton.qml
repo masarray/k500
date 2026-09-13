@@ -37,12 +37,11 @@ Rectangle {
     implicitWidth: root.transport ? 29 : root.compact ? 52 : 70
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
     radius: root.transport ? 6 : 7
-    transformOrigin: Item.Center
 
-    // MIXER_RAISED_SURFACE_V1
-    // Only the physical press compresses/moves the key. A selected key never
-    // remains shrunken, so its illuminated face always fills the full control.
-    scale: mouse.pressed ? .988 : 1
+    // TEXT_NATIVE_PRESS_STABILITY_V1
+    // Native-rasterized text must not be scaled as part of the press animation;
+    // fractional transforms can temporarily soften glyphs. A 1 px physical
+    // travel preserves the tactile hardware-key feel with zero resampling.
     transform: Translate {
         id: pressShift
         y: mouse.pressed ? 1 : 0
@@ -208,7 +207,7 @@ Rectangle {
 
         LucideIcon {
             visible: root.iconName.length > 0
-            width: root.transport ? 14 : root.compact ? 13 : 15
+            width: root.transport ? 15 : root.compact ? 14 : 16
             height: width
             anchors.verticalCenter: parent.verticalCenter
             name: root.iconName
@@ -217,7 +216,7 @@ Rectangle {
                  : root.danger ? "#FFD8D8"
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
                  : root.toolbar ? "#C3CFD5" : "#D5DDE1"
-            strokeWidth: root.transport ? 1.75 : root.toolbar ? 1.70 : 1.75
+            strokeWidth: root.transport ? 2.05 : root.toolbar ? 2.0 : 2.05
             filled: root.toolbar ? false : root.iconFilled
         }
 
@@ -235,9 +234,11 @@ Rectangle {
             styleColor: !root.mixerSelect && root.contextHighlighted
                         ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.32)
                         : "transparent"
+            renderType: Text.NativeRendering
             font.family: Theme.fontFamily
-            font.pixelSize: root.compact ? Theme.textXS : Theme.textS
+            font.pixelSize: root.compact ? 10 : Theme.textS
             font.weight: root.mixerLit || root.primaryAction ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
+            font.hintingPreference: Font.PreferFullHinting
             font.letterSpacing: .12
             Behavior on color { ColorAnimation { duration:75 } }
             Behavior on styleColor { ColorAnimation { duration:75 } }
@@ -258,5 +259,4 @@ Rectangle {
     }
 
     Behavior on border.color { ColorAnimation { duration:80 } }
-    Behavior on scale { NumberAnimation { duration:65; easing.type:Easing.OutQuad } }
 }
