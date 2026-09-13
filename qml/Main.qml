@@ -38,6 +38,7 @@ ApplicationWindow {
             Layout.maximumHeight: 52
             deviceManager: root.deviceManager
             engine: root.studioEngine
+            onAboutRequested: aboutDialog.open()
         }
 
         RowLayout {
@@ -126,6 +127,12 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    // ABOUT_FLOATING_CARD_V1 — window-owned so it centers over the complete
+    // application, not merely over the toolbar or current processor panel.
+    AboutDialog {
+        id: aboutDialog
     }
 
     // P1_MIC_EQ_LINK_UI_BRIDGE_V1
