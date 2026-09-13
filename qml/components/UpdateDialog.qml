@@ -6,6 +6,10 @@ import QtQuick.Shapes
 Popup {
     id: root
     required property var updateManager
+    required property var deviceManager
+    readonly property var presetManager: root.deviceManager ? root.deviceManager.presetManager : null
+    readonly property bool deviceTransactionBusy: !!root.presetManager && !!root.presetManager.busy
+
     parent: Overlay.overlay
     anchors.centerIn: parent
     modal: true
@@ -218,7 +222,9 @@ Popup {
             ColumnLayout {
                 Layout.fillWidth: true
                 spacing: 6
-                visible: root.updateManager && (root.updateManager.busy || root.updateManager.state === "error")
+                visible: root.deviceTransactionBusy
+                         || (root.updateManager
+                             && (root.updateManager.busy || root.updateManager.state === "error"))
 
                 ProgressBar {
                     Layout.fillWidth: true
@@ -230,12 +236,16 @@ Popup {
 
                 Text {
                     Layout.fillWidth: true
-                    text: root.updateManager
-                          ? (root.updateManager.errorText.length > 0
-                             ? root.updateManager.errorText
-                             : root.updateManager.statusText)
-                          : ""
-                    color: root.updateManager && root.updateManager.state === "error" ? Theme.amber : Theme.textDim
+                    text: root.deviceTransactionBusy
+                          ? "Tunggu Save / Upload / Mass Upload selesai sebelum memperbarui aplikasi. K500 tidak akan diputus di tengah transaksi permanen."
+                          : root.updateManager
+                            ? (root.updateManager.errorText.length > 0
+                               ? root.updateManager.errorText
+                               : root.updateManager.statusText)
+                            : ""
+                    color: root.deviceTransactionBusy
+                           || (root.updateManager && root.updateManager.state === "error")
+                           ? Theme.amber : Theme.textDim
                     renderType: Text.NativeRendering
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -277,14 +287,16 @@ Popup {
                     Layout.preferredHeight: 34
                     text: root.updateManager && root.updateManager.busy
                           ? "Memproses…"
-                          : (root.updateManager && root.updateManager.state === "error"
-                             ? "Coba lagi"
-                             : "Update sekarang")
+                          : root.deviceTransactionBusy
+                            ? "Tunggu transaksi"
+                            : (root.updateManager && root.updateManager.state === "error"
+                               ? "Coba lagi"
+                               : "Update sekarang")
                     compact: false
                     mixerSelect: true
                     primaryAction: true
                     checked: true
-                    enabled: root.updateManager && !root.updateManager.busy
+                    enabled: root.updateManager && !root.updateManager.busy && !root.deviceTransactionBusy
                     onClicked: root.updateManager.downloadAndInstall()
                 }
             }
