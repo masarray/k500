@@ -79,7 +79,13 @@ jobs:
           foreach ($token in @('<title>SonKuPik K500','./favicon.png','./SonKuPik-k500-logo.png','v1.0.0 Public Stable')) {
             if (-not $landing.Contains($token)) { throw "Landing-page brand regression: missing '$token'" }
           }
-          foreach ($token in @('AppName={#AppName}','WizardStyle=modern','PrivilegesRequired=lowest','SonKuPik-K500.exe')) {
+          foreach ($token in @(
+            'AppName={#AppName}',
+            'WizardStyle=modern',
+            'DefaultDirName={autopf}\{#AppName}',
+            'PrivilegesRequired=admin',
+            'SonKuPik-K500.exe'
+          )) {
             if (-not $installer.Contains($token)) { throw "Inno installer regression: missing '$token'" }
           }
           foreach ($token in @(
