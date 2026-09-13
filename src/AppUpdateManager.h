@@ -2,6 +2,7 @@
 
 #include <QObject>
 #include <QUrl>
+#include <QtQmlIntegration/qqmlintegration.h>
 
 class QNetworkAccessManager;
 class QNetworkReply;
@@ -9,6 +10,8 @@ class QNetworkReply;
 class AppUpdateManager final : public QObject
 {
     Q_OBJECT
+    QML_NAMED_ELEMENT(AppUpdater)
+    QML_SINGLETON
     Q_PROPERTY(QString currentVersion READ currentVersion CONSTANT)
     Q_PROPERTY(QString latestVersion READ latestVersion NOTIFY updateChanged)
     Q_PROPERTY(QString releaseNotes READ releaseNotes NOTIFY updateChanged)
