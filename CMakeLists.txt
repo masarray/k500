@@ -28,8 +28,6 @@ endif()
 qt_add_executable(sonkupik_studio_native WIN32
     src/main.cpp
     src/AppVersionInit.cpp
-    src/AppUpdateManager.cpp
-    src/AppUpdateManager.h
     src/StudioEngine.cpp
     src/StudioEngine.h
     src/DevicePerformanceMonitor.cpp
@@ -219,6 +217,8 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
     SOURCES
+        src/AppUpdateManager.cpp
+        src/AppUpdateManager.h
         src/EqCurveItem.cpp
         src/EqCurveItem.h
 )
