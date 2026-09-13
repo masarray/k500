@@ -15,6 +15,7 @@ StudioPanel {
     property color accentColor: Theme.accent
     accentTop: false
 
+    // P1_RACK_DYNAMICS_LIVE_BRIDGE_V1
     // P1_RACK_DYNAMICS_LIVE_BRIDGE_V2
     // Do not discover StudioEngine by walking visual parents: StackLayout and
     // layout internals can interrupt that chain. Main.qml is the stable window
