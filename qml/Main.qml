@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import SonkupikRuntime 1.0
 
 ApplicationWindow {
     id: root
@@ -134,6 +135,26 @@ ApplicationWindow {
     AboutDialog {
         id: aboutDialog
     }
+
+    // SMART_UPDATE_UI_V1 — update discovery is silent on startup. Only a newer
+    // public stable release opens the premium prompt; network failure never
+    // interrupts K500 control or produces a startup warning.
+    UpdateDialog {
+        id: updateDialog
+        updateManager: AppUpdater
+    }
+
+    Connections {
+        target: AppUpdater
+        function onUpdateChanged() {
+            if (AppUpdater.updateAvailable && !updateDialog.opened)
+                updateDialog.open()
+        }
+    }
+
+    Component.onCompleted: Qt.callLater(function() {
+        AppUpdater.checkForUpdates(false)
+    })
 
     // P1_MIC_EQ_LINK_UI_BRIDGE_V1
     // SectionEqGraph owns the local toggle and SectionWorkspace mirrors it.
