@@ -11,6 +11,8 @@ StudioPanel {
     required property var deviceManager
     required property var engine
     property bool transportPlaying: false
+    signal aboutRequested()
+
     readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
     readonly property string deviceStatusText: deviceManager.status === "connected" ? "ONLINE"
                                                 : deviceManager.status === "connecting" ? "CONNECT"
@@ -300,6 +302,21 @@ StudioPanel {
         }
 
         Item { Layout.fillWidth:true }
+
+        // ABOUT_ENTRY_V1 — compact information key; the floating About card
+        // itself is owned by the ApplicationWindow so it stays truly centered.
+        SoftButton {
+            Layout.preferredWidth:32
+            Layout.preferredHeight:30
+            text:"i"
+            compact:true
+            toolbar:true
+            onClicked:root.aboutRequested()
+            ToolTip.visible:aboutHover.containsMouse
+            ToolTip.text:"About SonKuPik K500"
+            ToolTip.delay:300
+            MouseArea { id:aboutHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton }
+        }
 
         SoftButton {
             Layout.preferredWidth:94
