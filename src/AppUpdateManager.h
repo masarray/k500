@@ -44,6 +44,10 @@ public:
     Q_INVOKABLE void remindLater();
     Q_INVOKABLE void skipThisVersion();
 
+    // UPDATE_METADATA_SELF_TEST_V1 — hardware/network-free release-integrity
+    // regression used by Windows CI and packaged-runtime qualification.
+    static bool selfTest(QString *error = nullptr);
+
 signals:
     void updateChanged();
     void stateChanged();
