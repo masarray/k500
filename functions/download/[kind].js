@@ -103,7 +103,9 @@ export async function onRequest(context) {
       });
     }
 
-    return proxyResponse(request, upstream, descriptor);
+    // Preserve the release asset identity in the user's Downloads folder while
+    // keeping the public route stable and version-agnostic.
+    return proxyResponse(request, upstream, { ...descriptor, filename: assetName });
   } catch {
     return new Response('Latest stable download is temporarily unavailable. Please try again shortly.', {
       status: 503,
