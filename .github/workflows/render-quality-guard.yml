@@ -1,0 +1,45 @@
+name: Guard render quality
+
+on:
+  pull_request:
+    paths:
+      - 'src/AppVersionInit.cpp'
+      - 'qml/components/LucideIcon.qml'
+      - 'qml/components/SoftButton.qml'
+      - '.github/workflows/render-quality-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  render-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard premium low-cost rasterization
+        shell: python
+        run: |
+          from pathlib import Path
+
+          init = Path('src/AppVersionInit.cpp').read_text(encoding='utf-8')
+          icon = Path('qml/components/LucideIcon.qml').read_text(encoding='utf-8')
+          button = Path('qml/components/SoftButton.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'native text default': 'QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering)' in init,
+              'native text token': 'UI_NATIVE_TEXT_RENDERING_V1' in init,
+              'curve lucide token': 'LUCIDE_CURVE_AA_V1' in icon,
+              'all lucide shapes request curve renderer': icon.count('preferredRendererType: Shape.CurveRenderer') >= 11,
+              'no window-wide MSAA workaround': 'layer.samples' not in icon,
+              'button label explicitly native': 'renderType: Text.NativeRendering' in button,
+              'full hinting on compact labels': 'font.hintingPreference: Font.PreferFullHinting' in button,
+              'compact button text is at least 10 px': 'font.pixelSize: root.compact ? 10 : Theme.textS' in button,
+              'compact icons are at least 14 px': 'root.compact ? 14 : 16' in button,
+              'lucide button stroke remains legible': 'root.toolbar ? 2.0 : 2.05' in button,
+              'press uses pixel translation': 'TEXT_NATIVE_PRESS_STABILITY_V1' in button and 'y: mouse.pressed ? 1 : 0' in button,
+              'press does not rescale native glyphs': 'scale: mouse.pressed' not in button,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          if failed:
+              raise SystemExit('Render-quality regression: ' + ', '.join(failed))
+
+          print('Render quality guard passed')
