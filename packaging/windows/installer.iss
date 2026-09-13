@@ -1,5 +1,6 @@
 ; SonKuPik K500 Windows installer
 ; Standard Inno Setup package. No custom self-extracting launcher is used.
+; v1.0.2+: machine-wide Program Files install; user presets live outside {app}.
 
 #define AppName "SonKuPik K500"
 #define AppExeName "SonKuPik-K500.exe"
@@ -40,10 +41,12 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={localappdata}\Programs\{#AppName}
+DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
+DisableDirPage=auto
+UsePreviousAppDir=no
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
@@ -55,21 +58,22 @@ LicenseFile={#AppDir}\LICENSE
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
-WizardSizePercent=110
+WizardSizePercent=112
 SetupLogging=yes
 CloseApplications=yes
 RestartApplications=no
-UsePreviousAppDir=yes
+UsePreviousTasks=yes
 Uninstallable=yes
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\SonKuPik-K500.ico
 AppMutex=SonKuPikK500.K500.Native
+SetupMutex=SonKuPikK500.K500.Setup
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Installer
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersion}
-VersionInfoCopyright=Copyright (c) MasArray
+VersionInfoCopyright=Copyright © 2026 SonKuPik
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
@@ -77,9 +81,49 @@ Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription
 [Files]
 Source: "{#AppDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
+[Registry]
+Root: HKLM; Subkey: "Software\MasArray\SonKuPik K500"; ValueType: string; ValueName: "InstallDir"; ValueData: "{app}"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\MasArray\SonKuPik K500"; ValueType: string; ValueName: "Version"; ValueData: "{#AppVersion}"
+
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\SonKuPik-K500.ico"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\SonKuPik-K500.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+; Normal interactive install: novice-friendly optional launch on Finish.
+Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: not IsAutoUpdate
+; In-app updater: after verified silent install, relaunch under the original desktop user.
+Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Flags: nowait runasoriginaluser; Check: IsAutoUpdate
+
+[Code]
+function HasCommandLineParameter(const Value: String): Boolean;
+var
+  I: Integer;
+begin
+  Result := False;
+  for I := 1 to ParamCount do
+  begin
+    if CompareText(ParamStr(I), Value) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
+function IsAutoUpdate: Boolean;
+begin
+  Result := HasCommandLineParameter('/AUTOUPDATE=1');
+end;
+
+function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo,
+  MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
+begin
+  Result :=
+    'SonKuPik K500 siap dipasang.' + NewLine + NewLine +
+    'Aplikasi' + NewLine +
+    '  ' + ExpandConstant('{app}') + NewLine + NewLine +
+    'Preset pribadi' + NewLine +
+    '  Documents\SonKuPik K500\Presets' + NewLine + NewLine +
+    'Preset pribadi tidak dihapus ketika aplikasi di-uninstall.';
+end;
