@@ -41,7 +41,7 @@ AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
 
-; SMART_INSTALL_LAYOUT_V1
+; SMART_INSTALL_LAYOUT_V2
 ; Application/runtime belongs to Program Files. User .k500 content is created by
 ; the application under Documents\SonKuPik K500\Presets and is never uninstalled.
 DefaultDirName={autopf}\{#AppName}
@@ -50,9 +50,10 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
-; Keep the wizard beginner-friendly: use the canonical location automatically,
-; keep optional desktop shortcut visible, and retain Windows-standard UAC.
-DisableDirPage=auto
+; Beginner-first wizard: use the one canonical machine location, avoid exposing
+; path/program-group decisions that would later make automatic updates ambiguous,
+; and keep only the familiar optional desktop-shortcut choice.
+DisableDirPage=yes
 DisableProgramGroupPage=yes
 UsePreviousAppDir=no
 AllowNoIcons=yes
@@ -69,7 +70,9 @@ WizardStyle=modern
 WizardSizePercent=110
 SetupLogging=yes
 CloseApplications=yes
-RestartApplications=yes
+; Auto-update relaunch is explicit in [Run], avoiding duplicate Restart Manager
+; relaunches while keeping normal manual installs predictable.
+RestartApplications=no
 Uninstallable=yes
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\SonKuPik-K500.ico
@@ -102,4 +105,37 @@ Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Flags: nowait; Check: IsAu
 function IsAutoUpdate: Boolean;
 begin
   Result := ExpandConstant('{param:AUToupdate|0}') = '1';
+end;
+
+function LegacyPerUserUninstaller: String;
+begin
+  Result := ExpandConstant('{localappdata}\Programs\{#AppName}\unins000.exe');
+end;
+
+procedure MigrateLegacyPerUserInstall;
+var
+  LegacyUninstaller: String;
+  ResultCode: Integer;
+begin
+  LegacyUninstaller := LegacyPerUserUninstaller;
+  if not FileExists(LegacyUninstaller) then
+    exit;
+
+  Log('Legacy v1.0.x per-user install detected: ' + LegacyUninstaller);
+  { The legacy package owns only its LocalAppData runtime files/shortcuts. }
+  { User Documents presets and QSettings are intentionally outside its file list. }
+  if Exec(LegacyUninstaller,
+          '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART',
+          '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log(Format('Legacy per-user uninstall completed with code %d.', [ResultCode]))
+  else
+    Log('Legacy per-user uninstaller could not be started; continuing with canonical Program Files install.');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  { MIGRATE_LOCALAPPDATA_INSTALL_V1 — run before new files/shortcuts are written, }
+  { so a legacy uninstaller cannot remove the new Start Menu/Desktop entries. }
+  MigrateLegacyPerUserInstall;
+  Result := '';
 end;
