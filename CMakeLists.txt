@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.0.1 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.0.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,6 +28,8 @@ endif()
 qt_add_executable(sonkupik_studio_native WIN32
     src/main.cpp
     src/AppVersionInit.cpp
+    src/AppUpdateManager.cpp
+    src/AppUpdateManager.h
     src/StudioEngine.cpp
     src/StudioEngine.h
     src/DevicePerformanceMonitor.cpp
@@ -182,6 +184,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/theme/Theme.qml
         qml/components/TopBar.qml
         qml/components/AboutDialog.qml
+        qml/components/UpdateDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml
@@ -250,7 +253,7 @@ set(SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BROADCAST.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_SUPREME.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_ROCK.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANGAN.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANG.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_QORI_SHOLAWAT.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_BLUES.k500"
@@ -274,7 +277,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing
