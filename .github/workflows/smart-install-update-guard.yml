@@ -32,8 +32,14 @@ jobs:
 
           cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
           installer = Path('packaging/windows/installer.iss').read_text(encoding='utf-8')
-          updater = Path('src/AppUpdateManager.cpp').read_text(encoding='utf-8')
-          storage = Path('src/AppStorageManager.cpp').read_text(encoding='utf-8')
+          updater = (
+              Path('src/AppUpdateManager.h').read_text(encoding='utf-8') + '\n' +
+              Path('src/AppUpdateManager.cpp').read_text(encoding='utf-8')
+          )
+          storage = (
+              Path('src/AppStorageManager.h').read_text(encoding='utf-8') + '\n' +
+              Path('src/AppStorageManager.cpp').read_text(encoding='utf-8')
+          )
           main_qml = Path('qml/Main.qml').read_text(encoding='utf-8')
           update_qml = Path('qml/components/UpdateDialog.qml').read_text(encoding='utf-8')
 
