@@ -273,6 +273,11 @@ void AppUpdateManager::remindLater()
 {
     if (busy())
         return;
+
+    // REMIND_NEXT_LAUNCH_V1 — "Nanti" is intentionally literal: clear the
+    // successful-check throttle so the next application launch performs fresh
+    // discovery and can offer this release again. No installer is downloaded.
+    QSettings().remove(QStringLiteral("updates/lastSuccessfulCheckUtc"));
     setState(QStringLiteral("available"),
              QStringLiteral("Update postponed until the next launch"));
 }
