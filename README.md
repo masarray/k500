@@ -19,7 +19,7 @@
 <p align="center">
   <a href="https://sonkupik-k500.pages.dev"><strong>Product website</strong></a>
   ·
-  <a href="https://github.com/masarray/k500/releases/latest"><strong>Download</strong></a>
+  <a href="https://sonkupik-k500.pages.dev/download/"><strong>Download</strong></a>
   ·
   <a href="docs/USER_GUIDE.md"><strong>User guide</strong></a>
 </p>
@@ -89,8 +89,8 @@ More screenshots are available in [`assets/k500 screenshot`](assets/k500%20scree
 
 | Package | Best for | Download |
 |---|---|---|
-| **Windows Setup** | Recommended for most users. Installs to `Program Files\SonKuPik K500`, keeps personal presets in Documents, and supports verified in-app updates. | [Download Setup](https://github.com/masarray/k500/releases/download/v1.0.2/SonKuPik-K500-v1.0.2-Windows-Setup.exe) |
-| **Portable ZIP** | No installation. Extract the ZIP and run the application. | [Download Portable](https://github.com/masarray/k500/releases/download/v1.0.2/SonKuPik-K500-v1.0.2-Windows-Portable.zip) |
+| **Windows Setup** | Recommended for most users. Installs to `Program Files\SonKuPik K500`, keeps personal presets in Documents, and supports verified in-app updates. | [Download Setup](https://sonkupik-k500.pages.dev/download/windows) |
+| **Portable ZIP** | No installation. Extract the ZIP and run the application. | [Download Portable](https://sonkupik-k500.pages.dev/download/portable) |
 | **Latest release** | Release notes, SHA-256 checksums, manifest, and current packages. | [Open latest release](https://github.com/masarray/k500/releases/latest) |
 
 Official Windows binaries are currently unsigned open-source builds. Windows SmartScreen or antivirus reputation systems may therefore warn when opening a new download. Release packages include SHA-256 verification metadata. See [Windows distribution & security](docs/WINDOWS_DISTRIBUTION_SECURITY.md).
