@@ -47,14 +47,14 @@ jobs:
               need(cmake, token, 'CMake integration')
 
           for token in [
-              r'DefaultDirName={autopf}\\{#AppName}',
+              r'DefaultDirName={autopf}\{#AppName}',
               'PrivilegesRequired=admin',
               'UsePreviousAppDir=no',
               'WizardStyle=modern',
               'AppMutex=SonKuPikK500.K500.Native',
               '/AUTOUPDATE=1',
               'runasoriginaluser',
-              r'Documents\\SonKuPik K500\\Presets',
+              r'Documents\SonKuPik K500\Presets',
           ]:
               need(installer, token, 'Inno smart installer')
           forbid(installer, r'DefaultDirName={localappdata}', 'per-user install target')
