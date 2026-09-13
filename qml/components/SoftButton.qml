@@ -32,6 +32,19 @@ Rectangle {
     readonly property bool labelHighlighted: root.mixerSelect ? root.mixerLit
                                                                : root.contextHighlighted || root.activeAccent || root.activeFocus
 
+    // LUCIDE_OPTICAL_NORMALIZATION_V1
+    // Compact line icons need optical, not merely geometric, parity. USB is a
+    // denser glyph than Bluetooth/cable, so trim its stroke slightly while the
+    // more open glyphs keep a touch more weight. No extra layer/MSAA is used.
+    readonly property int opticalIconSize: root.transport ? 15
+                                                          : root.compact && root.iconName === "bluetooth" ? 15
+                                                          : root.compact ? 14 : 16
+    readonly property real opticalStroke: root.iconName === "usb" ? 1.82
+                                             : root.iconName === "bluetooth" ? 1.92
+                                             : root.iconName === "cable" || root.iconName === "unplug" ? 1.88
+                                             : root.transport ? 1.90
+                                             : root.toolbar ? 1.90 : 1.95
+
     activeFocusOnTab: true
     clip: false
     implicitWidth: root.transport ? 29 : root.compact ? 52 : 70
@@ -89,8 +102,6 @@ Rectangle {
         }
     }
 
-    // Raised-console treatment: one bright top edge and one dark lower lip.
-    // These are directional depth cues, not an interior frame/rectangle.
     Rectangle {
         visible: root.mixerSelect
         anchors.left: parent.left
@@ -119,8 +130,6 @@ Rectangle {
         opacity: mouse.pressed ? .26 : root.mixerLit ? .52 : .68
     }
 
-    // Small shadow/lip extends outside the face so the key sits above the panel.
-    // Keeping this outside the button avoids the boxed-in artifact from V3.
     Rectangle {
         visible: root.mixerSelect && !mouse.pressed
         anchors.left: parent.left
@@ -135,8 +144,6 @@ Rectangle {
         opacity: .62
     }
 
-    // Normal buttons keep their subtle glass treatment. Hardware/mixer keys use
-    // the directional raised treatment above and never receive an inset frame.
     Rectangle {
         visible: !root.mixerSelect
         anchors.fill: parent
@@ -207,7 +214,7 @@ Rectangle {
 
         LucideIcon {
             visible: root.iconName.length > 0
-            width: root.transport ? 15 : root.compact ? 14 : 16
+            width: root.opticalIconSize
             height: width
             anchors.verticalCenter: parent.verticalCenter
             name: root.iconName
@@ -216,7 +223,7 @@ Rectangle {
                  : root.danger ? "#FFD8D8"
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
                  : root.toolbar ? "#C3CFD5" : "#D5DDE1"
-            strokeWidth: root.transport ? 2.05 : root.toolbar ? 2.0 : 2.05
+            strokeWidth: root.opticalStroke
             filled: root.toolbar ? false : root.iconFilled
         }
 
