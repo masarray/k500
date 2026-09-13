@@ -2,6 +2,34 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## 1.0.2 — Smart Windows lifecycle
+
+Stable maintenance release preserving the existing v1.0 hardware-qualified scope while improving installation, local preset storage, update delivery, and update-integrity regression coverage.
+
+### Added
+
+- In-app stable update discovery with a SonKuPik-styled update card and release notes.
+- Fail-closed update verification against `release-manifest.json`, `SHA256SUMS.txt`, artifact filename, byte size, Windows target, stable eligibility, and locally computed SHA-256.
+- Windows `runas`/UAC handoff only after the downloaded Setup package passes all integrity checks.
+- Deterministic updater metadata self-test using the production manifest/checksum parsers without network access or K500 hardware.
+- Update safety interlock that blocks application replacement while Save, Upload, or Mass Upload transactions are active.
+
+### Changed
+
+- Recommended installation now uses the canonical machine location `C:\Program Files\SonKuPik K500`.
+- The default user-owned Local preset library is initialized at `Documents\SonKuPik K500\Presets` and remains separate from application/runtime files.
+- Official preset cache and update staging remain internal under Qt `AppLocalDataLocation`.
+- Existing custom Local preset-folder preferences are preserved instead of being overwritten when a removable/network path is temporarily unavailable.
+- Upgrade from the earlier per-user installation migrates the legacy LocalAppData application install before writing the Program Files copy, while leaving personal presets and preferences intact.
+- Automatic update discovery is delayed until after startup and throttled; **Nanti** deliberately enables a fresh check on the next application launch.
+
+### Release integrity
+
+- v1.0.2 continues the v1.0 Windows x64 + USB HID hardware-qualified support line; Bluetooth SPP remains experimental.
+- Stable packaging continues to produce a standard Inno Setup installer plus ordinary portable ZIP.
+- Release artifacts remain unsigned open-source builds and continue to publish `SHA256SUMS.txt` plus `release-manifest.json`.
+- The stable publisher now records updater metadata integrity in its regression suite before publishing a GitHub release.
+
 ## 1.0.0 — Public stable
 
 First public stable release. Hardware-qualified support scope: **Windows 10/11 x64 + K500 over USB HID**. Bluetooth SPP remains implemented but experimental until independently accepted.
