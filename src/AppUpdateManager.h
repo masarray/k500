@@ -11,7 +11,7 @@
 
 class QNetworkReply;
 
-class AppUpdateManager final : public QObject
+class AppUpdateManager : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
