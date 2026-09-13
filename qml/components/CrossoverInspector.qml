@@ -17,9 +17,15 @@ Item {
     implicitHeight: 86
 
     readonly property bool highPass: root.mode === "hpf"
+    readonly property bool bypassed: String(root.filterType).trim().toUpperCase() === "BYPASS"
     readonly property var typeOptions: highPass
-        ? ["HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18"]
-        : ["LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18"]
+        ? ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
+        : ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
+
+    // FINAL_INSPECTOR_SCOPE_COPY_V1
+    // This action returns only the selected crossover edge frequency to its
+    // boundary. It does not change filter TYPE, so label it RESET EDGE rather
+    // than a generic Reset/Reset Filter action.
 
     ColumnLayout {
         anchors.fill: parent
@@ -41,8 +47,10 @@ Item {
                     font.letterSpacing: 1.2
                 }
                 Text {
-                    text: root.highPass ? "High Pass Filter" : "Low Pass Filter"
-                    color: Theme.text
+                    text: root.bypassed
+                          ? (root.highPass ? "High Pass · Bypassed" : "Low Pass · Bypassed")
+                          : (root.highPass ? "High Pass Filter" : "Low Pass Filter")
+                    color: root.bypassed ? Theme.amber : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold
@@ -52,9 +60,9 @@ Item {
             Item { Layout.fillWidth: true }
 
             SoftButton {
-                Layout.preferredWidth: 46
+                Layout.preferredWidth: 74
                 Layout.preferredHeight: 23
-                text: "Reset"
+                text: "RESET EDGE"
                 compact: true
                 onClicked: root.resetRequested()
             }
@@ -93,7 +101,7 @@ Item {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28
                     model: root.typeOptions
-                    value: root.filterType
+                    value: root.bypassed ? "Bypass" : root.filterType
                     accentColor: root.accentColor
                     onValueEdited: function(v) { root.typeEdited(v) }
                 }

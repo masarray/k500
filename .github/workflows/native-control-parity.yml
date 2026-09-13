@@ -1,0 +1,96 @@
+name: Guard native control parity
+
+on:
+  pull_request:
+    paths:
+      - 'src/StudioEngine.h'
+      - 'src/k500/K500Controller.cpp'
+      - 'src/k500/K500PresetFileBridge.cpp'
+      - 'src/k500/K500Protocol.cpp'
+      - 'src/EqCurveItem.cpp'
+      - 'qml/Main.qml'
+      - 'qml/components/SectionEqGraph.qml'
+      - 'qml/components/SectionEqGraphHost.qml'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/EqGraph.qml'
+      - 'qml/components/FilterPanel.qml'
+      - 'qml/components/InputFader.qml'
+      - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/MusicInputPanel.qml'
+      - 'qml/components/RackDynamicsPanel.qml'
+      - 'qml/components/RackFilterPanel.qml'
+      - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/CrossoverInspector.qml'
+      - 'qml/components/ParameterSlider.qml'
+      - '.github/workflows/native-control-parity.yml'
+
+jobs:
+  parity-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard control semantics
+        shell: python
+        run: |
+          from pathlib import Path
+
+          engine_header = Path('src/StudioEngine.h').read_text(encoding='utf-8')
+          controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
+          preset_bridge = Path('src/k500/K500PresetFileBridge.cpp').read_text(encoding='utf-8')
+          protocol = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          native_curve = Path('src/EqCurveItem.cpp').read_text(encoding='utf-8')
+          main = Path('qml/Main.qml').read_text(encoding='utf-8')
+          graph = Path('qml/components/SectionEqGraph.qml').read_text(encoding='utf-8')
+          host = Path('qml/components/SectionEqGraphHost.qml').read_text(encoding='utf-8')
+          workspace = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          music_filter = Path('qml/components/FilterPanel.qml').read_text(encoding='utf-8')
+          input_fader = Path('qml/components/InputFader.qml').read_text(encoding='utf-8')
+          master_strip = Path('qml/components/MasterStripPanel.qml').read_text(encoding='utf-8')
+          music_input = Path('qml/components/MusicInputPanel.qml').read_text(encoding='utf-8')
+          rack_dynamics = Path('qml/components/RackDynamicsPanel.qml').read_text(encoding='utf-8')
+          rack_filter = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
+          rack_fader = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          inspector = Path('qml/components/CrossoverInspector.qml').read_text(encoding='utf-8')
+          slider = Path('qml/components/ParameterSlider.qml').read_text(encoding='utf-8')
+
+          preset_sync_body = engine_header.split('void syncPresetCrossover', 1)[1].split('int musicKey()', 1)[0]
+
+          checks = {
+              'Unified PEQ toolbar contract': 'PEQ_UNIFIED_BYPASS_RESET_AB_V1' in graph and 'PEQ_TOOLBAR_ALL_SECTIONS_V1' in graph and 'setEqBypass' in graph and 'selectCompareSide' in graph and 'text:"EQ BYPASS"' in graph and 'text:"EQ RESET"' in graph and 'text:"A"' in graph and 'text:"B"' in graph and 'text:"FLAT"' not in graph,
+              'PEQ audition stays band-only': 'function captureEqState()' in graph and 'function applyEqState(state)' in graph and 'setHpfHz(Number(state.hpfHz))' not in graph and 'setLpfHz(Number(state.lpfHz))' not in graph and 'setHpType(String(state.hpType))' not in graph and 'setLpType(String(state.lpType))' not in graph,
+              'A is auto-active and captures edits': 'PEQ_AB_AUTO_ACTIVE_V2' in graph and 'property string compareSide: "A"' in graph and 'function updateActiveCompareSnapshot()' in graph and 'function onBandChanged()' in graph and 'root.updateActiveCompareSnapshot()' in graph and 'function onDataChanged()' in graph,
+              'HPF LPF startup default is bypass': 'HPF_LPF_STARTUP_DEFAULT_BYPASS_V1' in graph and 'bands.setHpType("Bypass")' in graph and 'bands.setLpType("Bypass")' in graph,
+              'Preset Preview restores crossover footer metadata': 'PRESET_PREVIEW_CROSSOVER_OVERLAY_V1' in preset_bridge and 'document.eqSections()' in preset_bridge and 'syncPresetCrossover' in preset_bridge and 'section.key.endsWith(QStringLiteral("Alt"))' in preset_bridge and 'crossoverFilterLabel(section.crossover.hpTypeRaw, true)' in preset_bridge and 'crossoverFilterLabel(section.crossover.lpTypeRaw, false)' in preset_bridge,
+              'Preset crossover hydration stays no-edit': 'PRESET_CROSSOVER_HYDRATION_NO_EDIT_V1' in engine_header and 'void syncPresetCrossover' in engine_header and 'model->syncCrossover' in preset_sync_body and 'emit stateEdited' not in preset_sync_body,
+              'EQ bypass has graph awareness watermark': 'PEQ_BYPASS_AWARENESS_V1' in graph and 'text:"EQ BYPASS"' in graph and 'text:"PARAMETRIC EQ DISENGAGED"' in graph,
+              'Mic selector identity': 'MIC_SELECTOR_IDENTITY_V1' in graph and '#55E58A' in graph and '#FF626E' in graph,
+              'Mic link is centered switch': 'MIC_EQ_LINK_TOGGLE_V3' in graph and 'verticalAlignment:Text.AlignVCenter' in graph and 'eqLinkRequested(!root.eqLinked)' in graph,
+              'Fixed graph lifetime preserved': 'CRASH_SAFE_FIXED_EQ_PAGES_V1' in host and host.count('SectionEqGraph {') == 8,
+              'Native bypass type code is explicit': 'CROSSOVER_NATIVE_BYPASS_TYPE0_V1' in protocol and 'normalized == QStringLiteral("BYPASS")' in protocol,
+              'Native renderer bypass is flat': 'CROSSOVER_BYPASS_FLAT_RESPONSE_V1' in native_curve and 'return 0.0;' in native_curve,
+              'Native PEQ premium fill is retained QSG': 'P1_NATIVE_PEQ_LUXURY_FILL_V1' in native_curve and 'withAlpha(m_accentColor, 60)' in native_curve and 'withAlpha(m_accentColor, 30)' in native_curve,
+              'Native PEQ premium ridge stays retained': 'P1_NATIVE_PEQ_PREMIUM_RIDGE_V2' in native_curve and 'totalRidge' in native_curve and '0.72, 0.48' in native_curve and 'SampleCount' in native_curve,
+              'Graph bypass preserves anchors': 'CROSSOVER_BYPASS_TYPE_STATE_V2' in graph and 'bands.setHpfHz(20)' not in graph.split('function setCrossoverType',1)[1].split('function resetCrossover',1)[0] and 'bands.setLpfHz(20000)' not in graph.split('function setCrossoverType',1)[1].split('function resetCrossover',1)[0],
+              'Music bypass changes type not cutoff': 'CROSSOVER_TYPE_BYPASS_V2' in music_filter and 'root.engine.hpType = value' in music_filter and 'root.engine.lpType = value' in music_filter,
+              'Music source is six-way exclusive': 'MUSIC_SOURCE_SINGLE_CHOICE_V1' in music_input and '["INPUT1", "INPUT2", "BT", "UDISK", "OPTIC", "UAUDIO"]' in music_input and 'checked: root.selectedSource === index' in music_input and 'root.engine.editDevicePath("music.sourceRaw", next)' in music_input and 'root.active = !root.active' not in input_fader and 'else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);' in controller and 'MUSIC_SOURCE_SIX_WAY_V1' in protocol and 'qBound(0, state.sourceRaw, 5)' in protocol,
+              'Music keeps five gain trims with shared digital trim': music_input.count('InputFader {') == 5 and 'label:"INPUT1 GAIN"' in music_input and 'label:"INPUT2 GAIN"' in music_input and 'label:"BT GAIN"' in music_input and 'label:"UDISK GAIN"' in music_input and 'label:"DIGITAL GAIN"' in music_input,
+              'Rack crossover layout normalized': 'CROSSOVER_RACK_LAYOUT_V3' in rack_filter and 'SURROUND_DELAY_VERIFIED_V1' in rack_filter,
+              'Compressor graph stops on caption baseline': 'COMPRESSOR_GRAPH_CAPTION_BASELINE_V1' in rack_dynamics and 'Layout.preferredHeight: 227' in rack_dynamics and 'Layout.minimumHeight: 227' in rack_dynamics and 'Layout.maximumHeight: 227' in rack_dynamics and 'Layout.alignment: Qt.AlignTop' in rack_dynamics and 'Layout.fillHeight: true\n                radius: 8\n                color: "#040608"' not in rack_dynamics,
+              'Right columns follow Mic 216px reference': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in workspace and 'readonly property int rightPanelWidth: 216' in workspace and 'readonly property int masterWidth: rightPanelWidth' in workspace and 'Layout.preferredWidth: root.rightPanelWidth' in workspace and 'Layout.minimumWidth: root.rightPanelWidth' in workspace and 'Layout.maximumWidth: root.rightPanelWidth' in workspace and 'Layout.preferredWidth:root.rightPanelWidth' in workspace and 'Layout.minimumWidth:root.rightPanelWidth' in workspace and 'Layout.maximumWidth:root.rightPanelWidth' in workspace and 'Layout.preferredWidth:228' not in workspace and 'Layout.preferredWidth: 222' not in workspace,
+              'Music uses same two wide right columns': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in main and 'readonly property int rightPanelWidth: 216' in main and main.count('Layout.preferredWidth: root.rightPanelWidth') >= 2 and main.count('Layout.minimumWidth: root.rightPanelWidth') >= 2 and main.count('Layout.maximumWidth: root.rightPanelWidth') >= 2,
+              'Master strip default is fixed wide': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in master_strip and 'implicitWidth: 216' in master_strip and 'Layout.minimumWidth: 216' in master_strip and 'Layout.preferredWidth: 216' in master_strip and 'Layout.maximumWidth: 216' in master_strip,
+              'Output delay UI parity is evidence gated': 'OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1' in workspace and workspace.count('editable:false') >= 4 and 'ctx.sectionIndex !== 5' in rack_filter,
+              'Responsive crossover slider': 'RESPONSIVE_PARAMETER_SLIDER_V1' in slider and 'property bool editable: true' in slider and 'captionWidth' in slider and 'readoutWidth' in slider,
+              'Bypass visible in all selectors': '"Bypass"' in music_filter and '"Bypass"' in rack_filter and '"Bypass"' in inspector,
+              'Inspector emits real bypass value': 'root.typeEdited(v)' in inspector and 'Bypass ' not in inspector,
+              'Output mute uses verified floor': 'OUTPUT_MUTE_VERIFIED_FLOOR_V1' in rack_fader and 'channel.muteFloor' in rack_fader,
+              'Mute lives in mixer header': 'MIXER_HEADER_MUTE_V2' in rack_fader and 'name: "volume-x"' in rack_fader,
+              'No raw device access from QML': 'K500WinIo' not in graph + host + workspace + music_filter + music_input + input_fader + rack_dynamics + rack_filter + rack_fader,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('Control parity guard failed: ' + ', '.join(failed))
+          print('ALL NATIVE CONTROL PARITY GUARDS PASSED')

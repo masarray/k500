@@ -1,0 +1,55 @@
+name: Guard render quality
+
+on:
+  pull_request:
+    paths:
+      - 'src/AppVersionInit.cpp'
+      - 'qml/components/LucideIcon.qml'
+      - 'qml/components/SoftButton.qml'
+      - 'qml/components/SectionDrawer.qml'
+      - 'qml/components/TopBar.qml'
+      - 'qml/components/StudioKnob.qml'
+      - '.github/workflows/render-quality-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  render-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard premium low-cost rasterization
+        shell: python
+        run: |
+          from pathlib import Path
+
+          init = Path('src/AppVersionInit.cpp').read_text(encoding='utf-8')
+          icon = Path('qml/components/LucideIcon.qml').read_text(encoding='utf-8')
+          button = Path('qml/components/SoftButton.qml').read_text(encoding='utf-8')
+          drawer = Path('qml/components/SectionDrawer.qml').read_text(encoding='utf-8')
+          topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
+          knob = Path('qml/components/StudioKnob.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'native text default': 'QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering)' in init,
+              'native text token': 'UI_NATIVE_TEXT_RENDERING_V1' in init,
+              'curve lucide token': 'LUCIDE_CURVE_AA_V1' in icon,
+              'all lucide shapes request curve renderer': icon.count('preferredRendererType: Shape.CurveRenderer') >= 11,
+              'no window-wide MSAA workaround': 'layer.samples' not in icon,
+              'button label explicitly native': 'renderType: Text.NativeRendering' in button,
+              'full hinting on compact labels': 'font.hintingPreference: Font.PreferFullHinting' in button,
+              'compact button text is at least 10 px': 'font.pixelSize: root.compact ? 10 : Theme.textS' in button,
+              'optical lucide normalization is explicit': 'LUCIDE_OPTICAL_NORMALIZATION_V1' in button and 'root.iconName === "usb" ? 1.82' in button,
+              'press uses pixel translation': 'TEXT_NATIVE_PRESS_STABILITY_V1' in button and 'y: mouse.pressed ? 1 : 0' in button,
+              'press does not rescale native glyphs': 'scale: mouse.pressed' not in button,
+              'sidebar microtype is at least 10 px': 'MICRO_TYPE_OPTICAL_POLISH_V1' in drawer and 'font.pixelSize: 10' in drawer,
+              'sidebar press stays integer-pixel stable': 'scale: navPointer.pressed' not in drawer and 'y: navPointer.pressed ? 1 : 0' in drawer,
+              'sidebar lucide stroke is optically normalized': 'strokeWidth: 1.85' in drawer,
+              'topbar preset name reaches 10 px': 'font.pixelSize: 10' in topbar and 'font.hintingPreference: Font.PreferFullHinting' in topbar,
+              'premium knob microtype reaches 10 px': 'font.pixelSize:root.premium ? 10 : 9' in knob,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          if failed:
+              raise SystemExit('Render-quality regression: ' + ', '.join(failed))
+
+          print('Render quality guard passed')

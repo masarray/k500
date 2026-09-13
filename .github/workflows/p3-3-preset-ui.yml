@@ -8,6 +8,7 @@ on:
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
       - 'src/k500/K500PresetFileBridge.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'resources/presets/*.k500'
       - 'CMakeLists.txt'
@@ -18,6 +19,7 @@ on:
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
       - 'src/k500/K500PresetFileBridge.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'resources/presets/*.k500'
       - 'CMakeLists.txt'
@@ -35,7 +37,7 @@ jobs:
           $bridge = Get-Content 'src/k500/K500PresetFileBridgeAccess.cpp' -Raw
           $fileBridgeHeader = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
           $fileBridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
 

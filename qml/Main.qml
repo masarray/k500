@@ -15,6 +15,7 @@ ApplicationWindow {
     color: Theme.bg
 
     readonly property int lowerRackHeight: 304
+    readonly property int rightPanelWidth: 216
     property int selectedSection: 0
 
     background: Rectangle {
@@ -36,6 +37,8 @@ ApplicationWindow {
             Layout.minimumHeight: 52
             Layout.maximumHeight: 52
             deviceManager: root.deviceManager
+            engine: root.studioEngine
+            onAboutRequested: aboutDialog.open()
         }
 
         RowLayout {
@@ -95,19 +98,22 @@ ApplicationWindow {
                                 Layout.minimumWidth: 224
                             }
 
+                            // RIGHT_COLUMN_WIDTH_PARITY_V1
+                            // Music follows the same two fixed right columns as Mic:
+                            // crossover/filter panel 216 px + Master Strip 216 px.
                             FilterPanel {
                                 engine: root.studioEngine
-                                Layout.preferredWidth: 180
-                                Layout.minimumWidth: 180
-                                Layout.maximumWidth: 180
+                                Layout.preferredWidth: root.rightPanelWidth
+                                Layout.minimumWidth: root.rightPanelWidth
+                                Layout.maximumWidth: root.rightPanelWidth
                                 Layout.fillHeight: true
                             }
 
                             MasterStripPanel {
                                 engine: root.studioEngine
-                                Layout.preferredWidth: 188
-                                Layout.minimumWidth: 188
-                                Layout.maximumWidth: 188
+                                Layout.preferredWidth: root.rightPanelWidth
+                                Layout.minimumWidth: root.rightPanelWidth
+                                Layout.maximumWidth: root.rightPanelWidth
                                 Layout.fillHeight: true
                             }
                         }
@@ -121,6 +127,12 @@ ApplicationWindow {
                 }
             }
         }
+    }
+
+    // ABOUT_FLOATING_CARD_V1 — window-owned so it centers over the complete
+    // application, not merely over the toolbar or current processor panel.
+    AboutDialog {
+        id: aboutDialog
     }
 
     // P1_MIC_EQ_LINK_UI_BRIDGE_V1

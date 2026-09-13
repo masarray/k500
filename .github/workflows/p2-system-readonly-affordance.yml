@@ -1,0 +1,36 @@
+name: Guard P2 System read-only affordance
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/SystemWorkspaceImpl.qml'
+      - '.github/workflows/p2-system-readonly-affordance.yml'
+
+jobs:
+  system-readonly-affordance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard truthful System affordances
+        shell: python
+        run: |
+          from pathlib import Path
+
+          qml = Path('qml/components/SystemWorkspaceImpl.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'P2 semantic token': 'P2_SYSTEM_READONLY_AFFORDANCE_V1' in qml,
+              'BT/BLE identity is explicitly read only': 'BT / BLE IDENTITY' in qml and 'Rename / reset mapping not verified' in qml,
+              'offline BT/BLE does not invent device names': 'CONNECT K500 TO READ' in qml and 'KTV_BT_00AB12' not in qml and 'KTV_BLE_00AB12' not in qml,
+              'credential surface is explicitly unavailable': 'READ ONLY · DEVICE MANAGED' in qml and 'NOT EXPOSED' in qml,
+              'fake lock checkbox model removed': 'model:[{label:"Unlock",on:true}' not in qml,
+              'fake password field removed': 'NEW PASSWORD' not in qml,
+              'unverified credential write copy is explicit': 'Controls stay unavailable until the native write mapping is proven.' in qml,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('P2 System read-only affordance guard failed: ' + ', '.join(failed))
+          print('ALL P2 SYSTEM READ-ONLY AFFORDANCE GUARDS PASSED')

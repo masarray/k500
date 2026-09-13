@@ -288,6 +288,7 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
 
     bool isTopMusicPath = true;
     if (path == QStringLiteral("system.topMusicVol")) m_music.topMusicVol = qRound(value.toDouble());
+    else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);
     else if (path == QStringLiteral("music.key")) m_music.key = value.toInt();
     else if (path == QStringLiteral("music.input1GainDb")) m_music.input1GainDb = value.toDouble();
     else if (path == QStringLiteral("music.input2GainDb")) m_music.input2GainDb = value.toDouble();
