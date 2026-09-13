@@ -17,32 +17,55 @@ Rectangle {
     property bool toolbar: false
     property bool contextHighlighted: false
     property bool mixerSelect: false
+    property bool primaryAction: false
     signal clicked()
 
-    // MIXER_SOURCE_ILLUMINATED_SELECT_V2
-    // Digital-console source selectors read like physical illuminated keys:
-    // OFF = dark/raised, ON = cyan/recessed with inverted dark legend.
-    // The reversed bevel is intentional so ON looks mechanically pressed in.
+    // MIXER_SOURCE_RAISED_ACTIVE_V5
+    // Hardware-console keys must read as pushable controls before the pointer
+    // ever reaches them. OFF therefore uses a clearly raised graphite face;
+    // ON keeps the whole face illuminated cyan. Depth comes from a top specular
+    // edge + lower lip, never from an inset rectangle inside the button.
     readonly property bool mixerLit: root.mixerSelect && root.checked
-    readonly property bool mixerDepressed: root.mixerLit
     readonly property bool activeAccent: root.checked || root.neonAccent
     readonly property color resolvedAccent: root.amber ? Theme.amber : Theme.accent
     readonly property real activeBorderAlpha: root.amber ? .44 : .54
     readonly property bool labelHighlighted: root.mixerSelect ? root.mixerLit
                                                                : root.contextHighlighted || root.activeAccent || root.activeFocus
 
+    // LUCIDE_OPTICAL_NORMALIZATION_V1
+    // Compact line icons need optical, not merely geometric, parity. USB is a
+    // denser glyph than Bluetooth/cable, so trim its stroke slightly while the
+    // more open glyphs keep a touch more weight. No extra layer/MSAA is used.
+    readonly property int opticalIconSize: root.transport ? 15
+                                                          : root.compact && root.iconName === "bluetooth" ? 15
+                                                          : root.compact ? 14 : 16
+    readonly property real opticalStroke: root.iconName === "usb" ? 1.82
+                                             : root.iconName === "bluetooth" ? 1.92
+                                             : root.iconName === "cable" || root.iconName === "unplug" ? 1.88
+                                             : root.transport ? 1.90
+                                             : root.toolbar ? 1.90 : 1.95
+
     activeFocusOnTab: true
     clip: false
     implicitWidth: root.transport ? 29 : root.compact ? 52 : 70
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
     radius: root.transport ? 6 : 7
-    transformOrigin: Item.Center
-    scale: mouse.pressed ? .972 : root.mixerDepressed ? .982 : 1
+
+    // TEXT_NATIVE_PRESS_STABILITY_V1
+    // Native-rasterized text must not be scaled as part of the press animation;
+    // fractional transforms can temporarily soften glyphs. A 1 px physical
+    // travel preserves the tactile hardware-key feel with zero resampling.
+    transform: Translate {
+        id: pressShift
+        y: mouse.pressed ? 1 : 0
+        Behavior on y { NumberAnimation { duration:55; easing.type:Easing.OutQuad } }
+    }
 
     border.width: 1
-    border.color: root.mixerSelect ? (root.mixerLit ? "#087A82"
-                                      : root.activeFocus ? "#56666F"
-                                      : mouse.containsMouse ? "#43515A" : "#1D272E")
+    border.color: root.mixerSelect ? (root.mixerLit ? "#7BFAFD"
+                                      : root.primaryAction ? "#259BA3"
+                                      : root.activeFocus ? "#60737D"
+                                      : mouse.containsMouse ? "#566772" : "#34434C")
                  : root.activeFocus ? root.resolvedAccent
                  : root.danger ? "#71323A"
                  : root.activeAccent ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.activeBorderAlpha)
@@ -52,9 +75,10 @@ Rectangle {
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#17BEC6" : "#19C8D0")
-                                                      : mouse.pressed ? "#0A0F13"
-                                                      : mouse.containsMouse ? "#182128" : "#0E1419")
+            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#45E6EA" : "#6AF7F9")
+                                                      : root.primaryAction ? (mouse.pressed ? "#15262C" : "#284149")
+                                                      : mouse.pressed ? "#12191E"
+                                                      : mouse.containsMouse ? "#303B43" : "#263139")
                  : root.danger ? "#31181E"
                  : root.activeAccent ? (root.amber ? "#2B2818" : "#193B40")
                  : mouse.pressed ? "#171D22"
@@ -62,25 +86,103 @@ Rectangle {
                  : root.toolbar ? "#252E35" : "#2C353C"
         }
         GradientStop {
-            position: .18
-            color: root.mixerSelect ? (root.mixerLit ? "#25DCE3" : "#0B1115")
+            position: .46
+            color: root.mixerSelect ? (root.mixerLit ? "#31E0E5"
+                                                      : root.primaryAction ? "#122128" : "#141C21")
                  : root.danger ? "#231218"
                  : root.activeAccent ? (root.amber ? "#18170E" : "#132D32")
                  : mouse.containsMouse ? "#283139"
                  : root.toolbar ? "#1A2228" : "#222A30"
         }
         GradientStop {
-            position: .72
-            color: root.mixerSelect ? (root.mixerLit ? "#31E8EE" : "#070B0E")
-                 : root.danger ? "#10090C"
-                 : root.activeAccent ? (root.amber ? "#0C0D08" : "#0C2024")
-                 : "#12181D"
-        }
-        GradientStop {
             position: 1
-            color: root.mixerSelect ? (root.mixerLit ? "#3BEFF4" : "#04070A")
+            color: root.mixerSelect ? (root.mixerLit ? "#14B4BC"
+                                                      : root.primaryAction ? "#070C10" : "#060A0D")
                  : root.danger ? "#070507" : "#080C10"
         }
+    }
+
+    Rectangle {
+        visible: root.mixerSelect
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
+        anchors.topMargin: 1
+        height: 1
+        radius: 1
+        color: root.mixerLit ? "#E7FFFF" : root.primaryAction ? "#8FE8EA" : "#FFFFFF"
+        opacity: root.mixerLit ? .62 : root.primaryAction ? .24 : .17
+    }
+
+    Rectangle {
+        visible: root.mixerSelect
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 3
+        anchors.rightMargin: 3
+        anchors.bottomMargin: 1
+        height: 2
+        radius: 1
+        color: root.mixerLit ? "#08717A" : "#000000"
+        opacity: mouse.pressed ? .26 : root.mixerLit ? .52 : .68
+    }
+
+    Rectangle {
+        visible: root.mixerSelect && !mouse.pressed
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
+        anchors.bottomMargin: -2
+        height: 2
+        radius: 1
+        color: "#000000"
+        opacity: .62
+    }
+
+    Rectangle {
+        visible: !root.mixerSelect
+        anchors.fill: parent
+        anchors.margins: 1
+        radius: Math.max(3,parent.radius-1)
+        color: "transparent"
+        border.width: 1
+        border.color: root.activeAccent
+                      ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber ? .13 : .16)
+                      : root.toolbar ? "#0EFFFFFF" : "#12FFFFFF"
+    }
+
+    Rectangle {
+        visible: !root.mixerSelect
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
+        anchors.topMargin: 1
+        height: 1
+        radius: 1
+        color: root.activeAccent ? root.resolvedAccent : "#FFFFFF"
+        opacity: root.activeAccent ? (root.amber ? .18 : .22)
+               : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
+    }
+
+    Rectangle {
+        visible: !root.mixerSelect
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 4
+        anchors.rightMargin: 4
+        anchors.bottomMargin: 1
+        height: 1
+        radius: 1
+        color: "#000000"
+        opacity: mouse.pressed ? .18 : .50
     }
 
     Rectangle {
@@ -92,102 +194,6 @@ Rectangle {
         border.width: 1
         border.color: root.resolvedAccent
         opacity: root.amber ? .055 : .075
-    }
-
-    Rectangle {
-        anchors.fill: parent
-        anchors.margins: 1
-        radius: Math.max(3,parent.radius-1)
-        color: "transparent"
-        border.width: 1
-        border.color: root.mixerSelect ? (root.mixerLit ? "#2B073D42" : "#10FFFFFF")
-                      : root.activeAccent
-                      ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber ? .13 : .16)
-                      : root.toolbar ? "#0EFFFFFF" : "#12FFFFFF"
-    }
-
-    // Recessed mixer-key bevel. Dark top/left + bright bottom/right produces
-    // the visual depth cue of a pressed hardware switch while it stays lit.
-    Rectangle {
-        visible: root.mixerDepressed
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.leftMargin: 2
-        anchors.rightMargin: 2
-        anchors.topMargin: 1
-        height: 2
-        radius: 1
-        color: "#07545A"
-        opacity: .78
-    }
-    Rectangle {
-        visible: root.mixerDepressed
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 1
-        anchors.topMargin: 2
-        anchors.bottomMargin: 2
-        width: 2
-        radius: 1
-        color: "#08636A"
-        opacity: .62
-    }
-    Rectangle {
-        visible: root.mixerDepressed
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 3
-        anchors.rightMargin: 3
-        anchors.bottomMargin: 1
-        height: 2
-        radius: 1
-        color: "#A6FCFF"
-        opacity: .42
-    }
-    Rectangle {
-        visible: root.mixerDepressed
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.rightMargin: 1
-        anchors.topMargin: 3
-        anchors.bottomMargin: 3
-        width: 1
-        radius: 1
-        color: "#A6FCFF"
-        opacity: .30
-    }
-
-    Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.top: parent.top
-        anchors.leftMargin: 5
-        anchors.rightMargin: 5
-        anchors.topMargin: 1
-        height: 1
-        radius: 1
-        color: root.mixerSelect && root.mixerLit ? "#062F33"
-             : root.activeAccent ? root.resolvedAccent : "#FFFFFF"
-        opacity: root.mixerSelect && root.mixerLit ? .70
-               : root.activeAccent ? (root.amber ? .18 : .22)
-               : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
-    }
-
-    Rectangle {
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.bottom: parent.bottom
-        anchors.leftMargin: 4
-        anchors.rightMargin: 4
-        anchors.bottomMargin: 1
-        height: 1
-        radius: 1
-        color: root.mixerSelect && root.mixerLit ? "#B9FDFF" : "#000000"
-        opacity: root.mixerSelect && root.mixerLit ? .38 : mouse.pressed ? .18 : .50
     }
 
     Rectangle {
@@ -204,20 +210,20 @@ Rectangle {
 
     Row {
         anchors.centerIn: parent
-        anchors.verticalCenterOffset: root.mixerDepressed ? 1 : 0
         spacing: root.iconOnly || label.text.length===0 ? 0 : 5
 
         LucideIcon {
             visible: root.iconName.length > 0
-            width: root.transport ? 14 : root.compact ? 13 : 15
+            width: root.opticalIconSize
             height: width
             anchors.verticalCenter: parent.verticalCenter
             name: root.iconName
-            color: root.mixerLit ? "#031013"
+            color: root.mixerLit ? "#021012"
+                 : root.primaryAction ? Theme.accent
                  : root.danger ? "#FFD8D8"
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
                  : root.toolbar ? "#C3CFD5" : "#D5DDE1"
-            strokeWidth: root.transport ? 1.75 : root.toolbar ? 1.70 : 1.75
+            strokeWidth: root.opticalStroke
             filled: root.toolbar ? false : root.iconFilled
         }
 
@@ -225,7 +231,7 @@ Rectangle {
             id: label
             visible: !root.iconOnly && text.length > 0
             anchors.verticalCenter: parent.verticalCenter
-            color: root.mixerSelect ? (root.mixerLit ? "#031013" : "#EFF5F7")
+            color: root.mixerSelect ? (root.mixerLit ? "#021012" : root.primaryAction ? "#9EF9FB" : "#EFF5F7")
                  : root.danger ? "#FFD8D8"
                  : root.contextHighlighted ? root.resolvedAccent
                  : root.amber && root.activeAccent ? Theme.amber
@@ -235,9 +241,11 @@ Rectangle {
             styleColor: !root.mixerSelect && root.contextHighlighted
                         ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,.32)
                         : "transparent"
+            renderType: Text.NativeRendering
             font.family: Theme.fontFamily
-            font.pixelSize: root.compact ? Theme.textXS : Theme.textS
-            font.weight: root.mixerLit ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
+            font.pixelSize: root.compact ? 10 : Theme.textS
+            font.weight: root.mixerLit || root.primaryAction ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
+            font.hintingPreference: Font.PreferFullHinting
             font.letterSpacing: .12
             Behavior on color { ColorAnimation { duration:75 } }
             Behavior on styleColor { ColorAnimation { duration:75 } }
@@ -258,5 +266,4 @@ Rectangle {
     }
 
     Behavior on border.color { ColorAnimation { duration:80 } }
-    Behavior on scale { NumberAnimation { duration:70; easing.type:Easing.OutQuad } }
 }

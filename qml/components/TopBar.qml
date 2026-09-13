@@ -11,18 +11,20 @@ StudioPanel {
     required property var deviceManager
     required property var engine
     property bool transportPlaying: false
+    signal aboutRequested()
+
     readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
     readonly property string deviceStatusText: deviceManager.status === "connected" ? "ONLINE"
                                                 : deviceManager.status === "connecting" ? "CONNECT"
                                                 : deviceManager.status === "syncing" ? "SYNC"
                                                 : deviceManager.status === "error" ? "ERROR"
                                                 : "OFFLINE"
+    readonly property color deviceStatusAccent: deviceManager.status === "error" ? "#FF6B75"
+                                                 : deviceManager.connected ? Theme.accent
+                                                 : deviceBusy ? Theme.amber
+                                                 : Theme.textDim
 
     // P0_TOPBAR_SEMANTIC_TRUTH_V1
-    // The toolbar never claims DEFAULT FLAT unless that state is actually known.
-    // Its context chip is read-only and derives only from authoritative device
-    // slot state or the validated PC preset bridge. Staging and Preview remain
-    // visibly distinct so a PC file can never masquerade as the live K500 state.
     readonly property var presetManager: root.deviceManager ? root.deviceManager.presetManager : null
     readonly property var presetFileBridge: root.deviceManager ? root.deviceManager.presetFileBridge : null
 
@@ -127,7 +129,16 @@ StudioPanel {
                     Text { text:"SonKuPik";color:Theme.text;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.Bold }
                     Text { text:"K500";color:Theme.amber;font.family:Theme.displayFamily;font.pixelSize:14;font.weight:Font.Bold }
                 }
-                Text { text:"KARAOKE PROCESSOR";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.3 }
+                Text {
+                    text:"KARAOKE PROCESSOR"
+                    color:Theme.textDim
+                    renderType:Text.NativeRendering
+                    font.family:Theme.monoFamily
+                    font.pixelSize:9
+                    font.weight:Font.Medium
+                    font.hintingPreference:Font.PreferFullHinting
+                    font.letterSpacing:1.15
+                }
             }
             Item { Layout.fillWidth:true }
         }
@@ -149,33 +160,17 @@ StudioPanel {
                 anchors.fill: parent
                 anchors.margins: 4
                 spacing: 3
-                SoftButton {
-                    Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true
-                    enabled: root.deviceManager.connected
-                    onClicked: root.deviceManager.sendPlayerCommand("rewind")
-                }
+                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true;enabled:root.deviceManager.connected;onClicked:root.deviceManager.sendPlayerCommand("rewind") }
                 SoftButton {
                     Layout.preferredWidth:31;Layout.fillHeight:true;transport:true;toolbar:true
                     iconName:root.transportPlaying?"pause":"play";iconOnly:true
                     checked:root.transportPlaying;neonAccent:root.transportPlaying;accentIcon:true
-                    enabled: root.deviceManager.connected
-                    onClicked: {
-                        root.deviceManager.sendPlayerCommand("playPause")
-                        root.transportPlaying = !root.transportPlaying
-                    }
+                    enabled:root.deviceManager.connected
+                    onClicked:{root.deviceManager.sendPlayerCommand("playPause");root.transportPlaying=!root.transportPlaying}
                 }
-                SoftButton {
-                    Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true
-                    enabled: root.deviceManager.connected
-                    onClicked: root.deviceManager.sendPlayerCommand("forward")
-                }
+                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true;enabled:root.deviceManager.connected;onClicked:root.deviceManager.sendPlayerCommand("forward") }
                 Rectangle { Layout.preferredWidth:1;Layout.preferredHeight:16;color:"#344049";opacity:.58 }
-                SoftButton {
-                    Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"volume-x";iconOnly:true
-                    checked:root.deviceManager.muted;danger:root.deviceManager.muted
-                    enabled: root.deviceManager.connected
-                    onClicked:root.deviceManager.toggleMute()
-                }
+                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"volume-x";iconOnly:true;checked:root.deviceManager.muted;danger:root.deviceManager.muted;enabled:root.deviceManager.connected;onClicked:root.deviceManager.toggleMute() }
             }
         }
 
@@ -188,18 +183,7 @@ StudioPanel {
             border.width: 1
             border.color: Qt.rgba(root.presetContextAccent.r, root.presetContextAccent.g, root.presetContextAccent.b,
                                   root.presetContextKind === "NO PRESET" ? .18 : .42)
-
-            Rectangle {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                anchors.leftMargin: 8
-                anchors.rightMargin: 8
-                anchors.topMargin: 1
-                height: 1
-                color: root.presetContextAccent
-                opacity: root.presetContextKind === "NO PRESET" ? .07 : .18
-            }
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:8;anchors.rightMargin:8;anchors.topMargin:1;height:1;color:root.presetContextAccent;opacity:root.presetContextKind==="NO PRESET"?.07:.18 }
 
             Column {
                 anchors.left: parent.left
@@ -212,19 +196,23 @@ StudioPanel {
                     width: parent.width
                     text: root.presetContextKind
                     color: root.presetContextAccent
+                    renderType: Text.NativeRendering
                     font.family: Theme.monoFamily
-                    font.pixelSize: 7
+                    font.pixelSize: 9
                     font.weight: Font.Bold
-                    font.letterSpacing: .75
+                    font.hintingPreference: Font.PreferFullHinting
+                    font.letterSpacing: .60
                     elide: Text.ElideRight
                 }
                 Text {
                     width: parent.width
                     text: root.presetContextName
                     color: root.presetContextKind === "NO PRESET" ? Theme.textDim : Theme.text
+                    renderType: Text.NativeRendering
                     font.family: Theme.fontFamily
-                    font.pixelSize: 9
+                    font.pixelSize: 10
                     font.weight: Font.DemiBold
+                    font.hintingPreference: Font.PreferFullHinting
                     elide: Text.ElideRight
                 }
             }
@@ -232,83 +220,115 @@ StudioPanel {
             ToolTip.visible: presetContextHover.containsMouse
             ToolTip.text: root.presetContextKind + " — " + root.presetContextName
             ToolTip.delay: 350
-            MouseArea {
-                id: presetContextHover
-                anchors.fill: parent
-                hoverEnabled: true
-                acceptedButtons: Qt.NoButton
-                cursorShape: Qt.ArrowCursor
-            }
+            MouseArea { id:presetContextHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton;cursorShape:Qt.ArrowCursor }
         }
 
         RowLayout {
-            spacing: 5
+            spacing: 6
             RowLayout {
                 visible: root.deviceManager.liveEnabled
                 spacing: 5
-                Rectangle {
-                    width:6;height:6;radius:3
-                    color: Theme.accent
-                }
+                Rectangle { width:6;height:6;radius:3;color:Theme.accent }
                 Text {
                     text:"LIVE"
                     color:Theme.accent
-                    font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7
+                    renderType:Text.NativeRendering
+                    font.family:Theme.monoFamily
+                    font.pixelSize:9
+                    font.weight:Font.Bold
+                    font.hintingPreference:Font.PreferFullHinting
+                    font.letterSpacing:.65
                 }
             }
-            SoftButton {
-                Layout.preferredWidth:50;Layout.preferredHeight:29;text:"BT";iconName:"bluetooth";compact:true;toolbar:true
-                checked:root.deviceManager.transportMode === "bt"
-                enabled:!root.deviceBusy
-                onClicked:root.deviceManager.setTransportMode("bt")
+
+            Rectangle {
+                id: transportModeSegment
+                Layout.preferredWidth: 104
+                Layout.preferredHeight: 29
+                radius: 7
+                color: "#070B0E"
+                border.width: 1
+                border.color: "#26343D"
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    spacing: 1
+                    SoftButton { width:(parent.width-1)/2;height:parent.height;radius:5;text:"BT";iconName:"bluetooth";compact:true;toolbar:true;mixerSelect:true;checked:root.deviceManager.transportMode==="bt";enabled:!root.deviceBusy;onClicked:root.deviceManager.setTransportMode("bt") }
+                    SoftButton { width:(parent.width-1)/2;height:parent.height;radius:5;text:"USB";iconName:"usb";compact:true;toolbar:true;mixerSelect:true;checked:root.deviceManager.transportMode==="usb";enabled:!root.deviceBusy;onClicked:root.deviceManager.setTransportMode("usb") }
+                }
             }
+
             SoftButton {
-                Layout.preferredWidth:50;Layout.preferredHeight:29;text:"USB";iconName:"usb";compact:true;toolbar:true
-                checked:root.deviceManager.transportMode === "usb"
-                enabled:!root.deviceBusy
-                onClicked:root.deviceManager.setTransportMode("usb")
-            }
-            SoftButton {
-                Layout.preferredWidth:86;Layout.preferredHeight:29
-                text:root.deviceManager.connected || root.deviceBusy ? "Disconnect" : "Connect"
-                iconName:root.deviceManager.connected ? "unplug" : "cable"
-                compact:true;toolbar:true
+                Layout.preferredWidth:94;Layout.preferredHeight:30
+                text:root.deviceManager.connected||root.deviceBusy?"Disconnect":"Connect"
+                iconName:root.deviceManager.connected?"unplug":"cable"
+                compact:true;toolbar:true;mixerSelect:true;primaryAction:true
                 checked:root.deviceManager.connected
-                neonAccent:root.deviceManager.connected
+                enabled:!root.deviceBusy||root.deviceManager.connected
                 onClicked:root.deviceManager.toggleConnection()
             }
         }
 
-        SoftButton {
-            id: statusButton
-            Layout.preferredWidth: 72
+        Rectangle {
+            id: statusDisplay
+            Layout.preferredWidth: 76
             Layout.preferredHeight: 29
-            text: root.deviceStatusText
-            compact: true
-            toolbar: true
-            amber: !root.deviceManager.connected && root.deviceManager.status !== "error"
-            danger: root.deviceManager.status === "error"
-            checked: root.deviceManager.connected
-            neonAccent: root.deviceManager.connected
+            radius: 8
+            color: "#080D11"
+            border.width: 1
+            border.color: Qt.rgba(root.deviceStatusAccent.r,root.deviceStatusAccent.g,root.deviceStatusAccent.b,
+                                  root.deviceManager.connected||root.deviceBusy||root.deviceManager.status==="error"?.48:.22)
+            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:7;anchors.rightMargin:7;anchors.topMargin:1;height:1;color:root.deviceStatusAccent;opacity:root.deviceManager.connected||root.deviceBusy?.22:.08 }
+            Row {
+                anchors.centerIn: parent
+                spacing: 6
+                Rectangle { anchors.verticalCenter:parent.verticalCenter;width:5;height:5;radius:3;color:root.deviceStatusAccent;opacity:root.deviceManager.status==="disconnected"?.55:1 }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.deviceStatusText
+                    color: root.deviceStatusAccent
+                    renderType: Text.NativeRendering
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 9
+                    font.weight: Font.Bold
+                    font.hintingPreference: Font.PreferFullHinting
+                    font.letterSpacing: .55
+                }
+            }
             ToolTip.visible: statusHover.containsMouse && (root.deviceManager.lastError.length > 0 || root.deviceManager.portLabel.length > 0)
             ToolTip.text: root.deviceManager.lastError.length > 0 ? root.deviceManager.lastError : root.deviceManager.portLabel
             ToolTip.delay: 350
-            MouseArea { id: statusHover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+            MouseArea { id:statusHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton;cursorShape:Qt.ArrowCursor }
         }
 
         Item { Layout.fillWidth:true }
 
+        // ABOUT_ENTRY_V1 — compact information key; the floating About card
+        // itself is owned by the ApplicationWindow so it stays truly centered.
         SoftButton {
-            Layout.preferredWidth: 94
-            Layout.preferredHeight: 30
-            text: "Support"
-            iconName: "file-down"
-            compact: true
-            toolbar: true
-            onClicked: supportReportDialog.open()
-            ToolTip.visible: supportHover.containsMouse
-            ToolTip.text: "Export bounded K500 diagnostics"
-            ToolTip.delay: 350
+            Layout.preferredWidth:32
+            Layout.preferredHeight:30
+            text:"i"
+            compact:true
+            toolbar:true
+            onClicked:root.aboutRequested()
+            ToolTip.visible:aboutHover.containsMouse
+            ToolTip.text:"About SonKuPik K500"
+            ToolTip.delay:300
+            MouseArea { id:aboutHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton }
+        }
+
+        SoftButton {
+            Layout.preferredWidth:94
+            Layout.preferredHeight:30
+            text:"Support"
+            iconName:"file-down"
+            compact:true
+            toolbar:true
+            onClicked:supportReportDialog.open()
+            ToolTip.visible:supportHover.containsMouse
+            ToolTip.text:"Export bounded K500 diagnostics"
+            ToolTip.delay:350
             MouseArea { id:supportHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton }
         }
     }

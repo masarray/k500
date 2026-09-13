@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 
 StudioPanel {
     id: root
@@ -15,21 +16,24 @@ StudioPanel {
     accentTop: false
 
     // P1_RACK_DYNAMICS_LIVE_BRIDGE_V1
+    // P1_RACK_DYNAMICS_LIVE_BRIDGE_V2
+    // Do not discover StudioEngine by walking visual parents: StackLayout and
+    // layout internals can interrupt that chain. Main.qml is the stable window
+    // boundary and exposes both studioEngine and selectedSection.
     function studioContext() {
-        var p = root
-        while (p) {
-            if (p.engine && typeof p.engine.editDevicePath === "function")
-                return { engine:p.engine, sectionIndex:Number(p.sectionIndex) }
-            p = p.parent
-        }
-        return null
+        var w = root.Window.window
+        if (!w) return null
+        var engine = w["studioEngine"]
+        var section = Number(w["selectedSection"])
+        if (!engine || typeof engine.editDevicePath !== "function") return null
+        return { engine:engine, sectionIndex:section }
     }
     function dispatchLive(field, value) {
         var ctx = studioContext()
         if (!ctx) return
         var path = ""
         if (root.title === "Vocal Dynamics") {
-            // Donor has no verified Mic gate write; leave gate safely local/read-only.
+            // Donor has no verified Mic gate write; gate remains read-only.
             if (field === "threshold") path = "mic.compThresholdDb"
             else if (field === "ratio") path = "mic.compRatio"
             else if (field === "attack") path = "mic.attackMs"
@@ -103,9 +107,6 @@ StudioPanel {
 
             Rectangle {
                 // COMPRESSOR_GRAPH_CAPTION_BASELINE_V1
-                // 227 px from the common 8 px rack top margin lands on the same
-                // optical baseline as the ATTACK/RELEASE value captions. Do not
-                // stretch this graph to the 251 px rack body again.
                 Layout.preferredWidth: root.includeGate ? 194 : 184
                 Layout.minimumWidth: 164
                 Layout.maximumWidth: 216
@@ -131,10 +132,16 @@ StudioPanel {
                         var left=width*(36/400),right=width*(22/400),top=height*(18/206),bottom=height*(30/206)
                         var plotW=Math.max(1,width-left-right),plotH=Math.max(1,height-top-bottom)
                         function clamp(v,a,b){return Math.max(a,Math.min(b,v))}
+                        function finiteOr(v,fallback){var n=Number(v);return isFinite(n)?n:fallback}
                         function xx(db){return left+(db-minDb)/(maxDb-minDb)*plotW}
                         function yy(db){var t=(clamp(db,minDb,maxDb)-minDb)/(maxDb-minDb);return height-bottom-t*plotH}
+                        // COMPRESSOR_GRAPH_ZERO_THRESHOLD_V2
+                        // Never use `Number(value) || fallback`: 0 dB is a valid
+                        // threshold and JavaScript would otherwise replace it by
+                        // -20 dB. Also allow the UI's documented maximum 0 dB.
                         function outDb(input){
-                            var th=clamp(Number(root.threshold)||-20,minDb,-1),r=clamp(Number(root.ratio)||1,1,100),knee=4
+                            var th=clamp(finiteOr(root.threshold,-20),minDb,maxDb)
+                            var r=clamp(finiteOr(root.ratio,1),1,100),knee=4
                             if(input<=th-knee/2)return input
                             if(input>=th+knee/2)return th+(input-th)/r
                             var u=(input-(th-knee/2))/knee,hard=th+(input-th)/r
@@ -152,7 +159,7 @@ StudioPanel {
                             c.beginPath();c.moveTo(xx(a),yy(a));c.lineTo(xx(b),yy(b));c.stroke()
                         }
 
-                        var th=clamp(Number(root.threshold)||-20,minDb,-1)
+                        var th=clamp(finiteOr(root.threshold,-20),minDb,maxDb)
                         c.globalAlpha=.12;c.fillStyle=Theme.amber.toString();c.beginPath();c.moveTo(xx(th),yy(th))
                         for(i=0;i<=48;i++){var db=th+(maxDb-th)*i/48;c.lineTo(xx(db),yy(outDb(db)))}
                         c.lineTo(xx(maxDb),yy(maxDb));c.closePath();c.fill()
@@ -188,10 +195,10 @@ StudioPanel {
                     Layout.minimumWidth: 72
                     Layout.minimumHeight: 92
                     compact: true
+                    editable: false
                     title: "GATE"; value: root.gate
                     from: -80; to: 0; step: 1; decimals: 0; unit: "dB"
                     accentColor: root.accentColor
-                    onValueEdited: function(v){ root.gate=v }
                 }
                 StudioKnob {
                     Layout.fillWidth: true; Layout.fillHeight: true

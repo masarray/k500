@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.0.0 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -181,6 +181,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/Main.qml
         qml/theme/Theme.qml
         qml/components/TopBar.qml
+        qml/components/AboutDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml

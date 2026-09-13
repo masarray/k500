@@ -28,7 +28,7 @@ jobs:
               'device slot context is authoritative': 'manager.activeSlot' in topbar and 'deviceModeNames' in topbar and 'DEVICE SLOT ' in topbar,
               'PC staged and preview remain distinct': 'PC STAGED' in topbar and 'PC PREVIEW' in topbar and 'editPersistenceEnabled' in topbar,
               'dirty preview is explicit': 'PC PREVIEW · EDITED' in topbar and 'bridge.dirty' in topbar,
-              'preset context is passive': 'id: presetContextChip' in topbar and 'acceptedButtons: Qt.NoButton' in topbar,
+              'preset context is passive': 'id: presetContextChip' in topbar and re.search(r'acceptedButtons\s*:\s*Qt\.NoButton', topbar) is not None,
               'offline cannot claim LIVE': 'visible: root.deviceManager.liveEnabled' in topbar,
           }
 

@@ -17,6 +17,10 @@ Item {
         name === "skip-forward" || name === "volume-x" || name === "bluetooth" ||
         name === "usb" || name === "cable" || name === "upload" || name === "download"
 
+    // LUCIDE_CURVE_AA_V1
+    // Shape.CurveRenderer keeps Lucide strokes analytically smooth at compact
+    // 13–16 px UI sizes without enabling expensive window-wide MSAA.
+
     // Fallback geometry for the section drawer and other non-toolbar icons.
     readonly property string pathData: {
         switch (name) {
@@ -43,6 +47,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: !root.precisionIcon
         width: 24
         height: 24
@@ -63,12 +68,14 @@ Item {
     // than concatenating multiple SVG elements into one PathSvg. This avoids
     // the malformed/overlapping glyphs seen on BT, USB, Connect and I/O icons.
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "bluetooth"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"m7 7 10 10-5 5V2l5 5L7 17"} }
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "usb"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M11 7 A1 1 0 1 1 9 7 A1 1 0 1 1 11 7"} }
@@ -81,6 +88,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "cable"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M17 19a1 1 0 0 1-1-1v-2a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2a1 1 0 0 1-1 1z"} }
@@ -93,6 +101,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "upload"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M12 3v12"} }
@@ -101,6 +110,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "download"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M12 15V3"} }
@@ -109,12 +119,14 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "play"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:root.filled?root.color:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"} }
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "pause"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:root.filled?root.color:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M15 3h3a1 1 0 0 1 1 1v16a1 1 0 0 1-1 1h-3a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"} }
@@ -122,6 +134,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "skip-back"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:root.filled?root.color:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M17.971 4.285A2 2 0 0 1 21 6v12a2 2 0 0 1-3.029 1.715l-9.997-5.998a2 2 0 0 1-.003-3.432z"} }
@@ -129,6 +142,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "skip-forward"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M21 4v16"} }
@@ -136,6 +150,7 @@ Item {
     }
 
     Shape {
+        preferredRendererType: Shape.CurveRenderer
         visible: root.name === "volume-x"
         width:24;height:24;anchors.centerIn:parent;scale:Math.min(root.width,root.height)/24
         ShapePath { strokeColor:root.color;strokeWidth:root.strokeWidth;fillColor:"transparent";capStyle:ShapePath.RoundCap;joinStyle:ShapePath.RoundJoin;PathSvg{path:"M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"} }

@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Guard recessed illuminated source selection
+      - name: Guard raised illuminated source selection
         shell: python
         run: |
           from pathlib import Path
@@ -23,12 +23,16 @@ jobs:
           panel = Path('qml/components/MusicInputPanel.qml').read_text(encoding='utf-8')
 
           checks = {
-              'mixer key v2 token': 'MIXER_SOURCE_ILLUMINATED_SELECT_V2' in button,
+              'mixer raised v5 token': 'MIXER_SOURCE_RAISED_ACTIVE_V5' in button,
+              'native press stability token': 'TEXT_NATIVE_PRESS_STABILITY_V1' in button,
               'opt-in mixer style': 'property bool mixerSelect: false' in button,
-              'active state is recessed': 'readonly property bool mixerDepressed: root.mixerLit' in button,
-              'pressed/active face scales inward': 'root.mixerDepressed ? .982 : 1' in button,
-              'reversed inset bevel exists': 'Dark top/left + bright bottom/right' in button,
-              'active legend is dark': 'root.mixerLit ? "#031013"' in button,
+              'selected face stays full size after click': 'scale: mouse.pressed' not in button and 'y: mouse.pressed ? 1 : 0' in button,
+              'active face uses full cyan fill': 'root.mixerLit ? "#7BFAFD"' in button and '"#6AF7F9"' in button and '"#14B4BC"' in button,
+              'raised face has top specular cue': 'root.mixerLit ? "#E7FFFF"' in button,
+              'raised face has lower physical lip': 'anchors.bottomMargin: -2' in button and 'opacity: .62' in button,
+              'mixer keys still exclude inner glass rectangle': 'visible: !root.mixerSelect' in button,
+              'legacy recessed overlay remains removed': 'mixerDepressed' not in button and 'Dark top/left + bright bottom/right' not in button,
+              'active legend is dark': 'root.mixerLit ? "#021012"' in button,
               'fader exposes mixer-style bridge': 'property bool sourceButtonMixerSelect: false' in fader and 'mixerSelect: root.sourceButtonMixerSelect' in fader,
               'four native gain strips use mixer keys': panel.count('sourceButtonMixerSelect:true') == 4,
               'digital pair uses the same mixer key style': 'sourceButtonMixerSelect: true' in panel,
