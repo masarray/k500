@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QStringList>
 #include <QVariantMap>
+#include <QtGlobal>
 
 class EqBandModel final : public QAbstractListModel
 {
@@ -120,6 +121,64 @@ public:
     EqBandModel *subEqBands() { return &m_subEqBands; }
     QVariantMap deviceState() const { return m_deviceState; }
     bool deviceStateReady() const { return m_deviceStateReady; }
+
+    // PRESET_CROSSOVER_HYDRATION_NO_EDIT_V1
+    // Offline .k500 Preview has authoritative HPF/LPF footer metadata that is
+    // absent from the 0x0290 slot image. Hydrate that metadata without ever
+    // emitting stateEdited(), so Preview cannot become a hardware/live write.
+    void syncPresetCrossover(const QString &section, double hpfHz, double lpfHz,
+                             const QString &hpType, const QString &lpType)
+    {
+        EqBandModel *model = nullptr;
+        if (section == QStringLiteral("music")) model = &m_musicEqBands;
+        else if (section == QStringLiteral("micA")) model = &m_micAEqBands;
+        else if (section == QStringLiteral("micB")) model = &m_micBEqBands;
+        else if (section == QStringLiteral("reverb")) model = &m_reverbEqBands;
+        else if (section == QStringLiteral("echo")) model = &m_echoEqBands;
+        else if (section == QStringLiteral("main")) model = &m_mainEqBands;
+        else if (section == QStringLiteral("surround")) model = &m_surroundEqBands;
+        else if (section == QStringLiteral("center")) model = &m_centerEqBands;
+        else if (section == QStringLiteral("sub")) model = &m_subEqBands;
+        if (!model)
+            return;
+
+        const double safeHpf = qBound(20.0, hpfHz, 20000.0);
+        const double safeLpf = qBound(20.0, lpfHz, 20000.0);
+        const QString resolvedHpType = hpType.trimmed().isEmpty() ? model->hpType() : hpType.trimmed();
+        const QString resolvedLpType = lpType.trimmed().isEmpty() ? model->lpType() : lpType.trimmed();
+        model->syncCrossover(safeHpf, safeLpf, resolvedHpType, resolvedLpType);
+
+        if (section == QStringLiteral("music")) {
+            if (!qFuzzyCompare(m_hpfHz + 1000.0, safeHpf + 1000.0)) {
+                m_hpfHz = safeHpf;
+                emit hpfHzChanged();
+            }
+            if (!qFuzzyCompare(m_lpfHz + 1000.0, safeLpf + 1000.0)) {
+                m_lpfHz = safeLpf;
+                emit lpfHzChanged();
+            }
+            if (m_hpType != resolvedHpType) {
+                m_hpType = resolvedHpType;
+                emit hpTypeChanged();
+            }
+            if (m_lpType != resolvedLpType) {
+                m_lpType = resolvedLpType;
+                emit lpTypeChanged();
+            }
+        }
+
+        if (m_deviceStateReady) {
+            QVariantMap eqState = m_deviceState.value(QStringLiteral("eq")).toMap();
+            QVariantMap sectionState = eqState.value(section).toMap();
+            sectionState.insert(QStringLiteral("hpfHz"), safeHpf);
+            sectionState.insert(QStringLiteral("lpfHz"), safeLpf);
+            sectionState.insert(QStringLiteral("hpType"), resolvedHpType);
+            sectionState.insert(QStringLiteral("lpType"), resolvedLpType);
+            eqState.insert(section, sectionState);
+            m_deviceState.insert(QStringLiteral("eq"), eqState);
+            emit deviceStateChanged();
+        }
+    }
 
     int musicKey() const { return m_musicKey; }
     double noiseGate() const { return m_noiseGate; }

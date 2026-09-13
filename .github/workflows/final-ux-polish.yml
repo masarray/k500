@@ -1,0 +1,32 @@
+name: Guard final UX polish
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/BandInspector.qml'
+      - 'qml/components/CrossoverInspector.qml'
+      - '.github/workflows/final-ux-polish.yml'
+  workflow_dispatch:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify inspector action scope copy
+        shell: python
+        run: |
+          from pathlib import Path
+
+          band = Path('qml/components/BandInspector.qml').read_text(encoding='utf-8')
+          cross = Path('qml/components/CrossoverInspector.qml').read_text(encoding='utf-8')
+
+          assert 'FINAL_INSPECTOR_SCOPE_COPY_V1' in band
+          assert 'FINAL_INSPECTOR_SCOPE_COPY_V1' in cross
+          assert 'text: "RESET BAND"' in band
+          assert 'text: "RESET EDGE"' in cross
+          assert 'text: "Reset"' not in band
+          assert 'text: "Reset"' not in cross
+          assert 'onClicked: root.resetRequested()' in band
+          assert 'onClicked: root.resetRequested()' in cross
+          print('Final inspector UX scope guard passed')

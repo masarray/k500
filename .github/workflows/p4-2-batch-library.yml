@@ -4,22 +4,26 @@ on:
   workflow_dispatch:
   push:
     paths:
+      - 'src/StudioEngine.*'
       - 'src/k500/K500PresetBatchBridge.cpp'
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/P42BatchTestMain.cpp'
       - 'src/k500/K500PresetManager.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'tests/fixtures/*.k500'
       - 'CMakeLists.txt'
       - '.github/workflows/p4-2-batch-library.yml'
   pull_request:
     paths:
+      - 'src/StudioEngine.*'
       - 'src/k500/K500PresetBatchBridge.cpp'
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/P42BatchTestMain.cpp'
       - 'src/k500/K500PresetManager.*'
       - 'qml/components/SystemWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/MassUploadTransferWindow.qml'
       - 'tests/fixtures/*.k500'
       - 'CMakeLists.txt'
@@ -37,7 +41,7 @@ jobs:
         run: |
           $batch = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
           $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
-          $system = Get-Content 'qml/components/SystemWorkspace.qml' -Raw
+          $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $transfer = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
           $manager = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
           $test = Get-Content 'src/k500/P42BatchTestMain.cpp' -Raw
@@ -81,8 +85,8 @@ jobs:
             throw 'P4.2 regression: Mass Upload must not finish/re-enable LIVE immediately after final Store commit'
           }
 
-          foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch','transfer-list order was sorted or remapped unexpectedly','transfer-list accepted more than 10 device slots','staging PC preset changed StudioEngine/device truth','LIVE editor tweak mutated staged PC preset')) {
-            if (-not $test.Contains($token)) { throw "P4.2 donor/transfer regression test missing '$token'" }
+          foreach ($token in @('filename sort / sequential slot mapping regressed','slot overflow was not rejected','checksum-invalid member did not abort entire batch','transfer-list order was sorted or remapped unexpectedly','transfer-list accepted more than 10 device slots','staging PC preset changed StudioEngine/device truth','LIVE editor tweak mutated staged PC preset','Preview crossover hydration emitted stateEdited/live-edit semantics','Preview crossover anchor mismatch','Preview HPF type mismatch','Preview LPF type mismatch','donor fixture did not exercise any verified crossover type')) {
+            if (-not $test.Contains($token)) { throw "P4.2 donor/transfer/preview regression test missing '$token'" }
           }
 
           # P6 ordinary preset selection only stages a PC file. It must never silently

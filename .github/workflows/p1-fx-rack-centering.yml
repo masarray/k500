@@ -1,0 +1,49 @@
+name: Guard premium FX space panel
+
+on:
+  pull_request:
+    paths:
+      - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/StudioKnob.qml'
+      - '.github/workflows/p1-fx-rack-centering.yml'
+  workflow_dispatch:
+
+jobs:
+  premium-fx-space:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Guard premium FX layout and lightweight visual field
+        shell: python
+        run: |
+          from pathlib import Path
+
+          rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          knob = Path('qml/components/StudioKnob.qml').read_text(encoding='utf-8')
+
+          checks = {
+              'premium FX contract token': 'PREMIUM_FX_SPACE_PANEL_V1' in rack,
+              'Reverb and Echo share the FX surface': 'title === "Reverb" || title === "Echo"' in rack,
+              'three premium knobs remain parameter-driven': 'premium: true' in rack and 'model: root.channels' in rack,
+              'reverb semantic field exists': '"REVERB FIELD"' in rack and '"SPACE DESIGN"' in rack,
+              'echo semantic field exists': '"ECHO FIELD"' in rack and '"TIME DESIGN"' in rack,
+              'visual is explicitly parameter response': '"PARAMETER RESPONSE"' in rack,
+              'zero level hard-hides the response field': 'FX_FIELD_ZERO_LEVEL_HIDE_V2' in rack and 'readonly property bool fxVisualActive: root.fxVisual0 > 0.0001' in rack and 'visible: root.fxVisualActive' in rack,
+              'field bottom aligns to master caption baseline': 'FX_FIELD_MASTER_CAPTION_BASELINE_V3' in rack and 'anchors.topMargin: 4' in rack and 'height: 220' in rack,
+              'decay strongly maps to stage width density and tail': 'REVERB_DECAY_PREDELAY_MAPPING_V3' in rack and 'readonly property int ringCount: 2 + Math.round(decayNorm * 6)' in rack and 'readonly property int particleCount: 4 + Math.round(decayNorm * 10)' in rack and 'width * (.38 + decayShape * .54)' in rack,
+              'pre-delay creates a visible dry to bloom gap': 'id: drySource' in rack and 'readonly property real preGap: 4 + preNorm * 76' in rack and 'id: preDelayGuide' in rack and 'id: reverbBloom' in rack,
+              'reverb header exposes PRE readout': '"PRE  " + Math.round(root.fxVisual2) + " ms"' in rack,
+              'echo uses stationary tap tail': 'STATIC_ECHO_TAIL_V2' in rack and 'id: echoTrain' in rack and 'echoSweep' not in rack and 'NumberAnimation on x' not in rack,
+              'visual edits do not invent a new transport': 'root.dispatchLive(fxChannel.modelData.label,v)' in rack,
+              'non-FX sections retain canonical faders': 'StudioFader {' in rack and 'visible: !root.compactCluster' in rack,
+              'FX field avoids continuously repainted Canvas': 'Canvas {' not in rack,
+              'premium knob is opt-in': 'property bool premium: false' in knob and 'PREMIUM_FX_KNOB_V1' in knob,
+              'premium knob preserves canonical edit signal': 'signal valueEdited(real newValue)' in knob,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('Premium FX space guard failed: ' + ', '.join(failed))
+          print('ALL PREMIUM FX SPACE PANEL GUARDS PASSED')

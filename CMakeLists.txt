@@ -1,19 +1,39 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.0.0 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.0.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network)
+find_package(Git QUIET)
 qt_standard_project_setup(REQUIRES 6.8)
+
+set(SONKUPIK_GIT_SHA "unknown")
+if(GIT_FOUND)
+    execute_process(
+        COMMAND "${GIT_EXECUTABLE}" rev-parse --short=12 HEAD
+        WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+        RESULT_VARIABLE SONKUPIK_GIT_RESULT
+        OUTPUT_VARIABLE SONKUPIK_GIT_SHA_CANDIDATE
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+    if(SONKUPIK_GIT_RESULT EQUAL 0 AND NOT SONKUPIK_GIT_SHA_CANDIDATE STREQUAL "")
+        set(SONKUPIK_GIT_SHA "${SONKUPIK_GIT_SHA_CANDIDATE}")
+    endif()
+endif()
 
 qt_add_executable(sonkupik_studio_native WIN32
     src/main.cpp
     src/AppVersionInit.cpp
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/DevicePerformanceMonitor.cpp
+    src/DevicePerformanceMonitor.h
+    src/RuntimeMetrics.cpp
+    src/RuntimeMetrics.h
     src/k500/K500Frame.cpp
     src/k500/K500Frame.h
     src/k500/K500Protocol.cpp
@@ -41,8 +61,12 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500WinIo.h
     src/k500/K500DeviceManager.cpp
     src/k500/K500DeviceManager.h
+    src/k500/K500DeviceManagerShutdown.cpp
 )
-target_compile_definitions(sonkupik_studio_native PRIVATE SONKUPIK_VERSION=\"${PROJECT_VERSION}\")
+target_compile_definitions(sonkupik_studio_native PRIVATE
+    SONKUPIK_VERSION=\"${PROJECT_VERSION}\"
+    SONKUPIK_GIT_SHA=\"${SONKUPIK_GIT_SHA}\"
+)
 target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 # P0_RUNTIME_TELEMETRY_V1 — deterministic, hardware-free resource qualification.
@@ -56,6 +80,46 @@ add_executable(k500_p0_perf_selftest
 target_link_libraries(k500_p0_perf_selftest PRIVATE Qt6::Core)
 if(WIN32)
     target_link_libraries(k500_p0_perf_selftest PRIVATE psapi)
+endif()
+
+# P2_TRANSPORT_LIFECYCLE_STRESS_V1 — hardware-free worker lifecycle qualification.
+if(WIN32)
+    add_executable(k500_p2_transport_lifecycle_test
+        src/k500/P2TransportLifecycleSelfTestMain.cpp
+        src/k500/K500WinIo.cpp
+        src/k500/K500WinIo.h
+        src/k500/K500Frame.cpp
+        src/k500/K500Frame.h
+        src/RuntimeMetrics.cpp
+        src/RuntimeMetrics.h
+    )
+    target_include_directories(k500_p2_transport_lifecycle_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(k500_p2_transport_lifecycle_test PRIVATE Qt6::Core setupapi hid psapi)
+endif()
+
+# P3_WINDOWS_RAII_V1 — mechanical native-resource ownership qualification.
+if(WIN32)
+    add_executable(k500_p3_win_resource_test
+        src/k500/P3WinResourceSelfTestMain.cpp
+        src/k500/WinResourceGuards.h
+        src/RuntimeMetrics.cpp
+        src/RuntimeMetrics.h
+    )
+    target_include_directories(k500_p3_win_resource_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(k500_p3_win_resource_test PRIVATE Qt6::Core setupapi hid psapi)
+
+    add_executable(k500_p3_transport_shutdown_test
+        src/k500/P3TransportShutdownSelfTestMain.cpp
+        src/k500/K500WinIo.cpp
+        src/k500/K500WinIo.h
+        src/k500/K500Frame.cpp
+        src/k500/K500Frame.h
+        src/k500/WinResourceGuards.h
+        src/RuntimeMetrics.cpp
+        src/RuntimeMetrics.h
+    )
+    target_include_directories(k500_p3_transport_shutdown_test PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+    target_link_libraries(k500_p3_transport_shutdown_test PRIVATE Qt6::Core setupapi hid psapi)
 endif()
 
 add_executable(k500_p2_selftest
@@ -117,6 +181,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/Main.qml
         qml/theme/Theme.qml
         qml/components/TopBar.qml
+        qml/components/AboutDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml
@@ -147,6 +212,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/RackDynamicsPanel.qml
         qml/components/RackFilterPanel.qml
         qml/components/SystemWorkspace.qml
+        qml/components/SystemWorkspaceImpl.qml
         qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
     SOURCES
@@ -208,7 +274,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing

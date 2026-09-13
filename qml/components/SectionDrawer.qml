@@ -21,10 +21,12 @@ StudioPanel {
                 anchors.verticalCenter: parent.verticalCenter
                 text: "SECTIONS"
                 color: Theme.textDim
+                renderType: Text.NativeRendering
                 font.family: Theme.monoFamily
-                font.pixelSize: 9
+                font.pixelSize: 10
                 font.weight: Font.Medium
-                font.letterSpacing: 1.35
+                font.hintingPreference: Font.PreferFullHinting
+                font.letterSpacing: 1.25
             }
         }
 
@@ -52,8 +54,13 @@ StudioPanel {
                 radius: 8
                 border.width: 1
                 border.color: active ? "#4724E9F2" : navPointer.containsMouse ? "#27343D" : "transparent"
-                transformOrigin: Item.Center
-                scale: navPointer.pressed ? .991 : 1
+
+                // MICRO_TYPE_OPTICAL_POLISH_V1
+                // Native text stays on integer pixels during press feedback.
+                transform: Translate {
+                    y: navPointer.pressed ? 1 : 0
+                    Behavior on y { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
+                }
 
                 gradient: Gradient {
                     orientation: Gradient.Horizontal
@@ -123,11 +130,11 @@ StudioPanel {
 
                     LucideIcon {
                         anchors.centerIn: parent
-                        width: 15
-                        height: 15
+                        width: 16
+                        height: 16
                         name: navItem.modelData.icon
                         color: navItem.active ? Theme.accent : navPointer.containsMouse ? Theme.textSoft : Theme.textDim
-                        strokeWidth: 1.7
+                        strokeWidth: 1.85
                     }
                 }
 
@@ -142,16 +149,21 @@ StudioPanel {
                         width: parent.width
                         text: navItem.modelData.name
                         color: navItem.active ? Theme.accent : Theme.text
+                        renderType: Text.NativeRendering
                         font.family: Theme.displayFamily
                         font.pixelSize: 12
                         font.weight: Font.DemiBold
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                     Text {
                         width: parent.width
                         text: navItem.modelData.sub
                         color: Theme.textDim
+                        renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
-                        font.pixelSize: 9
+                        font.pixelSize: 10
+                        font.weight: Font.Medium
+                        font.hintingPreference: Font.PreferFullHinting
                         elide: Text.ElideRight
                     }
                 }
@@ -165,7 +177,6 @@ StudioPanel {
                 }
 
                 Behavior on border.color { ColorAnimation { duration: 80 } }
-                Behavior on scale { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
             }
         }
 

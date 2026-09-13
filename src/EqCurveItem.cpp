@@ -18,31 +18,31 @@ public:
     explicit CurveSceneNode(int bandCount, int sampleCount)
         : bandCount(bandCount)
     {
-        fill = createNode(sampleCount * 2);
+        fill = createFillNode(sampleCount);
         appendChildNode(fill);
 
         bands.reserve(bandCount);
         for (int i = 0; i < bandCount; ++i) {
-            auto *node = createNode(sampleCount * 2);
+            auto *node = createStrokeNode(sampleCount);
             bands.push_back(node);
             appendChildNode(node);
         }
 
-        crossover = createNode(sampleCount * 2);
-        totalShadow = createNode(sampleCount * 2);
-        totalGlow = createNode(sampleCount * 2);
-        total = createNode(sampleCount * 2);
+        crossover = createStrokeNode(sampleCount);
+        totalShadow = createStrokeNode(sampleCount);
+        totalGlow = createStrokeNode(sampleCount);
+        total = createStrokeNode(sampleCount);
+        totalRidge = createStrokeNode(sampleCount);
         appendChildNode(crossover);
         appendChildNode(totalShadow);
         appendChildNode(totalGlow);
         appendChildNode(total);
+        appendChildNode(totalRidge);
     }
 
-    static QSGGeometryNode *createNode(int vertexCount)
+    static QSGGeometryNode *createNode(QSGGeometry *geometry)
     {
         auto *node = new QSGGeometryNode;
-        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), vertexCount);
-        geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
         auto *material = new QSGVertexColorMaterial;
         material->setFlag(QSGMaterial::Blending, true);
         node->setGeometry(geometry);
@@ -52,6 +52,50 @@ public:
         return node;
     }
 
+    static QSGGeometryNode *createFillNode(int sampleCount)
+    {
+        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), sampleCount * 2);
+        geometry->setDrawingMode(QSGGeometry::DrawTriangleStrip);
+        geometry->setVertexDataPattern(QSGGeometry::DynamicPattern);
+        return createNode(geometry);
+    }
+
+    // P1_NATIVE_PEQ_ANALYTIC_AA_V1
+    // Each stroke owns four vertices per response sample: transparent outer,
+    // opaque inner, opaque inner, transparent outer. Three indexed quads per
+    // segment form a feathered edge/core/edge strip. This is the same basic
+    // vertex-AA principle Qt uses for clean primitive edges, but scoped only to
+    // the PEQ geometry: no full-window MSAA, no Canvas and no offscreen layer.
+    static QSGGeometryNode *createStrokeNode(int sampleCount)
+    {
+        constexpr int VerticesPerSample = 4;
+        constexpr int IndicesPerSegment = 18;
+        auto *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(),
+                                         sampleCount * VerticesPerSample,
+                                         std::max(0, sampleCount - 1) * IndicesPerSegment,
+                                         QSGGeometry::UnsignedShortType);
+        geometry->setDrawingMode(QSGGeometry::DrawTriangles);
+        geometry->setVertexDataPattern(QSGGeometry::DynamicPattern);
+        geometry->setIndexDataPattern(QSGGeometry::StaticPattern);
+
+        auto *indices = geometry->indexDataAsUShort();
+        for (int i = 0; i < sampleCount - 1; ++i) {
+            const quint16 a = static_cast<quint16>(i * VerticesPerSample);
+            const quint16 b = static_cast<quint16>((i + 1) * VerticesPerSample);
+            const quint16 pattern[IndicesPerSegment] = {
+                static_cast<quint16>(a + 0), static_cast<quint16>(b + 0), static_cast<quint16>(a + 1),
+                static_cast<quint16>(a + 1), static_cast<quint16>(b + 0), static_cast<quint16>(b + 1),
+                static_cast<quint16>(a + 1), static_cast<quint16>(b + 1), static_cast<quint16>(a + 2),
+                static_cast<quint16>(a + 2), static_cast<quint16>(b + 1), static_cast<quint16>(b + 2),
+                static_cast<quint16>(a + 2), static_cast<quint16>(b + 2), static_cast<quint16>(a + 3),
+                static_cast<quint16>(a + 3), static_cast<quint16>(b + 2), static_cast<quint16>(b + 3)
+            };
+            std::copy(std::begin(pattern), std::end(pattern), indices);
+            indices += IndicesPerSegment;
+        }
+        return createNode(geometry);
+    }
+
     int bandCount = 0;
     QSGGeometryNode *fill = nullptr;
     QVector<QSGGeometryNode *> bands;
@@ -59,6 +103,7 @@ public:
     QSGGeometryNode *totalShadow = nullptr;
     QSGGeometryNode *totalGlow = nullptr;
     QSGGeometryNode *total = nullptr;
+    QSGGeometryNode *totalRidge = nullptr;
 };
 
 QColor withAlpha(const QColor &color, int alpha)
@@ -77,12 +122,28 @@ QColor interpolate(const QColor &a, const QColor &b, double t)
                             a.alphaF() + (b.alphaF() - a.alphaF()) * t);
 }
 
+constexpr uchar premultipliedChannel(int channel, int alpha)
+{
+    return static_cast<uchar>((channel * alpha + 127) / 255);
+}
+
+// P1_NATIVE_PEQ_PREMULTIPLIED_ALPHA_V2
+// QSGVertexColorMaterial blends premultiplied vertex colors. Supplying straight
+// RGB with a low alpha makes translucent cyan/amber geometry appear almost
+// opaque. Keep the retained native renderer, but feed it correct premultiplied
+// colors so the graph has the restrained transparency of a professional EQ UI.
 void setVertex(QSGGeometry::ColoredPoint2D &vertex, qreal x, qreal y, const QColor &color)
 {
+    const int alpha = color.alpha();
     vertex.set(static_cast<float>(x), static_cast<float>(y),
-               static_cast<uchar>(color.red()), static_cast<uchar>(color.green()),
-               static_cast<uchar>(color.blue()), static_cast<uchar>(color.alpha()));
+               premultipliedChannel(color.red(), alpha),
+               premultipliedChannel(color.green(), alpha),
+               premultipliedChannel(color.blue(), alpha),
+               static_cast<uchar>(alpha));
 }
+
+static_assert(premultipliedChannel(242, 34) == 32,
+              "PEQ scene-graph vertex colors must remain premultiplied");
 }
 
 EqCurveItem::EqCurveItem(QQuickItem *parent)
@@ -349,6 +410,11 @@ double EqCurveItem::besselMagnitude(int order, double ratio)
 double EqCurveItem::crossoverOneDb(bool lowPass, const QString &label, double cutoff, double frequency)
 {
     const QString upper = label.trimmed().toUpper();
+    // CROSSOVER_BYPASS_FLAT_RESPONSE_V1
+    // Bypass is a filter-type state. It never moves the cutoff anchor and it
+    // contributes exactly 0 dB to the response, matching the native K500 UI.
+    if (upper == QStringLiteral("BYPASS"))
+        return 0.0;
     const int order = upper.contains(QStringLiteral("24")) ? 4 : upper.contains(QStringLiteral("18")) ? 3 : 2;
     const double ratio = lowPass ? std::max(frequency, 1.0) / std::max(cutoff, 1.0)
                                  : std::max(cutoff, 1.0) / std::max(frequency, 1.0);
@@ -371,10 +437,12 @@ float EqCurveItem::calculateCrossoverDb(double frequency) const
     double db = 0.0;
     const double hpf = m_bandModel->hpfHz();
     const double lpf = m_bandModel->lpfHz();
-    if (hpf > 20.001)
-        db += crossoverOneDb(false, m_bandModel->hpType(), hpf, frequency);
-    if (lpf < 19999.999)
-        db += crossoverOneDb(true, m_bandModel->lpType(), lpf, frequency);
+    const QString hpType = m_bandModel->hpType().trimmed().toUpper();
+    const QString lpType = m_bandModel->lpType().trimmed().toUpper();
+    if (hpType != QStringLiteral("BYPASS"))
+        db += crossoverOneDb(false, hpType, hpf, frequency);
+    if (lpType != QStringLiteral("BYPASS"))
+        db += crossoverOneDb(true, lpType, lpf, frequency);
     return static_cast<float>(db);
 }
 
@@ -467,11 +535,12 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
         return m_leftPad + static_cast<qreal>(sample) / static_cast<qreal>(SampleCount - 1) * plotWidth;
     };
 
-    auto writeStroke = [&](QSGGeometryNode *node, const QVector<float> &response, qreal thickness,
-                           const auto &colorAt) {
+    auto writeStroke = [&](QSGGeometryNode *node, const QVector<float> &response,
+                           qreal thickness, qreal feather, const auto &colorAt) {
         auto *geometry = node->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const qreal half = thickness * 0.5;
+        const qreal innerHalf = std::max<qreal>(0.05, thickness * 0.5);
+        const qreal outerHalf = innerHalf + std::max<qreal>(0.4, feather);
         for (int i = 0; i < SampleCount; ++i) {
             const int previous = std::max(0, i - 1);
             const int next = std::min(SampleCount - 1, i + 1);
@@ -480,51 +549,70 @@ QSGNode *EqCurveItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
             const qreal dx = xForSample(next) - xForSample(previous);
             const qreal dy = yForDb(response.value(next)) - yForDb(response.value(previous));
             const qreal length = std::max<qreal>(0.0001, std::hypot(dx, dy));
-            const qreal nx = -dy / length * half;
-            const qreal ny = dx / length * half;
+            const qreal nx = -dy / length;
+            const qreal ny = dx / length;
             const QColor color = colorAt(i);
-            setVertex(vertices[i * 2], x + nx, y + ny, color);
-            setVertex(vertices[i * 2 + 1], x - nx, y - ny, color);
+            QColor edgeColor = color;
+            edgeColor.setAlpha(0);
+
+            setVertex(vertices[i * 4 + 0], x + nx * outerHalf, y + ny * outerHalf, edgeColor);
+            setVertex(vertices[i * 4 + 1], x + nx * innerHalf, y + ny * innerHalf, color);
+            setVertex(vertices[i * 4 + 2], x - nx * innerHalf, y - ny * innerHalf, color);
+            setVertex(vertices[i * 4 + 3], x - nx * outerHalf, y - ny * outerHalf, edgeColor);
         }
-        node->markDirty(QSGNode::DirtyGeometry | QSGNode::DirtyMaterial);
+        node->markDirty(QSGNode::DirtyGeometry);
     };
 
+    // P1_NATIVE_PEQ_LUXURY_FILL_V1
+    // Keep premultiplied-alpha correctness, but restore the richer visual depth
+    // of the earlier graph: a clearly readable translucent response body plus a
+    // restrained halo/core stack. This is still retained QSG geometry only --
+    // no Canvas, blur layer, offscreen target or per-frame allocation is added.
     {
         auto *geometry = root->fill->geometry();
         auto *vertices = geometry->vertexDataAsColoredPoint2D();
-        const QColor topColor = withAlpha(m_accentColor, 54);
-        const QColor bottomColor = withAlpha(m_accentColor, 0);
+        const QColor topColor = withAlpha(m_accentColor, 60);
+        const QColor bottomColor = withAlpha(m_accentColor, 3);
         for (int i = 0; i < SampleCount; ++i) {
             const qreal x = xForSample(i);
             setVertex(vertices[i * 2], x, yForDb(m_totalResponse[i]), topColor);
             setVertex(vertices[i * 2 + 1], x, zeroY, bottomColor);
         }
-        root->fill->markDirty(QSGNode::DirtyGeometry | QSGNode::DirtyMaterial);
+        root->fill->markDirty(QSGNode::DirtyGeometry);
     }
 
     for (int band = 0; band < bandCount; ++band) {
         const bool active = std::any_of(m_bandResponses[band].cbegin(), m_bandResponses[band].cend(),
                                         [](float value) { return std::abs(value) > 0.001f; });
         const bool selected = active && m_selectedTarget == QStringLiteral("band") && band == m_selectedIndex;
-        const QColor color = active ? withAlpha(selected ? m_amberColor : m_accentColor, selected ? 166 : 34)
+        const QColor color = active ? withAlpha(m_amberColor, selected ? 132 : 18)
                                     : QColor(0, 0, 0, 0);
-        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.6 : 1.0,
-                    [color](int) { return color; });
+        writeStroke(root->bands[band], m_bandResponses[band], selected ? 1.25 : 0.70,
+                    selected ? 0.78 : 0.62, [color](int) { return color; });
     }
 
-    writeStroke(root->crossover, m_crossoverResponse, 1.2,
-                [this](int) { return withAlpha(m_amberColor, 102); });
-    writeStroke(root->totalShadow, m_totalResponse, 6.2,
-                [](int) { return QColor(1, 2, 3, 224); });
-    writeStroke(root->totalGlow, m_totalResponse, 8.0,
-                [this](int) { return withAlpha(m_accentColor, 46); });
-    writeStroke(root->total, m_totalResponse, 3.2,
-                [this](int sample) {
-                    const double t = static_cast<double>(sample) / static_cast<double>(SampleCount - 1);
-                    if (t <= 0.55)
-                        return interpolate(m_accentColor, m_amberColor, t / 0.55);
-                    return interpolate(m_amberColor, m_accentColor, (t - 0.55) / 0.45);
-                });
+    writeStroke(root->crossover, m_crossoverResponse, 0.86, 0.66,
+                [this](int) { return withAlpha(m_amberColor, 58); });
+
+    // P1_NATIVE_PEQ_PREMIUM_RIDGE_V2
+    // 720 analytic samples are already denser than the graph pixel pitch. Rather
+    // than increasing CPU/vertex count or enabling full-window MSAA, use a fixed
+    // retained multi-layer optical stack: dark separation, broad low-alpha glow,
+    // exact-color core and a sub-pixel pale ridge. Geometry is allocated once and
+    // reused, so the extra polish costs one tiny retained stroke and no hot-path
+    // heap churn while preserving the exact unsmoothed DSP response coordinates.
+    writeStroke(root->totalShadow, m_totalResponse, 3.5, 0.95,
+                [](int) { return QColor(1, 3, 4, 112); });
+    writeStroke(root->totalGlow, m_totalResponse, 6.0, 1.35,
+                [this](int) { return withAlpha(m_accentColor, 30); });
+
+    const QColor compositeColor = interpolate(m_accentColor, QColor(222, 253, 255), 0.16);
+    writeStroke(root->total, m_totalResponse, 2.10, 0.78,
+                [compositeColor](int) { return compositeColor; });
+
+    const QColor ridgeColor = withAlpha(interpolate(m_accentColor, QColor(244, 255, 255), 0.62), 176);
+    writeStroke(root->totalRidge, m_totalResponse, 0.72, 0.48,
+                [ridgeColor](int) { return ridgeColor; });
 
     return root;
 }

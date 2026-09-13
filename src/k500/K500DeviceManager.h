@@ -1,5 +1,6 @@
 #pragma once
 
+#include "DevicePerformanceMonitor.h"
 #include "K500ResponseParser.h"
 #include "K500WinIo.h"
 
@@ -31,6 +32,7 @@ class K500DeviceManager final : public QObject
 
 public:
     explicit K500DeviceManager(K500Controller *controller, QObject *parent = nullptr);
+    ~K500DeviceManager() override;
 
     QString transportMode() const { return m_transportMode; }
     QString status() const { return m_status; }
@@ -61,6 +63,11 @@ public:
 public slots:
     void sendLiveFrame(const QByteArray &frame, const QString &label);
 
+    // P3_DETERMINISTIC_SHUTDOWN_V1
+    // Idempotent application-teardown entry point. It stops timers and live
+    // writes before synchronously closing/joining the transport worker.
+    void shutdown();
+
 signals:
     void transportModeChanged();
     void statusChanged();
@@ -84,6 +91,16 @@ private:
         AwaitHandshake,
         AwaitMemoryBlock,
         Ready,
+    };
+
+    // Tiny non-QObject helper that wires QCoreApplication::aboutToQuit to the
+    // deterministic shutdown slot. The connection uses this manager as context,
+    // so Qt disconnects it automatically if the manager is destroyed first.
+    class AppShutdownHook final
+    {
+    public:
+        explicit AppShutdownHook(K500DeviceManager *owner);
+        QMetaObject::Connection connection;
     };
 
     void setStatus(const QString &status);
@@ -111,6 +128,7 @@ private:
     void resetConnectionState(bool keepError = false);
 
     K500Controller *m_controller = nullptr;
+    DevicePerformanceMonitor m_performanceMonitor{this, m_controller};
     K500WinIo m_io;
     K500ResponseParser m_parser;
     QObject *m_presetManager = nullptr;
@@ -127,6 +145,7 @@ private:
     QStringList m_diagnosticLog;
     bool m_liveEnabled = false;
     bool m_muted = false;
+    bool m_shuttingDown = false;
 
     Stage m_stage = Stage::Idle;
     QStringList m_serialCandidates;
@@ -143,4 +162,5 @@ private:
     QTimer m_probeDelayTimer;
     QTimer m_heartbeatTimer;
     QElapsedTimer m_lastValidRx;
+    AppShutdownHook m_shutdownHook{this};
 };
