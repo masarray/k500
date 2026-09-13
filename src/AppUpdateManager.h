@@ -26,6 +26,7 @@ class AppUpdateManager : public QObject
     Q_PROPERTY(qint64 downloadedBytes READ downloadedBytes NOTIFY progressChanged)
     Q_PROPERTY(qint64 totalBytes READ totalBytes NOTIFY progressChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
+    Q_PROPERTY(bool managedInstall READ managedInstall CONSTANT)
 
 public:
     explicit AppUpdateManager(QObject *parent = nullptr);
@@ -41,6 +42,7 @@ public:
     qint64 downloadedBytes() const { return m_downloadedBytes; }
     qint64 totalBytes() const { return m_totalBytes; }
     bool busy() const;
+    bool managedInstall() const;
 
     Q_INVOKABLE void startAutomaticCheck();
     Q_INVOKABLE void checkForUpdates(bool userInitiated = true);
@@ -63,8 +65,10 @@ private:
     void handleManifest(QNetworkReply *reply);
     void beginInstallerDownload();
     void finishInstallerDownload(QNetworkReply *reply);
-    void launchVerifiedInstaller();
+    void handoffVerifiedInstaller();
     void clearMetadata();
+    bool automaticCheckSuppressedByArguments() const;
+    bool shouldNotifyAvailable() const;
 
     static bool trustedReleaseAssetUrl(const QUrl &url, const QString &version);
     static bool trustedRedirectUrl(const QUrl &url);
