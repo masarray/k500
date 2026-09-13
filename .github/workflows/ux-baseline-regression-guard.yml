@@ -92,10 +92,11 @@ jobs:
 
               'Mixer/source keys retain strong pushable affordance':
                   'MIXER_SOURCE_RAISED_ACTIVE_V5' in button
-                  and 'MIXER_RAISED_SURFACE_V1' in button
+                  and 'TEXT_NATIVE_PRESS_STABILITY_V1' in button
                   and 'anchors.bottomMargin: -2' in button
                   and 'root.mixerLit ? "#7BFAFD"' in button
-                  and 'scale: mouse.pressed ? .988 : 1' in button
+                  and 'y: mouse.pressed ? 1 : 0' in button
+                  and 'scale: mouse.pressed' not in button
                   and 'anchors.fill: parent\n        anchors.margins: 1' in button,
 
               'Unsupported premium FX knobs fail closed as read-only':
