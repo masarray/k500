@@ -8,6 +8,7 @@ on:
       - 'qml/components/StudioKnob.qml'
       - 'qml/components/SectionEqGraph.qml'
       - 'qml/components/SectionEqGraphHost.qml'
+      - 'qml/components/EqGraph.qml'
       - 'qml/components/SoftButton.qml'
       - 'qml/components/RackDynamicsPanel.qml'
       - 'qml/components/RackFaderPanel.qml'
@@ -34,6 +35,7 @@ jobs:
           knob = text('qml/components/StudioKnob.qml')
           peq = text('qml/components/SectionEqGraph.qml')
           host = text('qml/components/SectionEqGraphHost.qml')
+          music_graph = text('qml/components/EqGraph.qml')
           button = text('qml/components/SoftButton.qml')
           dynamics = text('qml/components/RackDynamicsPanel.qml')
           fx = text('qml/components/RackFaderPanel.qml')
@@ -67,10 +69,14 @@ jobs:
                   'PEQ_PREMIUM_JEWEL_NODES_V1' in peq
                   and 'readonly property var colors:' in peq,
 
-              'Configured crossover types recover after legacy startup priming':
+              'Music crossover restores known native active type after startup':
+                  'MUSIC_CROSSOVER_STARTUP_DEVICE_SEMANTICS_V2' in music_graph
+                  and 'root.engine.hpType = "HP Butter 12"' in music_graph
+                  and 'root.engine.lpType = "LP Butter 12"' in music_graph,
+
+              'Output/effect crossover types recover after legacy startup priming':
                   'CROSSOVER_STARTUP_DEVICE_SEMANTICS_V2' in host
                   and 'restoreConfiguredCrossoverTypes' in host
-                  and 'root.engine.musicEqBands.setHpType("HP Butter 12")' in host
                   and 'root.engine.micAEqBands.setHpType("HP LR 24")' in host
                   and 'root.engine.surroundEqBands.setHpType("HP Bessel 12")' in host
                   and 'root.engine.subEqBands.setHpType("HP Butter 24")' in host,
