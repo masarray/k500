@@ -76,7 +76,7 @@ jobs:
           foreach ($token in @('BRAND_SONKUPIK_K500_V1','assets/SonKuPik-k500-logo.png')) {
             if (-not $cmake.Contains($token)) { throw "Brand resource regression: missing '$token'" }
           }
-          foreach ($token in @('<title>SonKuPik K500','./favicon.png','./SonKuPik-k500-logo.png','v1.0.0 Public Stable')) {
+          foreach ($token in @('<title>SonKuPik K500','./favicon.png','./SonKuPik-k500-logo.png','Latest Public Stable')) {
             if (-not $landing.Contains($token)) { throw "Landing-page brand regression: missing '$token'" }
           }
           foreach ($token in @(
