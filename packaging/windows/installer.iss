@@ -57,6 +57,8 @@ DisableDirPage=yes
 DisableProgramGroupPage=yes
 UsePreviousAppDir=no
 AllowNoIcons=yes
+DisableWelcomePage=no
+DisableReadyPage=no
 
 OutputDir={#OutputDir}
 OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup
@@ -107,35 +109,33 @@ begin
   Result := ExpandConstant('{param:AUToupdate|0}') = '1';
 end;
 
-function LegacyPerUserUninstaller: String;
-begin
-  Result := ExpandConstant('{localappdata}\Programs\{#AppName}\unins000.exe');
-end;
-
 procedure MigrateLegacyPerUserInstall;
 var
-  LegacyUninstaller: String;
+  Cmd: String;
+  Params: String;
   ResultCode: Integer;
 begin
-  LegacyUninstaller := LegacyPerUserUninstaller;
-  if not FileExists(LegacyUninstaller) then
-    exit;
+  { MIGRATE_LOCALAPPDATA_INSTALL_V1 }
+  { v1.0.1 was a per-user install. An elevated machine-wide Setup can run under }
+  { different credentials, so {localappdata} is not a reliable locator here. }
+  { Execute a tiny cmd under the ORIGINAL user and let that process expand its }
+  { own %LOCALAPPDATA%. This never touches Documents, presets, or QSettings. }
+  Cmd := ExpandConstant('{cmd}');
+  Params := '/C if exist "%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
+            'start "" /wait "%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
+            '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART';
 
-  Log('Legacy v1.0.x per-user install detected: ' + LegacyUninstaller);
-  { The legacy package owns only its LocalAppData runtime files/shortcuts. }
-  { User Documents presets and QSettings are intentionally outside its file list. }
-  if Exec(LegacyUninstaller,
-          '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART',
-          '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    Log(Format('Legacy per-user uninstall completed with code %d.', [ResultCode]))
+  Log('Checking original user profile for legacy per-user SonKuPik K500 install.');
+  if ExecAsOriginalUser(Cmd, Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log(Format('Legacy per-user migration command finished with code %d.', [ResultCode]))
   else
-    Log('Legacy per-user uninstaller could not be started; continuing with canonical Program Files install.');
+    Log('Legacy per-user migration command could not be started; canonical Program Files install will continue.');
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
-  { MIGRATE_LOCALAPPDATA_INSTALL_V1 — run before new files/shortcuts are written, }
-  { so a legacy uninstaller cannot remove the new Start Menu/Desktop entries. }
+  { Run before new files/shortcuts are written, so a legacy uninstaller cannot }
+  { remove the new common Start Menu/Desktop entries. }
   MigrateLegacyPerUserInstall;
   Result := '';
 end;
