@@ -16,7 +16,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 - [Capability & Protocol Parity Matrix](PORTING_PARITY_MATRIX.md) — what is stable, experimental, read-only, or unsupported.
 - [Protocol Golden Vectors](PROTOCOL_GOLDEN_VECTORS.md) — packet-level regression contracts.
 - [Hardware Acceptance Checklist](HARDWARE_ACCEPTANCE_CHECKLIST.md) — physical-device validation and regression procedure.
-- [v1.0 Stable Release Qualification](P5_RELEASE_READINESS.md) — exact stable release record and build gates.
+- [v1.0 Stable Release Qualification](P5_RELEASE_READINESS.md) — exact hardware-qualified baseline and build gates.
 
 ### Preset engineers / AI agents
 
@@ -32,7 +32,9 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 
 | Contract | Current truth |
 |---|---|
-| Public stable | `v1.0.0` |
+| Hardware-qualified baseline | `v1.0.0` |
+| Current public stable | [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Product download router | [Setup](https://sonkupik-k500.pages.dev/download/windows) · [Portable](https://sonkupik-k500.pages.dev/download/portable) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
 | Bluetooth SPP | Implemented, experimental |
@@ -43,6 +45,8 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Mode 01 SHA-256 | `9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74` |
 | Windows distribution | Inno Setup + normal portable ZIP |
 | Code signing | unsigned open-source |
+
+The public download routes intentionally do not contain a release number. They resolve GitHub's canonical latest non-prerelease release and the matching versioned Windows artifact, so future maintenance releases do not require manual CTA rewrites.
 
 ## Documentation principles
 
