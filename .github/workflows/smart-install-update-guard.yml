@@ -1,0 +1,109 @@
+name: Guard smart install and update
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smart-install-update-contract:
+    name: Smart install/update contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard storage, installer and updater invariants
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def need(text, token, label):
+              if token not in text:
+                  raise SystemExit(f"Missing {label}: {token}")
+
+          def forbid(text, token, label):
+              if token in text:
+                  raise SystemExit(f"Forbidden {label}: {token}")
+
+          cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
+          installer = Path('packaging/windows/installer.iss').read_text(encoding='utf-8')
+          updater = Path('src/AppUpdateManager.cpp').read_text(encoding='utf-8')
+          storage = Path('src/AppStorageManager.cpp').read_text(encoding='utf-8')
+          main_qml = Path('qml/Main.qml').read_text(encoding='utf-8')
+          update_qml = Path('qml/components/UpdateDialog.qml').read_text(encoding='utf-8')
+
+          for token in [
+              'project(SonkupikStudioNative VERSION 1.0.2',
+              'src/AppStorageManager.cpp',
+              'src/AppUpdateManager.cpp',
+              'qml/components/UpdateDialog.qml',
+              'shell32',
+          ]:
+              need(cmake, token, 'CMake integration')
+
+          for token in [
+              r'DefaultDirName={autopf}\\{#AppName}',
+              'PrivilegesRequired=admin',
+              'UsePreviousAppDir=no',
+              'WizardStyle=modern',
+              'AppMutex=SonKuPikK500.K500.Native',
+              '/AUTOUPDATE=1',
+              'runasoriginaluser',
+              r'Documents\\SonKuPik K500\\Presets',
+          ]:
+              need(installer, token, 'Inno smart installer')
+          forbid(installer, r'DefaultDirName={localappdata}', 'per-user install target')
+
+          for token in [
+              'QStandardPaths::DocumentsLocation',
+              'SonKuPik K500',
+              'Presets',
+              'Backups',
+              'Exports',
+              'pcPresetLibrary/folder',
+          ]:
+              need(storage, token, 'user storage layout')
+
+          for token in [
+              'https://api.github.com/repos/masarray/k500/releases/latest',
+              'stableReleaseEligible',
+              'windows-x64',
+              'release-manifest.json',
+              'sha256:',
+              'm_releaseAssetDigest',
+              'QCryptographicHash::Sha256',
+              'release-assets.githubusercontent.com',
+              'ShellExecuteW',
+              'L"runas"',
+              '/AUTOUPDATE=1',
+              'AppLocalDataLocation',
+              'SonKuPikK500.K500.Native',
+          ]:
+              need(updater, token, 'verified updater')
+          forbid(updater, 'QDesktopServices::openUrl', 'browser-based update fallback')
+
+          for token in [
+              'AppStorageManager',
+              'AppUpdateManager',
+              'ensureUserStorage',
+              'startAutomaticCheck',
+              'UpdateDialog',
+          ]:
+              need(main_qml, token, 'application bootstrap')
+
+          for token in [
+              'SMART_UPDATE_CARD_V1',
+              'Download & Update',
+              'VERIFIED SHA-256',
+              'manager.downloadAndInstall()',
+              'Windows dapat menampilkan UAC',
+          ]:
+              need(update_qml, token, 'update UX')
+
+          print('Smart install/update contract PASS')
+          PY
