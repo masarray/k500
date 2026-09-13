@@ -114,3 +114,55 @@ jobs:
             echo 'Primary update flow must remain in-app and must not hand users to a browser' >&2
             exit 1
           fi
+
+  inno-compile:
+    name: Compile smart Inno installer
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create minimal packaging fixture
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
+          Set-Content -Path package/SonKuPik-K500.exe -Value 'CI installer fixture' -Encoding ascii
+          Copy-Item LICENSE package/LICENSE
+          python -m pip install --disable-pip-version-check --quiet pillow
+          @'
+          from PIL import Image
+          source = Image.open('assets/SonKuPik-k500-logo.png').convert('RGBA')
+          source.save('package/SonKuPik-K500.ico', format='ICO', sizes=[(16,16),(32,32),(48,48),(256,256)])
+          for size, box, path in [
+              ((164,314),(132,132),'build/packaging/wizard.bmp'),
+              ((55,55),(48,48),'build/packaging/wizard-small.bmp')]:
+              canvas = Image.new('RGB', size, (13,18,22))
+              logo = source.copy()
+              logo.thumbnail(box, Image.Resampling.LANCZOS)
+              canvas.paste(logo, ((size[0]-logo.width)//2, max(4,(size[1]-logo.height)//3)), logo)
+              canvas.save(path, format='BMP')
+          '@ | python -
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe not found' }
+          "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Compile installer script
+        shell: pwsh
+        run: |
+          $cmake = Get-Content CMakeLists.txt -Raw
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') { throw 'Version not found' }
+          $version = $Matches[1]
+          $env:SONKUPIK_APP_DIR = (Resolve-Path package).Path
+          $env:SONKUPIK_OUTPUT_DIR = (Resolve-Path dist).Path
+          $env:SONKUPIK_APP_ICON = (Resolve-Path package/SonKuPik-K500.ico).Path
+          $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/wizard.bmp).Path
+          $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/wizard-small.bmp).Path
+          & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup script failed to compile' }
+          $setup = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
+          if (-not (Test-Path $setup)) { throw 'Expected Setup EXE was not produced' }
