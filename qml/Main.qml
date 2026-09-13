@@ -18,6 +18,23 @@ ApplicationWindow {
     readonly property int rightPanelWidth: 216
     property int selectedSection: 0
 
+    // USER_STORAGE_LAYOUT_V1 — executable/runtime stays in Program Files while
+    // user-owned K500 data gets a stable, discoverable Documents home.
+    AppStorageManager {
+        id: appStorage
+    }
+
+    // SMART_APP_UPDATE_V1 — checks stable GitHub Releases on a restrained
+    // cadence; user consent is required before download/install begins.
+    AppUpdateManager {
+        id: appUpdater
+    }
+
+    Component.onCompleted: {
+        appStorage.ensureUserStorage(root.deviceManager ? root.deviceManager.presetFileBridge : null)
+        appUpdater.startAutomaticCheck()
+    }
+
     background: Rectangle {
         gradient: Gradient {
             GradientStop { position:0;color:"#0C1116" }
@@ -133,6 +150,11 @@ ApplicationWindow {
     // application, not merely over the toolbar or current processor panel.
     AboutDialog {
         id: aboutDialog
+    }
+
+    UpdateDialog {
+        id: updateDialog
+        manager: appUpdater
     }
 
     // P1_MIC_EQ_LINK_UI_BRIDGE_V1
