@@ -253,7 +253,7 @@ set(SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BROADCAST.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_SUPREME.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_ROCK.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANG.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANGAN.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_QORI_SHOLAWAT.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_BLUES.k500"
