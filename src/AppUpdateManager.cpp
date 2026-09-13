@@ -9,6 +9,7 @@
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QProcess>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QTimer>
@@ -16,13 +17,15 @@
 
 #ifdef Q_OS_WIN
 #include <windows.h>
-#include <shellapi.h>
 #endif
 
 namespace {
 const QUrl LatestReleaseApi(QStringLiteral("https://api.github.com/repos/masarray/k500/releases/latest"));
 constexpr auto LastCheckKey = "updates/lastCheckUtc";
+constexpr auto LastDismissedVersionKey = "updates/lastDismissedVersion";
+constexpr auto LastDismissedUtcKey = "updates/lastDismissedUtc";
 constexpr qint64 AutomaticCheckIntervalSecs = 12 * 60 * 60;
+constexpr qint64 DismissedReminderSecs = 24 * 60 * 60;
 
 QNetworkRequest jsonRequest(const QUrl &url)
 {
@@ -86,6 +89,23 @@ bool AppUpdateManager::busy() const
         || m_state == QStringLiteral("installing");
 }
 
+bool AppUpdateManager::managedInstall() const
+{
+#ifdef Q_OS_WIN
+    // The installer writes this machine-level identity. Portable ZIP builds do
+    // not, so they never silently convert themselves into installed software.
+    QSettings registry(
+        QStringLiteral("HKEY_LOCAL_MACHINE\\Software\\MasArray\\SonKuPik K500"),
+        QSettings::NativeFormat);
+    const QString installDir = QDir::cleanPath(registry.value(QStringLiteral("InstallDir")).toString());
+    const QString appDir = QDir::cleanPath(QCoreApplication::applicationDirPath());
+    return !installDir.isEmpty()
+        && installDir.compare(appDir, Qt::CaseInsensitive) == 0;
+#else
+    return false;
+#endif
+}
+
 void AppUpdateManager::setState(const QString &state,
                                 const QString &status,
                                 const QString &error)
@@ -124,8 +144,41 @@ void AppUpdateManager::clearMetadata()
     emit updateMetadataChanged();
 }
 
+bool AppUpdateManager::automaticCheckSuppressedByArguments() const
+{
+    const QStringList args = QCoreApplication::arguments();
+    for (const QString &arg : args) {
+        if (arg == QStringLiteral("--font-self-test")
+            || arg == QStringLiteral("--protocol-self-test")
+            || arg == QStringLiteral("--engine-self-test")
+            || arg.startsWith(QStringLiteral("--update-self-test"))) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void AppUpdateManager::startAutomaticCheck()
 {
+    // A failed/cancelled elevated handoff restarts the previous app with a tiny
+    // result token. Surface it after QML Connections are alive rather than
+    // leaving a novice wondering why the update apparently vanished.
+    for (const QString &arg : QCoreApplication::arguments()) {
+        if (arg.startsWith(QStringLiteral("--update-failed="))) {
+            QTimer::singleShot(350, this, [this, arg] {
+                const QString code = arg.section(QLatin1Char('='), 1);
+                setState(QStringLiteral("error"),
+                         QStringLiteral("Update belum terpasang."),
+                         QStringLiteral("Windows membatalkan atau gagal memasang update (kode %1). Versi sebelumnya tetap aman.").arg(code));
+                emit attentionRequired();
+            });
+            return;
+        }
+    }
+
+    if (automaticCheckSuppressedByArguments() || !managedInstall())
+        return;
+
     const QDateTime lastCheck = QSettings().value(QString::fromLatin1(LastCheckKey)).toDateTime();
     const bool due = !lastCheck.isValid()
         || lastCheck.secsTo(QDateTime::currentDateTimeUtc()) >= AutomaticCheckIntervalSecs;
@@ -140,6 +193,16 @@ void AppUpdateManager::startAutomaticCheck()
 
 void AppUpdateManager::checkForUpdates(bool userInitiated)
 {
+    if (!managedInstall()) {
+        if (userInitiated) {
+            setState(QStringLiteral("error"),
+                     QStringLiteral("Update otomatis tersedia untuk versi terinstal."),
+                     QStringLiteral("Build portable tidak diubah diam-diam. Gunakan installer stable sekali untuk mengaktifkan update otomatis."));
+            emit attentionRequired();
+        }
+        return;
+    }
+
     if (m_state == QStringLiteral("downloading")
         || m_state == QStringLiteral("verifying")
         || m_state == QStringLiteral("installing")) {
@@ -267,6 +330,20 @@ void AppUpdateManager::fetchManifest()
     });
 }
 
+bool AppUpdateManager::shouldNotifyAvailable() const
+{
+    if (m_userInitiatedCheck)
+        return true;
+
+    QSettings settings;
+    if (settings.value(QString::fromLatin1(LastDismissedVersionKey)).toString() != m_latestVersion)
+        return true;
+
+    const QDateTime dismissed = settings.value(QString::fromLatin1(LastDismissedUtcKey)).toDateTime();
+    return !dismissed.isValid()
+        || dismissed.secsTo(QDateTime::currentDateTimeUtc()) >= DismissedReminderSecs;
+}
+
 void AppUpdateManager::handleManifest(QNetworkReply *reply)
 {
     if (!reply)
@@ -307,8 +384,9 @@ void AppUpdateManager::handleManifest(QNetworkReply *reply)
         }
     }
 
-    if (sha256.size() != 64) {
-        fail(QStringLiteral("SHA-256 installer tidak tersedia di release manifest."), m_userInitiatedCheck);
+    if (sha256.size() != 64 || bytes <= 0) {
+        fail(QStringLiteral("SHA-256/ukuran installer tidak tersedia di release manifest."),
+             m_userInitiatedCheck);
         return;
     }
 
@@ -324,14 +402,16 @@ void AppUpdateManager::handleManifest(QNetworkReply *reply)
     emit updateMetadataChanged();
     setState(QStringLiteral("available"),
              QStringLiteral("Update v%1 siap diunduh.").arg(m_latestVersion));
-    emit updateAvailableFound();
+    if (shouldNotifyAvailable())
+        emit updateAvailableFound();
 }
 
 void AppUpdateManager::downloadAndInstall()
 {
     if (m_state != QStringLiteral("available")
         || m_installerUrl.isEmpty()
-        || m_expectedSha256.size() != 64) {
+        || m_expectedSha256.size() != 64
+        || m_expectedBytes <= 0) {
         return;
     }
     beginInstallerDownload();
@@ -360,7 +440,7 @@ void AppUpdateManager::beginInstallerDownload()
     m_installerPath = finalPath;
     m_downloadHash.reset();
     m_downloadWriteFailed = false;
-    setProgress(0, m_expectedBytes > 0 ? m_expectedBytes : 0);
+    setProgress(0, m_expectedBytes);
     setState(QStringLiteral("downloading"),
              QStringLiteral("Mengunduh update v%1…").arg(m_latestVersion));
 
@@ -422,7 +502,7 @@ void AppUpdateManager::finishInstallerDownload(QNetworkReply *reply)
 
     setState(QStringLiteral("verifying"), QStringLiteral("Memverifikasi SHA-256 installer…"));
     const QFileInfo info(partialPath);
-    if (m_expectedBytes > 0 && info.size() != m_expectedBytes) {
+    if (info.size() != m_expectedBytes) {
         QFile::remove(partialPath);
         fail(QStringLiteral("Ukuran installer tidak cocok dengan release manifest."), true);
         return;
@@ -444,37 +524,37 @@ void AppUpdateManager::finishInstallerDownload(QNetworkReply *reply)
 
     setProgress(info.size(), info.size());
     setState(QStringLiteral("installing"),
-             QStringLiteral("Installer terverifikasi. Meminta izin Administrator Windows…"));
-    QTimer::singleShot(180, this, &AppUpdateManager::launchVerifiedInstaller);
+             QStringLiteral("Installer terverifikasi. Menyiapkan update aman…"));
+    QTimer::singleShot(180, this, &AppUpdateManager::handoffVerifiedInstaller);
 }
 
-void AppUpdateManager::launchVerifiedInstaller()
+void AppUpdateManager::handoffVerifiedInstaller()
 {
 #ifdef Q_OS_WIN
-    if (m_installerPath.isEmpty() || !QFileInfo::exists(m_installerPath)) {
-        fail(QStringLiteral("Installer update tidak ditemukan setelah verifikasi."), true);
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString helperPath = QDir(appDir).filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
+    const QString appPath = QCoreApplication::applicationFilePath();
+    if (!QFileInfo::exists(m_installerPath) || !QFileInfo::exists(helperPath)) {
+        fail(QStringLiteral("Komponen update helper tidak ditemukan; versi saat ini tidak diubah."), true);
         return;
     }
 
-    const QString nativePath = QDir::toNativeSeparators(m_installerPath);
-    const QString parameters = QStringLiteral(
-        "/SILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /AUTOUPDATE=1");
-    const HINSTANCE result = ShellExecuteW(
-        nullptr,
-        L"runas",
-        reinterpret_cast<LPCWSTR>(nativePath.utf16()),
-        reinterpret_cast<LPCWSTR>(parameters.utf16()),
-        nullptr,
-        SW_SHOWNORMAL);
+    const QStringList args{
+        QStringLiteral("--installer"), m_installerPath,
+        QStringLiteral("--app"), appPath,
+        QStringLiteral("--sha256"), m_expectedSha256,
+        QStringLiteral("--bytes"), QString::number(m_expectedBytes),
+        QStringLiteral("--pid"), QString::number(QCoreApplication::applicationPid())
+    };
 
-    if (reinterpret_cast<INT_PTR>(result) <= 32) {
-        fail(QStringLiteral("Update tidak dijalankan. Izin Administrator mungkin dibatalkan."), true);
+    if (!QProcess::startDetached(helperPath, args, appDir)) {
+        fail(QStringLiteral("Update helper tidak dapat dijalankan; versi saat ini tidak diubah."), true);
         return;
     }
 
     setState(QStringLiteral("installing"),
-             QStringLiteral("Update sedang dipasang. SonKuPik K500 akan restart otomatis…"));
-    QTimer::singleShot(450, qApp, [] { QCoreApplication::quit(); });
+             QStringLiteral("Aplikasi akan ditutup, meminta izin Windows, memasang update, lalu restart otomatis…"));
+    QTimer::singleShot(180, qApp, [] { QCoreApplication::quit(); });
 #else
     fail(QStringLiteral("Auto-update installer saat ini hanya tersedia di Windows."), true);
 #endif
@@ -486,8 +566,8 @@ void AppUpdateManager::dismiss()
         return;
     if (!m_latestVersion.isEmpty()) {
         QSettings settings;
-        settings.setValue(QStringLiteral("updates/lastDismissedVersion"), m_latestVersion);
-        settings.setValue(QStringLiteral("updates/lastDismissedUtc"), QDateTime::currentDateTimeUtc());
+        settings.setValue(QString::fromLatin1(LastDismissedVersionKey), m_latestVersion);
+        settings.setValue(QString::fromLatin1(LastDismissedUtcKey), QDateTime::currentDateTimeUtc());
     }
     setState(QStringLiteral("idle"));
 }
