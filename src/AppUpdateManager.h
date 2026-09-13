@@ -7,7 +7,11 @@
 class QNetworkAccessManager;
 class QNetworkReply;
 
-class AppUpdateManager final : public QObject
+// SMART_UPDATE_RUNTIME_V1
+// App-owned update coordinator exposed to QML as a singleton. Keep this class
+// non-final: Qt 6.8's generated QQmlElement wrapper derives from registered QML
+// types during type registration.
+class AppUpdateManager : public QObject
 {
     Q_OBJECT
     QML_NAMED_ELEMENT(AppUpdater)
@@ -74,5 +78,8 @@ private:
     QUrl m_setupAssetUrl;
     QUrl m_manifestUrl;
     QUrl m_checksumsUrl;
+    QByteArray m_manifestSha256;
     QByteArray m_expectedSha256;
+    qint64 m_manifestSetupBytes = -1;
+    qint64 m_releaseSetupBytes = -1;
 };
