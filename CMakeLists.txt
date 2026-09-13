@@ -182,6 +182,10 @@ target_link_libraries(k500_update_selftest PRIVATE Qt6::Core Qt6::Network Qt6::Q
 if(WIN32)
     target_link_libraries(k500_update_selftest PRIVATE shell32)
 endif()
+add_custom_command(TARGET k500_update_selftest POST_BUILD
+    COMMAND $<TARGET_FILE:k500_update_selftest>
+    COMMENT "Running deterministic updater metadata self-test"
+)
 
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
