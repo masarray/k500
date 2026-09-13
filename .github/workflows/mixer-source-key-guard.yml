@@ -24,9 +24,9 @@ jobs:
 
           checks = {
               'mixer raised v5 token': 'MIXER_SOURCE_RAISED_ACTIVE_V5' in button,
-              'raised surface token': 'MIXER_RAISED_SURFACE_V1' in button,
+              'native press stability token': 'TEXT_NATIVE_PRESS_STABILITY_V1' in button,
               'opt-in mixer style': 'property bool mixerSelect: false' in button,
-              'selected face stays full size after click': 'scale: mouse.pressed ? .988 : 1' in button,
+              'selected face stays full size after click': 'scale: mouse.pressed' not in button and 'y: mouse.pressed ? 1 : 0' in button,
               'active face uses full cyan fill': 'root.mixerLit ? "#7BFAFD"' in button and '"#6AF7F9"' in button and '"#14B4BC"' in button,
               'raised face has top specular cue': 'root.mixerLit ? "#E7FFFF"' in button,
               'raised face has lower physical lip': 'anchors.bottomMargin: -2' in button and 'opacity: .62' in button,
