@@ -39,6 +39,7 @@ jobs:
           grep -Fq 'releases/latest' 'functions/download/[kind].js'
           grep -Fq 'SonKuPik-K500-${tag}-Windows-Setup.exe' 'functions/download/[kind].js'
           grep -Fq 'SonKuPik-K500-${tag}-Windows-Portable.zip' 'functions/download/[kind].js'
+          grep -Fq 'filename: assetName' 'functions/download/[kind].js'
 
           # Every public documentation landing surface delegates to the same canonical routes.
           grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' docs/index.html
