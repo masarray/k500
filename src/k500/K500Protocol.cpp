@@ -236,7 +236,10 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
 
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars)
 {
-    // P1_TOP_MIC_VERIFIED_V1 — exact donor CMD 0x05 layout.
+    // P1_TOP_MIC_VERIFIED_V1 — native CMD 0x05 layout.
+    // Native capture: Mic Volume changes only its own byte plus checksum.
+    // Preserve the two FBE/FBX bytes independently from device truth; they are not
+    // one scalar. Dedicated FBE mapping will be added only after its own capture.
     const auto mirrored = [&deviceScalars](int offset, int fallback) -> quint8 {
         if (offset >= 0 && offset < deviceScalars.size())
             return byteFromChar(deviceScalars.at(offset));
@@ -251,8 +254,8 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
     body.append(char(mirrored(0x0A, state.micInitVol)));
     body.append(char(mirrored(0x0B, TopVolumeMax)));
     body.append(char(mirrored(0x0E, 0x0B)));
-    body.append(char(K500Frame::clampByte(qBound(0, state.fbxLevel, 20))));
-    body.append(char(K500Frame::clampByte(qBound(0, state.fbxLevel, 20))));
+    body.append(char(mirrored(0x1B, state.fbxLevel)));
+    body.append(char(mirrored(0x1C, state.fbxLevel)));
     body.append(char(K500Frame::clampByte(state.micAVol)));
     body.append(char(K500Frame::clampByte(state.micBVol)));
     body.append(char(K500Frame::clampByte(state.compThresholdDb + 50)));
@@ -395,6 +398,12 @@ bool selfTest(QString *error)
 
     K500MicBlockState mic;
     if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x07, 0x07, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x4F}, QStringLiteral("top mic default"))) return false;
+    QByteArray micScalars(0x40, char(0));
+    micScalars[0x0A] = char(0x19); micScalars[0x0B] = char(0x54); micScalars[0x0E] = char(0x0B);
+    micScalars[0x1B] = char(0x03); micScalars[0x1C] = char(0x00);
+    mic.topMicVol = 30; mic.fbxLevel = 19; mic.micAVol = 100; mic.micBVol = 100;
+    mic.compThresholdDb = 0; mic.compRatio = 2; mic.attackMs = 1; mic.releaseSec = 1.2;
+    if (!expect(topMicBlock(mic, micScalars), {0xAA, 0x0E, 0x05, 0x1E, 0x19, 0x54, 0x0B, 0x03, 0x00, 0x64, 0x64, 0x32, 0x02, 0x01, 0x0C, 0x00, 0x4B}, QStringLiteral("top mic preserves captured FBE bytes"))) return false;
 
     K500EffectBlockState effect;
     effect.topEffectVol = 49;
