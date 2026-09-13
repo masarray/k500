@@ -154,9 +154,23 @@ ApplicationWindow {
         }
     }
 
-    Component.onCompleted: Qt.callLater(function() {
-        AppUpdater.checkForUpdates(false)
-    })
+    // STARTUP_UPDATE_DISCOVERY_V1 — let the control surface paint and device
+    // startup settle before the first network request. Long-running studio
+    // sessions re-check every six hours; AppUpdateManager applies its own
+    // successful-check throttle as the second guard against noisy polling.
+    Timer {
+        id: initialUpdateCheck
+        interval: 2500
+        repeat: false
+        running: true
+        onTriggered: AppUpdater.checkForUpdates(false)
+    }
+    Timer {
+        interval: 6 * 60 * 60 * 1000
+        repeat: true
+        running: true
+        onTriggered: AppUpdater.checkForUpdates(false)
+    }
 
     // P1_MIC_EQ_LINK_UI_BRIDGE_V1
     // SectionEqGraph owns the local toggle and SectionWorkspace mirrors it.
