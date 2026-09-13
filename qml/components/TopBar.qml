@@ -17,6 +17,10 @@ StudioPanel {
                                                 : deviceManager.status === "syncing" ? "SYNC"
                                                 : deviceManager.status === "error" ? "ERROR"
                                                 : "OFFLINE"
+    readonly property color deviceStatusAccent: deviceManager.status === "error" ? "#FF6B75"
+                                                 : deviceManager.connected ? Theme.accent
+                                                 : deviceBusy ? Theme.amber
+                                                 : Theme.textDim
 
     // P0_TOPBAR_SEMANTIC_TRUTH_V1
     // The toolbar never claims DEFAULT FLAT unless that state is actually known.
@@ -246,10 +250,7 @@ StudioPanel {
             RowLayout {
                 visible: root.deviceManager.liveEnabled
                 spacing: 5
-                Rectangle {
-                    width:6;height:6;radius:3
-                    color: Theme.accent
-                }
+                Rectangle { width:6;height:6;radius:3;color:Theme.accent }
                 Text {
                     text:"LIVE"
                     color:Theme.accent
@@ -268,32 +269,68 @@ StudioPanel {
                 enabled:!root.deviceBusy
                 onClicked:root.deviceManager.setTransportMode("usb")
             }
+            // CONNECT_MIXER_KEY_V1 — once physically connected, the action key
+            // reads like an illuminated/recessed console switch instead of only
+            // receiving a thin cyan outline.
             SoftButton {
                 Layout.preferredWidth:86;Layout.preferredHeight:29
                 text:root.deviceManager.connected || root.deviceBusy ? "Disconnect" : "Connect"
                 iconName:root.deviceManager.connected ? "unplug" : "cable"
                 compact:true;toolbar:true
+                mixerSelect:true
                 checked:root.deviceManager.connected
-                neonAccent:root.deviceManager.connected
+                enabled:!root.deviceBusy || root.deviceManager.connected
                 onClicked:root.deviceManager.toggleConnection()
             }
         }
 
-        SoftButton {
-            id: statusButton
-            Layout.preferredWidth: 72
+        // DEVICE_STATUS_DISPLAY_V1 — ONLINE / SYNC / CONNECT / OFFLINE are
+        // telemetry, not commands. Present them as a passive instrument display
+        // with the same visual grammar as the preset context chip.
+        Rectangle {
+            id: statusDisplay
+            Layout.preferredWidth: 76
             Layout.preferredHeight: 29
-            text: root.deviceStatusText
-            compact: true
-            toolbar: true
-            amber: !root.deviceManager.connected && root.deviceManager.status !== "error"
-            danger: root.deviceManager.status === "error"
-            checked: root.deviceManager.connected
-            neonAccent: root.deviceManager.connected
+            radius: 8
+            color: "#080D11"
+            border.width: 1
+            border.color: Qt.rgba(root.deviceStatusAccent.r, root.deviceStatusAccent.g, root.deviceStatusAccent.b,
+                                  root.deviceManager.connected || root.deviceBusy || root.deviceManager.status === "error" ? .48 : .22)
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.leftMargin: 7
+                anchors.rightMargin: 7
+                anchors.topMargin: 1
+                height: 1
+                color: root.deviceStatusAccent
+                opacity: root.deviceManager.connected || root.deviceBusy ? .22 : .08
+            }
+            Row {
+                anchors.centerIn: parent
+                spacing: 6
+                Rectangle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: 5; height: 5; radius: 3
+                    color: root.deviceStatusAccent
+                    opacity: root.deviceManager.status === "disconnected" ? .55 : 1
+                }
+                Text {
+                    anchors.verticalCenter: parent.verticalCenter
+                    text: root.deviceStatusText
+                    color: root.deviceStatusAccent
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 8
+                    font.weight: Font.Bold
+                    font.letterSpacing: .65
+                }
+            }
             ToolTip.visible: statusHover.containsMouse && (root.deviceManager.lastError.length > 0 || root.deviceManager.portLabel.length > 0)
             ToolTip.text: root.deviceManager.lastError.length > 0 ? root.deviceManager.lastError : root.deviceManager.portLabel
             ToolTip.delay: 350
-            MouseArea { id: statusHover; anchors.fill: parent; hoverEnabled: true; acceptedButtons: Qt.NoButton }
+            MouseArea { id:statusHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton;cursorShape:Qt.ArrowCursor }
         }
 
         Item { Layout.fillWidth:true }

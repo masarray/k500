@@ -17,6 +17,37 @@ StackLayout {
     signal micChannelRequested(int channel)
     signal eqLinkRequested(bool linked)
 
+    // CROSSOVER_STARTUP_DEVICE_SEMANTICS_V2
+    // SectionEqGraph historically primed every persistent model to BYPASS on
+    // Component.onCompleted. Live readback carries crossover frequencies but
+    // not the filter-type enum, so that visual-only startup value survived the
+    // hardware hydration and falsely displayed BYPASS. Restore the known native
+    // per-section filter families once after all graph children have completed.
+    // This runs while LIVE is still off and therefore cannot replay a device
+    // write; subsequent explicit user changes remain the normal verified path.
+    function restoreConfiguredCrossoverTypes() {
+        if (!root.engine) return
+        root.engine.micAEqBands.setHpType("HP LR 24")
+        root.engine.micAEqBands.setLpType("LP LR 24")
+        root.engine.micBEqBands.setHpType("HP LR 24")
+        root.engine.micBEqBands.setLpType("LP LR 24")
+        root.engine.musicEqBands.setHpType("HP Butter 12")
+        root.engine.musicEqBands.setLpType("LP Butter 12")
+        root.engine.reverbEqBands.setHpType("HP Butter 12")
+        root.engine.reverbEqBands.setLpType("LP Butter 12")
+        root.engine.echoEqBands.setHpType("HP Butter 12")
+        root.engine.echoEqBands.setLpType("LP Butter 12")
+        root.engine.mainEqBands.setHpType("HP Butter 12")
+        root.engine.mainEqBands.setLpType("LP Butter 12")
+        root.engine.surroundEqBands.setHpType("HP Bessel 12")
+        root.engine.surroundEqBands.setLpType("LP Bessel 12")
+        root.engine.centerEqBands.setHpType("HP Butter 12")
+        root.engine.centerEqBands.setLpType("LP Butter 12")
+        root.engine.subEqBands.setHpType("HP Butter 24")
+        root.engine.subEqBands.setLpType("LP Butter 24")
+    }
+    Component.onCompleted: Qt.callLater(root.restoreConfiguredCrossoverTypes)
+
     currentIndex: {
         if (root.sectionIndex === 1)
             return root.micChannel === 0 ? 0 : 1

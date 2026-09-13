@@ -15,22 +15,30 @@ Item {
     property bool logarithmic: false
     property bool compact: false
     property bool premium: false
+    // FX_DETAIL_READ_ONLY_TRUTH_V1
+    // Premium knobs are currently used by Reverb/Echo detail fields. The K500
+    // exposes their readback bytes, but the repository explicitly has no
+    // donor-verified live write command for those details. Default them to
+    // read-only rather than allowing a control to move while hardware does not.
+    // Ordinary/compressor knobs remain editable; a future verified effect path
+    // can opt in explicitly with editable:true.
+    property bool editable: !premium
     property color accentColor: Theme.accent
     signal valueEdited(real newValue)
 
     // PREMIUM_FX_KNOB_V1
     // FX racks can opt into a slightly larger, instrument-like dial with a
     // luminous value arc and restrained tick halo. It remains the same control
-    // semantics and interaction model as the canonical StudioKnob.
+    // rendering as the canonical StudioKnob while unsupported writes fail closed.
     implicitWidth: premium ? 92 : (compact ? 72 : 80)
     implicitHeight: premium ? 118 : (compact ? 102 : 110)
 
     property real previewValue: value
     property bool dragging: false
-    property bool hovered: pointer.containsMouse
+    property bool hovered: root.editable && pointer.containsMouse
     property real pressY: 0
     property real pressNorm: 0
-    readonly property bool highlighted: hovered || dragging || activeFocus
+    readonly property bool highlighted: root.editable && (hovered || dragging || activeFocus)
 
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
     function valueToNorm(v){
@@ -41,10 +49,16 @@ Item {
     function formatValue(v){if(logarithmic&&unit==="Hz"&&v>=1000)return(v/1000).toFixed(v>=10000?1:2)+"k";return Number(v).toFixed(decimals)}
     function effectiveStep(fine){var base=step>0?step:Math.max((to-from)/100,Math.pow(10,-decimals));return fine?base/10:base}
     function quantize(v,fine){var s=effectiveStep(fine),next=clamp(Math.round(v/s)*s,from,to);return Number(next.toFixed(Math.max(decimals+1,3)))}
-    function nudge(direction,fine){var next=quantize(value+direction*effectiveStep(fine),fine);previewValue=next;valueEdited(next)}
+    function nudge(direction,fine){
+        if(!root.editable)return
+        var next=quantize(value+direction*effectiveStep(fine),fine)
+        previewValue=next
+        valueEdited(next)
+    }
 
-    activeFocusOnTab: true
+    activeFocusOnTab: root.editable
     Keys.onPressed:function(event){
+        if(!root.editable)return
         if(event.key===Qt.Key_Up||event.key===Qt.Key_Right){nudge(1,(event.modifiers&Qt.ShiftModifier)!==0);event.accepted=true}
         else if(event.key===Qt.Key_Down||event.key===Qt.Key_Left){nudge(-1,(event.modifiers&Qt.ShiftModifier)!==0);event.accepted=true}
         else if(event.key===Qt.Key_Home){previewValue=defaultValue;valueEdited(defaultValue);event.accepted=true}
@@ -54,6 +68,7 @@ Item {
     onPreviewValueChanged: dial.requestPaint()
     onAccentColorChanged: dial.requestPaint()
     onPremiumChanged: dial.requestPaint()
+    onEditableChanged: { if(!editable) dragging=false; dial.requestPaint() }
 
     // CONTROL_CAPTION_AWARENESS_V1: captions follow the control under the pointer.
     Text {
@@ -65,7 +80,7 @@ Item {
         style:root.highlighted ? Text.Outline : Text.Normal
         styleColor:root.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
         font.family:Theme.monoFamily
-        font.pixelSize:root.premium ? 9 : 9
+        font.pixelSize:9
         font.weight:root.highlighted ? Font.DemiBold : Font.Medium
         font.letterSpacing:root.premium ? .95 : .75
         Behavior on color { ColorAnimation { duration:75 } }
@@ -116,7 +131,7 @@ Item {
                 ctx.strokeStyle=root.accentColor.toString()
                 ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
 
-                ctx.globalAlpha=1
+                ctx.globalAlpha=root.editable ? 1 : .72
                 ctx.lineWidth=root.premium?3.1:2.6
                 ctx.strokeStyle=root.accentColor.toString()
                 ctx.beginPath();ctx.arc(cx,cy,arcR,start,activeEnd,false);ctx.stroke()
@@ -127,6 +142,7 @@ Item {
                 g.addColorStop(.25,root.premium?"#39434B":"#30383F")
                 g.addColorStop(.72,"#181E23")
                 g.addColorStop(1,"#0A0E12")
+                ctx.globalAlpha=1
                 ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,capR,0,Math.PI*2);ctx.fill()
                 ctx.strokeStyle=root.highlighted?root.accentColor.toString():"#020304"
                 ctx.globalAlpha=root.highlighted?.72:1
@@ -141,7 +157,7 @@ Item {
                 }
 
                 var a2=activeEnd
-                ctx.globalAlpha=1
+                ctx.globalAlpha=root.editable ? 1 : .78
                 ctx.strokeStyle=Theme.amber.toString()
                 ctx.lineWidth=root.premium?2.25:1.9
                 ctx.beginPath()
@@ -154,8 +170,9 @@ Item {
         MouseArea {
             id:pointer
             anchors.fill:parent
-            hoverEnabled:true
-            cursorShape:Qt.SizeVerCursor
+            enabled:root.editable
+            hoverEnabled:root.editable
+            cursorShape:root.editable ? Qt.SizeVerCursor : Qt.ArrowCursor
             onPressed:function(e){root.forceActiveFocus();root.dragging=true;root.pressY=e.y;root.pressNorm=root.valueToNorm(root.value);root.previewValue=root.value}
             onPositionChanged:function(e){if(!pressed)return;var fine=(e.modifiers&Qt.ShiftModifier)!==0,sensitivity=fine?420:145,nextNorm=root.clamp(root.pressNorm+(root.pressY-e.y)/sensitivity,0,1);root.previewValue=root.quantize(root.normToValue(nextNorm),fine);root.valueEdited(root.previewValue)}
             onReleased:root.dragging=false
@@ -174,13 +191,15 @@ Item {
         radius:7
         color:root.premium ? "#04080B" : "#05080A"
         border.width:1
-        border.color:root.dragging||root.hovered?root.accentColor:root.activeFocus?Theme.focus:"#020304"
+        border.color:root.editable && (root.dragging||root.hovered) ? root.accentColor
+                     : root.editable && root.activeFocus ? Theme.focus : "#020304"
         Behavior on border.color { ColorAnimation { duration:75 } }
 
         Text {
             anchors.centerIn:parent
             text:root.valuePrefix+root.formatValue(root.previewValue)+(root.unit.length?" "+root.unit:"")
             color:Theme.amber
+            opacity:root.editable ? 1 : .90
             font.family:Theme.monoFamily
             font.pixelSize:9
             font.weight:Font.Bold

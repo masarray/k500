@@ -19,10 +19,11 @@ Rectangle {
     property bool mixerSelect: false
     signal clicked()
 
-    // MIXER_SOURCE_ILLUMINATED_SELECT_V2
-    // Digital-console source selectors read like physical illuminated keys:
-    // OFF = dark/raised, ON = cyan/recessed with inverted dark legend.
-    // The reversed bevel is intentional so ON looks mechanically pressed in.
+    // MIXER_SOURCE_ILLUMINATED_SELECT_V3
+    // Digital-console selector semantics: OFF is a dark raised key; ON is a
+    // full-face cyan illuminated key with a recessed bevel. The persistent ON
+    // state never scales the whole control inward because that exposed a dark
+    // rectangular gutter around the cyan face and looked visually broken.
     readonly property bool mixerLit: root.mixerSelect && root.checked
     readonly property bool mixerDepressed: root.mixerLit
     readonly property bool activeAccent: root.checked || root.neonAccent
@@ -37,10 +38,12 @@ Rectangle {
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
     radius: root.transport ? 6 : 7
     transformOrigin: Item.Center
-    scale: mouse.pressed ? .972 : root.mixerDepressed ? .982 : 1
+    // MIXER_FULL_FACE_ACTIVE_V1 — mouse press may compress briefly, but a
+    // selected key remains full-size so cyan fills the complete switch face.
+    scale: mouse.pressed ? .985 : 1
 
     border.width: 1
-    border.color: root.mixerSelect ? (root.mixerLit ? "#087A82"
+    border.color: root.mixerSelect ? (root.mixerLit ? "#07949C"
                                       : root.activeFocus ? "#56666F"
                                       : mouse.containsMouse ? "#43515A" : "#1D272E")
                  : root.activeFocus ? root.resolvedAccent
@@ -52,7 +55,7 @@ Rectangle {
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#17BEC6" : "#19C8D0")
+            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#16BEC6" : "#18CBD2")
                                                       : mouse.pressed ? "#0A0F13"
                                                       : mouse.containsMouse ? "#182128" : "#0E1419")
                  : root.danger ? "#31181E"
@@ -63,7 +66,7 @@ Rectangle {
         }
         GradientStop {
             position: .18
-            color: root.mixerSelect ? (root.mixerLit ? "#25DCE3" : "#0B1115")
+            color: root.mixerSelect ? (root.mixerLit ? "#22DCE3" : "#0B1115")
                  : root.danger ? "#231218"
                  : root.activeAccent ? (root.amber ? "#18170E" : "#132D32")
                  : mouse.containsMouse ? "#283139"
@@ -71,16 +74,30 @@ Rectangle {
         }
         GradientStop {
             position: .72
-            color: root.mixerSelect ? (root.mixerLit ? "#31E8EE" : "#070B0E")
+            color: root.mixerSelect ? (root.mixerLit ? "#2DE8EE" : "#070B0E")
                  : root.danger ? "#10090C"
                  : root.activeAccent ? (root.amber ? "#0C0D08" : "#0C2024")
                  : "#12181D"
         }
         GradientStop {
             position: 1
-            color: root.mixerSelect ? (root.mixerLit ? "#3BEFF4" : "#04070A")
+            color: root.mixerSelect ? (root.mixerLit ? "#38EEF4" : "#04070A")
                  : root.danger ? "#070507" : "#080C10"
         }
+    }
+
+    // A restrained one-pixel halo belongs outside the active face. This gives
+    // the illuminated-console look without placing a second rectangle inside
+    // the cyan button surface.
+    Rectangle {
+        visible: root.mixerLit
+        anchors.fill: parent
+        anchors.margins: -2
+        radius: parent.radius + 2
+        color: "transparent"
+        border.width: 1
+        border.color: Theme.accent
+        opacity: .22
     }
 
     Rectangle {
@@ -99,15 +116,16 @@ Rectangle {
         anchors.margins: 1
         radius: Math.max(3,parent.radius-1)
         color: "transparent"
-        border.width: 1
-        border.color: root.mixerSelect ? (root.mixerLit ? "#2B073D42" : "#10FFFFFF")
-                      : root.activeAccent
+        // No inner frame while a mixer key is lit; it was the visible defect
+        // reported around BT/other active source keys.
+        border.width: root.mixerLit ? 0 : 1
+        border.color: root.activeAccent
                       ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.amber ? .13 : .16)
                       : root.toolbar ? "#0EFFFFFF" : "#12FFFFFF"
     }
 
     // Recessed mixer-key bevel. Dark top/left + bright bottom/right produces
-    // the visual depth cue of a pressed hardware switch while it stays lit.
+    // depth without shrinking the actual cyan button face.
     Rectangle {
         visible: root.mixerDepressed
         anchors.left: parent.left
@@ -119,7 +137,7 @@ Rectangle {
         height: 2
         radius: 1
         color: "#07545A"
-        opacity: .78
+        opacity: .62
     }
     Rectangle {
         visible: root.mixerDepressed
@@ -132,7 +150,7 @@ Rectangle {
         width: 2
         radius: 1
         color: "#08636A"
-        opacity: .62
+        opacity: .46
     }
     Rectangle {
         visible: root.mixerDepressed
@@ -142,10 +160,10 @@ Rectangle {
         anchors.leftMargin: 3
         anchors.rightMargin: 3
         anchors.bottomMargin: 1
-        height: 2
+        height: 1
         radius: 1
-        color: "#A6FCFF"
-        opacity: .42
+        color: "#C6FEFF"
+        opacity: .48
     }
     Rectangle {
         visible: root.mixerDepressed
@@ -157,8 +175,8 @@ Rectangle {
         anchors.bottomMargin: 3
         width: 1
         radius: 1
-        color: "#A6FCFF"
-        opacity: .30
+        color: "#B8FDFF"
+        opacity: .32
     }
 
     Rectangle {
@@ -170,9 +188,9 @@ Rectangle {
         anchors.topMargin: 1
         height: 1
         radius: 1
-        color: root.mixerSelect && root.mixerLit ? "#062F33"
+        color: root.mixerSelect && root.mixerLit ? "#063C40"
              : root.activeAccent ? root.resolvedAccent : "#FFFFFF"
-        opacity: root.mixerSelect && root.mixerLit ? .70
+        opacity: root.mixerSelect && root.mixerLit ? .55
                : root.activeAccent ? (root.amber ? .18 : .22)
                : mouse.containsMouse ? .13 : root.toolbar ? .08 : .10
     }
@@ -186,8 +204,8 @@ Rectangle {
         anchors.bottomMargin: 1
         height: 1
         radius: 1
-        color: root.mixerSelect && root.mixerLit ? "#B9FDFF" : "#000000"
-        opacity: root.mixerSelect && root.mixerLit ? .38 : mouse.pressed ? .18 : .50
+        color: root.mixerSelect && root.mixerLit ? "#D1FEFF" : "#000000"
+        opacity: root.mixerSelect && root.mixerLit ? .46 : mouse.pressed ? .18 : .50
     }
 
     Rectangle {
