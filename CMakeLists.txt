@@ -69,6 +69,19 @@ target_compile_definitions(sonkupik_studio_native PRIVATE
 )
 target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
+# SMART_UPDATE_HANDOFF_V1 — tiny non-Qt helper survives the GUI process exit,
+# re-verifies the installer, requests normal Windows UAC, waits for Inno, then
+# restarts the updated GUI as the original desktop user.
+if(WIN32)
+    add_executable(sonkupik_update_helper WIN32
+        src/updater/UpdaterHelperMain.cpp
+    )
+    set_target_properties(sonkupik_update_helper PROPERTIES
+        OUTPUT_NAME "SonKuPik-K500-Updater"
+    )
+    target_link_libraries(sonkupik_update_helper PRIVATE shell32 bcrypt)
+endif()
+
 # P0_RUNTIME_TELEMETRY_V1 — deterministic, hardware-free resource qualification.
 add_executable(k500_p0_perf_selftest
     src/P0PerfSelfTestMain.cpp
@@ -280,6 +293,7 @@ target_link_libraries(sonkupik_studio_native
 
 if(WIN32)
     target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32)
+    add_dependencies(sonkupik_studio_native sonkupik_update_helper)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing
