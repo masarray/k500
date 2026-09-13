@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import SonkupikRuntime 1.0
 
 ApplicationWindow {
     id: root
