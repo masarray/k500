@@ -137,10 +137,13 @@ ApplicationWindow {
 
     // SMART_UPDATE_UI_V1 — update discovery is silent on startup. Only a newer
     // public stable release opens the premium prompt; network failure never
-    // interrupts K500 control or produces a startup warning.
+    // interrupts K500 control or produces a startup warning. The dialog also
+    // observes the preset transaction coordinator so a permanent device write
+    // can never be interrupted by an app replacement initiated from the UI.
     UpdateDialog {
         id: updateDialog
         updateManager: AppUpdater
+        deviceManager: root.deviceManager
     }
 
     Connections {
