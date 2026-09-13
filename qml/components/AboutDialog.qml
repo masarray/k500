@@ -1,19 +1,20 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 
 Popup {
     id: root
 
-    // ABOUT_FLOATING_CARD_V1
-    // A modal floating card that intentionally reuses the K500 chassis language:
-    // dark graphite surfaces, restrained cyan edge light, amber product accent,
-    // native text rasterization and compact instrument-like link rows.
+    // ABOUT_FLOATING_CARD_V2
+    // Premium floating card in the same K500 visual language: graphite chassis,
+    // neutral hardware edge, native typography, restrained brand accents and
+    // compact action rows. No decorative cyan top rail is used.
     parent: Overlay.overlay
     modal: true
     focus: true
     width: 560
-    height: 442
+    height: 482
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
     padding: 0
@@ -48,24 +49,12 @@ Popup {
             anchors.fill: parent
             radius: 16
             border.width: 1
-            border.color: "#31444D"
+            border.color: "#314048"
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#151D23" }
                 GradientStop { position: 0.24; color: "#0E151A" }
                 GradientStop { position: 1.0; color: "#070B0F" }
             }
-        }
-        Rectangle {
-            anchors.left: parent.left
-            anchors.right: parent.right
-            anchors.top: parent.top
-            anchors.leftMargin: 16
-            anchors.rightMargin: 16
-            anchors.topMargin: 1
-            height: 1
-            radius: .5
-            color: Theme.accent
-            opacity: .44
         }
         Rectangle {
             anchors.left: parent.left
@@ -91,10 +80,38 @@ Popup {
             anchors.rightMargin: 14
             width: 30
             height: 30
-            text: "×"
+            text: ""
             compact: true
             toolbar: true
             onClicked: root.close()
+
+            // Canonical Lucide X geometry, rendered with the same low-cost
+            // CurveRenderer path used by the rest of the icon system.
+            Shape {
+                anchors.centerIn: parent
+                width: 24
+                height: 24
+                scale: 16 / 24
+                preferredRendererType: Shape.CurveRenderer
+                ShapePath {
+                    strokeColor: Theme.textSoft
+                    strokeWidth: 1.9
+                    fillColor: "transparent"
+                    capStyle: ShapePath.RoundCap
+                    joinStyle: ShapePath.RoundJoin
+                    PathSvg { path: "M18 6 6 18 M6 6l12 12" }
+                }
+            }
+
+            ToolTip.visible: closeHover.containsMouse
+            ToolTip.text: "Close"
+            ToolTip.delay: 300
+            MouseArea {
+                id: closeHover
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: Qt.NoButton
+            }
         }
 
         ColumnLayout {
@@ -107,10 +124,11 @@ Popup {
 
             RowLayout {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 86
+                Layout.preferredHeight: 116
                 spacing: 16
 
                 Rectangle {
+                    Layout.alignment: Qt.AlignTop
                     Layout.preferredWidth: 70
                     Layout.preferredHeight: 70
                     radius: 14
@@ -140,7 +158,10 @@ Popup {
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 3
+                    Layout.alignment: Qt.AlignTop
+                    Layout.rightMargin: 38
+                    spacing: 4
+
                     Text {
                         text: root.applicationName
                         color: Theme.text
@@ -150,36 +171,39 @@ Popup {
                         font.weight: Font.Bold
                         font.hintingPreference: Font.PreferFullHinting
                     }
+
                     Text {
                         Layout.fillWidth: true
                         text: root.applicationPurpose
-                        color: Theme.textDim
+                        color: Theme.textSoft
                         renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         font.weight: Font.Medium
                         font.hintingPreference: Font.PreferFullHinting
                         wrapMode: Text.WordWrap
+                        lineHeight: 1.10
                     }
-                }
 
-                Rectangle {
-                    Layout.alignment: Qt.AlignTop
-                    Layout.preferredWidth: 92
-                    Layout.preferredHeight: 30
-                    radius: 8
-                    color: "#09171B"
-                    border.width: 1
-                    border.color: "#2B5960"
-                    Text {
-                        anchors.centerIn: parent
-                        text: "Versi: " + root.applicationVersion
-                        color: Theme.accent
-                        renderType: Text.NativeRendering
-                        font.family: Theme.monoFamily
-                        font.pixelSize: 9
-                        font.weight: Font.Bold
-                        font.hintingPreference: Font.PreferFullHinting
+                    Rectangle {
+                        // ABOUT_VERSION_BELOW_SUBTITLE_V2
+                        Layout.topMargin: 5
+                        Layout.preferredWidth: 92
+                        Layout.preferredHeight: 26
+                        radius: 7
+                        color: "#09171B"
+                        border.width: 1
+                        border.color: "#2B5960"
+                        Text {
+                            anchors.centerIn: parent
+                            text: "Versi: " + root.applicationVersion
+                            color: Theme.accent
+                            renderType: Text.NativeRendering
+                            font.family: Theme.monoFamily
+                            font.pixelSize: 9
+                            font.weight: Font.Bold
+                            font.hintingPreference: Font.PreferFullHinting
+                        }
                     }
                 }
             }
@@ -187,7 +211,7 @@ Popup {
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: 1
-                Layout.topMargin: 12
+                Layout.topMargin: 8
                 Layout.bottomMargin: 18
                 color: Theme.borderSoft
             }
@@ -195,27 +219,27 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 text: "ABOUT"
-                color: Theme.textFaint
+                color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.monoFamily
-                font.pixelSize: 9
+                font.pixelSize: 10
                 font.weight: Font.Bold
                 font.hintingPreference: Font.PreferFullHinting
-                font.letterSpacing: 1.25
+                font.letterSpacing: 1.15
             }
 
             Text {
                 Layout.fillWidth: true
-                Layout.topMargin: 6
+                Layout.topMargin: 7
                 text: "Aplikasi desktop untuk kontrol, tuning, preset, dan monitoring KTV Pro K500 dalam satu workflow profesional."
                 color: Theme.textSoft
                 renderType: Text.NativeRendering
                 font.family: Theme.fontFamily
-                font.pixelSize: 11
+                font.pixelSize: 12
                 font.weight: Font.Medium
                 font.hintingPreference: Font.PreferFullHinting
                 wrapMode: Text.WordWrap
-                lineHeight: 1.18
+                lineHeight: 1.16
             }
 
             Text {
@@ -267,8 +291,11 @@ Popup {
                                 anchors.horizontalCenterOffset: 1
                                 text: "▶"
                                 color: "white"
+                                renderType: Text.NativeRendering
+                                font.family: Theme.fontFamily
                                 font.pixelSize: 10
                                 font.weight: Font.Bold
+                                font.hintingPreference: Font.PreferFullHinting
                             }
                         }
                     }
@@ -281,17 +308,17 @@ Popup {
                             color: "#FF7A81"
                             renderType: Text.NativeRendering
                             font.family: Theme.monoFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                             font.weight: Font.Bold
                             font.hintingPreference: Font.PreferFullHinting
-                            font.letterSpacing: .9
+                            font.letterSpacing: .85
                         }
                         Text {
                             text: "SonKuPik"
                             color: youtubeMouse.containsMouse ? Theme.text : Theme.textSoft
                             renderType: Text.NativeRendering
                             font.family: Theme.fontFamily
-                            font.pixelSize: 11
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                             font.hintingPreference: Font.PreferFullHinting
                         }
@@ -300,9 +327,11 @@ Popup {
                     Text {
                         text: "↗"
                         color: youtubeMouse.containsMouse ? Theme.accent : Theme.textFaint
+                        renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                 }
 
@@ -370,17 +399,17 @@ Popup {
                             color: "#63D47C"
                             renderType: Text.NativeRendering
                             font.family: Theme.monoFamily
-                            font.pixelSize: 8
+                            font.pixelSize: 9
                             font.weight: Font.Bold
                             font.hintingPreference: Font.PreferFullHinting
-                            font.letterSpacing: .9
+                            font.letterSpacing: .85
                         }
                         Text {
                             text: "Beli KTV Pro K500"
                             color: tokopediaMouse.containsMouse ? Theme.text : Theme.textSoft
                             renderType: Text.NativeRendering
                             font.family: Theme.fontFamily
-                            font.pixelSize: 11
+                            font.pixelSize: 12
                             font.weight: Font.DemiBold
                             font.hintingPreference: Font.PreferFullHinting
                         }
@@ -389,9 +418,11 @@ Popup {
                     Text {
                         text: "↗"
                         color: tokopediaMouse.containsMouse ? Theme.accent : Theme.textFaint
+                        renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
                         font.pixelSize: 16
                         font.weight: Font.DemiBold
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                 }
 
@@ -414,10 +445,10 @@ Popup {
                     color: Theme.textFaint
                     renderType: Text.NativeRendering
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 9
                     font.weight: Font.Medium
                     font.hintingPreference: Font.PreferFullHinting
-                    font.letterSpacing: .9
+                    font.letterSpacing: .75
                 }
                 Item { Layout.fillWidth: true }
                 Text {
@@ -425,10 +456,10 @@ Popup {
                     color: Theme.textFaint
                     renderType: Text.NativeRendering
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 9
                     font.weight: Font.Medium
                     font.hintingPreference: Font.PreferFullHinting
-                    font.letterSpacing: .8
+                    font.letterSpacing: .70
                 }
             }
         }
