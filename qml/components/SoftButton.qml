@@ -17,13 +17,14 @@ Rectangle {
     property bool toolbar: false
     property bool contextHighlighted: false
     property bool mixerSelect: false
+    property bool primaryAction: false
     signal clicked()
 
-    // MIXER_SOURCE_FULL_FACE_ACTIVE_V4
-    // Digital-console selector semantics: OFF is dark, ON is a clean full-face
-    // cyan key. No inset frame, bevel rectangle, halo rectangle or persistent
-    // scale is drawn inside the active face; this avoids the boxed-in artifact
-    // seen on BT / Disconnect while retaining immediate active-state clarity.
+    // MIXER_SOURCE_RAISED_ACTIVE_V5
+    // Hardware-console keys must read as pushable controls before the pointer
+    // ever reaches them. OFF therefore uses a clearly raised graphite face;
+    // ON keeps the whole face illuminated cyan. Depth comes from a top specular
+    // edge + lower lip, never from an inset rectangle inside the button.
     readonly property bool mixerLit: root.mixerSelect && root.checked
     readonly property bool activeAccent: root.checked || root.neonAccent
     readonly property color resolvedAccent: root.amber ? Theme.amber : Theme.accent
@@ -37,13 +38,22 @@ Rectangle {
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
     radius: root.transport ? 6 : 7
     transformOrigin: Item.Center
-    // Momentary pointer feedback only. A selected key never remains shrunken.
-    scale: mouse.pressed ? .985 : 1
+
+    // MIXER_RAISED_SURFACE_V1
+    // Only the physical press compresses/moves the key. A selected key never
+    // remains shrunken, so its illuminated face always fills the full control.
+    scale: mouse.pressed ? .988 : 1
+    transform: Translate {
+        id: pressShift
+        y: mouse.pressed ? 1 : 0
+        Behavior on y { NumberAnimation { duration:55; easing.type:Easing.OutQuad } }
+    }
 
     border.width: 1
-    border.color: root.mixerSelect ? (root.mixerLit ? "#58F8FC"
-                                      : root.activeFocus ? "#56666F"
-                                      : mouse.containsMouse ? "#43515A" : "#1D272E")
+    border.color: root.mixerSelect ? (root.mixerLit ? "#7BFAFD"
+                                      : root.primaryAction ? "#259BA3"
+                                      : root.activeFocus ? "#60737D"
+                                      : mouse.containsMouse ? "#566772" : "#34434C")
                  : root.activeFocus ? root.resolvedAccent
                  : root.danger ? "#71323A"
                  : root.activeAccent ? Qt.rgba(root.resolvedAccent.r,root.resolvedAccent.g,root.resolvedAccent.b,root.activeBorderAlpha)
@@ -53,9 +63,10 @@ Rectangle {
     gradient: Gradient {
         GradientStop {
             position: 0
-            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#22C9D0" : "#35E7EB")
-                                                      : mouse.pressed ? "#090D11"
-                                                      : mouse.containsMouse ? "#182128" : "#0E1419")
+            color: root.mixerSelect ? (root.mixerLit ? (mouse.pressed ? "#45E6EA" : "#6AF7F9")
+                                                      : root.primaryAction ? (mouse.pressed ? "#15262C" : "#284149")
+                                                      : mouse.pressed ? "#12191E"
+                                                      : mouse.containsMouse ? "#303B43" : "#263139")
                  : root.danger ? "#31181E"
                  : root.activeAccent ? (root.amber ? "#2B2818" : "#193B40")
                  : mouse.pressed ? "#171D22"
@@ -63,8 +74,9 @@ Rectangle {
                  : root.toolbar ? "#252E35" : "#2C353C"
         }
         GradientStop {
-            position: .48
-            color: root.mixerSelect ? (root.mixerLit ? "#2ADCE2" : "#0B1115")
+            position: .46
+            color: root.mixerSelect ? (root.mixerLit ? "#31E0E5"
+                                                      : root.primaryAction ? "#122128" : "#141C21")
                  : root.danger ? "#231218"
                  : root.activeAccent ? (root.amber ? "#18170E" : "#132D32")
                  : mouse.containsMouse ? "#283139"
@@ -72,13 +84,60 @@ Rectangle {
         }
         GradientStop {
             position: 1
-            color: root.mixerSelect ? (root.mixerLit ? "#20CAD1" : "#04070A")
+            color: root.mixerSelect ? (root.mixerLit ? "#14B4BC"
+                                                      : root.primaryAction ? "#070C10" : "#060A0D")
                  : root.danger ? "#070507" : "#080C10"
         }
     }
 
-    // Normal buttons keep their subtle glass treatment. Mixer/select keys are
-    // deliberately excluded so the active cyan surface stays completely clean.
+    // Raised-console treatment: one bright top edge and one dark lower lip.
+    // These are directional depth cues, not an interior frame/rectangle.
+    Rectangle {
+        visible: root.mixerSelect
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
+        anchors.topMargin: 1
+        height: 1
+        radius: 1
+        color: root.mixerLit ? "#E7FFFF" : root.primaryAction ? "#8FE8EA" : "#FFFFFF"
+        opacity: root.mixerLit ? .62 : root.primaryAction ? .24 : .17
+    }
+
+    Rectangle {
+        visible: root.mixerSelect
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 3
+        anchors.rightMargin: 3
+        anchors.bottomMargin: 1
+        height: 2
+        radius: 1
+        color: root.mixerLit ? "#08717A" : "#000000"
+        opacity: mouse.pressed ? .26 : root.mixerLit ? .52 : .68
+    }
+
+    // Small shadow/lip extends outside the face so the key sits above the panel.
+    // Keeping this outside the button avoids the boxed-in artifact from V3.
+    Rectangle {
+        visible: root.mixerSelect && !mouse.pressed
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.leftMargin: 5
+        anchors.rightMargin: 5
+        anchors.bottomMargin: -2
+        height: 2
+        radius: 1
+        color: "#000000"
+        opacity: .62
+    }
+
+    // Normal buttons keep their subtle glass treatment. Hardware/mixer keys use
+    // the directional raised treatment above and never receive an inset frame.
     Rectangle {
         visible: !root.mixerSelect
         anchors.fill: parent
@@ -154,6 +213,7 @@ Rectangle {
             anchors.verticalCenter: parent.verticalCenter
             name: root.iconName
             color: root.mixerLit ? "#021012"
+                 : root.primaryAction ? Theme.accent
                  : root.danger ? "#FFD8D8"
                  : root.activeAccent || root.accentIcon ? root.resolvedAccent
                  : root.toolbar ? "#C3CFD5" : "#D5DDE1"
@@ -165,7 +225,7 @@ Rectangle {
             id: label
             visible: !root.iconOnly && text.length > 0
             anchors.verticalCenter: parent.verticalCenter
-            color: root.mixerSelect ? (root.mixerLit ? "#021012" : "#EFF5F7")
+            color: root.mixerSelect ? (root.mixerLit ? "#021012" : root.primaryAction ? "#9EF9FB" : "#EFF5F7")
                  : root.danger ? "#FFD8D8"
                  : root.contextHighlighted ? root.resolvedAccent
                  : root.amber && root.activeAccent ? Theme.amber
@@ -177,7 +237,7 @@ Rectangle {
                         : "transparent"
             font.family: Theme.fontFamily
             font.pixelSize: root.compact ? Theme.textXS : Theme.textS
-            font.weight: root.mixerLit ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
+            font.weight: root.mixerLit || root.primaryAction ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
             font.letterSpacing: .12
             Behavior on color { ColorAnimation { duration:75 } }
             Behavior on styleColor { ColorAnimation { duration:75 } }
@@ -198,5 +258,5 @@ Rectangle {
     }
 
     Behavior on border.color { ColorAnimation { duration:80 } }
-    Behavior on scale { NumberAnimation { duration:70; easing.type:Easing.OutQuad } }
+    Behavior on scale { NumberAnimation { duration:65; easing.type:Easing.OutQuad } }
 }
