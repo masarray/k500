@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Shapes
 
 Popup {
     id: root
@@ -14,27 +15,35 @@ Popup {
                  ? Popup.NoAutoClose
                  : Popup.CloseOnEscape | Popup.CloseOnPressOutside
 
-    width: 570
-    height: 430
+    width: 584
+    height: 444
 
     Overlay.modal: Rectangle { color: "#B804070A" }
 
-    background: Rectangle {
-        radius: 15
-        color: "#0B1015"
-        border.width: 1
-        border.color: "#263039"
+    enter: Transition {
+        NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 130; easing.type: Easing.OutCubic }
+    }
+    exit: Transition {
+        NumberAnimation { property: "opacity"; from: 1; to: 0; duration: 90; easing.type: Easing.InCubic }
+    }
 
+    background: Item {
         Rectangle {
             anchors.fill: parent
-            anchors.margins: 1
-            radius: 14
+            anchors.margins: -9
+            radius: 21
+            color: "#56000000"
+        }
+        Rectangle {
+            anchors.fill: parent
+            radius: 15
+            border.width: 1
+            border.color: "#2A353D"
             gradient: Gradient {
                 GradientStop { position: 0.0; color: "#151D23" }
                 GradientStop { position: 0.46; color: "#0C1217" }
                 GradientStop { position: 1.0; color: "#070B0F" }
             }
-            opacity: .96
         }
     }
 
@@ -44,7 +53,7 @@ Popup {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 24
-            spacing: 14
+            spacing: 13
 
             RowLayout {
                 Layout.fillWidth: true
@@ -60,8 +69,9 @@ Popup {
 
                     LucideIcon {
                         anchors.centerIn: parent
+                        width: 24
+                        height: 24
                         name: "download"
-                        size: 24
                         strokeWidth: 1.9
                         color: Theme.accent
                     }
@@ -76,17 +86,21 @@ Popup {
                               ? ("SonKuPik K500 " + root.updateManager.latestVersion + " tersedia")
                               : "Software Update"
                         color: Theme.text
+                        renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
                         font.pixelSize: 20
                         font.weight: Font.Bold
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                     Text {
                         Layout.fillWidth: true
-                        text: "Update resmi · diverifikasi sebelum instalasi"
+                        text: "Pembaruan stabil · diverifikasi sebelum instalasi"
                         color: Theme.textSoft
+                        renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
                         font.weight: Font.Medium
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                 }
 
@@ -94,9 +108,26 @@ Popup {
                     Layout.preferredWidth: 34
                     Layout.preferredHeight: 30
                     compact: true
-                    text: "×"
+                    toolbar: true
+                    text: ""
                     enabled: !root.updateManager || !root.updateManager.busy
                     onClicked: root.close()
+
+                    Shape {
+                        anchors.centerIn: parent
+                        width: 24
+                        height: 24
+                        scale: 15 / 24
+                        preferredRendererType: Shape.CurveRenderer
+                        ShapePath {
+                            strokeColor: Theme.textSoft
+                            strokeWidth: 1.9
+                            fillColor: "transparent"
+                            capStyle: ShapePath.RoundCap
+                            joinStyle: ShapePath.RoundJoin
+                            PathSvg { path: "M18 6 6 18 M6 6l12 12" }
+                        }
+                    }
                 }
             }
 
@@ -110,7 +141,7 @@ Popup {
                 Layout.fillWidth: true
                 spacing: 8
                 Rectangle {
-                    Layout.preferredWidth: 104
+                    Layout.preferredWidth: 110
                     Layout.preferredHeight: 27
                     radius: 7
                     color: "#11181E"
@@ -120,14 +151,22 @@ Popup {
                         anchors.centerIn: parent
                         text: "CURRENT  " + (root.updateManager ? root.updateManager.currentVersion : "-")
                         color: Theme.textDim
+                        renderType: Text.NativeRendering
                         font.family: Theme.monoFamily
                         font.pixelSize: 9
                         font.weight: Font.Bold
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                 }
-                LucideIcon { name: "chevron-right"; size: 14; strokeWidth: 1.8; color: Theme.textDim }
+                LucideIcon {
+                    Layout.preferredWidth: 14
+                    Layout.preferredHeight: 14
+                    name: "chevron-right"
+                    strokeWidth: 1.8
+                    color: Theme.textDim
+                }
                 Rectangle {
-                    Layout.preferredWidth: 104
+                    Layout.preferredWidth: 110
                     Layout.preferredHeight: 27
                     radius: 7
                     color: "#123036"
@@ -137,9 +176,11 @@ Popup {
                         anchors.centerIn: parent
                         text: "LATEST  " + (root.updateManager ? root.updateManager.latestVersion : "-")
                         color: Theme.accent
+                        renderType: Text.NativeRendering
                         font.family: Theme.monoFamily
                         font.pixelSize: 9
                         font.weight: Font.Bold
+                        font.hintingPreference: Font.PreferFullHinting
                     }
                 }
                 Item { Layout.fillWidth: true }
@@ -165,8 +206,10 @@ Popup {
                               ? root.updateManager.releaseNotes
                               : "Pembaruan stabil SonKuPik K500 siap dipasang."
                         color: Theme.textSoft
+                        renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
                         font.pixelSize: 11
+                        font.hintingPreference: Font.PreferFullHinting
                         background: null
                     }
                 }
@@ -193,8 +236,10 @@ Popup {
                              : root.updateManager.statusText)
                           : ""
                     color: root.updateManager && root.updateManager.state === "error" ? Theme.amber : Theme.textDim
+                    renderType: Text.NativeRendering
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
+                    font.hintingPreference: Font.PreferFullHinting
                     wrapMode: Text.Wrap
                 }
             }
@@ -204,7 +249,7 @@ Popup {
                 spacing: 8
 
                 SoftButton {
-                    Layout.preferredWidth: 118
+                    Layout.preferredWidth: 108
                     text: "Nanti"
                     compact: true
                     enabled: root.updateManager && !root.updateManager.busy
@@ -230,7 +275,11 @@ Popup {
                 SoftButton {
                     Layout.preferredWidth: 174
                     Layout.preferredHeight: 34
-                    text: root.updateManager && root.updateManager.busy ? "Memproses…" : "Update sekarang"
+                    text: root.updateManager && root.updateManager.busy
+                          ? "Memproses…"
+                          : (root.updateManager && root.updateManager.state === "error"
+                             ? "Coba lagi"
+                             : "Update sekarang")
                     compact: false
                     mixerSelect: true
                     primaryAction: true
@@ -242,10 +291,12 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                text: "Aplikasi akan mengunduh installer resmi, memverifikasi SHA-256, meminta izin Administrator Windows, memasang update, lalu membuka SonKuPik K500 kembali."
+                text: "SonKuPik akan mengunduh Setup resmi, mencocokkan manifest + SHA-256, meminta izin Administrator Windows, memasang update, lalu membuka aplikasi kembali."
                 color: Theme.textDim
+                renderType: Text.NativeRendering
                 font.family: Theme.fontFamily
                 font.pixelSize: 9
+                font.hintingPreference: Font.PreferFullHinting
                 wrapMode: Text.Wrap
             }
         }
