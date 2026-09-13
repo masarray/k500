@@ -3,12 +3,12 @@ const LATEST_RELEASE_URL = `https://github.com/${REPO}/releases/latest`;
 
 const ARTIFACTS = {
   windows: {
-    alias: 'SonKuPik-K500-Windows-Setup.exe',
+    filename: 'SonKuPik-K500-Windows-Setup.exe',
     versioned: (tag) => `SonKuPik-K500-${tag}-Windows-Setup.exe`,
     contentType: 'application/vnd.microsoft.portable-executable'
   },
   portable: {
-    alias: 'SonKuPik-K500-Windows-Portable.zip',
+    filename: 'SonKuPik-K500-Windows-Portable.zip',
     versioned: (tag) => `SonKuPik-K500-${tag}-Windows-Portable.zip`,
     contentType: 'application/zip'
   }
@@ -66,7 +66,7 @@ function proxyResponse(request, upstream, descriptor) {
     if (value) headers.set(name, value);
   }
   if (!headers.has('content-type')) headers.set('Content-Type', descriptor.contentType);
-  headers.set('Content-Disposition', `attachment; filename="${descriptor.alias}"`);
+  headers.set('Content-Disposition', `attachment; filename="${descriptor.filename}"`);
   headers.set('Cache-Control', 'private, no-store');
   headers.set('X-Content-Type-Options', 'nosniff');
 
@@ -87,15 +87,10 @@ export async function onRequest(context) {
   if (!descriptor) return new Response('Not Found', { status: 404 });
 
   try {
-    const aliasUrl = `https://github.com/${REPO}/releases/latest/download/${descriptor.alias}`;
-    let upstream = await fetchArtifact(request, aliasUrl);
-
-    if (!upstream.ok && upstream.status !== 206 && upstream.status !== 304) {
-      upstream.body?.cancel();
-      const tag = await resolveLatestTag();
-      const versionedUrl = `https://github.com/${REPO}/releases/download/${encodeURIComponent(tag)}/${descriptor.versioned(tag)}`;
-      upstream = await fetchArtifact(request, versionedUrl);
-    }
+    const tag = await resolveLatestTag();
+    const assetName = descriptor.versioned(tag);
+    const assetUrl = `https://github.com/${REPO}/releases/download/${encodeURIComponent(tag)}/${assetName}`;
+    const upstream = await fetchArtifact(request, assetUrl);
 
     if (!upstream.ok && upstream.status !== 206 && upstream.status !== 304) {
       upstream.body?.cancel();
