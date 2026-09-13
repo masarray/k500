@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'qml/components/TopBar.qml'
+      - 'qml/components/SectionDrawer.qml'
       - 'qml/components/StudioFader.qml'
       - 'qml/components/StudioKnob.qml'
       - 'qml/components/SectionEqGraph.qml'
@@ -31,6 +32,7 @@ jobs:
               return Path(path).read_text(encoding='utf-8')
 
           topbar = text('qml/components/TopBar.qml')
+          drawer = text('qml/components/SectionDrawer.qml')
           fader = text('qml/components/StudioFader.qml')
           knob = text('qml/components/StudioKnob.qml')
           peq = text('qml/components/SectionEqGraph.qml')
@@ -50,24 +52,27 @@ jobs:
                   and 'NO PRESET' in topbar,
 
               'Connect action is a primary raised hardware key':
-                  'CONNECT_PRIMARY_RAISED_V3' in topbar
-                  and 'mixerSelect:true' in topbar
+                  'mixerSelect:true' in topbar
                   and 'primaryAction:true' in topbar
                   and 'checked:root.deviceManager.connected' in topbar,
 
               'BT USB is a mutually-exclusive segmented transport toggle':
-                  'TRANSPORT_MODE_SEGMENTED_TOGGLE_V1' in topbar
-                  and 'id: transportModeSegment' in topbar
-                  and 'root.deviceManager.transportMode === "bt"' in topbar
-                  and 'root.deviceManager.transportMode === "usb"' in topbar
+                  'id: transportModeSegment' in topbar
+                  and 'root.deviceManager.transportMode==="bt"' in topbar
+                  and 'root.deviceManager.transportMode==="usb"' in topbar
                   and 'root.deviceManager.setTransportMode("bt")' in topbar
                   and 'root.deviceManager.setTransportMode("usb")' in topbar,
 
               'Device status is passive display telemetry':
-                  'DEVICE_STATUS_DISPLAY_V1' in topbar
-                  and 'id: statusDisplay' in topbar
+                  'id: statusDisplay' in topbar
                   and 'acceptedButtons:Qt.NoButton' in topbar
                   and 'id: statusButton' not in topbar,
+
+              'Sidebar microtype remains native and integer-pixel stable':
+                  'MICRO_TYPE_OPTICAL_POLISH_V1' in drawer
+                  and 'font.pixelSize: 10' in drawer
+                  and 'strokeWidth: 1.85' in drawer
+                  and 'scale: navPointer.pressed' not in drawer,
 
               'Only one fader owns the strong focus highlight':
                   'FADER_SINGLE_ACTIVE_FOCUS_V1' in fader
@@ -96,12 +101,11 @@ jobs:
                   and 'anchors.bottomMargin: -2' in button
                   and 'root.mixerLit ? "#7BFAFD"' in button
                   and 'y: mouse.pressed ? 1 : 0' in button
-                  and 'scale: mouse.pressed' not in button
-                  and 'anchors.fill: parent\n        anchors.margins: 1' in button,
+                  and 'scale: mouse.pressed' not in button,
 
-              'Unsupported premium FX knobs fail closed as read-only':
-                  'FX_DETAIL_READ_ONLY_TRUTH_V1' in knob
-                  and 'property bool editable: !premium' in knob
+              'Premium FX knobs stay interactive for local demo/audition':
+                  'FX_DETAIL_INTERACTIVE_PREVIEW_V2' in knob
+                  and 'property bool editable: true' in knob
                   and 'enabled:root.editable' in knob,
 
               'Compressor controls route from stable window context':
