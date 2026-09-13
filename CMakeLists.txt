@@ -181,6 +181,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/Main.qml
         qml/theme/Theme.qml
         qml/components/TopBar.qml
+        qml/components/AboutDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml
