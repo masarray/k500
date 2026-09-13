@@ -15,21 +15,20 @@ Item {
     property bool logarithmic: false
     property bool compact: false
     property bool premium: false
-    // FX_DETAIL_READ_ONLY_TRUTH_V1
-    // Premium knobs are currently used by Reverb/Echo detail fields. The K500
-    // exposes their readback bytes, but the repository explicitly has no
-    // donor-verified live write command for those details. Default them to
-    // read-only rather than allowing a control to move while hardware does not.
-    // Ordinary/compressor knobs remain editable; a future verified effect path
-    // can opt in explicitly with editable:true.
-    property bool editable: !premium
+    // FX_DETAIL_INTERACTIVE_PREVIEW_V2
+    // Reverb/Echo detail writes are not donor-verified yet, but the premium
+    // controls must remain usable for local audition/demo and visual response.
+    // The rack still refuses to invent an unknown hardware transport path, so
+    // interaction is safe: verified controls keep their live bridge while the
+    // unsupported FX details update only their local preview/visual field.
+    property bool editable: true
     property color accentColor: Theme.accent
     signal valueEdited(real newValue)
 
     // PREMIUM_FX_KNOB_V1
     // FX racks can opt into a slightly larger, instrument-like dial with a
-    // luminous value arc and restrained tick halo. It remains the same control
-    // rendering as the canonical StudioKnob while unsupported writes fail closed.
+    // luminous value arc and restrained tick halo. It keeps the same direct,
+    // tactile interaction model as the canonical StudioKnob.
     implicitWidth: premium ? 92 : (compact ? 72 : 80)
     implicitHeight: premium ? 118 : (compact ? 102 : 110)
 
@@ -70,7 +69,9 @@ Item {
     onPremiumChanged: dial.requestPaint()
     onEditableChanged: { if(!editable) dragging=false; dial.requestPaint() }
 
-    // CONTROL_CAPTION_AWARENESS_V1: captions follow the control under the pointer.
+    // CONTROL_CAPTION_AWARENESS_V1
+    // MICRO_TYPE_OPTICAL_POLISH_V1 — premium dial captions get one extra pixel
+    // for clean native rasterization while preserving the compact rack geometry.
     Text {
         id:titleLabel
         anchors.top:parent.top
@@ -80,7 +81,7 @@ Item {
         style:root.highlighted ? Text.Outline : Text.Normal
         styleColor:root.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
         font.family:Theme.monoFamily
-        font.pixelSize:9
+        font.pixelSize:root.premium ? 10 : 9
         font.weight:root.highlighted ? Font.DemiBold : Font.Medium
         font.letterSpacing:root.premium ? .95 : .75
         Behavior on color { ColorAnimation { duration:75 } }
@@ -201,7 +202,7 @@ Item {
             color:Theme.amber
             opacity:root.editable ? 1 : .90
             font.family:Theme.monoFamily
-            font.pixelSize:9
+            font.pixelSize:root.premium ? 10 : 9
             font.weight:Font.Bold
         }
     }
