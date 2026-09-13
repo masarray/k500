@@ -5,7 +5,7 @@
 #include <QUrl>
 #include <QtQml/qqmlregistration.h>
 
-class AppStorageManager final : public QObject
+class AppStorageManager : public QObject
 {
     Q_OBJECT
     QML_ELEMENT
