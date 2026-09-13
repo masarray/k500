@@ -49,9 +49,10 @@ jobs:
                   and 'PC PREVIEW' in topbar
                   and 'NO PRESET' in topbar,
 
-              'Connect action uses clean full-face active semantics':
-                  'CONNECT_FULL_FACE_ACTIVE_V2' in topbar
+              'Connect action is a primary raised hardware key':
+                  'CONNECT_PRIMARY_RAISED_V3' in topbar
                   and 'mixerSelect:true' in topbar
+                  and 'primaryAction:true' in topbar
                   and 'checked:root.deviceManager.connected' in topbar,
 
               'BT USB is a mutually-exclusive segmented transport toggle':
@@ -89,12 +90,13 @@ jobs:
                   and 'root.engine.surroundEqBands.setHpType("HP Bessel 12")' in host
                   and 'root.engine.subEqBands.setHpType("HP Butter 24")' in host,
 
-              'Mixer/source active keys are clean full-face cyan':
-                  'MIXER_SOURCE_FULL_FACE_ACTIVE_V4' in button
-                  and 'root.mixerLit ? "#58F8FC"' in button
-                  and 'visible: !root.mixerSelect' in button
-                  and 'scale: mouse.pressed ? .985 : 1' in button
-                  and 'mixerDepressed' not in button,
+              'Mixer/source keys retain strong pushable affordance':
+                  'MIXER_SOURCE_RAISED_ACTIVE_V5' in button
+                  and 'MIXER_RAISED_SURFACE_V1' in button
+                  and 'anchors.bottomMargin: -2' in button
+                  and 'root.mixerLit ? "#7BFAFD"' in button
+                  and 'scale: mouse.pressed ? .988 : 1' in button
+                  and 'anchors.fill: parent\n        anchors.margins: 1' in button,
 
               'Unsupported premium FX knobs fail closed as read-only':
                   'FX_DETAIL_READ_ONLY_TRUTH_V1' in knob
