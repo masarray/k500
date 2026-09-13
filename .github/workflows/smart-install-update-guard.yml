@@ -19,6 +19,7 @@ on:
       - 'qml/Main.qml'
       - 'qml/components/UpdateDialog.qml'
       - 'packaging/windows/installer.iss'
+      - '.github/workflows/smart-install-update-guard.yml'
 
 jobs:
   guard:
@@ -26,14 +27,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Verify professional install layout
+      - name: Verify professional install layout and migration
         shell: bash
         run: |
           set -euo pipefail
-          grep -F 'DefaultDirName={autopf}\\{#AppName}' packaging/windows/installer.iss
+          grep -F 'SMART_INSTALL_LAYOUT_V2' packaging/windows/installer.iss
+          grep -F 'DefaultDirName={autopf}\{#AppName}' packaging/windows/installer.iss
           grep -F 'PrivilegesRequired=admin' packaging/windows/installer.iss
+          grep -F 'DisableDirPage=yes' packaging/windows/installer.iss
           grep -F 'UsePreviousAppDir=no' packaging/windows/installer.iss
-          grep -F 'RestartApplications=yes' packaging/windows/installer.iss
+          grep -F 'RestartApplications=no' packaging/windows/installer.iss
+          grep -F 'MIGRATE_LOCALAPPDATA_INSTALL_V1' packaging/windows/installer.iss
+          grep -F '{localappdata}\Programs\{#AppName}\unins000.exe' packaging/windows/installer.iss
           grep -F '/AUToupdate=1' src/AppUpdateManager.cpp
           grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
           if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
@@ -45,28 +50,49 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          grep -F 'USER_PRESET_LIBRARY_V1' src/AppVersionInit.cpp
           grep -F 'QStandardPaths::DocumentsLocation' src/AppVersionInit.cpp
           grep -F 'SonKuPik K500/Presets' src/AppVersionInit.cpp
           grep -F 'pcPresetLibrary/folder' src/AppVersionInit.cpp
+          grep -F 'if (rememberedFolder.isEmpty())' src/AppVersionInit.cpp
           grep -F 'QStandardPaths::AppLocalDataLocation' src/k500/K500OfficialPresetSync.cpp
           if grep -Fq 'DocumentsLocation' src/k500/K500OfficialPresetSync.cpp; then
             echo 'Official update cache must remain internal, not in Documents' >&2
             exit 1
+          fi
+          if grep -Fq 'SonKuPik K500/Presets' packaging/windows/installer.iss; then
+            # A comment explaining the contract is fine; installer must never own/delete it.
+            if grep -Eq '^Source:.*SonKuPik K500\\Presets|^Name:.*SonKuPik K500\\Presets|^Type:.*SonKuPik K500\\Presets' packaging/windows/installer.iss; then
+              echo 'Installer must not own the user preset library' >&2
+              exit 1
+            fi
           fi
 
       - name: Verify secure in-app updater contract
         shell: bash
         run: |
           set -euo pipefail
+          grep -F 'SMART_UPDATE_RUNTIME_V1' src/AppUpdateManager.h
           grep -F 'releases/latest' src/AppUpdateManager.cpp
           grep -F 'release-manifest.json' src/AppUpdateManager.cpp
           grep -F 'SHA256SUMS.txt' src/AppUpdateManager.cpp
+          grep -F 'sonkupik-k500-release-manifest-v3' src/AppUpdateManager.cpp
           grep -F 'QCryptographicHash::Sha256' src/AppUpdateManager.cpp
           grep -F 'stableReleaseEligible' src/AppUpdateManager.cpp
           grep -F 'windows-x64' src/AppUpdateManager.cpp
+          grep -F 'installerTechnology' src/AppUpdateManager.cpp
+          grep -F 'm_manifestSha256' src/AppUpdateManager.cpp
+          grep -F 'm_manifestSetupBytes' src/AppUpdateManager.cpp
+          grep -F 'SHA256SUMS.txt disagrees with release-manifest.json' src/AppUpdateManager.cpp
+          grep -F 'Downloaded package is not a Windows executable' src/AppUpdateManager.cpp
           grep -F 'ShellExecuteExW' src/AppUpdateManager.cpp
-          grep -F 'lpVerb = L"runas"' src/AppUpdateManager.cpp
+          grep -F 'info.lpVerb = L"runas"' src/AppUpdateManager.cpp
           grep -F 'QML_NAMED_ELEMENT(AppUpdater)' src/AppUpdateManager.h
+          grep -F 'class AppUpdateManager : public QObject' src/AppUpdateManager.h
+          if grep -Fq 'class AppUpdateManager final' src/AppUpdateManager.h; then
+            echo 'Qt 6.8 generated QML singleton wrapper cannot derive from a final class' >&2
+            exit 1
+          fi
           grep -F 'qml/components/UpdateDialog.qml' CMakeLists.txt
           grep -F 'AppUpdater.checkForUpdates(false)' qml/Main.qml
           grep -F 'Update sekarang' qml/components/UpdateDialog.qml
@@ -81,5 +107,9 @@ jobs:
           fi
           if grep -Fq 'http://' src/AppUpdateManager.cpp; then
             echo 'Updater must use HTTPS only' >&2
+            exit 1
+          fi
+          if grep -Eq 'Qt\.openUrlExternally|QDesktopServices::openUrl' qml/components/UpdateDialog.qml src/AppUpdateManager.cpp; then
+            echo 'Primary update flow must remain in-app and must not hand users to a browser' >&2
             exit 1
           fi
