@@ -44,10 +44,10 @@ void initializeSonkupikVersion()
 
     // SMART_UPDATE_RUNTIME_V1 — one app-owned updater instance is available to
     // QML without exposing network/process primitives to the visual layer.
-    // The updater accepts only public stable GitHub releases and verifies the
-    // release manifest plus SHA-256 before Windows is allowed to execute Setup.
+    // Register it into the existing application module so the compiled QML does
+    // not depend on a second runtime-only import.
     auto *updater = new AppUpdateManager(QCoreApplication::instance());
-    qmlRegisterSingletonInstance("SonkupikRuntime", 1, 0, "AppUpdater", updater);
+    qmlRegisterSingletonInstance("SonkupikStudio", 1, 0, "AppUpdater", updater);
 }
 }
 
