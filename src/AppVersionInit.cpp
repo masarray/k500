@@ -22,7 +22,7 @@ void initializeSonkupikVersion()
     QSettings settings(QStringLiteral("MasArray"), QStringLiteral("SonKuPik K500"));
     const QString presetKey = QStringLiteral("pcPresetLibrary/folder");
     const QString rememberedFolder = QDir::cleanPath(settings.value(presetKey).toString());
-    if (rememberedFolder.isEmpty() || !QDir(rememberedFolder).exists()) {
+    if (rememberedFolder.isEmpty()) {
         QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
         if (documents.isEmpty())
             documents = QDir::homePath() + QStringLiteral("/Documents");
@@ -31,6 +31,9 @@ void initializeSonkupikVersion()
         if (QDir().mkpath(defaultPresetFolder))
             settings.setValue(presetKey, QDir::cleanPath(defaultPresetFolder));
     }
+    // A remembered custom folder is never overwritten just because an external
+    // drive/network path is temporarily unavailable. K500PresetFileBridge will
+    // re-open it automatically on a later launch once that path exists again.
 
     // UI_NATIVE_TEXT_RENDERING_V1
     // SonKuPik is a dense Windows desktop control surface with many 9–11 px
