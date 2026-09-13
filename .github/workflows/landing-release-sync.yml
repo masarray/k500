@@ -3,6 +3,7 @@ name: Guard landing release sync
 on:
   pull_request:
     paths:
+      - 'README.md'
       - 'site/**'
       - 'functions/**'
       - 'docs/index.html'
@@ -12,6 +13,7 @@ on:
     branches:
       - main
     paths:
+      - 'README.md'
       - 'site/**'
       - 'functions/**'
       - 'docs/index.html'
@@ -41,15 +43,15 @@ jobs:
           grep -Fq 'SonKuPik-K500-${tag}-Windows-Portable.zip' 'functions/download/[kind].js'
           grep -Fq 'filename: assetName' 'functions/download/[kind].js'
 
-          # Every public documentation landing surface delegates to the same canonical routes.
-          grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' docs/index.html
-          grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' docs/index.html
-          grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' docs/README.md
-          grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' docs/README.md
+          # Every public documentation/README surface delegates to the same canonical routes.
+          for page in README.md docs/index.html docs/README.md; do
+            grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' "$page"
+            grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' "$page"
+          done
 
-          # Public landing pages must never pin an old versioned GitHub asset URL.
-          if grep -Eq 'releases/download/v[0-9]+\.[0-9]+\.[0-9]+/' site/index.html site/download/index.html docs/index.html; then
-            echo 'Hard-coded versioned release asset URL found on a landing page.' >&2
+          # Public landing pages must never pin a versioned GitHub release asset URL.
+          if grep -Eq 'releases/download/v[0-9]+\.[0-9]+\.[0-9]+/' README.md site/index.html site/download/index.html docs/index.html docs/README.md; then
+            echo 'Hard-coded versioned release asset URL found on a public landing/download surface.' >&2
             exit 1
           fi
 
