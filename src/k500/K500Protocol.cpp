@@ -236,7 +236,8 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
 
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars)
 {
-    // Native CMD 0x05 capture: Mic Volume changes only its own byte plus checksum.
+    // P1_TOP_MIC_VERIFIED_V1 — native CMD 0x05 layout.
+    // Native capture: Mic Volume changes only its own byte plus checksum.
     // Preserve the two FBE/FBX bytes independently from device truth; they are not
     // one scalar. Dedicated FBE mapping will be added only after its own capture.
     const auto mirrored = [&deviceScalars](int offset, int fallback) -> quint8 {
