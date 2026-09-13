@@ -15,7 +15,12 @@ on:
       - 'SOURCE_SNAPSHOT.md'
       - 'docs/**'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/AppVersionInit.cpp'
+      - 'src/AppUpdateManager.*'
+      - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
+      - 'qml/components/UpdateDialog.qml'
+      - 'packaging/windows/installer.iss'
       - 'CMakeLists.txt'
       - 'resources/presets/01_ALL_GENRE.k500'
       - '.github/ISSUE_TEMPLATE/**'
@@ -35,7 +40,12 @@ on:
       - 'SOURCE_SNAPSHOT.md'
       - 'docs/**'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/AppVersionInit.cpp'
+      - 'src/AppUpdateManager.*'
+      - 'qml/Main.qml'
       - 'qml/components/TopBar.qml'
+      - 'qml/components/UpdateDialog.qml'
+      - 'packaging/windows/installer.iss'
       - 'CMakeLists.txt'
       - 'resources/presets/01_ALL_GENRE.k500'
       - '.github/ISSUE_TEMPLATE/**'
@@ -50,7 +60,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Guard public stable documentation contracts
+      - name: Guard public stable documentation and lifecycle contracts
         shell: pwsh
         run: |
           $readme = Get-Content README.md -Raw
@@ -69,6 +79,8 @@ jobs:
           $fileUi = Get-Content docs/P3_3_PRESET_FILE_UI.md -Raw
           $landing = Get-Content docs/index.html -Raw
           $stableWorkflow = Get-Content .github/workflows/windows-stable-release.yml -Raw
+          $installer = Get-Content packaging/windows/installer.iss -Raw
+          $updater = Get-Content src/AppUpdateManager.cpp -Raw
           $deviceHeader = Get-Content src/k500/K500DeviceManager.h -Raw
           $device = Get-Content src/k500/K500DeviceManager.cpp -Raw
           $topbar = Get-Content qml/components/TopBar.qml -Raw
@@ -79,13 +91,11 @@ jobs:
           }
 
           foreach ($token in @(
-            'Stable release:',
-            'Windows 10/11 x64 + USB HID',
+            'SonKuPik K500',
+            'Stable support:',
+            'Windows 10/11 x64 + K500 over USB HID',
             'Bluetooth SPP',
-            'Unified Official + Local library',
-            'Crash-resistant section navigation',
-            '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74',
-            'SonKuPik-K500-v1.0.0-Windows-Portable.zip',
+            'official and local presets',
             'GPL-3.0-or-later'
           )) {
             if (-not $readme.Contains($token)) { throw "Stable README contract missing '$token'" }
@@ -97,15 +107,12 @@ jobs:
           foreach ($token in @('## 1.0.0 — Public stable','CONCERT HIFI V4','Official + Local','crash')) {
             if (-not $changelog.Contains($token)) { throw "v1 changelog contract missing '$token'" }
           }
-
           foreach ($token in @('v1.0.x','USB HID','experimental','Remote Official Preset security','unsigned open-source')) {
             if (-not $security.Contains($token)) { throw "Security policy contract missing '$token'" }
           }
-
           foreach ($token in @('main` represents the current stable baseline','Official preset changes','Mode 01','focused branch')) {
             if (-not $contrib.Contains($token)) { throw "Contribution policy contract missing '$token'" }
           }
-
           foreach ($token in @('Public stable','Qualified transport','Official Mode 01','Architecture','User Guide','Release Model')) {
             if (-not $docsIndex.Contains($token)) { throw "Documentation index missing '$token'" }
           }
@@ -119,6 +126,8 @@ jobs:
             if (-not $releases.Contains($token)) { throw "Release model missing '$token'" }
           }
 
+          # Historical v1.0.0 hardware qualification remains immutable evidence;
+          # maintenance versions may advance without rewriting that provenance.
           foreach ($token in @(
             'v1.0.0',
             'a6c10847597616dbd22ba0271d82f5814991cb3e',
@@ -129,51 +138,33 @@ jobs:
           )) {
             if (-not $readiness.Contains($token)) { throw "Stable qualification record missing '$token'" }
           }
-
-          foreach ($token in @(
-            'Stable v1.0 is already published',
-            'Unified Official + Local preset library',
-            'Section-navigation crash regression',
-            'Mode 01 golden donor',
-            'Failure / recovery injection'
-          )) {
+          foreach ($token in @('Stable v1.0 is already published','Unified Official + Local preset library','Section-navigation crash regression','Mode 01 golden donor','Failure / recovery injection')) {
             if (-not $hardware.Contains($token)) { throw "Hardware runbook missing '$token'" }
           }
-
-          foreach ($token in @(
-            'STABLE USB ✅',
-            'EXPERIMENTAL 🧪',
-            'Unified SONKUPIK + LOCAL preset library',
-            'Persistent LCD/Equipment Mode rename',
-            'P5 — Packaging / release qualification — COMPLETE'
-          )) {
+          foreach ($token in @('STABLE USB ✅','EXPERIMENTAL 🧪','Unified SONKUPIK + LOCAL preset library','Persistent LCD/Equipment Mode rename','P5 — Packaging / release qualification — COMPLETE')) {
             if (-not $matrix.Contains($token)) { throw "Parity matrix missing '$token'" }
           }
-
           foreach ($token in @('LOCKED ✅','v1.0 stable baseline','Mode 01','buildDeviceSlotImage')) {
             if (-not $codec.Contains($token)) { throw "Codec documentation missing '$token'" }
           }
           foreach ($token in @('SONKUPIK + LOCAL','Official Mode 01 integrity','Mass Upload transfer-list behavior','Preview')) {
             if (-not $fileUi.Contains($token)) { throw "Preset UI documentation missing '$token'" }
           }
-
-          foreach ($token in @(
-            'v1.0.0 Public Stable',
-            'Native control.',
-            'Official + Local library',
-            'Validated preset sync',
-            'Release integrity',
-            'Portable ZIP'
-          )) {
+          foreach ($token in @('Native control.','Official + Local library','Validated preset sync','Release integrity','Portable ZIP')) {
             if (-not $landing.Contains($token)) { throw "Landing-page stable contract missing '$token'" }
           }
           if ($landing.Contains('Physical K500 hardware acceptance remains required for release qualification.')) {
             throw 'Landing page regressed to prerelease footer.'
           }
 
-          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION 1\.0\.0 LANGUAGES CXX\)') {
-            throw 'Stable semantic version metadata is not 1.0.0.'
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') {
+            throw 'Stable semantic version metadata is missing.'
           }
+          $version = [version]$Matches[1]
+          if ($version -lt [version]'1.0.0' -or $version.Major -ne 1 -or $version.Minor -ne 0) {
+            throw "Stable v1.0.x readiness guard does not accept version $version"
+          }
+          Write-Host "Validating SonKuPik K500 v$version stable maintenance candidate"
 
           foreach ($token in @(
             'HARDWARE_ACCEPTANCE: accepted-windows-usb',
@@ -189,6 +180,25 @@ jobs:
             if (-not $stableWorkflow.Contains($token)) { throw "Stable release pipeline contract missing '$token'" }
           }
 
+          foreach ($token in @(
+            'DefaultDirName={autopf}\{#AppName}',
+            'PrivilegesRequired=admin',
+            'UsePreviousAppDir=no',
+            'MIGRATE_LOCALAPPDATA_INSTALL_V1'
+          )) {
+            if (-not $installer.Contains($token)) { throw "Stable installer lifecycle contract missing '$token'" }
+          }
+          foreach ($token in @(
+            'release-manifest.json',
+            'SHA256SUMS.txt',
+            'QCryptographicHash::Sha256',
+            'ShellExecuteExW',
+            'stableReleaseEligible',
+            'windows-x64'
+          )) {
+            if (-not $updater.Contains($token)) { throw "Smart updater contract missing '$token'" }
+          }
+
           $mode01Path = 'resources/presets/01_ALL_GENRE.k500'
           $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($mode01Hash -ne '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74') {
@@ -198,17 +208,7 @@ jobs:
           foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
             if (-not $deviceHeader.Contains($token)) { throw "Diagnostics API missing '$token'" }
           }
-          foreach ($token in @(
-            'DiagnosticLogLimit = 240',
-            'activeMemoryIncluded',
-            'presetBytesIncluded',
-            'presetPathsIncluded',
-            'QSaveFile',
-            'protocolLog',
-            'P5_SUPPORT_REPORT_REDACTION_V1',
-            '[REDACTED ACTIVE MEMORY]',
-            '[REDACTED PRESET PAYLOAD]'
-          )) {
+          foreach ($token in @('DiagnosticLogLimit = 240','activeMemoryIncluded','presetBytesIncluded','presetPathsIncluded','QSaveFile','protocolLog','P5_SUPPORT_REPORT_REDACTION_V1','[REDACTED ACTIVE MEMORY]','[REDACTED PRESET PAYLOAD]')) {
             if (-not $device.Contains($token)) { throw "Diagnostics privacy/schema regression: missing '$token'" }
           }
           if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
@@ -218,7 +218,7 @@ jobs:
             if (-not $topbar.Contains($token)) { throw "Support UI regression: missing '$token'" }
           }
 
-          Write-Host 'v1 public documentation, provenance, support scope and stable release contracts PASS'
+          Write-Host 'v1.0.x public documentation, provenance, install/update lifecycle and stable release contracts PASS'
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4

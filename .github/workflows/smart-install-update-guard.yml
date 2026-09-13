@@ -1,0 +1,168 @@
+name: Guard smart install and update
+
+on:
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/AppVersionInit.cpp'
+      - 'src/AppUpdateManager.*'
+      - 'qml/Main.qml'
+      - 'qml/components/UpdateDialog.qml'
+      - 'packaging/windows/installer.iss'
+      - '.github/workflows/smart-install-update-guard.yml'
+  push:
+    branches: [ main ]
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/AppVersionInit.cpp'
+      - 'src/AppUpdateManager.*'
+      - 'qml/Main.qml'
+      - 'qml/components/UpdateDialog.qml'
+      - 'packaging/windows/installer.iss'
+      - '.github/workflows/smart-install-update-guard.yml'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify professional install layout and migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'SMART_INSTALL_LAYOUT_V2' packaging/windows/installer.iss
+          grep -F 'DefaultDirName={autopf}\{#AppName}' packaging/windows/installer.iss
+          grep -F 'PrivilegesRequired=admin' packaging/windows/installer.iss
+          grep -F 'DisableDirPage=yes' packaging/windows/installer.iss
+          grep -F 'UsePreviousAppDir=no' packaging/windows/installer.iss
+          grep -F 'RestartApplications=no' packaging/windows/installer.iss
+          grep -F 'MIGRATE_LOCALAPPDATA_INSTALL_V1' packaging/windows/installer.iss
+          grep -F 'ExecAsOriginalUser' packaging/windows/installer.iss
+          grep -F '%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe' packaging/windows/installer.iss
+          grep -F '/AUToupdate=1' src/AppUpdateManager.cpp
+          grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
+          if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
+            echo 'Stable installer must not default to LocalAppData' >&2
+            exit 1
+          fi
+
+      - name: Verify user preset storage contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'USER_PRESET_LIBRARY_V1' src/AppVersionInit.cpp
+          grep -F 'QStandardPaths::DocumentsLocation' src/AppVersionInit.cpp
+          grep -F 'SonKuPik K500/Presets' src/AppVersionInit.cpp
+          grep -F 'pcPresetLibrary/folder' src/AppVersionInit.cpp
+          grep -F 'if (rememberedFolder.isEmpty())' src/AppVersionInit.cpp
+          grep -F 'QStandardPaths::AppLocalDataLocation' src/k500/K500OfficialPresetSync.cpp
+          if grep -Fq 'DocumentsLocation' src/k500/K500OfficialPresetSync.cpp; then
+            echo 'Official update cache must remain internal, not in Documents' >&2
+            exit 1
+          fi
+          if grep -Fq 'SonKuPik K500/Presets' packaging/windows/installer.iss; then
+            # A comment explaining the contract is fine; installer must never own/delete it.
+            if grep -Eq '^Source:.*SonKuPik K500\\Presets|^Name:.*SonKuPik K500\\Presets|^Type:.*SonKuPik K500\\Presets' packaging/windows/installer.iss; then
+              echo 'Installer must not own the user preset library' >&2
+              exit 1
+            fi
+          fi
+
+      - name: Verify secure in-app updater contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -F 'SMART_UPDATE_RUNTIME_V1' src/AppUpdateManager.h
+          grep -F 'releases/latest' src/AppUpdateManager.cpp
+          grep -F 'release-manifest.json' src/AppUpdateManager.cpp
+          grep -F 'SHA256SUMS.txt' src/AppUpdateManager.cpp
+          grep -F 'sonkupik-k500-release-manifest-v3' src/AppUpdateManager.cpp
+          grep -F 'QCryptographicHash::Sha256' src/AppUpdateManager.cpp
+          grep -F 'stableReleaseEligible' src/AppUpdateManager.cpp
+          grep -F 'windows-x64' src/AppUpdateManager.cpp
+          grep -F 'installerTechnology' src/AppUpdateManager.cpp
+          grep -F 'm_manifestSha256' src/AppUpdateManager.cpp
+          grep -F 'm_manifestSetupBytes' src/AppUpdateManager.cpp
+          grep -F 'SHA256SUMS.txt disagrees with release-manifest.json' src/AppUpdateManager.cpp
+          grep -F 'Downloaded package is not a Windows executable' src/AppUpdateManager.cpp
+          grep -F 'ShellExecuteExW' src/AppUpdateManager.cpp
+          grep -F 'info.lpVerb = L"runas"' src/AppUpdateManager.cpp
+          grep -F 'QML_NAMED_ELEMENT(AppUpdater)' src/AppUpdateManager.h
+          grep -F 'class AppUpdateManager : public QObject' src/AppUpdateManager.h
+          if grep -Fq 'class AppUpdateManager final' src/AppUpdateManager.h; then
+            echo 'Qt 6.8 generated QML singleton wrapper cannot derive from a final class' >&2
+            exit 1
+          fi
+          grep -F 'qml/components/UpdateDialog.qml' CMakeLists.txt
+          grep -F 'AppUpdater.checkForUpdates(false)' qml/Main.qml
+          grep -F 'Update sekarang' qml/components/UpdateDialog.qml
+
+      - name: Reject unsafe update shortcuts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if grep -Eiq 'disable.*(defender|antivirus)|Add-MpPreference|Set-MpPreference' src/AppUpdateManager.cpp packaging/windows/installer.iss; then
+            echo 'Updater must never weaken Windows security controls' >&2
+            exit 1
+          fi
+          if grep -Fq 'http://' src/AppUpdateManager.cpp; then
+            echo 'Updater must use HTTPS only' >&2
+            exit 1
+          fi
+          if grep -Eq 'Qt\.openUrlExternally|QDesktopServices::openUrl' qml/components/UpdateDialog.qml src/AppUpdateManager.cpp; then
+            echo 'Primary update flow must remain in-app and must not hand users to a browser' >&2
+            exit 1
+          fi
+
+  inno-compile:
+    name: Compile smart Inno installer
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create minimal packaging fixture
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
+          Set-Content -Path package/SonKuPik-K500.exe -Value 'CI installer fixture' -Encoding ascii
+          Copy-Item LICENSE package/LICENSE
+          python -m pip install --disable-pip-version-check --quiet pillow
+          @'
+          from PIL import Image
+          source = Image.open('assets/SonKuPik-k500-logo.png').convert('RGBA')
+          source.save('package/SonKuPik-K500.ico', format='ICO', sizes=[(16,16),(32,32),(48,48),(256,256)])
+          for size, box, path in [
+              ((164,314),(132,132),'build/packaging/wizard.bmp'),
+              ((55,55),(48,48),'build/packaging/wizard-small.bmp')]:
+              canvas = Image.new('RGB', size, (13,18,22))
+              logo = source.copy()
+              logo.thumbnail(box, Image.Resampling.LANCZOS)
+              canvas.paste(logo, ((size[0]-logo.width)//2, max(4,(size[1]-logo.height)//3)), logo)
+              canvas.save(path, format='BMP')
+          '@ | python -
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not (Test-Path $iscc)) { throw 'ISCC.exe not found' }
+          "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Compile installer script
+        shell: pwsh
+        run: |
+          $cmake = Get-Content CMakeLists.txt -Raw
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') { throw 'Version not found' }
+          $version = $Matches[1]
+          $env:SONKUPIK_APP_DIR = (Resolve-Path package).Path
+          $env:SONKUPIK_OUTPUT_DIR = (Resolve-Path dist).Path
+          $env:SONKUPIK_APP_ICON = (Resolve-Path package/SonKuPik-K500.ico).Path
+          $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/wizard.bmp).Path
+          $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/wizard-small.bmp).Path
+          & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup script failed to compile' }
+          $setup = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
+          if (-not (Test-Path $setup)) { throw 'Expected Setup EXE was not produced' }

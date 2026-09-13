@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.0.1 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.0.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -169,6 +169,24 @@ add_executable(k500_p42_batch_test
 )
 target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core Qt6::Network)
 
+# UPDATE_METADATA_SELF_TEST_V1 — run the production updater manifest/checksum
+# parser without network access, installer execution, or K500 hardware.
+add_executable(k500_update_selftest
+    src/AppUpdateSelfTestMain.cpp
+    src/AppUpdateManager.cpp
+    src/AppUpdateManagerSelfTest.cpp
+    src/AppUpdateManager.h
+)
+target_include_directories(k500_update_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(k500_update_selftest PRIVATE Qt6::Core Qt6::Network Qt6::Qml)
+if(WIN32)
+    target_link_libraries(k500_update_selftest PRIVATE shell32)
+endif()
+add_custom_command(TARGET k500_update_selftest POST_BUILD
+    COMMAND $<TARGET_FILE:k500_update_selftest>
+    COMMENT "Running deterministic updater metadata self-test"
+)
+
 set_source_files_properties(qml/theme/Theme.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
@@ -182,6 +200,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/theme/Theme.qml
         qml/components/TopBar.qml
         qml/components/AboutDialog.qml
+        qml/components/UpdateDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml
@@ -216,6 +235,8 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
     SOURCES
+        src/AppUpdateManager.cpp
+        src/AppUpdateManager.h
         src/EqCurveItem.cpp
         src/EqCurveItem.h
 )
@@ -274,7 +295,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing

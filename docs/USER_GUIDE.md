@@ -10,12 +10,48 @@ Bluetooth SPP is available in the application but remains experimental until ind
 
 ## Install or run portable
 
-Download from the official GitHub Release page:
+Download the current stable build from the official SonKuPik K500 download page or GitHub Release page:
 
-- `SonKuPik-K500-v1.0.0-Windows-Setup.exe` — normal installation.
-- `SonKuPik-K500-v1.0.0-Windows-Portable.zip` — extract and run `SonKuPik-K500.exe`.
+- `SonKuPik-K500-vX.Y.Z-Windows-Setup.exe` — recommended normal installation;
+- `SonKuPik-K500-vX.Y.Z-Windows-Portable.zip` — extract and run `SonKuPik-K500.exe` without installing.
 
-The binaries are currently unsigned open-source builds, so Windows may display a reputation warning. Verify the artifact against `SHA256SUMS.txt` and `release-manifest.json` from the same release.
+The normal installer uses the standard Windows application layout:
+
+```text
+C:\Program Files\SonKuPik K500\
+```
+
+Windows will show its normal Administrator/UAC confirmation because Program Files is protected. The installer does not ask beginners to choose an application directory; updates use the same canonical location automatically.
+
+The binaries are currently unsigned open-source builds, so Windows may display a reputation warning. Verify the artifact against `SHA256SUMS.txt` and `release-manifest.json` from the same release. Do not disable Windows security software to install SonKuPik K500.
+
+### Personal preset location
+
+On first run, the application creates the default user preset library at:
+
+```text
+Documents\SonKuPik K500\Presets\
+```
+
+This folder belongs to the user, not to the installer. It is deliberately outside Program Files so presets are easy to find, copy, back up, and keep across reinstall/uninstall. If you select another Local preset folder, SonKuPik remembers that folder and does not silently replace it when an external/network drive is temporarily unavailable.
+
+Official SonKuPik preset cache and update staging remain internal application data under LocalAppData. They are not mixed into the personal Documents library.
+
+### Updating the application
+
+Starting with v1.0.2, SonKuPik can handle stable Windows updates inside the application:
+
+1. The app quietly checks the latest public stable repository release.
+2. If a newer version exists, a SonKuPik-styled update card shows the current and latest versions plus release notes.
+3. Choose **Update sekarang** to continue, **Nanti** to postpone, or **Lewati versi** to suppress that exact version.
+4. The app downloads `release-manifest.json`, `SHA256SUMS.txt`, and the exact versioned Windows Setup package.
+5. The manifest, Windows target, stable-release eligibility, package filename/size, and SHA-256 are cross-checked before execution.
+6. Windows shows its normal Administrator/UAC confirmation.
+7. Setup updates Program Files quietly and opens the new SonKuPik K500 version automatically.
+
+The primary update flow does not open a browser. A cancelled UAC request or failed integrity check leaves the application/update unexecuted rather than bypassing Windows security.
+
+When upgrading from the earlier per-user v1.0.1 layout, the v1.0.2 installer migrates the old LocalAppData application install before writing the new Program Files copy. Personal presets and application preferences are intentionally preserved.
 
 ## Connect to K500
 
@@ -65,7 +101,7 @@ Official sync never overwrites your Local preset folder.
 
 ## Local presets
 
-Choose a Local preset folder in System/Mass Upload. Valid `.k500` files from that folder appear in the same collection as official presets, with a distinct LOCAL source label.
+The default Local library is `Documents\SonKuPik K500\Presets`. You can select another folder from System/Mass Upload when needed. Valid `.k500` files from that folder appear in the same collection as official presets, with a distinct LOCAL source label.
 
 Your Local files remain user-owned and writable. Use **Save As** when you want to create another preset file without replacing the original source.
 
@@ -137,7 +173,7 @@ Reconnect USB and allow the full synchronization to complete. Do not assume the 
 
 ### A section freezes/closes the app
 
-v1.0 contains a fix and runtime regression test for the earlier Mic/Reverb section-switch crash. If a crash still reproduces, record the exact version, sequence of clicks, connection state, and Support Report/trace if available, then file a bug report.
+The stable v1 line contains a fix and runtime regression test for the earlier Mic/Reverb section-switch crash. If a crash still reproduces, record the exact version, sequence of clicks, connection state, and Support Report/trace if available, then file a bug report.
 
 ### Upload/Mass Upload interrupted
 
@@ -146,6 +182,10 @@ Reconnect before doing anything else. Let the application read the complete K500
 ### Official Sync fails
 
 You can continue using bundled/last-known-good official presets and Local presets. Do not manually replace cache files with unvalidated data.
+
+### Application update fails
+
+Keep using the currently installed version. A failed download, manifest mismatch, checksum mismatch, or cancelled UAC request never authorizes SonKuPik to run an unverified installer. Retry later or use the official Setup package manually.
 
 ## Support Report
 
@@ -164,8 +204,8 @@ Attach the report to a reproducible GitHub issue when appropriate.
 PowerShell example:
 
 ```powershell
-Get-FileHash .\SonKuPik-K500-v1.0.0-Windows-Setup.exe -Algorithm SHA256
-Get-FileHash .\SonKuPik-K500-v1.0.0-Windows-Portable.zip -Algorithm SHA256
+Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Setup.exe -Algorithm SHA256
+Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Portable.zip -Algorithm SHA256
 ```
 
 Compare the output with `SHA256SUMS.txt` from the same GitHub release tag.

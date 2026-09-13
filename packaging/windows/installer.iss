@@ -40,12 +40,26 @@ AppPublisher={#AppPublisher}
 AppPublisherURL={#AppURL}
 AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
-DefaultDirName={localappdata}\Programs\{#AppName}
+
+; SMART_INSTALL_LAYOUT_V2
+; Application/runtime belongs to Program Files. User .k500 content is created by
+; the application under Documents\SonKuPik K500\Presets and is never uninstalled.
+DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
-DisableProgramGroupPage=yes
-PrivilegesRequired=lowest
+PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+
+; Beginner-first wizard: use the one canonical machine location, avoid exposing
+; path/program-group decisions that would later make automatic updates ambiguous,
+; and keep only the familiar optional desktop-shortcut choice.
+DisableDirPage=yes
+DisableProgramGroupPage=yes
+UsePreviousAppDir=no
+AllowNoIcons=yes
+DisableWelcomePage=no
+DisableReadyPage=no
+
 OutputDir={#OutputDir}
 OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup
 SetupIconFile={#AppIcon}
@@ -58,8 +72,9 @@ WizardStyle=modern
 WizardSizePercent=110
 SetupLogging=yes
 CloseApplications=yes
+; Auto-update relaunch is explicit in [Run], avoiding duplicate Restart Manager
+; relaunches while keeping normal manual installs predictable.
 RestartApplications=no
-UsePreviousAppDir=yes
 Uninstallable=yes
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\SonKuPik-K500.ico
@@ -69,7 +84,7 @@ VersionInfoCompany={#AppPublisher}
 VersionInfoDescription={#AppName} Installer
 VersionInfoProductName={#AppName}
 VersionInfoProductVersion={#AppVersion}
-VersionInfoCopyright=Copyright (c) MasArray
+VersionInfoCopyright=Copyright © 2026 SonKuPik
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
@@ -82,4 +97,45 @@ Name: "{group}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\SonKuPik-K500.ico"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent
+; Normal interactive installation shows the usual Finish-page launch option.
+Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Check: not IsAutoUpdate
+; In-app updates are already user-approved in SonKuPik. After verified silent
+; replacement, reopen the newly installed Program Files binary automatically.
+Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Flags: nowait; Check: IsAutoUpdate
+
+[Code]
+function IsAutoUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:AUToupdate|0}') = '1';
+end;
+
+procedure MigrateLegacyPerUserInstall;
+var
+  Cmd: String;
+  Params: String;
+  ResultCode: Integer;
+begin
+  { MIGRATE_LOCALAPPDATA_INSTALL_V1 }
+  { v1.0.1 was a per-user install. An elevated machine-wide Setup can run under }
+  { different credentials, so the Inno LocalAppData constant is not reliable here. }
+  { Execute a tiny cmd under the ORIGINAL user and let that process expand its }
+  { own %LOCALAPPDATA%. This never touches Documents, presets, or QSettings. }
+  Cmd := ExpandConstant('{cmd}');
+  Params := '/C if exist "%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
+            'start "" /wait "%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
+            '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART';
+
+  Log('Checking original user profile for legacy per-user SonKuPik K500 install.');
+  if ExecAsOriginalUser(Cmd, Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
+    Log(Format('Legacy per-user migration command finished with code %d.', [ResultCode]))
+  else
+    Log('Legacy per-user migration command could not be started; canonical Program Files install will continue.');
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+begin
+  { Run before new files/shortcuts are written, so a legacy uninstaller cannot }
+  { remove the new common Start Menu/Desktop entries. }
+  MigrateLegacyPerUserInstall;
+  Result := '';
+end;

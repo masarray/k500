@@ -40,6 +40,8 @@ SonKuPik K500 gives K500 owners a modern Windows interface for the parts of the 
 The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or localhost bridge is required for normal use.
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
+>
+> **Release line:** v1.0.0 established the hardware-qualified baseline. v1.0.2 is a stable maintenance release that keeps that device scope while adding the Program Files installer layout, Documents preset library, and verified in-app updater.
 
 ## See the real app
 
@@ -87,19 +89,22 @@ More screenshots are available in [`assets/k500 screenshot`](assets/k500%20scree
 
 | Package | Best for | Download |
 |---|---|---|
-| **Windows Setup** | Recommended for most users. Normal installation, Start Menu shortcut, uninstall support. | [Download Setup](https://github.com/masarray/k500/releases/download/v1.0.0/SonKuPik-K500-v1.0.0-Windows-Setup.exe) |
-| **Portable ZIP** | No installation. Extract the ZIP and run the application. | [Download Portable](https://github.com/masarray/k500/releases/download/v1.0.0/SonKuPik-K500-v1.0.0-Windows-Portable.zip) |
-| **Latest release** | Release notes, SHA-256 checksums, and current packages. | [Open latest release](https://github.com/masarray/k500/releases/latest) |
+| **Windows Setup** | Recommended for most users. Installs to `Program Files\SonKuPik K500`, keeps personal presets in Documents, and supports verified in-app updates. | [Download Setup](https://github.com/masarray/k500/releases/download/v1.0.2/SonKuPik-K500-v1.0.2-Windows-Setup.exe) |
+| **Portable ZIP** | No installation. Extract the ZIP and run the application. | [Download Portable](https://github.com/masarray/k500/releases/download/v1.0.2/SonKuPik-K500-v1.0.2-Windows-Portable.zip) |
+| **Latest release** | Release notes, SHA-256 checksums, manifest, and current packages. | [Open latest release](https://github.com/masarray/k500/releases/latest) |
 
 Official Windows binaries are currently unsigned open-source builds. Windows SmartScreen or antivirus reputation systems may therefore warn when opening a new download. Release packages include SHA-256 verification metadata. See [Windows distribution & security](docs/WINDOWS_DISTRIBUTION_SECURITY.md).
 
 ## Getting started
 
-1. **Install SonKuPik K500** using the Windows Setup package.
-2. **Connect the K500 by USB.** The app reads the processor state before LIVE editing is enabled.
-3. **Choose a section** such as Music, Mic, Reverb, Main, or Subwoofer.
-4. **Tune the sound** or select a preset.
-5. For presets, use **Preview** before choosing a permanent upload.
+1. **Install SonKuPik K500** using the Windows Setup package. The normal installer uses `C:\Program Files\SonKuPik K500`.
+2. On first run, the default personal preset library is created at **`Documents\SonKuPik K500\Presets`**.
+3. **Connect the K500 by USB.** The app reads the processor state before LIVE editing is enabled.
+4. **Choose a section** such as Music, Mic, Reverb, Main, or Subwoofer.
+5. **Tune the sound** or select a preset.
+6. For presets, use **Preview** before choosing a permanent upload.
+
+Starting with v1.0.2, installed builds can discover a newer public stable release inside the app. Before Windows UAC is requested, SonKuPik cross-checks the release manifest, checksum file, Setup identity/size, and locally computed SHA-256. A failed verification never runs the installer.
 
 For a complete walkthrough, see the [User Guide](docs/USER_GUIDE.md).
 
@@ -112,6 +117,7 @@ A friendly interface should not hide risky behavior. SonKuPik K500 follows a str
 - **Unknown commands stay read-only.** The project never invents a packet merely to make a control appear complete.
 - **Permanent writes are deliberate.** Staging, preview, and device upload are separate states.
 - **Readback verifies reality.** After important device operations, the processor is read again before LIVE editing resumes.
+- **Application updates cannot interrupt permanent preset transactions.** Save, Upload, and Mass Upload must finish before the update action is enabled.
 
 This design is intended to make the application approachable for everyday users while keeping hardware-facing behavior conservative and inspectable.
 
@@ -142,6 +148,8 @@ Official downloads must pass K500 file validation before replacing the last-know
 - USB-only permanent Save, single PC preset Upload, and deterministic Mass Upload.
 - Offline preset Preview/edit tracking with controlled persistence and atomic Save As.
 - Official preset sync, bundled offline fallback, last-known-good cache, and Local preset library.
+- Default personal preset home under `Documents\SonKuPik K500\Presets`, separate from application binaries.
+- Verified in-app stable updater with manifest/SHA-256 checks and normal Windows UAC elevation.
 - Support Report JSON with sensitive preset payload/path information excluded.
 - Branded Windows installer and portable ZIP.
 
@@ -257,7 +265,7 @@ Clean rebuild:
 build-windows.cmd -Clean
 ```
 
-The stable release pipeline validates protocol, codec, preset persistence, batch upload, runtime navigation, portable-package, and installed-package regressions.
+The stable release pipeline validates protocol, codec, preset persistence, batch upload, updater metadata integrity, runtime navigation, portable-package, and installed-package regressions.
 
 ## Contributing
 
