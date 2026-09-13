@@ -114,7 +114,9 @@ void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)
     m_mic.micInitVol = fileU8(memory, 0x0012, 25);
     m_mic.micAVol = fileU8(memory, 0x0014, 96);
     m_mic.micBVol = fileU8(memory, 0x0015, 96);
-    m_mic.fbxLevel = qRound((fileU8(memory, 0x001B, 7) + fileU8(memory, 0x001C, 7)) / 2.0);
+    // FBE_NATIVE_LEVEL_V1 — native delta capture proves FBE is file 0x001B only.
+    // File 0x001C is an independent neighbour and must never be averaged into FBE.
+    m_mic.fbxLevel = fileU8(memory, 0x001B, 0);
     m_mic.compThresholdDb = static_cast<int>(fileU8(memory, 0x0017, 38)) - 50;
     m_mic.compRatio = fileU8(memory, 0x0018, 3);
     m_mic.attackMs = fileU8(memory, 0x0019, 10);
@@ -302,7 +304,7 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micAVol")) m_mic.micAVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micBVol")) m_mic.micBVol = qRound(value.toDouble());
-    else if (path == QStringLiteral("mic.fbxLevel")) m_mic.fbxLevel = qRound(value.toDouble());
+    else if (path == QStringLiteral("mic.fbxLevel")) m_mic.fbxLevel = qBound(0, qRound(value.toDouble()), 3);
     else if (path == QStringLiteral("mic.compThresholdDb")) m_mic.compThresholdDb = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.compRatio")) m_mic.compRatio = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.attackMs")) m_mic.attackMs = qRound(value.toDouble());
@@ -362,7 +364,19 @@ void K500Controller::queueTopMic(const QString &path)
         emit writeDeferred(path, QStringLiteral("Top Mic write requires device scalar readback 0x00..0x3F"));
         return;
     }
-    queueBlockFrame(QStringLiteral("top:mic"), K500Protocol::topMicBlock(m_mic, m_deviceScalars),
+
+    // FBE_NATIVE_LEVEL_V1 — native 3→2→1→0 capture changes only CMD 0x05
+    // payload byte mapped to live scalar 0x1B; neighbour 0x1C stays untouched.
+    QByteArray scalars = m_deviceScalars;
+    if (path == QStringLiteral("mic.fbxLevel") && scalars.size() > 0x1B) {
+        const char fbe = char(K500Frame::clampByte(qBound(0, m_mic.fbxLevel, 3)));
+        scalars[0x1B] = fbe;
+        // Optimistically keep device truth aligned so later Mic Volume/full-block
+        // writes do not restore the pre-edit FBE value before the next readback.
+        m_deviceScalars[0x1B] = fbe;
+    }
+
+    queueBlockFrame(QStringLiteral("top:mic"), K500Protocol::topMicBlock(m_mic, scalars),
                     QStringLiteral("Top Mic · %1").arg(path));
 }
 

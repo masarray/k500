@@ -214,8 +214,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0018, 3);
         putFileU8(memory, 0x0019, 10);
         putFileU8(memory, 0x001A, 2);  // 0.2 sec
-        putFileU8(memory, 0x001B, 5);
-        putFileU8(memory, 0x001C, 7);  // shared UI average = 6
+        putFileU8(memory, 0x001B, 3);  // FBE native level
+        putFileU8(memory, 0x001C, 0);  // independent neighbour, not FBE
         putFileU8(memory, 0x0092, 1);  // EQ link
         putFileU16(memory, 0x0098, 90);
         putFileU16(memory, 0x009A, 16000);
@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
             && system.value(QStringLiteral("bleName")).toString() == QStringLiteral("KTV_BLE_TEST")
             && mic.value(QStringLiteral("micAVol")).toInt() == 96
             && mic.value(QStringLiteral("micBVol")).toInt() == 94
-            && mic.value(QStringLiteral("fbxLevel")).toInt() == 6
+            && mic.value(QStringLiteral("fbxLevel")).toInt() == 3
             && mic.value(QStringLiteral("noiseGateDb")).toInt() == -11
             && mic.value(QStringLiteral("eqLink")).toBool()
             && mic.value(QStringLiteral("compThresholdDb")).toInt() == -12

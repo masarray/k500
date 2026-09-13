@@ -505,7 +505,8 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     QVariantMap mic{
         {QStringLiteral("micAVol"), static_cast<int>(fileU8(memory, 0x0014))},
         {QStringLiteral("micBVol"), static_cast<int>(fileU8(memory, 0x0015))},
-        {QStringLiteral("fbxLevel"), qRound((fileU8(memory, 0x001B) + fileU8(memory, 0x001C)) / 2.0)},
+        // FBE_NATIVE_LEVEL_V1 — capture maps FBE directly to file 0x001B.
+        {QStringLiteral("fbxLevel"), static_cast<int>(fileU8(memory, 0x001B))},
         {QStringLiteral("noiseGateDb"), static_cast<int>(fileU8(memory, 0x0016)) - 81},
         {QStringLiteral("eqLink"), fileU8(memory, 0x0092) == 1},
         {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x0098))},
