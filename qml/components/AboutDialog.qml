@@ -245,7 +245,7 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 Layout.topMargin: 12
-                text: "Copyright (c) 2026, SonKuPik"
+                text: "Copyright © 2026, SonKuPik"
                 color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.fontFamily
