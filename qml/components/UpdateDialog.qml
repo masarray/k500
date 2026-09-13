@@ -94,16 +94,9 @@ Popup {
                     Layout.preferredWidth: 34
                     Layout.preferredHeight: 30
                     compact: true
-                    text: ""
+                    text: "×"
                     enabled: !root.updateManager || !root.updateManager.busy
                     onClicked: root.close()
-                    LucideIcon {
-                        anchors.centerIn: parent
-                        name: "x"
-                        size: 15
-                        strokeWidth: 1.9
-                        color: Theme.textSoft
-                    }
                 }
             }
 
@@ -132,7 +125,7 @@ Popup {
                         font.weight: Font.Bold
                     }
                 }
-                LucideIcon { name: "arrow-right"; size: 14; strokeWidth: 1.8; color: Theme.textDim }
+                LucideIcon { name: "chevron-right"; size: 14; strokeWidth: 1.8; color: Theme.textDim }
                 Rectangle {
                     Layout.preferredWidth: 104
                     Layout.preferredHeight: 27
