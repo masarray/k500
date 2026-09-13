@@ -1,12 +1,9 @@
-#include "AppUpdateManager.h"
-
 #include <QCoreApplication>
 #include <QDir>
 #include <QQuickWindow>
 #include <QSettings>
 #include <QStandardPaths>
 #include <QString>
-#include <QtQml/qqml.h>
 
 #ifndef SONKUPIK_VERSION
 #define SONKUPIK_VERSION "0.0.0-dev"
@@ -41,13 +38,6 @@ void initializeSonkupikVersion()
     // without enabling global MSAA or adding a continuously-rendered effect.
     // This must run before the first QQuickWindow is created.
     QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering);
-
-    // SMART_UPDATE_RUNTIME_V1 — one app-owned updater instance is available to
-    // QML without exposing network/process primitives to the visual layer.
-    // Register it into the existing application module so the compiled QML does
-    // not depend on a second runtime-only import.
-    auto *updater = new AppUpdateManager(QCoreApplication::instance());
-    qmlRegisterSingletonInstance("SonkupikStudio", 1, 0, "AppUpdater", updater);
 }
 }
 
