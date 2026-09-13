@@ -173,7 +173,7 @@ jobs:
             "channel = 'stable'",
             "portableFormat = 'ZIP (non-self-extracting)'",
             "mode01NativeSha256 = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'",
-            'Run full preset regression suite',
+            'Run full preset and updater regression suite',
             'Validate portable ZIP end-to-end',
             'Validate Inno installer end-to-end'
           )) {

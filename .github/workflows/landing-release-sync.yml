@@ -1,0 +1,61 @@
+name: Guard landing release sync
+
+on:
+  pull_request:
+    paths:
+      - 'site/**'
+      - 'functions/**'
+      - 'docs/index.html'
+      - 'docs/README.md'
+      - '.github/workflows/landing-release-sync.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'site/**'
+      - 'functions/**'
+      - 'docs/index.html'
+      - 'docs/README.md'
+      - '.github/workflows/landing-release-sync.yml'
+
+jobs:
+  latest-stable-routing:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard landing CTAs and latest-stable resolver
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Canonical Cloudflare landing CTAs must remain version-agnostic.
+          grep -Fq 'href="/download/windows"' site/index.html
+          grep -Fq 'href="/download/windows"' site/download/index.html
+          grep -Fq 'href="/download/portable"' site/download/index.html
+
+          # Metadata and download functions must resolve GitHub's latest stable tag.
+          grep -Fq 'releases/latest' functions/api/release.js
+          grep -Fq 'releases/latest' 'functions/download/[kind].js'
+          grep -Fq 'SonKuPik-K500-${tag}-Windows-Setup.exe' 'functions/download/[kind].js'
+          grep -Fq 'SonKuPik-K500-${tag}-Windows-Portable.zip' 'functions/download/[kind].js'
+          grep -Fq 'filename: assetName' 'functions/download/[kind].js'
+
+          # Every public documentation landing surface delegates to the same canonical routes.
+          grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' docs/index.html
+          grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' docs/index.html
+          grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' docs/README.md
+          grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' docs/README.md
+
+          # Public landing pages must never pin an old versioned GitHub asset URL.
+          if grep -Eq 'releases/download/v[0-9]+\.[0-9]+\.[0-9]+/' site/index.html site/download/index.html docs/index.html; then
+            echo 'Hard-coded versioned release asset URL found on a landing page.' >&2
+            exit 1
+          fi
+
+          if grep -Eq 'v1\.0\.0 Public Stable|v1\.0\.1 Public Stable' docs/index.html; then
+            echo 'Stale public-stable label found in legacy landing page.' >&2
+            exit 1
+          fi
+
+          echo 'Landing release routing contract is synchronized.'
