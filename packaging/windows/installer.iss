@@ -117,7 +117,7 @@ var
 begin
   { MIGRATE_LOCALAPPDATA_INSTALL_V1 }
   { v1.0.1 was a per-user install. An elevated machine-wide Setup can run under }
-  { different credentials, so {localappdata} is not a reliable locator here. }
+  { different credentials, so the Inno LocalAppData constant is not reliable here. }
   { Execute a tiny cmd under the ORIGINAL user and let that process expand its }
   { own %LOCALAPPDATA%. This never touches Documents, presets, or QSettings. }
   Cmd := ExpandConstant('{cmd}');
