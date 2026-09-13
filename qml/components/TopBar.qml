@@ -246,7 +246,7 @@ StudioPanel {
         }
 
         RowLayout {
-            spacing: 5
+            spacing: 6
             RowLayout {
                 visible: root.deviceManager.liveEnabled
                 spacing: 5
@@ -257,21 +257,57 @@ StudioPanel {
                     font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold;font.letterSpacing:.7
                 }
             }
-            SoftButton {
-                Layout.preferredWidth:50;Layout.preferredHeight:29;text:"BT";iconName:"bluetooth";compact:true;toolbar:true
-                checked:root.deviceManager.transportMode === "bt"
-                enabled:!root.deviceBusy
-                onClicked:root.deviceManager.setTransportMode("bt")
+
+            // TRANSPORT_MODE_SEGMENTED_TOGGLE_V1
+            // BT and USB are one mutually-exclusive transport choice, so they
+            // read as a single segmented toggle. The selected half is the same
+            // clean full-face cyan used by active mixer source keys.
+            Rectangle {
+                id: transportModeSegment
+                Layout.preferredWidth: 104
+                Layout.preferredHeight: 29
+                radius: 7
+                color: "#070B0E"
+                border.width: 1
+                border.color: "#26343D"
+
+                Row {
+                    anchors.fill: parent
+                    anchors.margins: 1
+                    spacing: 1
+
+                    SoftButton {
+                        width: (parent.width - 1) / 2
+                        height: parent.height
+                        radius: 5
+                        text:"BT"
+                        iconName:"bluetooth"
+                        compact:true
+                        toolbar:true
+                        mixerSelect:true
+                        checked:root.deviceManager.transportMode === "bt"
+                        enabled:!root.deviceBusy
+                        onClicked:root.deviceManager.setTransportMode("bt")
+                    }
+                    SoftButton {
+                        width: (parent.width - 1) / 2
+                        height: parent.height
+                        radius: 5
+                        text:"USB"
+                        iconName:"usb"
+                        compact:true
+                        toolbar:true
+                        mixerSelect:true
+                        checked:root.deviceManager.transportMode === "usb"
+                        enabled:!root.deviceBusy
+                        onClicked:root.deviceManager.setTransportMode("usb")
+                    }
+                }
             }
-            SoftButton {
-                Layout.preferredWidth:50;Layout.preferredHeight:29;text:"USB";iconName:"usb";compact:true;toolbar:true
-                checked:root.deviceManager.transportMode === "usb"
-                enabled:!root.deviceBusy
-                onClicked:root.deviceManager.setTransportMode("usb")
-            }
-            // CONNECT_MIXER_KEY_V1 — once physically connected, the action key
-            // reads like an illuminated/recessed console switch instead of only
-            // receiving a thin cyan outline.
+
+            // CONNECT_FULL_FACE_ACTIVE_V2 — connected state is intentionally
+            // simple: the whole action key lights cyan with no recessed frame,
+            // inset rectangle or persistent pressed-in treatment.
             SoftButton {
                 Layout.preferredWidth:86;Layout.preferredHeight:29
                 text:root.deviceManager.connected || root.deviceBusy ? "Disconnect" : "Connect"
