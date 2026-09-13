@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cwctype>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
@@ -40,17 +41,6 @@ std::wstring argumentValue(int argc, wchar_t **argv, const std::wstring &key)
             return argv[i + 1];
     }
     return {};
-}
-
-std::wstring quoteArg(const std::wstring &value)
-{
-    std::wstring escaped = value;
-    size_t pos = 0;
-    while ((pos = escaped.find(L'"', pos)) != std::wstring::npos) {
-        escaped.insert(pos, L"\\");
-        pos += 2;
-    }
-    return L"\"" + escaped + L"\"";
 }
 
 bool waitForProcess(DWORD pid, DWORD timeoutMs)
@@ -115,11 +105,15 @@ std::wstring sha256File(const std::filesystem::path &path)
     return out.str();
 }
 
-void launchApp(const std::filesystem::path &appPath)
+void launchApp(const std::filesystem::path &appPath, int updateFailureCode = 0)
 {
     if (appPath.empty() || !std::filesystem::exists(appPath))
         return;
-    ShellExecuteW(nullptr, L"open", appPath.c_str(), nullptr,
+    const std::wstring params = updateFailureCode == 0
+        ? std::wstring()
+        : (L"--update-failed=" + std::to_wstring(updateFailureCode));
+    ShellExecuteW(nullptr, L"open", appPath.c_str(),
+                  params.empty() ? nullptr : params.c_str(),
                   appPath.parent_path().c_str(), SW_SHOWNORMAL);
 }
 
@@ -167,7 +161,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     const std::wstring pidText = argumentValue(argc, argv, L"--pid");
     LocalFree(argv);
 
-    std::transform(expectedHash.begin(), expectedHash.end(), expectedHash.begin(), ::towlower);
+    std::transform(expectedHash.begin(), expectedHash.end(), expectedHash.begin(),
+                   [](wchar_t c) { return static_cast<wchar_t>(std::towlower(c)); });
 
     std::uintmax_t expectedBytes = 0;
     DWORD pid = 0;
@@ -175,7 +170,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         expectedBytes = expectedBytesText.empty() ? 0 : std::stoull(expectedBytesText);
         pid = pidText.empty() ? 0 : static_cast<DWORD>(std::stoul(pidText));
     } catch (...) {
-        launchApp(appPath);
+        launchApp(appPath, 3);
         return 3;
     }
 
@@ -183,20 +178,20 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     // This guarantees AppMutex/file locks are released rather than racing the
     // installer and is the key to a reliable self-update handoff.
     if (!waitForProcess(pid, 60000)) {
-        launchApp(appPath);
+        launchApp(appPath, 4);
         return 4;
     }
 
     if (installer.empty() || appPath.empty() || expectedHash.size() != 64
         || !std::filesystem::exists(installer)) {
-        launchApp(appPath);
+        launchApp(appPath, 5);
         return 5;
     }
 
     std::error_code ec;
     const std::uintmax_t actualBytes = std::filesystem::file_size(installer, ec);
     if (ec || (expectedBytes > 0 && actualBytes != expectedBytes)) {
-        launchApp(appPath);
+        launchApp(appPath, 6);
         return 6;
     }
 
@@ -204,7 +199,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     // cannot replace the already-verified installer between verification and UAC.
     const std::wstring actualHash = sha256File(installer);
     if (actualHash.empty() || actualHash != expectedHash) {
-        launchApp(appPath);
+        launchApp(appPath, 7);
         return 7;
     }
 
@@ -216,9 +211,9 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     }
 
     // UAC cancel or installer failure must not strand a novice user. Relaunch
-    // the existing version; Program Files is only replaced after Inno succeeds.
-    launchApp(appPath);
-    return installExit == 0 ? 1 : installExit;
+    // the existing version and surface a friendly failure card in the GUI.
+    launchApp(appPath, installExit);
+    return installExit;
 }
 
 #else
