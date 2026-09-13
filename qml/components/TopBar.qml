@@ -305,15 +305,17 @@ StudioPanel {
                 }
             }
 
-            // CONNECT_FULL_FACE_ACTIVE_V2 — connected state is intentionally
-            // simple: the whole action key lights cyan with no recessed frame,
-            // inset rectangle or persistent pressed-in treatment.
+            // CONNECT_PRIMARY_RAISED_V3 — Connect/Disconnect is the primary
+            // application action. It keeps a tactile raised hardware-key shape
+            // while idle, cyan accenting for discoverability, and a full-face
+            // cyan illuminated state when the physical K500 is connected.
             SoftButton {
-                Layout.preferredWidth:86;Layout.preferredHeight:29
+                Layout.preferredWidth:94;Layout.preferredHeight:30
                 text:root.deviceManager.connected || root.deviceBusy ? "Disconnect" : "Connect"
                 iconName:root.deviceManager.connected ? "unplug" : "cable"
                 compact:true;toolbar:true
                 mixerSelect:true
+                primaryAction:true
                 checked:root.deviceManager.connected
                 enabled:!root.deviceBusy || root.deviceManager.connected
                 onClicked:root.deviceManager.toggleConnection()
