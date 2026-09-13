@@ -38,7 +38,8 @@ jobs:
           grep -F 'UsePreviousAppDir=no' packaging/windows/installer.iss
           grep -F 'RestartApplications=no' packaging/windows/installer.iss
           grep -F 'MIGRATE_LOCALAPPDATA_INSTALL_V1' packaging/windows/installer.iss
-          grep -F '{localappdata}\Programs\{#AppName}\unins000.exe' packaging/windows/installer.iss
+          grep -F 'ExecAsOriginalUser' packaging/windows/installer.iss
+          grep -F '%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe' packaging/windows/installer.iss
           grep -F '/AUToupdate=1' src/AppUpdateManager.cpp
           grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
           if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
