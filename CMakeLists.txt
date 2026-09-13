@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.0.1 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.0.2 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -182,6 +182,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/theme/Theme.qml
         qml/components/TopBar.qml
         qml/components/AboutDialog.qml
+        qml/components/UpdateDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
         qml/components/LucideIcon.qml
@@ -216,6 +217,10 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
     SOURCES
+        src/AppStorageManager.cpp
+        src/AppStorageManager.h
+        src/AppUpdateManager.cpp
+        src/AppUpdateManager.h
         src/EqCurveItem.cpp
         src/EqCurveItem.h
 )
@@ -274,7 +279,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing
