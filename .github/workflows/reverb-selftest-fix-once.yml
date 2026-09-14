@@ -1,0 +1,45 @@
+name: One-shot Reverb protocol self-test fix
+
+on:
+  push:
+    branches:
+      - fix/reverb-native-command
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/reverb-native-command
+          fetch-depth: 0
+      - name: Fix surround golden-vector length regression
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('src/k500/K500Protocol.cpp')
+          text = path.read_text(encoding='utf-8')
+          old = ',0x00,0x35}, QStringLiteral("surround output block")'
+          new = ',0x35}, QStringLiteral("surround output block")'
+          if old not in text:
+              print('Golden vector already corrected.')
+          else:
+              text = text.replace(old, new, 1)
+              path.write_text(text, encoding='utf-8')
+          PY
+      - name: Commit fix
+        shell: bash
+        run: |
+          if git diff --quiet -- src/k500/K500Protocol.cpp; then
+            echo 'No patch needed.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/k500/K500Protocol.cpp
+          git commit -m 'Fix protocol self-test vector length'
+          git push origin HEAD:fix/reverb-native-command
