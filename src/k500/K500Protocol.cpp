@@ -69,13 +69,13 @@ int crossoverSelector(const QString &section, const QString &kind)
 {
     static const QHash<QString, int> hpf{
         {QStringLiteral("mic"), 0x00}, {QStringLiteral("micA"), 0x00}, {QStringLiteral("micB"), 0x00},
-        {QStringLiteral("music"), 0x02}, {QStringLiteral("main"), 0x04}, {QStringLiteral("reverb"), 0x06},
+        {QStringLiteral("music"), 0x02}, {QStringLiteral("main"), 0x04},
         {QStringLiteral("surround"), 0x08}, {QStringLiteral("echo"), 0x0A}, {QStringLiteral("center"), 0x0C},
         {QStringLiteral("sub"), 0x0E},
     };
     static const QHash<QString, int> lpf{
         {QStringLiteral("mic"), 0x01}, {QStringLiteral("micA"), 0x01}, {QStringLiteral("micB"), 0x01},
-        {QStringLiteral("music"), 0x03}, {QStringLiteral("main"), 0x05}, {QStringLiteral("reverb"), 0x07},
+        {QStringLiteral("music"), 0x03}, {QStringLiteral("main"), 0x05},
         {QStringLiteral("surround"), 0x09}, {QStringLiteral("echo"), 0x0B}, {QStringLiteral("center"), 0x0D},
         {QStringLiteral("sub"), 0x0F},
     };
@@ -279,6 +279,30 @@ QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &d
     }));
 }
 
+QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData)
+{
+    // REVERB_CMD0B_CAPTURED_V1 — HHD native KTV delta captures prove that
+    // Level, Direct, HPF, LPF, Decay and Predelay are one full CMD 0x0B block.
+    // Preserve every unproven neighbour from the current device readback seed.
+    QByteArray data = deviceData.left(ReverbDataLength);
+    while (data.size() < ReverbDataLength)
+        data.append(char(0));
+
+    data[0] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
+    data[2] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
+    writeU16Le(data, 6, qBound(20, state.hpfHz, 20000));
+    writeU16Le(data, 8, qBound(20, state.lpfHz, 20000));
+    writeU16Le(data, 10, qBound(0, state.decayMs, 65535));
+    writeU16Le(data, 12, qBound(0, state.predelayMs, 65535));
+
+    QByteArray body;
+    body.reserve(17);
+    body.append(char(0x10));
+    body.append(char(0x0B));
+    body.append(data);
+    return K500Frame::build(body);
+}
+
 QByteArray outputBlock(const QString &section,
                        const K500OutputBlockState &state,
                        const QByteArray &deviceData)
@@ -343,6 +367,7 @@ bool selfTest(QString *error)
 {
     // P0_PROTOCOL_GOLDEN_VECTORS_V1
     // P1_PROTOCOL_GOLDEN_VECTORS_V1
+    // REVERB_CMD0B_CAPTURED_V1
     const auto fail = [error](const QString &message) {
         if (error) *error = message;
         return false;
@@ -381,7 +406,7 @@ bool selfTest(QString *error)
     if (!expect(crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0, QStringLiteral("HP Butter 12"), 0x32), {0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}, QStringLiteral("music crossover"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x00, 0x02, 0xE8, 0x03, 0x00, 0xFC}, QStringLiteral("mic HPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("main"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x05, 0x02, 0xE8, 0x03, 0x00, 0xF7}, QStringLiteral("main LPF selector"))) return false;
-    if (!expect(crossoverWrite(QStringLiteral("reverb"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x06, 0x02, 0xE8, 0x03, 0x00, 0xF6}, QStringLiteral("reverb HPF selector"))) return false;
+    if (!crossoverWrite(QStringLiteral("reverb"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("Reverb crossover must use captured CMD 0x0B block"));
     if (!expect(crossoverWrite(QStringLiteral("surround"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x09, 0x02, 0xE8, 0x03, 0x00, 0xF3}, QStringLiteral("surround LPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x0A, 0x02, 0xE8, 0x03, 0x00, 0xF2}, QStringLiteral("echo HPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0D, 0x02, 0xE8, 0x03, 0x00, 0xEF}, QStringLiteral("center LPF selector"))) return false;
@@ -409,6 +434,22 @@ bool selfTest(QString *error)
     effect.topEffectVol = 49;
     if (!expect(topEffectBlock(effect, {}), {0xAA, 0x03, 0x09, 0x31, 0x19, 0xAA}, QStringLiteral("top effect"))) return false;
 
+    QByteArray reverbSeed = bytes({0x5F,0x01,0x64,0x32,0x32,0x55,0xDC,0x00,0xB8,0x3D,0x90,0x06,0x2A,0x00,0x00});
+    K500ReverbBlockState reverb;
+    reverb.level = 99; reverb.direct = 100; reverb.hpfHz = 220; reverb.lpfHz = 15800; reverb.decayMs = 1680; reverb.predelayMs = 42;
+    if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x63,0x01,0x64,0x32,0x32,0x55,0xDC,0x00,0xB8,0x3D,0x90,0x06,0x2A,0x00,0x00,0xD3}, QStringLiteral("Reverb level 99 USB capture"))) return false;
+    reverb.level = 95; reverb.direct = 99; reverb.decayMs = 1685; reverb.predelayMs = 50;
+    if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x63,0x32,0x32,0x55,0xDC,0x00,0xB8,0x3D,0x95,0x06,0x32,0x00,0x00,0xCB}, QStringLiteral("Reverb direct 99 USB capture"))) return false;
+    reverb.direct = 95; reverb.hpfHz = 221;
+    if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x5F,0x32,0x32,0x55,0xDD,0x00,0xB8,0x3D,0x95,0x06,0x32,0x00,0x00,0xCE}, QStringLiteral("Reverb HPF 221 USB capture"))) return false;
+    reverb.hpfHz = 225; reverb.lpfHz = 16000;
+    if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x5F,0x32,0x32,0x55,0xE1,0x00,0x80,0x3E,0x95,0x06,0x32,0x00,0x00,0x01}, QStringLiteral("Reverb LPF 16000 USB capture"))) return false;
+    QByteArray preserveReverb(ReverbDataLength, char(0x5A));
+    const QByteArray preservedReverbFrame = reverbBlock(reverb, preserveReverb);
+    if (preservedReverbFrame.size() < 19 || byteFromChar(preservedReverbFrame.at(4)) != 0x5A
+        || byteFromChar(preservedReverbFrame.at(6)) != 0x5A || byteFromChar(preservedReverbFrame.at(17)) != 0x5A)
+        return fail(QStringLiteral("Reverb block must preserve unknown device bytes"));
+
     if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;
     if (!expect(micEqLink(true), {0xAA, 0x04, 0x3C, 0x01, 0x01, 0x9E, 0x20}, QStringLiteral("mic EQ link on"))) return false;
 
@@ -418,7 +459,7 @@ bool selfTest(QString *error)
 
     K500OutputBlockState surround;
     surround.lVolDb = 12; surround.rVolDb = 11; surround.micDirect = 87; surround.musicLevel = 85; surround.reverbLevel = 80; surround.echoLevel = 75; surround.compThresholdDb = -20; surround.compRatio = 100; surround.attackMs = 1; surround.releaseSec = 0.1; surround.lDelayMs = 3; surround.rDelayMs = 4;
-    if (!expect(outputBlock(QStringLiteral("surround"), surround, QByteArray(OutputDataLength, char(0))), {0xAA,0x25,0x0E,0x02,0x63,0x00,0x61,0x00,0x57,0x00,0x55,0x00,0x50,0x00,0x4B,0x00,0x1E,0x64,0x01,0x01,0x03,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x35}, QStringLiteral("surround output block"))) return false;
+    if (!expect(outputBlock(QStringLiteral("surround"), surround, QByteArray(OutputDataLength, char(0))), {0xAA,0x25,0x0E,0x02,0x63,0x00,0x61,0x00,0x57,0x00,0x55,0x00,0x50,0x00,0x4B,0x00,0x1E,0x64,0x01,0x01,0x03,0x00,0x04,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x35}, QStringLiteral("surround output block"))) return false;
 
     K500OutputBlockState center;
     center.outputVolDb = 12; center.micDirect = 88; center.musicLevel = 86; center.reverbLevel = 84; center.echoLevel = 82; center.compThresholdDb = -4; center.compRatio = 10; center.attackMs = 5; center.releaseSec = 0.2;
