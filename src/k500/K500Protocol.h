@@ -53,6 +53,19 @@ struct K500ReverbBlockState
     int predelayMs = 42;
 };
 
+struct K500EchoBlockState
+{
+    int level = 100;
+    int repeat = 2;
+    int direct = 100;
+    int rightDelayPercent = 0;
+    int rightPredelayPercent = 0;
+    int hpfHz = 550;
+    int lpfHz = 4200;
+    int leftDelayMs = 300;
+    int leftPredelayMs = 100;
+};
+
 struct K500OutputBlockState
 {
     double lVolDb = 0.0;
@@ -74,6 +87,7 @@ namespace K500Protocol {
 
 constexpr int TopVolumeMax = 84;
 constexpr int ReverbDataLength = 15;
+constexpr int EchoDataLength = 22;
 constexpr int OutputDataLength = 35;
 
 QByteArray heartbeat();
@@ -91,6 +105,7 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars);
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
+QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);
 QByteArray outputBlock(const QString &section,
                        const K500OutputBlockState &state,
                        const QByteArray &deviceData);
