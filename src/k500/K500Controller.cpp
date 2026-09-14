@@ -50,6 +50,28 @@ QByteArray outputSeed(const QByteArray &memory, int fileBase)
     return out;
 }
 
+QByteArray reverbSeed(const QByteArray &memory)
+{
+    // REVERB_CMD0B_DEVICE_SEED_V1
+    // Native CMD 0x0B is a 15-byte image. The first six bytes align with the
+    // contiguous Reverb scalar block file[0x0074..0x0079], while file[0x007A]
+    // is the final preserved neighbour before Echo begins at file[0x007B].
+    QByteArray data(K500Protocol::ReverbDataLength, char(0));
+    for (int i = 0; i < 6; ++i)
+        data[i] = char(fileU8(memory, 0x0074 + i, 0));
+
+    const auto putU16 = [&data](int offset, quint16 value) {
+        data[offset] = char(value & 0xFF);
+        data[offset + 1] = char((value >> 8) & 0xFF);
+    };
+    putU16(6, fileU16(memory, 0x00C0, 220));
+    putU16(8, fileU16(memory, 0x00C2, 15800));
+    putU16(10, fileU16(memory, 0x00C8, 1680));
+    putU16(12, fileU16(memory, 0x00CA, 42));
+    data[14] = char(fileU8(memory, 0x007A, 0));
+    return data;
+}
+
 QString canonicalCrossoverSection(const QString &section)
 {
     if (section == QStringLiteral("micA") || section == QStringLiteral("micB"))
@@ -124,6 +146,15 @@ void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)
 
     m_effect.topEffectVol = fileU8(memory, 0x000A, 35);
     m_effect.effectInitLevel = fileU8(memory, 0x001D, 25);
+
+    // REVERB_CMD0B_CAPTURED_V1 — state and raw image are hydrated before LIVE.
+    m_reverb.level = fileU8(memory, 0x0074, 100);
+    m_reverb.direct = fileU8(memory, 0x0076, 100);
+    m_reverb.hpfHz = fileU16(memory, 0x00C0, 220);
+    m_reverb.lpfHz = fileU16(memory, 0x00C2, 15800);
+    m_reverb.decayMs = fileU16(memory, 0x00C8, 1680);
+    m_reverb.predelayMs = fileU16(memory, 0x00CA, 42);
+    m_reverbRaw = reverbSeed(memory);
 
     K500OutputBlockState main;
     main.lVolDb = outputDb(fileU8(memory, 0x0024, 75));
@@ -205,6 +236,8 @@ void K500Controller::clearDeviceState()
     const bool wasReady = deviceReadbackReady();
     m_deviceScalars.clear();
     m_activeMemory.clear();
+    m_reverb = K500ReverbBlockState{};
+    m_reverbRaw.clear();
     m_outputs.clear();
     m_outputRaw.clear();
     m_crossovers.clear();
@@ -221,6 +254,7 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     // P1_FULL_LIVE_ROUTING_V1
     static const QRegularExpression eqBandPath(QStringLiteral(R"(^eq\.([^.]+)\.bands\.(\d+)$)"));
     static const QRegularExpression crossoverPath(QStringLiteral(R"(^eq\.([^.]+)\.crossover\.(hpfHz|lpfHz|hpType|lpType)$)"));
+    static const QRegularExpression reverbPath(QStringLiteral(R"(^effects\.reverb\.(level|direct|hpfHz|lpfHz|decayMs|predelayMs)$)"));
     static const QRegularExpression outputPath(QStringLiteral(R"(^outputs\.(main|surround|center|sub)\.([^.]+)$)"));
 
     if (const auto match = eqBandPath.match(path); match.hasMatch()) {
@@ -253,6 +287,25 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
             emit unsupportedPath(path);
             return;
         }
+
+        // Native Reverb cutoff deltas use the complete CMD 0x0B image, not the
+        // generic CMD 0x11 selector family. Filter-type writes are still gated
+        // because the supplied captures prove only frequency fields.
+        if (section == QStringLiteral("reverb")) {
+            if (field == QStringLiteral("hpfHz")) {
+                m_crossovers[section].hpfHz = value.toDouble();
+                m_reverb.hpfHz = qRound(value.toDouble());
+                queueReverb(path);
+            } else if (field == QStringLiteral("lpfHz")) {
+                m_crossovers[section].lpfHz = value.toDouble();
+                m_reverb.lpfHz = qRound(value.toDouble());
+                queueReverb(path);
+            } else {
+                emit unsupportedPath(path);
+            }
+            return;
+        }
+
         CrossoverState &state = m_crossovers[section];
         const QString kind = (field == QStringLiteral("hpfHz") || field == QStringLiteral("hpType"))
             ? QStringLiteral("hpf") : QStringLiteral("lpf");
@@ -278,14 +331,19 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         queueCrossover(QStringLiteral("sub"), path, hpf ? QStringLiteral("hpf") : QStringLiteral("lpf"));
         return;
     }
-    if (path == QStringLiteral("effects.reverb.hpfHz") || path == QStringLiteral("effects.reverb.lpfHz")
-        || path == QStringLiteral("effects.echo.hpfHz") || path == QStringLiteral("effects.echo.lpfHz")) {
-        const QString section = path.startsWith(QStringLiteral("effects.reverb")) ? QStringLiteral("reverb") : QStringLiteral("echo");
-        CrossoverState &state = m_crossovers[section];
+    if (path == QStringLiteral("effects.echo.hpfHz") || path == QStringLiteral("effects.echo.lpfHz")) {
+        CrossoverState &state = m_crossovers[QStringLiteral("echo")];
         const bool hpf = path.endsWith(QStringLiteral("hpfHz"));
         if (hpf) state.hpfHz = value.toDouble(); else state.lpfHz = value.toDouble();
-        queueCrossover(section, path, hpf ? QStringLiteral("hpf") : QStringLiteral("lpf"));
+        queueCrossover(QStringLiteral("echo"), path, hpf ? QStringLiteral("hpf") : QStringLiteral("lpf"));
         return;
+    }
+
+    if (const auto match = reverbPath.match(path); match.hasMatch()) {
+        if (updateReverbState(match.captured(1), value)) {
+            queueReverb(path);
+            return;
+        }
     }
 
     bool isTopMusicPath = true;
@@ -392,6 +450,18 @@ void K500Controller::queueTopEffect(const QString &path)
                     QStringLiteral("Top Effect · %1").arg(path));
 }
 
+void K500Controller::queueReverb(const QString &path)
+{
+    if (!m_liveEnabled)
+        return;
+    if (m_reverbRaw.size() < K500Protocol::ReverbDataLength) {
+        emit writeDeferred(path, QStringLiteral("Reverb CMD 0x0B requires full device readback seed"));
+        return;
+    }
+    queueBlockFrame(QStringLiteral("fx:reverb"), K500Protocol::reverbBlock(m_reverb, m_reverbRaw),
+                    QStringLiteral("Reverb · %1").arg(path));
+}
+
 void K500Controller::queueOutput(const QString &section, const QString &path)
 {
     if (!m_liveEnabled)
@@ -414,6 +484,10 @@ void K500Controller::queueCrossover(const QString &section, const QString &path,
 {
     if (!m_liveEnabled)
         return;
+    if (section == QStringLiteral("reverb")) {
+        emit unsupportedPath(path);
+        return;
+    }
     if (!m_crossovers.contains(section)) {
         emit unsupportedPath(path);
         return;
@@ -436,6 +510,24 @@ void K500Controller::queueCrossover(const QString &section, const QString &path,
     }
     queueBlockFrame(QStringLiteral("xover:%1:%2").arg(section, kind), frame,
                     QStringLiteral("%1 %2 · %3Hz · %4").arg(section, kind.toUpper()).arg(qRound(frequency)).arg(filter));
+}
+
+bool K500Controller::updateReverbState(const QString &field, const QVariant &value)
+{
+    if (field == QStringLiteral("level")) m_reverb.level = qBound(0, qRound(value.toDouble()), 100);
+    else if (field == QStringLiteral("direct")) m_reverb.direct = qBound(0, qRound(value.toDouble()), 100);
+    else if (field == QStringLiteral("hpfHz")) {
+        m_reverb.hpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_crossovers[QStringLiteral("reverb")].hpfHz = m_reverb.hpfHz;
+    }
+    else if (field == QStringLiteral("lpfHz")) {
+        m_reverb.lpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_crossovers[QStringLiteral("reverb")].lpfHz = m_reverb.lpfHz;
+    }
+    else if (field == QStringLiteral("decayMs")) m_reverb.decayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else if (field == QStringLiteral("predelayMs")) m_reverb.predelayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else return false;
+    return true;
 }
 
 bool K500Controller::updateOutputState(const QString &section, const QString &field, const QVariant &value)

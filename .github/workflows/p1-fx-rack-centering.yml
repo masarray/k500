@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/StudioKnob.qml'
       - '.github/workflows/p1-fx-rack-centering.yml'
   workflow_dispatch:
@@ -19,12 +20,14 @@ jobs:
           from pathlib import Path
 
           rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          workspace = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
           knob = Path('qml/components/StudioKnob.qml').read_text(encoding='utf-8')
 
           checks = {
               'premium FX contract token': 'PREMIUM_FX_SPACE_PANEL_V1' in rack,
               'Reverb and Echo share the FX surface': 'title === "Reverb" || title === "Echo"' in rack,
               'three premium knobs remain parameter-driven': 'premium: true' in rack and 'model: root.channels' in rack,
+              'captured Reverb DIRECT fader remains live': 'REVERB_DIRECT_FADER_NATIVE_V1' in rack and 'property real directValue: 100' in rack and 'id: reverbDirectFader' in rack and 'root.dispatchLive("DIRECT",v)' in rack and 'directValue: Number(root.nestedValue("effects","reverb","direct",100))' in workspace,
               'reverb semantic field exists': '"REVERB FIELD"' in rack and '"SPACE DESIGN"' in rack,
               'echo semantic field exists': '"ECHO FIELD"' in rack and '"TIME DESIGN"' in rack,
               'visual is explicitly parameter response': '"PARAMETER RESPONSE"' in rack,

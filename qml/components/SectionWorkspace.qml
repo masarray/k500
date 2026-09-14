@@ -151,6 +151,8 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.minimumWidth: 360
                                     title: "Reverb"
+                                    // REVERB_DIRECT_FADER_NATIVE_V1 — captured CMD 0x0B data[2].
+                                    directValue: Number(root.nestedValue("effects","reverb","direct",100))
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
                                         {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
