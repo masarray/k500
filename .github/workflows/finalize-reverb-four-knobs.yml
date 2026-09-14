@@ -90,27 +90,11 @@ jobs:
               raise SystemExit(f'Reverb DIRECT workspace lines replaced comment={c1}, directValue={c2}')
           workspace_path.write_text(workspace, encoding='utf-8')
 
-          guard_path = Path('.github/workflows/p1-fx-rack-centering.yml')
-          guard = guard_path.read_text(encoding='utf-8')
-          replacement = "              'captured Reverb DIRECT is the fourth matching knob': 'REVERB_DIRECT_KNOB_NATIVE_V2' in rack and 'REVERB_DIRECT_KNOB_NATIVE_V2' in workspace and '{label:\"DIRECT\",value:Number(root.nestedValue(\"effects\",\"reverb\",\"direct\",100))' in workspace and 'id: reverbDirectFader' not in rack,"
-          guard, gc = re.subn(
-              r"^\s*'captured Reverb DIRECT fader remains live':.*$",
-              replacement,
-              guard,
-              count=1,
-              flags=re.MULTILINE,
-          )
-          if gc != 1:
-              raise SystemExit('Premium FX DIRECT guard anchor not found')
-          guard = guard.replace("'three premium knobs remain parameter-driven'", "'premium FX knobs remain parameter-driven'")
-          guard_path.write_text(guard, encoding='utf-8')
-
-      - name: Commit final layout and remove one-shot workflow
+      - name: Commit final layout
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml .github/workflows/p1-fx-rack-centering.yml
-          git rm .github/workflows/finalize-reverb-four-knobs.yml
+          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml
           git commit -m 'Use four matching Reverb knobs'
           git push origin HEAD:ui/reverb-four-knobs
