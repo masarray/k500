@@ -71,21 +71,12 @@ jobs:
               'Echo DIRECT channel')
           workspace_path.write_text(workspace, encoding='utf-8')
 
-          guard_path = Path('.github/workflows/p1-fx-rack-centering.yml')
-          guard = guard_path.read_text(encoding='utf-8')
-          guard = replace_once(
-              guard,
-              '''              'captured Reverb DIRECT is the fourth matching knob': 'REVERB_DIRECT_KNOB_NATIVE_V2' in rack and 'REVERB_DIRECT_KNOB_NATIVE_V2' in workspace and '{label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100))' in workspace and 'id: reverbDirectFader' not in rack,\n''',
-              '''              'captured Reverb DIRECT is the fourth matching knob': 'REVERB_DIRECT_KNOB_NATIVE_V2' in rack and 'REVERB_DIRECT_KNOB_NATIVE_V2' in workspace and '{label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100))' in workspace and 'id: reverbDirectFader' not in rack,\n              'Echo reserves a transport-gated fourth DIRECT knob': 'ECHO_DIRECT_KNOB_PREP_V1' in rack and 'ECHO_DIRECT_KNOB_PREP_V1' in workspace and '{label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100))' in workspace and 'editable:false' in workspace,\n              'four-control FX pages share geometry': 'FX_FOUR_KNOB_GEOMETRY_V1' in rack and 'root.fourControlFx ? 392 : 318' in rack,\n''',
-              'FX guard parity checks')
-          guard_path.write_text(guard, encoding='utf-8')
-
       - name: Commit UX parity patch
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml .github/workflows/p1-fx-rack-centering.yml
+          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml
           git diff --cached --check
           if git diff --cached --quiet; then
             echo "No changes required"
