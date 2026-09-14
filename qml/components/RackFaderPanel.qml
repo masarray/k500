@@ -65,6 +65,15 @@ StudioPanel {
             if (l === "FBX") return "mic.fbxLevel"
             return ""
         }
+        // REVERB_CMD0B_LIVE_BRIDGE_V1 — only byte-verified native CMD 0x0B
+        // fields are exposed here. DIRECT is supported by the backend for future UI use.
+        if (t === "Reverb") {
+            if (l === "LEVEL") return "effects.reverb.level"
+            if (l === "DIRECT") return "effects.reverb.direct"
+            if (l === "DECAY") return "effects.reverb.decayMs"
+            if (l === "PRE") return "effects.reverb.predelayMs"
+            return ""
+        }
         var section = ""
         if (t === "Main Bus") section = "main"
         else if (t === "Surround Bus") section = "surround"
