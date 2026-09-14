@@ -8,6 +8,7 @@ StudioPanel {
     property string title: "Mic Inputs"
     property var channels: []
     property color accentColor: Theme.accent
+    property real directValue: 100
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
     readonly property real faderHeight: 160
@@ -15,7 +16,8 @@ StudioPanel {
 
     // PREMIUM_FX_SPACE_PANEL_V1
     // Reverb/Echo deliberately keep the shared rack geometry, but use the space
-    // as a dedicated instrument surface: three premium knobs at the left and a
+    // as a dedicated instrument surface: three premium knobs at the left, the
+    // captured native DIRECT fader on Reverb, and a
     // parameter-driven visual field at the right. The field is not an analyzer;
     // it visualizes the actual exposed K500 parameters without inventing Size,
     // Diffusion, Width or other unsupported controls.
@@ -66,7 +68,7 @@ StudioPanel {
             return ""
         }
         // REVERB_CMD0B_LIVE_BRIDGE_V1 — only byte-verified native CMD 0x0B
-        // fields are exposed here. DIRECT is supported by the backend for future UI use.
+        // fields are exposed here. DIRECT is rendered by the native-style Reverb fader.
         if (t === "Reverb") {
             if (l === "LEVEL") return "effects.reverb.level"
             if (l === "DIRECT") return "effects.reverb.direct"
@@ -191,6 +193,76 @@ StudioPanel {
                                 }
                             }
                         }
+                    }
+                }
+
+                // REVERB_DIRECT_FADER_NATIVE_V1 — native KTV exposes DIRECT as an
+                // independent 0..100 control. Keep the three spatial-design knobs intact
+                // and add DIRECT as a real console fader backed by CMD 0x0B data[2].
+                Item {
+                    visible: root.reverbMode
+                    Layout.preferredWidth: 64
+                    Layout.minimumWidth: 64
+                    Layout.maximumWidth: 64
+                    Layout.fillHeight: true
+
+                    ColumnLayout {
+                        anchors.fill: parent
+                        spacing: 3
+
+                        Text {
+                            Layout.alignment: Qt.AlignHCenter
+                            text: "DIRECT"
+                            color: reverbDirectFader.highlighted ? root.accentColor : Theme.textDim
+                            font.family: Theme.monoFamily
+                            font.pixelSize: 9
+                            font.weight: reverbDirectFader.highlighted ? Font.Bold : Font.DemiBold
+                            font.letterSpacing: .35
+                            Behavior on color { ColorAnimation { duration:75 } }
+                        }
+
+                        StudioFader {
+                            id: reverbDirectFader
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 48
+                            value: root.directValue
+                            from: 0
+                            to: 100
+                            step: 1
+                            defaultValue: 100
+                            accentColor: root.accentColor
+                            onValueEdited: function(v) { root.dispatchLive("DIRECT",v) }
+                        }
+
+                        Rectangle {
+                            Layout.alignment: Qt.AlignHCenter
+                            Layout.preferredWidth: 58
+                            Layout.preferredHeight: 23
+                            radius: 8
+                            color: reverbDirectFader.highlighted ? "#081013" : "#05080A"
+                            border.width: 1
+                            border.color: reverbDirectFader.highlighted ? root.accentColor : "#020304"
+                            Row {
+                                anchors.centerIn: parent
+                                spacing: 3
+                                Text {
+                                    text: Math.round(reverbDirectFader.previewValue)
+                                    color: Theme.amber
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 9
+                                    font.weight: Font.Bold
+                                }
+                                Text {
+                                    text: "%"
+                                    color: reverbDirectFader.highlighted ? Theme.textSoft : Theme.textDim
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 7
+                                }
+                            }
+                            Behavior on border.color { ColorAnimation { duration:75 } }
+                        }
+
+                        Item { Layout.fillHeight: true }
                     }
                 }
 
