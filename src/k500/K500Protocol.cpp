@@ -70,13 +70,13 @@ int crossoverSelector(const QString &section, const QString &kind)
     static const QHash<QString, int> hpf{
         {QStringLiteral("mic"), 0x00}, {QStringLiteral("micA"), 0x00}, {QStringLiteral("micB"), 0x00},
         {QStringLiteral("music"), 0x02}, {QStringLiteral("main"), 0x04},
-        {QStringLiteral("surround"), 0x08}, {QStringLiteral("echo"), 0x0A}, {QStringLiteral("center"), 0x0C},
+        {QStringLiteral("surround"), 0x08}, {QStringLiteral("center"), 0x0C},
         {QStringLiteral("sub"), 0x0E},
     };
     static const QHash<QString, int> lpf{
         {QStringLiteral("mic"), 0x01}, {QStringLiteral("micA"), 0x01}, {QStringLiteral("micB"), 0x01},
         {QStringLiteral("music"), 0x03}, {QStringLiteral("main"), 0x05},
-        {QStringLiteral("surround"), 0x09}, {QStringLiteral("echo"), 0x0B}, {QStringLiteral("center"), 0x0D},
+        {QStringLiteral("surround"), 0x09}, {QStringLiteral("center"), 0x0D},
         {QStringLiteral("sub"), 0x0F},
     };
     return kind.compare(QStringLiteral("hpf"), Qt::CaseInsensitive) == 0
@@ -303,6 +303,33 @@ QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &devi
     return K500Frame::build(body);
 }
 
+QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData)
+{
+    // ECHO_CMD0D_CAPTURED_V1 — native HHD delta captures prove that the Echo
+    // section is one 22-byte full image. Patch only byte-verified controls and
+    // preserve every unproven neighbour from device readback.
+    QByteArray data = deviceData.left(EchoDataLength);
+    while (data.size() < EchoDataLength)
+        data.append(char(0));
+
+    data[1] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
+    data[2] = char(K500Frame::clampByte(qBound(0, state.repeat, 10)));
+    data[6] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
+    data[7] = char(K500Frame::clampByte(qBound(-50, state.rightDelayPercent, 50) + 50));
+    data[8] = char(K500Frame::clampByte(qBound(-50, state.rightPredelayPercent, 50) + 50));
+    writeU16Le(data, 9, qBound(20, state.hpfHz, 20000));
+    writeU16Le(data, 11, qBound(20, state.lpfHz, 20000));
+    writeU16Le(data, 13, qBound(0, state.leftDelayMs, 65535));
+    writeU16Le(data, 15, qBound(0, state.leftPredelayMs, 65535));
+
+    QByteArray body;
+    body.reserve(24);
+    body.append(char(0x17));
+    body.append(char(0x0D));
+    body.append(data);
+    return K500Frame::build(body);
+}
+
 QByteArray outputBlock(const QString &section,
                        const K500OutputBlockState &state,
                        const QByteArray &deviceData)
@@ -368,6 +395,7 @@ bool selfTest(QString *error)
     // P0_PROTOCOL_GOLDEN_VECTORS_V1
     // P1_PROTOCOL_GOLDEN_VECTORS_V1
     // REVERB_CMD0B_CAPTURED_V1
+    // ECHO_CMD0D_CAPTURED_V1
     const auto fail = [error](const QString &message) {
         if (error) *error = message;
         return false;
@@ -408,7 +436,7 @@ bool selfTest(QString *error)
     if (!expect(crossoverWrite(QStringLiteral("main"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x05, 0x02, 0xE8, 0x03, 0x00, 0xF7}, QStringLiteral("main LPF selector"))) return false;
     if (!crossoverWrite(QStringLiteral("reverb"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("Reverb crossover must use captured CMD 0x0B block"));
     if (!expect(crossoverWrite(QStringLiteral("surround"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x09, 0x02, 0xE8, 0x03, 0x00, 0xF3}, QStringLiteral("surround LPF selector"))) return false;
-    if (!expect(crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x0A, 0x02, 0xE8, 0x03, 0x00, 0xF2}, QStringLiteral("echo HPF selector"))) return false;
+    if (!crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("Echo crossover must use captured CMD 0x0D block"));
     if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0D, 0x02, 0xE8, 0x03, 0x00, 0xEF}, QStringLiteral("center LPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("sub"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0F, 0x02, 0xE8, 0x03, 0x00, 0xED}, QStringLiteral("sub LPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1474.0, QStringLiteral("Bypass")), {0xAA, 0x06, 0x11, 0x0D, 0x00, 0xC2, 0x05, 0x00, 0x15}, QStringLiteral("center LPF bypass preserves cutoff"))) return false;
@@ -449,6 +477,21 @@ bool selfTest(QString *error)
     if (preservedReverbFrame.size() < 19 || byteFromChar(preservedReverbFrame.at(4)) != 0x5A
         || byteFromChar(preservedReverbFrame.at(6)) != 0x5A || byteFromChar(preservedReverbFrame.at(17)) != 0x5A)
         return fail(QStringLiteral("Reverb block must preserve unknown device bytes"));
+
+    QByteArray echoSeed = bytes({0x01,0x5A,0x02,0x64,0x02,0x40,0x64,0x3C,0x3C,0x26,0x02,0x68,0x10,0x2C,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00});
+    K500EchoBlockState echo;
+    echo.level = 90; echo.repeat = 2; echo.direct = 99; echo.rightDelayPercent = 10; echo.rightPredelayPercent = 10;
+    echo.hpfHz = 550; echo.lpfHz = 4200; echo.leftDelayMs = 300; echo.leftPredelayMs = 100;
+    if (!expect(K500Frame::toUsbFrame(echoBlock(echo, echoSeed)), {0xAA,0x17,0x00,0x0D,0x01,0x5A,0x02,0x64,0x02,0x40,0x63,0x3C,0x3C,0x26,0x02,0x68,0x10,0x2C,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00,0x05}, QStringLiteral("Echo direct 99 USB capture"))) return false;
+    echo.repeat = 10; echo.direct = 90; echo.rightDelayPercent = 20; echo.rightPredelayPercent = -10;
+    echo.hpfHz = 560; echo.lpfHz = 4210; echo.leftDelayMs = 310; echo.leftPredelayMs = 90;
+    if (!expect(K500Frame::toUsbFrame(echoBlock(echo, echoSeed)), {0xAA,0x17,0x00,0x0D,0x01,0x5A,0x0A,0x64,0x02,0x40,0x5A,0x46,0x28,0x30,0x02,0x72,0x10,0x36,0x01,0x5A,0x00,0xC8,0x00,0x00,0x00,0x00,0xFC}, QStringLiteral("Echo full captured field map"))) return false;
+    QByteArray preserveEcho(EchoDataLength, char(0x5A));
+    const QByteArray preservedEchoFrame = echoBlock(echo, preserveEcho);
+    if (preservedEchoFrame.size() < 26 || byteFromChar(preservedEchoFrame.at(4)) != 0x5A
+        || byteFromChar(preservedEchoFrame.at(7)) != 0x5A || byteFromChar(preservedEchoFrame.at(21)) != 0x5A
+        || byteFromChar(preservedEchoFrame.at(24)) != 0x5A)
+        return fail(QStringLiteral("Echo block must preserve unknown device bytes"));
 
     if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;
     if (!expect(micEqLink(true), {0xAA, 0x04, 0x3C, 0x01, 0x01, 0x9E, 0x20}, QStringLiteral("mic EQ link on"))) return false;
