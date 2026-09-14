@@ -8,7 +8,6 @@ StudioPanel {
     property string title: "Mic Inputs"
     property var channels: []
     property color accentColor: Theme.accent
-    property real directValue: 100
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
     readonly property real faderHeight: 160
@@ -16,9 +15,11 @@ StudioPanel {
 
     // PREMIUM_FX_SPACE_PANEL_V1
     // Reverb/Echo deliberately keep the shared rack geometry, but use the space
-    // as a dedicated instrument surface: three premium knobs at the left, the
-    // captured native DIRECT fader on Reverb, and a
-    // parameter-driven visual field at the right. The field is not an analyzer;
+    // as a dedicated instrument surface. Reverb uses four matching premium knobs
+    // (LEVEL, DECAY, PRE, DIRECT). Echo reserves the same four-knob geometry
+    // (LEVEL, REPEAT, DELAY, DIRECT); Echo DIRECT stays transport-gated until
+    // its native command/byte mapping is captured and verified.
+    // A parameter-driven visual field remains at the right. The field is not an analyzer;
     // it visualizes the actual exposed K500 parameters without inventing Size,
     // Diffusion, Width or other unsupported controls.
     // FX_FIELD_ZERO_LEVEL_HIDE_V2 — LEVEL 0 means no visible effect field at all.
@@ -31,6 +32,9 @@ StudioPanel {
     property real fxVisual1: 0
     property real fxVisual2: 0
     readonly property bool reverbMode: root.title === "Reverb"
+    // FX_FOUR_KNOB_GEOMETRY_V1 — any four-control FX page gets the same
+    // premium control width, so Reverb and Echo never jump horizontally.
+    readonly property bool fourControlFx: root.compactCluster && root.channels && root.channels.length >= 4
     readonly property real fxLevelNorm: root.clamp(root.fxVisual0 / 100.0, 0, 1)
     readonly property bool fxVisualActive: root.fxVisual0 > 0.0001
 
@@ -68,7 +72,7 @@ StudioPanel {
             return ""
         }
         // REVERB_CMD0B_LIVE_BRIDGE_V1 — only byte-verified native CMD 0x0B
-        // fields are exposed here. DIRECT is rendered by the native-style Reverb fader.
+        // fields are exposed here. DIRECT is rendered as the fourth premium Reverb knob.
         if (t === "Reverb") {
             if (l === "LEVEL") return "effects.reverb.level"
             if (l === "DIRECT") return "effects.reverb.direct"
@@ -76,6 +80,10 @@ StudioPanel {
             if (l === "PRE") return "effects.reverb.predelayMs"
             return ""
         }
+        // ECHO_DIRECT_KNOB_PREP_V1 — Echo DIRECT is intentionally presentation-only
+        // until a native donor capture proves its command and byte position. Do not
+        // guess a transport path just to make the prepared control appear live.
+        if (t === "Echo") return ""
         var section = ""
         if (t === "Main Bus") section = "main"
         else if (t === "Surround Bus") section = "surround"
@@ -154,9 +162,11 @@ StudioPanel {
                 visible: root.compactCluster
 
                 RowLayout {
-                    Layout.preferredWidth: 318
-                    Layout.minimumWidth: 288
-                    Layout.maximumWidth: 336
+                    // REVERB_DIRECT_KNOB_NATIVE_V2 — keep all four Reverb controls
+                    // visually identical; the first three remain the visual-field inputs.
+                    Layout.preferredWidth: root.fourControlFx ? 392 : 318
+                    Layout.minimumWidth: root.fourControlFx ? 360 : 288
+                    Layout.maximumWidth: root.fourControlFx ? 420 : 336
                     Layout.fillHeight: true
                     spacing: 3
 
@@ -170,9 +180,12 @@ StudioPanel {
                             Layout.fillHeight: true
                             Layout.minimumWidth: 88
                             property real localValue: Number(modelData.value)
+                            readonly property bool channelEditable: modelData.editable === undefined || Boolean(modelData.editable)
 
                             StudioKnob {
                                 anchors.centerIn: parent
+                                enabled: fxChannel.channelEditable
+                                opacity: fxChannel.channelEditable ? 1.0 : 0.62
                                 premium: true
                                 compact: false
                                 title: String(fxChannel.modelData.label || "")
@@ -193,76 +206,6 @@ StudioPanel {
                                 }
                             }
                         }
-                    }
-                }
-
-                // REVERB_DIRECT_FADER_NATIVE_V1 — native KTV exposes DIRECT as an
-                // independent 0..100 control. Keep the three spatial-design knobs intact
-                // and add DIRECT as a real console fader backed by CMD 0x0B data[2].
-                Item {
-                    visible: root.reverbMode
-                    Layout.preferredWidth: 64
-                    Layout.minimumWidth: 64
-                    Layout.maximumWidth: 64
-                    Layout.fillHeight: true
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        spacing: 3
-
-                        Text {
-                            Layout.alignment: Qt.AlignHCenter
-                            text: "DIRECT"
-                            color: reverbDirectFader.highlighted ? root.accentColor : Theme.textDim
-                            font.family: Theme.monoFamily
-                            font.pixelSize: 9
-                            font.weight: reverbDirectFader.highlighted ? Font.Bold : Font.DemiBold
-                            font.letterSpacing: .35
-                            Behavior on color { ColorAnimation { duration:75 } }
-                        }
-
-                        StudioFader {
-                            id: reverbDirectFader
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 48
-                            value: root.directValue
-                            from: 0
-                            to: 100
-                            step: 1
-                            defaultValue: 100
-                            accentColor: root.accentColor
-                            onValueEdited: function(v) { root.dispatchLive("DIRECT",v) }
-                        }
-
-                        Rectangle {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: 58
-                            Layout.preferredHeight: 23
-                            radius: 8
-                            color: reverbDirectFader.highlighted ? "#081013" : "#05080A"
-                            border.width: 1
-                            border.color: reverbDirectFader.highlighted ? root.accentColor : "#020304"
-                            Row {
-                                anchors.centerIn: parent
-                                spacing: 3
-                                Text {
-                                    text: Math.round(reverbDirectFader.previewValue)
-                                    color: Theme.amber
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
-                                }
-                                Text {
-                                    text: "%"
-                                    color: reverbDirectFader.highlighted ? Theme.textSoft : Theme.textDim
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 7
-                                }
-                            }
-                            Behavior on border.color { ColorAnimation { duration:75 } }
-                        }
-
-                        Item { Layout.fillHeight: true }
                     }
                 }
 
