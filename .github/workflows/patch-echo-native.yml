@@ -1,0 +1,169 @@
+name: Patch native Echo CMD 0x0D
+
+on:
+  push:
+    branches:
+      - fix/echo-native-command
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/echo-native-command
+      - name: Implement captured Echo full block
+        shell: python
+        run: |
+          from pathlib import Path
+
+          def replace_once(text, old, new, label):
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'{label}: expected exactly one match, got {count}')
+              return text.replace(old, new, 1)
+
+          # ---- Protocol header -------------------------------------------------
+          p = Path('src/k500/K500Protocol.h')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''struct K500ReverbBlockState\n{\n    int level = 100;\n    int direct = 100;\n    int hpfHz = 220;\n    int lpfHz = 15800;\n    int decayMs = 1680;\n    int predelayMs = 42;\n};\n\nstruct K500OutputBlockState\n''',
+          '''struct K500ReverbBlockState\n{\n    int level = 100;\n    int direct = 100;\n    int hpfHz = 220;\n    int lpfHz = 15800;\n    int decayMs = 1680;\n    int predelayMs = 42;\n};\n\nstruct K500EchoBlockState\n{\n    int level = 100;\n    int repeat = 2;\n    int direct = 100;\n    int rightDelayPercent = 0;\n    int rightPredelayPercent = 0;\n    int hpfHz = 550;\n    int lpfHz = 4200;\n    int leftDelayMs = 300;\n    int leftPredelayMs = 100;\n};\n\nstruct K500OutputBlockState\n''', 'echo state struct')
+          s = replace_once(s,
+          'constexpr int ReverbDataLength = 15;\nconstexpr int OutputDataLength = 35;\n',
+          'constexpr int ReverbDataLength = 15;\nconstexpr int EchoDataLength = 22;\nconstexpr int OutputDataLength = 35;\n', 'echo data length')
+          s = replace_once(s,
+          'QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);\nQByteArray outputBlock',
+          'QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);\nQByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);\nQByteArray outputBlock', 'echo block declaration')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- Protocol implementation ----------------------------------------
+          p = Path('src/k500/K500Protocol.cpp')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '{QStringLiteral("surround"), 0x08}, {QStringLiteral("echo"), 0x0A}, {QStringLiteral("center"), 0x0C},',
+          '{QStringLiteral("surround"), 0x08}, {QStringLiteral("center"), 0x0C},', 'remove generic Echo HPF selector')
+          s = replace_once(s,
+          '{QStringLiteral("surround"), 0x09}, {QStringLiteral("echo"), 0x0B}, {QStringLiteral("center"), 0x0D},',
+          '{QStringLiteral("surround"), 0x09}, {QStringLiteral("center"), 0x0D},', 'remove generic Echo LPF selector')
+          s = replace_once(s,
+          '''    return K500Frame::build(body);\n}\n\nQByteArray outputBlock(const QString &section,\n''',
+          '''    return K500Frame::build(body);\n}\n\nQByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData)\n{\n    // ECHO_CMD0D_CAPTURED_V1 — HHD native KTV delta captures prove all exposed\n    // Echo timing/level/crossover controls are one full 22-byte CMD 0x0D image.\n    // Preserve unproven neighbours and patch only byte-verified fields.\n    QByteArray data = deviceData.left(EchoDataLength);\n    while (data.size() < EchoDataLength)\n        data.append(char(0));\n\n    data[1] = char(K500Frame::clampByte(qBound(0, state.level, 100)));\n    data[2] = char(K500Frame::clampByte(qBound(0, state.repeat, 10)));\n    data[6] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));\n    data[7] = char(K500Frame::clampByte(qBound(-50, state.rightDelayPercent, 50) + 50));\n    data[8] = char(K500Frame::clampByte(qBound(-50, state.rightPredelayPercent, 50) + 50));\n    writeU16Le(data, 9, qBound(20, state.hpfHz, 20000));\n    writeU16Le(data, 11, qBound(20, state.lpfHz, 20000));\n    writeU16Le(data, 13, qBound(0, state.leftDelayMs, 65535));\n    writeU16Le(data, 15, qBound(0, state.leftPredelayMs, 65535));\n\n    QByteArray body;\n    body.reserve(24);\n    body.append(char(0x17));\n    body.append(char(0x0D));\n    body.append(data);\n    return K500Frame::build(body);\n}\n\nQByteArray outputBlock(const QString &section,\n''', 'insert Echo CMD0D builder')
+          s = replace_once(s,
+          '    if (!expect(crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x0A, 0x02, 0xE8, 0x03, 0x00, 0xF2}, QStringLiteral("echo HPF selector"))) return false;\n',
+          '    if (!crossoverWrite(QStringLiteral("echo"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("Echo crossover must use captured CMD 0x0D block"));\n', 'Echo generic crossover self-test')
+          s = replace_once(s,
+          '''    if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;\n''',
+          '''    QByteArray echoSeed = bytes({0x01,0x5A,0x02,0x64,0x02,0x40,0x64,0x3C,0x3C,0x26,0x02,0x68,0x10,0x2C,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00});\n    K500EchoBlockState echo;\n    echo.level = 90; echo.repeat = 2; echo.direct = 99; echo.rightDelayPercent = 10; echo.rightPredelayPercent = 10;\n    echo.hpfHz = 550; echo.lpfHz = 4200; echo.leftDelayMs = 300; echo.leftPredelayMs = 100;\n    if (!expect(K500Frame::toUsbFrame(echoBlock(echo, echoSeed)), {0xAA,0x17,0x00,0x0D,0x01,0x5A,0x02,0x64,0x02,0x40,0x63,0x3C,0x3C,0x26,0x02,0x68,0x10,0x2C,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00,0x05}, QStringLiteral("Echo direct 99 USB capture"))) return false;\n    echo.repeat = 10; echo.direct = 90; echo.rightDelayPercent = 20; echo.rightPredelayPercent = -10;\n    echo.hpfHz = 560; echo.lpfHz = 4210; echo.leftDelayMs = 310; echo.leftPredelayMs = 90;\n    if (!expect(K500Frame::toUsbFrame(echoBlock(echo, echoSeed)), {0xAA,0x17,0x00,0x0D,0x01,0x5A,0x0A,0x64,0x02,0x40,0x5A,0x46,0x28,0x30,0x02,0x72,0x10,0x36,0x01,0x5A,0x00,0xC8,0x00,0x00,0x00,0x00,0xFC}, QStringLiteral("Echo full captured field map"))) return false;\n    QByteArray preserveEcho(EchoDataLength, char(0x5A));\n    const QByteArray preservedEchoFrame = echoBlock(echo, preserveEcho);\n    if (preservedEchoFrame.size() < 26 || byteFromChar(preservedEchoFrame.at(4)) != 0x5A\n        || byteFromChar(preservedEchoFrame.at(7)) != 0x5A || byteFromChar(preservedEchoFrame.at(21)) != 0x5A\n        || byteFromChar(preservedEchoFrame.at(24)) != 0x5A)\n        return fail(QStringLiteral("Echo block must preserve unknown device bytes"));\n\n    if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;\n''', 'Echo protocol golden vectors')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- Controller header ----------------------------------------------
+          p = Path('src/k500/K500Controller.h')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '    void queueReverb(const QString &path);\n    void queueOutput',
+          '    void queueReverb(const QString &path);\n    void queueEcho(const QString &path);\n    void queueOutput', 'queueEcho declaration')
+          s = replace_once(s,
+          '    bool updateReverbState(const QString &field, const QVariant &value);\n    bool updateOutputState',
+          '    bool updateReverbState(const QString &field, const QVariant &value);\n    bool updateEchoState(const QString &field, const QVariant &value);\n    bool updateOutputState', 'updateEcho declaration')
+          s = replace_once(s,
+          '    K500ReverbBlockState m_reverb;\n    QByteArray m_reverbRaw;\n',
+          '    K500ReverbBlockState m_reverb;\n    QByteArray m_reverbRaw;\n    K500EchoBlockState m_echo;\n    QByteArray m_echoRaw;\n', 'Echo controller fields')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- Controller implementation --------------------------------------
+          p = Path('src/k500/K500Controller.cpp')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''QString canonicalCrossoverSection(const QString &section)\n''',
+          '''QByteArray echoSeed(const QByteArray &memory)\n{\n    // ECHO_CMD0D_DEVICE_SEED_V1 — native CMD 0x0D is a 22-byte image.\n    // The first scalar neighbourhood is file[0x007A..0x0082]; timing/filter\n    // words continue in the proven effect timing area. Unknown fields are copied\n    // from readback and never synthesized by an edit.\n    QByteArray data(K500Protocol::EchoDataLength, char(0));\n    for (int i = 0; i < 9; ++i)\n        data[i] = char(fileU8(memory, 0x007A + i, 0));\n\n    const auto putU16 = [&data](int offset, quint16 value) {\n        data[offset] = char(value & 0xFF);\n        data[offset + 1] = char((value >> 8) & 0xFF);\n    };\n    putU16(9, fileU16(memory, 0x00C4, 550));\n    putU16(11, fileU16(memory, 0x00C6, 4200));\n    putU16(13, fileU16(memory, 0x00CC, 300));\n    putU16(15, fileU16(memory, 0x00CE, 100));\n    putU16(17, fileU16(memory, 0x00D0, 0));\n    data[19] = char(fileU8(memory, 0x00D2, 0));\n    data[20] = char(fileU8(memory, 0x00D3, 0));\n    data[21] = char(fileU8(memory, 0x00D4, 0));\n    return data;\n}\n\nQString canonicalCrossoverSection(const QString &section)\n''', 'Echo seed helper')
+          s = replace_once(s,
+          '''    m_reverbRaw = reverbSeed(memory);\n\n    K500OutputBlockState main;\n''',
+          '''    m_reverbRaw = reverbSeed(memory);\n\n    // ECHO_CMD0D_CAPTURED_V1 — all exposed native Echo controls share CMD 0x0D.\n    m_echo.level = fileU8(memory, 0x007B, 100);\n    m_echo.repeat = fileU8(memory, 0x007C, 2);\n    m_echo.direct = fileU8(memory, 0x0080, 100);\n    m_echo.rightDelayPercent = static_cast<int>(fileU8(memory, 0x0081, 50)) - 50;\n    m_echo.rightPredelayPercent = static_cast<int>(fileU8(memory, 0x0082, 50)) - 50;\n    m_echo.hpfHz = fileU16(memory, 0x00C4, 550);\n    m_echo.lpfHz = fileU16(memory, 0x00C6, 4200);\n    m_echo.leftDelayMs = fileU16(memory, 0x00CC, 300);\n    m_echo.leftPredelayMs = fileU16(memory, 0x00CE, 100);\n    m_echoRaw = echoSeed(memory);\n\n    K500OutputBlockState main;\n''', 'hydrate Echo state')
+          s = replace_once(s,
+          '''    m_reverb = K500ReverbBlockState{};\n    m_reverbRaw.clear();\n''',
+          '''    m_reverb = K500ReverbBlockState{};\n    m_reverbRaw.clear();\n    m_echo = K500EchoBlockState{};\n    m_echoRaw.clear();\n''', 'clear Echo state')
+          s = replace_once(s,
+          '''    static const QRegularExpression reverbPath(QStringLiteral(R"(^effects\\.reverb\\.(level|direct|hpfHz|lpfHz|decayMs|predelayMs)$)"));\n    static const QRegularExpression outputPath''',
+          '''    static const QRegularExpression reverbPath(QStringLiteral(R"(^effects\\.reverb\\.(level|direct|hpfHz|lpfHz|decayMs|predelayMs)$)"));\n    static const QRegularExpression echoPath(QStringLiteral(R"(^effects\\.echo\\.(level|repeat|direct|rightDelayPercent|rightPredelayPercent|hpfHz|lpfHz|leftDelayMs|leftPredelayMs)$)"));\n    static const QRegularExpression outputPath''', 'Echo path regex')
+          old_cross = '''        // Native Reverb cutoff deltas use the complete CMD 0x0B image, not the\n        // generic CMD 0x11 selector family. Filter-type writes are still gated\n        // because the supplied captures prove only frequency fields.\n        if (section == QStringLiteral("reverb")) {\n            if (field == QStringLiteral("hpfHz")) {\n                m_crossovers[section].hpfHz = value.toDouble();\n                m_reverb.hpfHz = qRound(value.toDouble());\n                queueReverb(path);\n            } else if (field == QStringLiteral("lpfHz")) {\n                m_crossovers[section].lpfHz = value.toDouble();\n                m_reverb.lpfHz = qRound(value.toDouble());\n                queueReverb(path);\n            } else {\n                emit unsupportedPath(path);\n            }\n            return;\n        }\n'''
+          new_cross = '''        // Captured Reverb/Echo cutoff deltas use complete effect images, not\n        // the generic CMD 0x11 selector family. Filter-type writes remain gated\n        // because these captures prove frequency fields only.\n        if (section == QStringLiteral("reverb") || section == QStringLiteral("echo")) {\n            if (field == QStringLiteral("hpfHz") || field == QStringLiteral("lpfHz")) {\n                const bool hpf = field == QStringLiteral("hpfHz");\n                if (hpf) m_crossovers[section].hpfHz = value.toDouble();\n                else m_crossovers[section].lpfHz = value.toDouble();\n                if (section == QStringLiteral("reverb")) {\n                    if (hpf) m_reverb.hpfHz = qRound(value.toDouble());\n                    else m_reverb.lpfHz = qRound(value.toDouble());\n                    queueReverb(path);\n                } else {\n                    if (hpf) m_echo.hpfHz = qRound(value.toDouble());\n                    else m_echo.lpfHz = qRound(value.toDouble());\n                    queueEcho(path);\n                }\n            } else {\n                emit unsupportedPath(path);\n            }\n            return;\n        }\n'''
+          s = replace_once(s, old_cross, new_cross, 'Echo crossover full-block routing')
+          s = replace_once(s,
+          '''    if (path == QStringLiteral("effects.echo.hpfHz") || path == QStringLiteral("effects.echo.lpfHz")) {\n        CrossoverState &state = m_crossovers[QStringLiteral("echo")];\n        const bool hpf = path.endsWith(QStringLiteral("hpfHz"));\n        if (hpf) state.hpfHz = value.toDouble(); else state.lpfHz = value.toDouble();\n        queueCrossover(QStringLiteral("echo"), path, hpf ? QStringLiteral("hpf") : QStringLiteral("lpf"));\n        return;\n    }\n''',
+          '''    if (path == QStringLiteral("effects.echo.hpfHz") || path == QStringLiteral("effects.echo.lpfHz")) {\n        const QString field = path.endsWith(QStringLiteral("hpfHz")) ? QStringLiteral("hpfHz") : QStringLiteral("lpfHz");\n        if (updateEchoState(field, value)) queueEcho(path);\n        return;\n    }\n''', 'direct Echo cutoff route')
+          s = replace_once(s,
+          '''    if (const auto match = reverbPath.match(path); match.hasMatch()) {\n        if (updateReverbState(match.captured(1), value)) {\n            queueReverb(path);\n            return;\n        }\n    }\n\n    bool isTopMusicPath''',
+          '''    if (const auto match = reverbPath.match(path); match.hasMatch()) {\n        if (updateReverbState(match.captured(1), value)) {\n            queueReverb(path);\n            return;\n        }\n    }\n    if (const auto match = echoPath.match(path); match.hasMatch()) {\n        if (updateEchoState(match.captured(1), value)) {\n            queueEcho(path);\n            return;\n        }\n    }\n\n    bool isTopMusicPath''', 'Echo effect routing')
+          s = replace_once(s,
+          '''void K500Controller::queueOutput(const QString &section, const QString &path)\n''',
+          '''void K500Controller::queueEcho(const QString &path)\n{\n    if (!m_liveEnabled)\n        return;\n    if (m_echoRaw.size() < K500Protocol::EchoDataLength) {\n        emit writeDeferred(path, QStringLiteral("Echo CMD 0x0D requires full device readback seed"));\n        return;\n    }\n    queueBlockFrame(QStringLiteral("fx:echo"), K500Protocol::echoBlock(m_echo, m_echoRaw),\n                    QStringLiteral("Echo · %1").arg(path));\n}\n\nvoid K500Controller::queueOutput(const QString &section, const QString &path)\n''', 'queueEcho implementation')
+          s = replace_once(s,
+          '    if (section == QStringLiteral("reverb")) {\n        emit unsupportedPath(path);\n        return;\n    }\n',
+          '    if (section == QStringLiteral("reverb") || section == QStringLiteral("echo")) {\n        emit unsupportedPath(path);\n        return;\n    }\n', 'gate generic Echo crossover')
+          s = replace_once(s,
+          '''bool K500Controller::updateOutputState(const QString &section, const QString &field, const QVariant &value)\n''',
+          '''bool K500Controller::updateEchoState(const QString &field, const QVariant &value)\n{\n    if (field == QStringLiteral("level")) m_echo.level = qBound(0, qRound(value.toDouble()), 100);\n    else if (field == QStringLiteral("repeat")) m_echo.repeat = qBound(0, qRound(value.toDouble()), 10);\n    else if (field == QStringLiteral("direct")) m_echo.direct = qBound(0, qRound(value.toDouble()), 100);\n    else if (field == QStringLiteral("rightDelayPercent")) m_echo.rightDelayPercent = qBound(-50, qRound(value.toDouble()), 50);\n    else if (field == QStringLiteral("rightPredelayPercent")) m_echo.rightPredelayPercent = qBound(-50, qRound(value.toDouble()), 50);\n    else if (field == QStringLiteral("hpfHz")) {\n        m_echo.hpfHz = qBound(20, qRound(value.toDouble()), 20000);\n        m_crossovers[QStringLiteral("echo")].hpfHz = m_echo.hpfHz;\n    } else if (field == QStringLiteral("lpfHz")) {\n        m_echo.lpfHz = qBound(20, qRound(value.toDouble()), 20000);\n        m_crossovers[QStringLiteral("echo")].lpfHz = m_echo.lpfHz;\n    } else if (field == QStringLiteral("leftDelayMs")) m_echo.leftDelayMs = qBound(0, qRound(value.toDouble()), 65535);\n    else if (field == QStringLiteral("leftPredelayMs")) m_echo.leftPredelayMs = qBound(0, qRound(value.toDouble()), 65535);\n    else return false;\n    return true;\n}\n\nbool K500Controller::updateOutputState(const QString &section, const QString &field, const QVariant &value)\n''', 'updateEcho implementation')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- StudioEngine device-state hydration ----------------------------
+          p = Path('src/StudioEngine.cpp')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''    QVariantMap reverb{\n        {QStringLiteral("level"), static_cast<int>(fileU8(memory, 0x0074))},\n        {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00C0))},\n        {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00C2))},\n        {QStringLiteral("decayMs"), static_cast<int>(fileU16(memory, 0x00C8))},\n        {QStringLiteral("predelayMs"), static_cast<int>(fileU16(memory, 0x00CA))},\n    };\n    QVariantMap echo{\n        {QStringLiteral("level"), static_cast<int>(fileU8(memory, 0x007B))},\n        {QStringLiteral("repeat"), static_cast<int>(fileU8(memory, 0x007C))},\n        {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00C4))},\n        {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00C6))},\n        {QStringLiteral("leftDelayMs"), static_cast<int>(fileU16(memory, 0x00CC))},\n    };\n''',
+          '''    QVariantMap reverb{\n        {QStringLiteral("level"), static_cast<int>(fileU8(memory, 0x0074))},\n        {QStringLiteral("direct"), static_cast<int>(fileU8(memory, 0x0076))},\n        {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00C0))},\n        {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00C2))},\n        {QStringLiteral("decayMs"), static_cast<int>(fileU16(memory, 0x00C8))},\n        {QStringLiteral("predelayMs"), static_cast<int>(fileU16(memory, 0x00CA))},\n    };\n    QVariantMap echo{\n        {QStringLiteral("level"), static_cast<int>(fileU8(memory, 0x007B))},\n        {QStringLiteral("repeat"), static_cast<int>(fileU8(memory, 0x007C))},\n        {QStringLiteral("direct"), static_cast<int>(fileU8(memory, 0x0080))},\n        {QStringLiteral("rightDelayPercent"), static_cast<int>(fileU8(memory, 0x0081)) - 50},\n        {QStringLiteral("rightPredelayPercent"), static_cast<int>(fileU8(memory, 0x0082)) - 50},\n        {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00C4))},\n        {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00C6))},\n        {QStringLiteral("leftDelayMs"), static_cast<int>(fileU16(memory, 0x00CC))},\n        {QStringLiteral("leftPredelayMs"), static_cast<int>(fileU16(memory, 0x00CE))},\n    };\n''', 'StudioEngine Echo device state')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- Preset persistence ---------------------------------------------
+          p = Path('src/k500/K500PresetEditMapper.cpp')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''        if (field == QStringLiteral("level")) b.addU8(0x0074, u8Value(value));\n        else if (field == QStringLiteral("decayMs")) b.addU16(0x00C8, qRound(value.toDouble()));\n''',
+          '''        if (field == QStringLiteral("level")) b.addU8(0x0074, u8Value(value));\n        else if (field == QStringLiteral("direct")) b.addU8(0x0076, u8Value(value));\n        else if (field == QStringLiteral("decayMs")) b.addU16(0x00C8, qRound(value.toDouble()));\n''', 'persist Reverb DIRECT')
+          s = replace_once(s,
+          '''        if (field == QStringLiteral("level")) b.addU8(0x007B, u8Value(value));\n        else if (field == QStringLiteral("repeat")) b.addU8(0x007C, u8Value(value));\n        else if (field == QStringLiteral("leftDelayMs")) b.addU16(0x00CC, qRound(value.toDouble()));\n        else return {};\n''',
+          '''        if (field == QStringLiteral("level")) b.addU8(0x007B, u8Value(value));\n        else if (field == QStringLiteral("repeat")) b.addU8(0x007C, std::clamp(qRound(value.toDouble()), 0, 10));\n        else if (field == QStringLiteral("direct")) b.addU8(0x0080, u8Value(value));\n        else if (field == QStringLiteral("rightDelayPercent")) b.addU8(0x0081, std::clamp(qRound(value.toDouble()), -50, 50) + 50);\n        else if (field == QStringLiteral("rightPredelayPercent")) b.addU8(0x0082, std::clamp(qRound(value.toDouble()), -50, 50) + 50);\n        else if (field == QStringLiteral("leftDelayMs")) b.addU16(0x00CC, qRound(value.toDouble()));\n        else if (field == QStringLiteral("leftPredelayMs")) b.addU16(0x00CE, qRound(value.toDouble()));\n        else return {};\n''', 'persist full Echo state')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- QML: activate captured Echo controls ---------------------------
+          p = Path('qml/components/SectionWorkspace.qml')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''                                    // ECHO_DIRECT_KNOB_PREP_V1 — reserve the fourth knob now so the\n                                    // final native mapping can be enabled without another UX reflow.\n                                    // It remains disabled until a donor capture verifies the write path.\n''',
+          '''                                    // ECHO_CMD0D_CAPTURED_V1 — LEVEL, REPEAT, DELAY and DIRECT are\n                                    // verified fields in the native full CMD 0x0D Echo image.\n''', 'Echo QML captured comment')
+          s = replace_once(s,
+          '{label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",12)),from:0,to:100,step:1,unit:"",decimals:0},',
+          '{label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",2)),from:0,to:10,step:1,unit:"",decimals:0},', 'Echo repeat range')
+          s = replace_once(s,
+          '{label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0,editable:false}',
+          '{label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}', 'activate Echo DIRECT knob')
+          p.write_text(s, encoding='utf-8')
+
+          p = Path('qml/components/RackFaderPanel.qml')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''        // ECHO_DIRECT_KNOB_PREP_V1 — Echo DIRECT is intentionally presentation-only\n        // until a native donor capture proves its command and byte position. Do not\n        // guess a transport path just to make the prepared control appear live.\n        if (t === "Echo") return ""\n''',
+          '''        // ECHO_CMD0D_LIVE_BRIDGE_V1 — captured native full-block fields.\n        if (t === "Echo") {\n            if (l === "LEVEL") return "effects.echo.level"\n            if (l === "REPEAT") return "effects.echo.repeat"\n            if (l === "DELAY") return "effects.echo.leftDelayMs"\n            if (l === "DIRECT") return "effects.echo.direct"\n            return ""\n        }\n''', 'Echo QML live bridge')
+          p.write_text(s, encoding='utf-8')
+
+          # ---- Research tool readback report ----------------------------------
+          p = Path('tools/k500_preset_lab.py')
+          s = p.read_text(encoding='utf-8')
+          s = replace_once(s,
+          '''        "reverb": {"level": data[0x74], "hpfHz": u16(data, 0xC0), "lpfHz": u16(data, 0xC2), "decayMs": u16(data, 0xC8), "predelayMs": u16(data, 0xCA)},\n        "echo": {"level": data[0x7B], "repeat": data[0x7C], "hpfHz": u16(data, 0xC4), "lpfHz": u16(data, 0xC6), "delayMs": u16(data, 0xCC)},\n''',
+          '''        "reverb": {"level": data[0x74], "direct": data[0x76], "hpfHz": u16(data, 0xC0), "lpfHz": u16(data, 0xC2), "decayMs": u16(data, 0xC8), "predelayMs": u16(data, 0xCA)},\n        "echo": {"level": data[0x7B], "repeat": data[0x7C], "direct": data[0x80], "rightDelayPercent": data[0x81] - 50, "rightPredelayPercent": data[0x82] - 50, "hpfHz": u16(data, 0xC4), "lpfHz": u16(data, 0xC6), "leftDelayMs": u16(data, 0xCC), "leftPredelayMs": u16(data, 0xCE)},\n''', 'preset lab Echo scalars')
+          p.write_text(s, encoding='utf-8')
+
+      - name: Commit captured Echo implementation
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/k500/K500Protocol.h src/k500/K500Protocol.cpp src/k500/K500Controller.h src/k500/K500Controller.cpp src/StudioEngine.cpp src/k500/K500PresetEditMapper.cpp qml/components/SectionWorkspace.qml qml/components/RackFaderPanel.qml tools/k500_preset_lab.py
+          git diff --cached --check
+          git commit -m "Implement captured native Echo CMD 0x0D block"
+          git push origin HEAD:fix/echo-native-command
