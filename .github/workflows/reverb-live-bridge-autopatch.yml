@@ -25,35 +25,23 @@ jobs:
 
           path = Path('qml/components/RackFaderPanel.qml')
           text = path.read_text(encoding='utf-8')
-          needle = '''        if (t === "Mic Inputs") {
-              if (l === "MIC A") return "mic.micAVol"
-              if (l === "MIC B") return "mic.micBVol"
-              if (l === "FBX") return "mic.fbxLevel"
-              return ""
-          }
-          var section = ""
-          '''
-          replacement = '''        if (t === "Mic Inputs") {
-              if (l === "MIC A") return "mic.micAVol"
-              if (l === "MIC B") return "mic.micBVol"
-              if (l === "FBX") return "mic.fbxLevel"
-              return ""
-          }
-          // REVERB_CMD0B_LIVE_BRIDGE_V1 — these visible FX controls are now
-          // backed by byte-verified native CMD 0x0B fields from HHD capture.
-          if (t === "Reverb") {
-              if (l === "LEVEL") return "effects.reverb.level"
-              if (l === "DIRECT") return "effects.reverb.direct"
-              if (l === "DECAY") return "effects.reverb.decayMs"
-              if (l === "PRE") return "effects.reverb.predelayMs"
-              return ""
-          }
-          var section = ""
-          '''
-          if 'REVERB_CMD0B_LIVE_BRIDGE_V1' not in text:
-              if needle not in text:
-                  raise SystemExit('RackFaderPanel livePathFor anchor not found')
-              text = text.replace(needle, replacement, 1)
+          token = 'REVERB_CMD0B_LIVE_BRIDGE_V1'
+          marker = '        var section = ""\n'
+          insert = '''        // REVERB_CMD0B_LIVE_BRIDGE_V1 — these visible FX controls are now
+        // backed by byte-verified native CMD 0x0B fields from HHD capture.
+        if (t === "Reverb") {
+            if (l === "LEVEL") return "effects.reverb.level"
+            if (l === "DIRECT") return "effects.reverb.direct"
+            if (l === "DECAY") return "effects.reverb.decayMs"
+            if (l === "PRE") return "effects.reverb.predelayMs"
+            return ""
+        }
+'''
+          if token not in text:
+              pos = text.find(marker)
+              if pos < 0:
+                  raise SystemExit('RackFaderPanel var-section anchor not found')
+              text = text[:pos] + insert + text[pos:]
               path.write_text(text, encoding='utf-8')
           PY
       - name: Commit patch
