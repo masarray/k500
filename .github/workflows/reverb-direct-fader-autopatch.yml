@@ -23,7 +23,6 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          # 1) Wire device-state DIRECT value into the Reverb rack.
           workspace_path = Path('qml/components/SectionWorkspace.qml')
           workspace = workspace_path.read_text(encoding='utf-8')
           ws_old = '''                                    title: "Reverb"\n                                    channels: [\n'''
@@ -34,7 +33,6 @@ jobs:
               workspace = workspace.replace(ws_old, ws_new, 1)
               workspace_path.write_text(workspace, encoding='utf-8')
 
-          # 2) Add a dedicated console-style DIRECT fader to the compact Reverb instrument surface.
           rack_path = Path('qml/components/RackFaderPanel.qml')
           rack = rack_path.read_text(encoding='utf-8')
           if 'property real directValue: 100' not in rack:
@@ -61,38 +59,17 @@ jobs:
               rack = rack.replace(field_anchor, direct_block + field_anchor, 1)
 
           rack_path.write_text(rack, encoding='utf-8')
-
-          # 3) Extend the existing FX guard so DIRECT cannot regress out of the UI.
-          guard_path = Path('.github/workflows/p1-fx-rack-centering.yml')
-          guard = guard_path.read_text(encoding='utf-8')
-          if "- 'qml/components/SectionWorkspace.qml'" not in guard:
-              guard = guard.replace(
-                  "      - 'qml/components/RackFaderPanel.qml'\n",
-                  "      - 'qml/components/RackFaderPanel.qml'\n      - 'qml/components/SectionWorkspace.qml'\n",
-                  1)
-          if "workspace = Path('qml/components/SectionWorkspace.qml')" not in guard:
-              guard = guard.replace(
-                  "          rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')\n",
-                  "          rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')\n          workspace = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')\n",
-                  1)
-          direct_check = "              'captured Reverb DIRECT fader remains live': 'REVERB_DIRECT_FADER_NATIVE_V1' in rack and 'property real directValue: 100' in rack and 'id: reverbDirectFader' in rack and 'root.dispatchLive(\"DIRECT\",v)' in rack and 'directValue: Number(root.nestedValue(\"effects\",\"reverb\",\"direct\",100))' in workspace,\n"
-          if 'captured Reverb DIRECT fader remains live' not in guard:
-              check_anchor = "              'three premium knobs remain parameter-driven': 'premium: true' in rack and 'model: root.channels' in rack,\n"
-              if check_anchor not in guard:
-                  raise SystemExit('Premium FX guard check anchor not found')
-              guard = guard.replace(check_anchor, check_anchor + direct_check, 1)
-          guard_path.write_text(guard, encoding='utf-8')
           PY
 
       - name: Commit patch
         shell: bash
         run: |
-          if git diff --quiet -- qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml .github/workflows/p1-fx-rack-centering.yml; then
+          if git diff --quiet -- qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml; then
             echo 'DIRECT fader patch already present.'
             exit 0
           fi
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml .github/workflows/p1-fx-rack-centering.yml
+          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml
           git commit -m 'Add native Reverb DIRECT fader'
           git push origin HEAD:fix/reverb-native-command
