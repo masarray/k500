@@ -188,10 +188,14 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.minimumWidth: 360
                                     title: "Echo"
+                                    // ECHO_DIRECT_KNOB_PREP_V1 — reserve the fourth knob now so the
+                                    // final native mapping can be enabled without another UX reflow.
+                                    // It remains disabled until a donor capture verifies the write path.
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","echo","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
                                         {label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",12)),from:0,to:100,step:1,unit:"",decimals:0},
-                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",400)),from:0,to:1000,step:1,unit:"ms",decimals:0}
+                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",400)),from:0,to:1000,step:1,unit:"ms",decimals:0},
+                                        {label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0,editable:false}
                                     ]
                                 }
                                 RackFilterPanel {

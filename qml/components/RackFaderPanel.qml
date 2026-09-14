@@ -16,7 +16,9 @@ StudioPanel {
     // PREMIUM_FX_SPACE_PANEL_V1
     // Reverb/Echo deliberately keep the shared rack geometry, but use the space
     // as a dedicated instrument surface. Reverb uses four matching premium knobs
-    // (LEVEL, DECAY, PRE, DIRECT), while Echo keeps its three verified controls.
+    // (LEVEL, DECAY, PRE, DIRECT). Echo reserves the same four-knob geometry
+    // (LEVEL, REPEAT, DELAY, DIRECT); Echo DIRECT stays transport-gated until
+    // its native command/byte mapping is captured and verified.
     // A parameter-driven visual field remains at the right. The field is not an analyzer;
     // it visualizes the actual exposed K500 parameters without inventing Size,
     // Diffusion, Width or other unsupported controls.
@@ -30,6 +32,9 @@ StudioPanel {
     property real fxVisual1: 0
     property real fxVisual2: 0
     readonly property bool reverbMode: root.title === "Reverb"
+    // FX_FOUR_KNOB_GEOMETRY_V1 — any four-control FX page gets the same
+    // premium control width, so Reverb and Echo never jump horizontally.
+    readonly property bool fourControlFx: root.compactCluster && root.channels && root.channels.length >= 4
     readonly property real fxLevelNorm: root.clamp(root.fxVisual0 / 100.0, 0, 1)
     readonly property bool fxVisualActive: root.fxVisual0 > 0.0001
 
@@ -75,6 +80,10 @@ StudioPanel {
             if (l === "PRE") return "effects.reverb.predelayMs"
             return ""
         }
+        // ECHO_DIRECT_KNOB_PREP_V1 — Echo DIRECT is intentionally presentation-only
+        // until a native donor capture proves its command and byte position. Do not
+        // guess a transport path just to make the prepared control appear live.
+        if (t === "Echo") return ""
         var section = ""
         if (t === "Main Bus") section = "main"
         else if (t === "Surround Bus") section = "surround"
@@ -155,9 +164,9 @@ StudioPanel {
                 RowLayout {
                     // REVERB_DIRECT_KNOB_NATIVE_V2 — keep all four Reverb controls
                     // visually identical; the first three remain the visual-field inputs.
-                    Layout.preferredWidth: root.reverbMode ? 392 : 318
-                    Layout.minimumWidth: root.reverbMode ? 360 : 288
-                    Layout.maximumWidth: root.reverbMode ? 420 : 336
+                    Layout.preferredWidth: root.fourControlFx ? 392 : 318
+                    Layout.minimumWidth: root.fourControlFx ? 360 : 288
+                    Layout.maximumWidth: root.fourControlFx ? 420 : 336
                     Layout.fillHeight: true
                     spacing: 3
 
@@ -171,9 +180,12 @@ StudioPanel {
                             Layout.fillHeight: true
                             Layout.minimumWidth: 88
                             property real localValue: Number(modelData.value)
+                            readonly property bool channelEditable: modelData.editable === undefined || Boolean(modelData.editable)
 
                             StudioKnob {
                                 anchors.centerIn: parent
+                                enabled: fxChannel.channelEditable
+                                opacity: fxChannel.channelEditable ? 1.0 : 0.62
                                 premium: true
                                 compact: false
                                 title: String(fxChannel.modelData.label || "")
