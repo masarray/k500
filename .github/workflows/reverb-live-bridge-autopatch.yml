@@ -1,4 +1,4 @@
-name: One-shot Reverb live bridge patch
+name: Reverb Live Bridge Patch
 
 on:
   push:
@@ -10,25 +10,24 @@ permissions:
 
 jobs:
   patch:
-    if: ${{ !contains(github.event.head_commit.message, '[reverb-live-bridge]') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
           ref: fix/reverb-native-command
           fetch-depth: 0
-      - name: Patch verified Reverb UI paths
+
+      - name: Patch Reverb live paths
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
-
-          path = Path('qml/components/RackFaderPanel.qml')
-          text = path.read_text(encoding='utf-8')
-          token = 'REVERB_CMD0B_LIVE_BRIDGE_V1'
+          path = Path("qml/components/RackFaderPanel.qml")
+          text = path.read_text(encoding="utf-8")
+          token = "REVERB_CMD0B_LIVE_BRIDGE_V1"
           marker = '        var section = ""\n'
-          insert = '''        // REVERB_CMD0B_LIVE_BRIDGE_V1 — these visible FX controls are now
-        // backed by byte-verified native CMD 0x0B fields from HHD capture.
+          insert = '''        // REVERB_CMD0B_LIVE_BRIDGE_V1
         if (t === "Reverb") {
             if (l === "LEVEL") return "effects.reverb.level"
             if (l === "DIRECT") return "effects.reverb.direct"
@@ -40,19 +39,19 @@ jobs:
           if token not in text:
               pos = text.find(marker)
               if pos < 0:
-                  raise SystemExit('RackFaderPanel var-section anchor not found')
-              text = text[:pos] + insert + text[pos:]
-              path.write_text(text, encoding='utf-8')
+                  raise SystemExit("RackFaderPanel var-section anchor not found")
+              path.write_text(text[:pos] + insert + text[pos:], encoding="utf-8")
           PY
-      - name: Commit patch
+
+      - name: Commit patch when needed
         shell: bash
         run: |
           if git diff --quiet -- qml/components/RackFaderPanel.qml; then
-            echo 'Patch already present.'
+            echo "Patch already present"
             exit 0
           fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add qml/components/RackFaderPanel.qml
-          git commit -m '[reverb-live-bridge] Wire captured Reverb controls'
+          git commit -m "Wire captured Reverb controls [reverb-live-bridge]"
           git push origin HEAD:fix/reverb-native-command
