@@ -1,0 +1,109 @@
+name: Finalize Reverb four knob layout
+
+on:
+  push:
+    branches:
+      - ui/reverb-four-knobs
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ui/reverb-four-knobs
+          fetch-depth: 0
+
+      - name: Convert Reverb DIRECT fader to fourth knob
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          rack_path = Path('qml/components/RackFaderPanel.qml')
+          rack = rack_path.read_text(encoding='utf-8')
+
+          rack = rack.replace('    property real directValue: 100\n', '')
+          rack = rack.replace(
+              '    // Reverb/Echo deliberately keep the shared rack geometry, but use the space\n'
+              '    // as a dedicated instrument surface: three premium knobs at the left, the\n'
+              '    // captured native DIRECT fader on Reverb, and a\n'
+              '    // parameter-driven visual field at the right. The field is not an analyzer;\n',
+              '    // Reverb/Echo deliberately keep the shared rack geometry, but use the space\n'
+              '    // as a dedicated instrument surface. Reverb uses four matching premium knobs\n'
+              '    // (LEVEL, DECAY, PRE, DIRECT), while Echo keeps its three verified controls.\n'
+              '    // A parameter-driven visual field remains at the right. The field is not an analyzer;\n'
+          )
+          rack = rack.replace(
+              '        // fields are exposed here. DIRECT is rendered by the native-style Reverb fader.\n',
+              '        // fields are exposed here. DIRECT is rendered as the fourth premium Reverb knob.\n'
+          )
+          rack = rack.replace(
+              '                    Layout.preferredWidth: 318\n'
+              '                    Layout.minimumWidth: 288\n'
+              '                    Layout.maximumWidth: 336\n',
+              '                    // REVERB_DIRECT_KNOB_NATIVE_V2 — keep all four Reverb controls\n'
+              '                    // visually identical; the first three remain the visual-field inputs.\n'
+              '                    Layout.preferredWidth: root.reverbMode ? 392 : 318\n'
+              '                    Layout.minimumWidth: root.reverbMode ? 360 : 288\n'
+              '                    Layout.maximumWidth: root.reverbMode ? 420 : 336\n'
+          )
+
+          pattern = re.compile(
+              r'\n\s*// REVERB_DIRECT_FADER_NATIVE_V1[\s\S]*?\n\s*Item \{\n\s*id: fieldSlot',
+              re.MULTILINE,
+          )
+          rack, count = pattern.subn('\n\n                Item {\n                    id: fieldSlot', rack, count=1)
+          if count != 1:
+              raise SystemExit(f'Expected one DIRECT fader block, replaced {count}')
+          if 'id: reverbDirectFader' in rack:
+              raise SystemExit('Old Reverb DIRECT fader still present')
+          rack_path.write_text(rack, encoding='utf-8')
+
+          workspace_path = Path('qml/components/SectionWorkspace.qml')
+          workspace = workspace_path.read_text(encoding='utf-8')
+          old = '''                                    title: "Reverb"
+                                    // REVERB_DIRECT_FADER_NATIVE_V1 — captured CMD 0x0B data[2].
+                                    directValue: Number(root.nestedValue("effects","reverb","direct",100))
+                                    channels: [
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0}
+                                    ]'''
+          new = '''                                    title: "Reverb"
+                                    // REVERB_DIRECT_KNOB_NATIVE_V2 — DIRECT is the fourth matching knob.
+                                    // Keep LEVEL/DECAY/PRE first so the semantic field keeps its existing mapping.
+                                    channels: [
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
+                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0},
+                                        {label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
+                                    ]'''
+          if old not in workspace:
+              raise SystemExit('Reverb workspace anchor not found')
+          workspace = workspace.replace(old, new, 1)
+          workspace_path.write_text(workspace, encoding='utf-8')
+
+          guard_path = Path('.github/workflows/p1-fx-rack-centering.yml')
+          guard = guard_path.read_text(encoding='utf-8')
+          old_guard = "              'captured Reverb DIRECT fader remains live': 'REVERB_DIRECT_FADER_NATIVE_V1' in rack and 'property real directValue: 100' in rack and 'id: reverbDirectFader' in rack and 'root.dispatchLive(\"DIRECT\",v)' in rack and 'directValue: Number(root.nestedValue(\"effects\",\"reverb\",\"direct\",100))' in workspace,\n"
+          new_guard = "              'captured Reverb DIRECT is the fourth matching knob': 'REVERB_DIRECT_KNOB_NATIVE_V2' in rack and 'REVERB_DIRECT_KNOB_NATIVE_V2' in workspace and '{label:\"DIRECT\",value:Number(root.nestedValue(\"effects\",\"reverb\",\"direct\",100))' in workspace and 'id: reverbDirectFader' not in rack,\n"
+          if old_guard not in guard:
+              raise SystemExit('Premium FX DIRECT guard anchor not found')
+          guard = guard.replace(old_guard, new_guard, 1)
+          guard = guard.replace("'three premium knobs remain parameter-driven'", "'premium FX knobs remain parameter-driven'")
+          guard_path.write_text(guard, encoding='utf-8')
+
+      - name: Commit final layout and remove one-shot workflow
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add qml/components/RackFaderPanel.qml qml/components/SectionWorkspace.qml .github/workflows/p1-fx-rack-centering.yml
+          git rm .github/workflows/finalize-reverb-four-knobs.yml
+          git commit -m 'Use four matching Reverb knobs'
+          git push origin HEAD:ui/reverb-four-knobs
