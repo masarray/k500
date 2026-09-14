@@ -57,9 +57,11 @@ private:
     void queueTopMic(const QString &path);
     void queueTopEffect(const QString &path);
     void queueReverb(const QString &path);
+    void queueEcho(const QString &path);
     void queueOutput(const QString &section, const QString &path);
     void queueCrossover(const QString &section, const QString &path, const QString &kind);
     bool updateReverbState(const QString &field, const QVariant &value);
+    bool updateEchoState(const QString &field, const QVariant &value);
     bool updateOutputState(const QString &section, const QString &field, const QVariant &value);
 
     static constexpr int EqSendIntervalMs = 45;
@@ -74,6 +76,8 @@ private:
     K500EffectBlockState m_effect;
     K500ReverbBlockState m_reverb;
     QByteArray m_reverbRaw;
+    K500EchoBlockState m_echo;
+    QByteArray m_echoRaw;
     QHash<QString, K500OutputBlockState> m_outputs;
     QHash<QString, QByteArray> m_outputRaw;
     QHash<QString, CrossoverState> m_crossovers;
