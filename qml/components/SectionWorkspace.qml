@@ -151,12 +151,13 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.minimumWidth: 360
                                     title: "Reverb"
-                                    // REVERB_DIRECT_FADER_NATIVE_V1 — captured CMD 0x0B data[2].
-                                    directValue: Number(root.nestedValue("effects","reverb","direct",100))
+                                    // REVERB_DIRECT_KNOB_NATIVE_V2 — DIRECT is the fourth matching knob.
+                                    // LEVEL/DECAY/PRE remain first so the visual-field mapping is unchanged.
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
                                         {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
-                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0}
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0},
+                                        {label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackFilterPanel {
