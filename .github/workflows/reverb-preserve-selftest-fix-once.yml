@@ -1,5 +1,6 @@
 name: One-shot Reverb preserve self-test fix
 
+# Trigger after the workflow exists on the focused branch.
 on:
   push:
     branches:
@@ -45,7 +46,7 @@ jobs:
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.email '41898218+github-actions[bot]@users.noreply.github.com'
           git add src/k500/K500Protocol.cpp
           git commit -m 'Fix Reverb preservation self-test indexes'
           git push origin HEAD:fix/reverb-native-command
