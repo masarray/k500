@@ -2,6 +2,15 @@ name: P1 Canonical Device State
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500CanonicalState.*'
+      - 'src/k500/K500Controller.*'
+      - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - 'docs/P1_CANONICAL_DEVICE_STATE.md'
+      - '.github/workflows/p1-canonical-device-state.yml'
   pull_request:
     paths:
       - 'src/k500/K500CanonicalState.*'
