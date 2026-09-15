@@ -28,7 +28,7 @@ jobs:
               'Reverb and Echo share the FX surface': 'title === "Reverb" || title === "Echo"' in rack,
               'premium FX knobs remain parameter-driven': 'premium: true' in rack and 'model: root.channels' in rack,
               'captured Reverb DIRECT is the fourth matching knob': 'REVERB_DIRECT_KNOB_NATIVE_V2' in rack and 'REVERB_DIRECT_KNOB_NATIVE_V2' in workspace and '{label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100))' in workspace and 'id: reverbDirectFader' not in rack,
-              'Echo reserves a transport-gated fourth DIRECT knob': 'ECHO_DIRECT_KNOB_PREP_V1' in rack and 'ECHO_DIRECT_KNOB_PREP_V1' in workspace and '{label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100))' in workspace and 'editable:false' in workspace,
+              'captured Echo four knobs are native and live': 'ECHO_CMD0D_LIVE_BRIDGE_V2' in rack and 'ECHO_CMD0D_CAPTURED_V2' in workspace and 'return "effects.echo.direct"' in rack and 'return "effects.echo.repeat"' in rack and 'return "effects.echo.leftDelayMs"' in rack and '{label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100))' in workspace and '{label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",2)),from:0,to:10' in workspace and 'editable:false' not in workspace,
               'four-control FX pages share geometry': 'FX_FOUR_KNOB_GEOMETRY_V1' in rack and 'root.fourControlFx ? 392 : 318' in rack,
               'prepared FX controls can be visibly disabled': 'channelEditable' in rack and 'enabled: fxChannel.channelEditable' in rack,
               'reverb semantic field exists': '"REVERB FIELD"' in rack and '"SPACE DESIGN"' in rack,
