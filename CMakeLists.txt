@@ -288,7 +288,7 @@ set(SONKUPIK_PRESET_FILES
 )
 foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
     get_filename_component(PRESET_NAME "${PRESET_FILE}" NAME)
-    set_source_files_properties("${PRESET_FILE}" PROPERTIES QT_RESOURCE_ALIAS "presets/${FONT_NAME}")
+    set_source_files_properties("${PRESET_FILE}" PROPERTIES QT_RESOURCE_ALIAS "presets/${PRESET_NAME}")
 endforeach()
 qt_add_resources(sonkupik_studio_native built_in_presets
     PREFIX "/"
