@@ -28,6 +28,13 @@ StudioPanel {
     property string compareSide: "A"
     property var bypassSnapshot: null
     property bool eqBypassActive: false
+    // FX_EQ_BYPASS_CAPTURED_V1 — only Reverb/Echo currently have a verified
+    // hardware PEQ-bypass command. Other sections keep the reversible local
+    // zero-gain audition until their own native bypass captures exist.
+    readonly property string nativeFxEqBypassKey: {
+        var key = String(root.sectionLabel || "").trim().toLowerCase()
+        return key === "reverb" || key === "echo" ? key : ""
+    }
 
     // PEQ_AB_AUTO_ACTIVE_V2
     // A is a real active workspace from first frame, not a lazy snapshot created
@@ -158,7 +165,11 @@ StudioPanel {
         if(!root.lpfBypassed)d+=crossOne("lpf",bands.lpType,l,f)
         return d
     }
-    function totalDb(f){ var d=crossDb(f); for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f); return clamp(d,-48,48) }
+    function totalDb(f){
+        var d=crossDb(f)
+        if(!root.eqBypassActive)for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f)
+        return clamp(d,-48,48)
+    }
     function inspectorShouldTop(f){ return totalDb(f) < -1.5 }
 
     function selectBand(i){
@@ -249,6 +260,21 @@ StudioPanel {
     }
     function setEqBypass(enabled){
         if(enabled===eqBypassActive)return
+
+        // FX_EQ_BYPASS_CAPTURED_V1 — Reverb/Echo bypass is a real native toggle.
+        // Do not destructively flatten their stored EQ bands: the device owns a
+        // separate bypass bit and should reveal the exact saved curve when disabled.
+        if(root.nativeFxEqBypassKey.length){
+            if(enabled)saveCompareSide()
+            eqBypassActive=enabled
+            bypassSnapshot=null
+            if(root.engine && typeof root.engine.editDevicePath === "function")
+                root.engine.editDevicePath("eq." + root.nativeFxEqBypassKey + ".bypass", enabled)
+            if(!enabled)updateActiveCompareSnapshot()
+            curve.requestPaint()
+            return
+        }
+
         if(enabled){
             saveCompareSide()
             bypassSnapshot=captureEqState()

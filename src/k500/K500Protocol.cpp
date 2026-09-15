@@ -330,6 +330,14 @@ QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceDa
     return K500Frame::build(body);
 }
 
+QByteArray fxEqBypassMask(quint8 mask)
+{
+    // FX_EQ_BYPASS_CAPTURED_V1 — native KTV writes a shared runtime bitmask
+    // through CMD 0x0F / subcommand 0x40 / address 0xFFFD. Capture proves
+    // bit0 = Reverb EQ bypass and bit1 = Echo EQ bypass; trailing byte is 0x02.
+    return K500Frame::build(bytes({0x06, 0x0F, 0x40, 0xFD, 0xFF, mask, 0x02}));
+}
+
 QByteArray outputBlock(const QString &section,
                        const K500OutputBlockState &state,
                        const QByteArray &deviceData)
@@ -492,6 +500,14 @@ bool selfTest(QString *error)
         || byteFromChar(preservedEchoFrame.at(7)) != 0x5A || byteFromChar(preservedEchoFrame.at(21)) != 0x5A
         || byteFromChar(preservedEchoFrame.at(24)) != 0x5A)
         return fail(QStringLiteral("Echo block must preserve unknown device bytes"));
+
+    // FX_EQ_BYPASS_CAPTURED_V1 — exact USB donor vectors.
+    // 0x00 = both bypasses OFF, 0x01 = Reverb ON / Echo OFF,
+    // 0x03 = Reverb ON / Echo ON. Echo toggling in the donor capture alternates
+    // 0x01 <-> 0x03, proving that the two controls share one bitmask byte.
+    if (!expect(K500Frame::toUsbFrame(fxEqBypassMask(0x00)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x00,0x02,0xAD}, QStringLiteral("FX EQ bypass mask 0 USB capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(fxEqBypassMask(0x01)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x01,0x02,0xAC}, QStringLiteral("Reverb EQ bypass ON USB capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(fxEqBypassMask(0x03)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0xAA}, QStringLiteral("Reverb and Echo EQ bypass ON USB capture"))) return false;
 
     if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;
     if (!expect(micEqLink(true), {0xAA, 0x04, 0x3C, 0x01, 0x01, 0x9E, 0x20}, QStringLiteral("mic EQ link on"))) return false;

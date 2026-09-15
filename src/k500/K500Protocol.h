@@ -106,6 +106,7 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
 QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);
+QByteArray fxEqBypassMask(quint8 mask);
 QByteArray outputBlock(const QString &section,
                        const K500OutputBlockState &state,
                        const QByteArray &deviceData);
