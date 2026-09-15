@@ -52,8 +52,10 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
     });
 
     if (m_controller) {
-        connect(m_controller, &K500Controller::frameReady,
-                this, &K500DeviceManager::sendLiveFrame);
+        connect(m_controller, &K500Controller::commandReady,
+                this, &K500DeviceManager::sendPlannedCommand);
+        connect(this, &K500DeviceManager::commandDispatchResult,
+                m_controller, &K500Controller::handleCommandDispatchResult);
         connect(this, &K500DeviceManager::deviceScalarsReady,
                 m_controller, &K500Controller::setDeviceScalars);
         connect(this, &K500DeviceManager::activeMemoryReady,
@@ -96,6 +98,8 @@ void K500DeviceManager::toggleConnection()
 void K500DeviceManager::connectDevice()
 {
     resetConnectionState(false);
+    if (m_controller)
+        m_controller->beginDeviceSession();
     setError({});
     setStatus(QStringLiteral("connecting"));
 
@@ -138,6 +142,27 @@ void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &la
     if (!connected() || !m_liveEnabled || frame.isEmpty())
         return;
     writeFrame(frame, label);
+}
+
+
+void K500DeviceManager::sendPlannedCommand(quint64 sessionEpoch, quint64 token,
+                                            const QByteArray &frame, const QString &label,
+                                            const QString &path, const QString &coalescingKey)
+{
+    Q_UNUSED(coalescingKey);
+    if (!m_controller || sessionEpoch != m_controller->sessionEpoch()) {
+        emit commandDispatchResult(sessionEpoch, token, path, false,
+                                   QStringLiteral("Stale command rejected after device-session change"));
+        return;
+    }
+    if (!connected() || !m_liveEnabled || frame.isEmpty()) {
+        emit commandDispatchResult(sessionEpoch, token, path, false,
+                                   QStringLiteral("Native transport is not LIVE for this session"));
+        return;
+    }
+    const bool accepted = writeFrame(frame, label);
+    emit commandDispatchResult(sessionEpoch, token, path, accepted,
+                               accepted ? QString{} : QStringLiteral("Native transport write failed"));
 }
 
 QByteArray K500DeviceManager::supportReportJson() const
@@ -427,7 +452,8 @@ void K500DeviceManager::requestNextMemoryBlock()
 
     m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_memoryReadOffset);
     const int offset = m_memoryReadOffset;
-    const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
+    // RETRIEVE_ALL_USB_MODE02_CAPTURED_V1 — native KTV startup capture.
+    const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x02 : 0x63;
     setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
                      .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
     if (!writeFrame(K500Protocol::readBlock(static_cast<quint16>(offset),

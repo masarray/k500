@@ -1,3 +1,4 @@
+// P0_LAYERING_TRIGGER_V1 — harmless marker to trigger the registered PR guard.
 import QtQuick
 
 Item {

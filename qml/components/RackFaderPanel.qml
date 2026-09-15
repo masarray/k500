@@ -80,10 +80,15 @@ StudioPanel {
             if (l === "PRE") return "effects.reverb.predelayMs"
             return ""
         }
-        // ECHO_DIRECT_KNOB_PREP_V1 — Echo DIRECT is intentionally presentation-only
-        // until a native donor capture proves its command and byte position. Do not
-        // guess a transport path just to make the prepared control appear live.
-        if (t === "Echo") return ""
+        // ECHO_CMD0D_LIVE_BRIDGE_V2 — donor captures verify all four visible
+        // Echo controls as fields in the same native full-image CMD 0x0D.
+        if (t === "Echo") {
+            if (l === "LEVEL") return "effects.echo.level"
+            if (l === "REPEAT") return "effects.echo.repeat"
+            if (l === "DELAY") return "effects.echo.leftDelayMs"
+            if (l === "DIRECT") return "effects.echo.direct"
+            return ""
+        }
         var section = ""
         if (t === "Main Bus") section = "main"
         else if (t === "Surround Bus") section = "surround"

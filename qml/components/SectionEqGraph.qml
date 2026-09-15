@@ -28,6 +28,22 @@ StudioPanel {
     property string compareSide: "A"
     property var bypassSnapshot: null
     property bool eqBypassActive: false
+    // EQ_BYPASS_24BIT_CAPTURED_V2 — all visible PEQ sections now use the
+    // captured native shared bypass image; no section destructively zeros bands.
+    readonly property string nativeEqBypassKey: {
+        var key = String(root.sectionLabel || "").trim().toLowerCase()
+        if (key === "mic a" || key === "mic b") return "mic"
+        if (key === "subwoofer") return "sub"
+        if (key === "music" || key === "reverb" || key === "echo" || key === "main" || key === "surround" || key === "center" || key === "sub") return key
+        return ""
+    }
+    readonly property string deviceEqStateKey: {
+        var key = String(root.sectionLabel || "").trim().toLowerCase()
+        if (key === "mic a") return "micA"
+        if (key === "mic b") return "micB"
+        if (key === "subwoofer") return "sub"
+        return root.nativeEqBypassKey
+    }
 
     // PEQ_AB_AUTO_ACTIVE_V2
     // A is a real active workspace from first frame, not a lazy snapshot created
@@ -158,7 +174,11 @@ StudioPanel {
         if(!root.lpfBypassed)d+=crossOne("lpf",bands.lpType,l,f)
         return d
     }
-    function totalDb(f){ var d=crossDb(f); for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f); return clamp(d,-48,48) }
+    function totalDb(f){
+        var d=crossDb(f)
+        if(!root.eqBypassActive)for(var i=0;i<bands.count;++i)d+=bandDb(bands.get(i),f)
+        return clamp(d,-48,48)
+    }
     function inspectorShouldTop(f){ return totalDb(f) < -1.5 }
 
     function selectBand(i){
@@ -247,23 +267,27 @@ StudioPanel {
         initializeCompareIfNeeded()
         updateActiveCompareSnapshot()
     }
+    function deviceEqBypassValue(){
+        if(!root.engine || !root.engine.deviceStateReady || !root.deviceEqStateKey.length)return false
+        var eq=root.engine.deviceState ? root.engine.deviceState.eq : null
+        var section=eq ? eq[root.deviceEqStateKey] : null
+        return section && section.bypass !== undefined ? Boolean(section.bypass) : false
+    }
+    function syncEqBypassFromDevice(){
+        if(!root.engine || !root.engine.deviceStateReady || !root.nativeEqBypassKey.length)return
+        root.eqBypassActive=root.deviceEqBypassValue()
+        root.bypassSnapshot=null
+        curve.requestPaint()
+    }
     function setEqBypass(enabled){
         if(enabled===eqBypassActive)return
-        if(enabled){
-            saveCompareSide()
-            bypassSnapshot=captureEqState()
-            eqBypassActive=true
-            for(var i=0;i<bands.count;++i){
-                var b=bands.get(i)
-                bands.setBand(i,Number(b.freq),0,Number(b.q))
-            }
-        }else{
-            var restore=cloneState(bypassSnapshot)
-            eqBypassActive=false
-            bypassSnapshot=null
-            applyEqState(restore)
-            updateActiveCompareSnapshot()
-        }
+        if(!root.nativeEqBypassKey.length)return
+        if(enabled)saveCompareSide()
+        eqBypassActive=enabled
+        bypassSnapshot=null
+        if(root.engine && typeof root.engine.editDevicePath === "function")
+            root.engine.editDevicePath("eq." + root.nativeEqBypassKey + ".bypass", enabled)
+        if(!enabled)updateActiveCompareSnapshot()
         curve.requestPaint()
     }
     function selectCompareSide(side){
@@ -322,7 +346,12 @@ StudioPanel {
     Component.onCompleted: {
         ensureStartupCrossoverDefaults()
         selectBand(0)
-        Qt.callLater(function(){root.primeCompareFromCurrent()})
+        Qt.callLater(function(){root.primeCompareFromCurrent();root.syncEqBypassFromDevice()})
+    }
+
+    Connections {
+        target: root.engine
+        function onDeviceStateChanged(){ root.syncEqBypassFromDevice() }
     }
 
     ColumnLayout {

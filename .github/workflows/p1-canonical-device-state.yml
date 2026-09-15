@@ -1,0 +1,88 @@
+name: P1 Canonical Device State
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500CanonicalState.*'
+      - 'src/k500/K500Controller.*'
+      - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - 'docs/P1_CANONICAL_DEVICE_STATE.md'
+      - '.github/workflows/p1-canonical-device-state.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500CanonicalState.*'
+      - 'src/k500/K500Controller.*'
+      - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - 'docs/P1_CANONICAL_DEVICE_STATE.md'
+      - '.github/workflows/p1-canonical-device-state.yml'
+
+jobs:
+  canonical-state:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build canonical-state self-test
+        shell: pwsh
+        run: cmake --build build --config Release --target k500_p1_state_selftest
+
+      - name: Run canonical-state self-test
+        shell: pwsh
+        run: build/k500_p1_state_selftest.exe
+
+      - name: Guard P1 architecture invariants
+        shell: python
+        run: |
+          from pathlib import Path
+
+          state_h = Path('src/k500/K500CanonicalState.h').read_text(encoding='utf-8')
+          state_cpp = Path('src/k500/K500CanonicalState.cpp').read_text(encoding='utf-8')
+          controller_h = Path('src/k500/K500Controller.h').read_text(encoding='utf-8')
+          controller_cpp = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
+          manager_cpp = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
+          cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
+
+          checks = {
+              'canonical state contract exists': 'P1_CANONICAL_DEVICE_STATE_V1' in state_h,
+              'snapshot is exact active-memory image': 'ActiveMemorySize = 0x03AB' in state_h and 'memory.size() != ActiveMemorySize' in state_cpp,
+              'snapshot owns detached bytes': 'm_rawSnapshot.detach()' in state_cpp,
+              'snapshot has SHA-256 identity': 'QCryptographicHash::Sha256' in state_cpp,
+              'confirmed desired inflight are distinct': 'm_confirmed' in state_h and 'm_desired' in state_h and 'm_inFlightByKey' in state_h,
+              'commands carry epoch revision token': 'sessionEpoch' in state_h and 'revision' in state_h and 'token' in state_h,
+              'controller requires canonical snapshot barrier': 'P1_CANONICAL_SNAPSHOT_BARRIER_V1' in controller_cpp,
+              'controller stages desired state before native plan': 'P1_CANONICAL_EDIT_GATE_V1' in controller_cpp and 'stageDesired(path, value' in controller_cpp,
+              'manager transports session envelope': '&K500Controller::commandReady' in manager_cpp and 'sendPlannedCommand' in manager_cpp,
+              'manager rejects stale session': 'sessionEpoch != m_controller->sessionEpoch()' in manager_cpp,
+              'legacy direct frame transport disconnected': 'connect(m_controller, &K500Controller::frameReady' not in manager_cpp,
+              'raw bypass snapshot is not optimistically changed': 'm_activeMemory[0x027D]' not in controller_cpp,
+              'confirmed FBE scalar is not optimistically changed': 'm_deviceScalars[0x1B] = fbe' not in controller_cpp,
+              'self-test is a build target': 'k500_p1_state_selftest' in cmake,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('P1 canonical-state guard failed: ' + ', '.join(failed))
+          print('ALL P1 CANONICAL DEVICE STATE GUARDS PASSED')

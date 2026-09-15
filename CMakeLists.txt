@@ -55,6 +55,8 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500PresetUploadBridge.cpp
     src/k500/K500Controller.cpp
     src/k500/K500Controller.h
+    src/k500/K500CanonicalState.cpp
+    src/k500/K500CanonicalState.h
     src/k500/K500ResponseParser.cpp
     src/k500/K500ResponseParser.h
     src/k500/K500WinIo.cpp
@@ -76,11 +78,24 @@ add_executable(k500_p0_perf_selftest
     src/RuntimeMetrics.h
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/k500/K500Protocol.cpp
+    src/k500/K500Protocol.h
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
 )
 target_link_libraries(k500_p0_perf_selftest PRIVATE Qt6::Core)
 if(WIN32)
     target_link_libraries(k500_p0_perf_selftest PRIVATE psapi)
 endif()
+
+# P1_CANONICAL_DEVICE_STATE_V1 — hardware-free session/state qualification.
+add_executable(k500_p1_state_selftest
+    src/k500/P1CanonicalStateSelfTestMain.cpp
+    src/k500/K500CanonicalState.cpp
+    src/k500/K500CanonicalState.h
+)
+target_include_directories(k500_p1_state_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(k500_p1_state_selftest PRIVATE Qt6::Core)
 
 # P2_TRANSPORT_LIFECYCLE_STRESS_V1 — hardware-free worker lifecycle qualification.
 if(WIN32)
@@ -166,6 +181,10 @@ add_executable(k500_p42_batch_test
     src/k500/K500PresetCodec.h
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/k500/K500Protocol.cpp
+    src/k500/K500Protocol.h
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
 )
 target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core Qt6::Network)
 
