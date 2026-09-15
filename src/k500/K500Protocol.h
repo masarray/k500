@@ -66,6 +66,13 @@ struct K500EchoBlockState
     int leftPredelayMs = 100;
 };
 
+struct K500EqBypassImage
+{
+    quint8 m0 = 0;
+    quint8 m1 = 0;
+    quint8 m2 = 0;
+};
+
 struct K500OutputBlockState
 {
     double lVolDb = 0.0;
@@ -106,7 +113,9 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
 QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);
-QByteArray fxEqBypassMask(quint8 mask);
+bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled);
+bool eqBypassEnabled(const K500EqBypassImage &image, const QString &section);
+QByteArray eqBypassWrite(const K500EqBypassImage &image);
 QByteArray outputBlock(const QString &section,
                        const K500OutputBlockState &state,
                        const QByteArray &deviceData);

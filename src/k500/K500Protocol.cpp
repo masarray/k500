@@ -97,7 +97,22 @@ quint8 outDbToRaw(double db)
 {
     return K500Frame::clampByte(qRound(db * 2.0 + 75.0));
 }
+
+bool eqBypassSpec(const QString &section, int *byteIndex, quint8 *mask)
+{
+    const QString key = section.trimmed().toLower();
+    if (key == QStringLiteral("mic") || key == QStringLiteral("mica") || key == QStringLiteral("micb")) { *byteIndex = 0; *mask = 0x60; return true; }
+    if (key == QStringLiteral("music"))    { *byteIndex = 0; *mask = 0x80; return true; }
+    if (key == QStringLiteral("main"))     { *byteIndex = 1; *mask = 0x01; return true; }
+    if (key == QStringLiteral("surround")) { *byteIndex = 1; *mask = 0x04; return true; }
+    if (key == QStringLiteral("center"))   { *byteIndex = 1; *mask = 0x10; return true; }
+    if (key == QStringLiteral("sub") || key == QStringLiteral("subwoofer")) { *byteIndex = 1; *mask = 0x40; return true; }
+    if (key == QStringLiteral("reverb"))   { *byteIndex = 2; *mask = 0x01; return true; }
+    if (key == QStringLiteral("echo"))     { *byteIndex = 2; *mask = 0x02; return true; }
+    return false;
 }
+}
+
 
 namespace K500Protocol {
 
@@ -330,12 +345,33 @@ QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceDa
     return K500Frame::build(body);
 }
 
-QByteArray fxEqBypassMask(quint8 mask)
+bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled)
 {
-    // FX_EQ_BYPASS_CAPTURED_V1 — native KTV writes a shared runtime bitmask
-    // through CMD 0x0F / subcommand 0x40 / address 0xFFFD. Capture proves
-    // bit0 = Reverb EQ bypass and bit1 = Echo EQ bypass; trailing byte is 0x02.
-    return K500Frame::build(bytes({0x06, 0x0F, 0x40, 0xFD, 0xFF, mask, 0x02}));
+    int byteIndex = -1;
+    quint8 mask = 0;
+    if (!eqBypassSpec(section, &byteIndex, &mask))
+        return false;
+    quint8 *target = byteIndex == 0 ? &image.m0 : (byteIndex == 1 ? &image.m1 : &image.m2);
+    *target = enabled ? static_cast<quint8>(*target | mask)
+                      : static_cast<quint8>(*target & static_cast<quint8>(~mask));
+    return true;
+}
+
+bool eqBypassEnabled(const K500EqBypassImage &image, const QString &section)
+{
+    int byteIndex = -1;
+    quint8 mask = 0;
+    if (!eqBypassSpec(section, &byteIndex, &mask))
+        return false;
+    const quint8 value = byteIndex == 0 ? image.m0 : (byteIndex == 1 ? image.m1 : image.m2);
+    return (value & mask) == mask;
+}
+
+QByteArray eqBypassWrite(const K500EqBypassImage &image)
+{
+    // EQ_BYPASS_24BIT_CAPTURED_V2 — native KTV writes the complete shared
+    // 3-byte bypass image. Preserve every unrelated/reserved bit via RMW.
+    return K500Frame::build(bytes({0x06, 0x0F, 0x40, image.m0, image.m1, image.m2, 0x02}));
 }
 
 QByteArray outputBlock(const QString &section,
@@ -426,9 +462,9 @@ bool selfTest(QString *error)
     if (!expect(playerCommand(QStringLiteral("playPause")), {0xAA, 0x03, 0x06, 0x02, 0x05, 0xF0}, QStringLiteral("play/pause"))) return false;
 
     if (!expect(readBlock(0x0000, 0x003A, 0x63), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x63, 0x1D}, QStringLiteral("Bluetooth read-block"))) return false;
-    if (!expect(readBlock(0x0000, 0x003A, 0x00), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80}, QStringLiteral("USB read-block"))) return false;
+    if (!expect(readBlock(0x0000, 0x003A, 0x02), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x02, 0x7E}, QStringLiteral("USB read-block captured mode 0x02"))) return false;
     if (!expect(readBlock(0x03A0, 0x000B, 0x63), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x63, 0xA9}, QStringLiteral("Bluetooth final read-block"))) return false;
-    if (!expect(readBlock(0x03A0, 0x000B, 0x00), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x00, 0x0C}, QStringLiteral("USB final read-block"))) return false;
+    if (!expect(readBlock(0x03A0, 0x000B, 0x02), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x02, 0x0A}, QStringLiteral("USB final read-block captured mode 0x02"))) return false;
 
     K500EqBand band;
     band.frequencyHz = 355.0;
@@ -501,13 +537,19 @@ bool selfTest(QString *error)
         || byteFromChar(preservedEchoFrame.at(24)) != 0x5A)
         return fail(QStringLiteral("Echo block must preserve unknown device bytes"));
 
-    // FX_EQ_BYPASS_CAPTURED_V1 — exact USB donor vectors.
-    // 0x00 = both bypasses OFF, 0x01 = Reverb ON / Echo OFF,
-    // 0x03 = Reverb ON / Echo ON. Echo toggling in the donor capture alternates
-    // 0x01 <-> 0x03, proving that the two controls share one bitmask byte.
-    if (!expect(K500Frame::toUsbFrame(fxEqBypassMask(0x00)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x00,0x02,0xAD}, QStringLiteral("FX EQ bypass mask 0 USB capture"))) return false;
-    if (!expect(K500Frame::toUsbFrame(fxEqBypassMask(0x01)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x01,0x02,0xAC}, QStringLiteral("Reverb EQ bypass ON USB capture"))) return false;
-    if (!expect(K500Frame::toUsbFrame(fxEqBypassMask(0x03)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0xAA}, QStringLiteral("Reverb and Echo EQ bypass ON USB capture"))) return false;
+    // EQ_BYPASS_24BIT_CAPTURED_V2 — sequential donor vectors prove one shared
+    // 24-bit image across Mic/Music/Main/Surround/Center/Sub/Reverb/Echo.
+    K500EqBypassImage bypass{0x1D, 0xAA, 0x00};
+    if (!expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xAA,0x00,0x02,0xE2}, QStringLiteral("EQ bypass baseline USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("sub"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xEA,0x00,0x02,0xA2}, QStringLiteral("Sub EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("center"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xFA,0x00,0x02,0x92}, QStringLiteral("Center EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("surround"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xFE,0x00,0x02,0x8E}, QStringLiteral("Surround EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("main"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xFF,0x00,0x02,0x8D}, QStringLiteral("Main EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("mic"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x7D,0xFF,0x00,0x02,0x2D}, QStringLiteral("Mic EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("music"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x00,0x02,0xAD}, QStringLiteral("Music EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("reverb"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x01,0x02,0xAC}, QStringLiteral("Reverb EQ bypass ON USB capture"))) return false;
+    if (!setEqBypass(bypass, QStringLiteral("echo"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0xAA}, QStringLiteral("Echo EQ bypass ON USB capture"))) return false;
+    if (!eqBypassEnabled(bypass, QStringLiteral("mic")) || !eqBypassEnabled(bypass, QStringLiteral("echo"))) return fail(QStringLiteral("EQ bypass decode mismatch"));
 
     if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;
     if (!expect(micEqLink(true), {0xAA, 0x04, 0x3C, 0x01, 0x01, 0x9E, 0x20}, QStringLiteral("mic EQ link on"))) return false;

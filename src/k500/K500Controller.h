@@ -58,7 +58,7 @@ private:
     void queueTopEffect(const QString &path);
     void queueReverb(const QString &path);
     void queueEcho(const QString &path);
-    void queueFxEqBypass(const QString &path);
+    void queueEqBypass(const QString &path);
     void queueOutput(const QString &section, const QString &path);
     void queueCrossover(const QString &section, const QString &path, const QString &kind);
     bool updateReverbState(const QString &field, const QVariant &value);
@@ -79,7 +79,8 @@ private:
     QByteArray m_reverbRaw;
     K500EchoBlockState m_echo;
     QByteArray m_echoRaw;
-    quint8 m_fxEqBypassMask = 0;
+    K500EqBypassImage m_eqBypass;
+    bool m_eqBypassReady = false;
     QHash<QString, K500OutputBlockState> m_outputs;
     QHash<QString, QByteArray> m_outputRaw;
     QHash<QString, CrossoverState> m_crossovers;

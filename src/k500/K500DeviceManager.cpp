@@ -427,7 +427,8 @@ void K500DeviceManager::requestNextMemoryBlock()
 
     m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_memoryReadOffset);
     const int offset = m_memoryReadOffset;
-    const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
+    // RETRIEVE_ALL_USB_MODE02_CAPTURED_V1 — native KTV startup capture.
+    const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x02 : 0x63;
     setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
                      .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
     if (!writeFrame(K500Protocol::readBlock(static_cast<quint16>(offset),
