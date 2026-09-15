@@ -124,3 +124,5 @@ inline bool enabled(const K500EqBypassImage &image, const QString &section)
           git add src/k500/K500EqBypass.h src/k500/K500Protocol.h src/k500/K500Protocol.cpp src/k500/K500Controller.cpp src/StudioEngine.cpp
           git commit -m "Decouple canonical EQ bypass map from protocol linking"
           git push
+
+# Trigger commit after workflow registration.
