@@ -62,6 +62,9 @@ public:
 
 public slots:
     void sendLiveFrame(const QByteArray &frame, const QString &label);
+    void sendPlannedCommand(quint64 sessionEpoch, quint64 token,
+                            const QByteArray &frame, const QString &label,
+                            const QString &path, const QString &coalescingKey);
 
     // P3_DETERMINISTIC_SHUTDOWN_V1
     // Idempotent application-teardown entry point. It stops timers and live
@@ -79,6 +82,9 @@ signals:
     void mutedChanged();
     void deviceScalarsReady(const QByteArray &scalars);
     void activeMemoryReady(const QByteArray &memory);
+    void commandDispatchResult(quint64 sessionEpoch, quint64 token,
+                               const QString &path, bool accepted,
+                               const QString &reason);
     void logLine(const QString &direction, const QString &label, const QString &hex);
 
 private:
