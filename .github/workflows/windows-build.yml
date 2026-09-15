@@ -86,7 +86,7 @@ jobs:
           foreach ($token in @('P1_PROTOCOL_GOLDEN_VECTORS_V1','P1_TOP_MIC_VERIFIED_V1','P1_TOP_EFFECT_VERIFIED_V1','P1_OUTPUT_BLOCK_VERIFIED_V1','P1_MIC_EQ_LINK_VERIFIED_V1','output block must preserve unknown device bytes')) {
             if (-not $protocol.Contains($token)) { throw "P1 protocol regression: missing '$token'" }
           }
-          foreach ($token in @('P1_CONTROLLER_DEVICE_SEED_V1','P1_FULL_LIVE_ROUTING_V1','queueTopMic','queueTopEffect','queueOutput','queueCrossover','mic.eqLink','updateOutputState')) {
+          foreach ($token in @('P1_CANONICAL_SNAPSHOT_BARRIER_V1','P1_FULL_LIVE_ROUTING_V1','queueTopMic','queueTopEffect','queueOutput','queueCrossover','mic.eqLink','updateOutputState')) {
             if (-not $controller.Contains($token)) { throw "P1 controller regression: missing '$token'" }
           }
           if (-not $engine.Contains('P1_CANONICAL_DEVICE_EDIT_V1') -or -not $engine.Contains('editDevicePath')) { throw 'P1 canonical edit bridge missing' }
