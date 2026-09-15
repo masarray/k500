@@ -9,6 +9,7 @@
 #include <QTimer>
 #include <QVariant>
 
+// P0_NATIVE_CONTEXT_QUALIFICATION_TRIGGER_V1 — source-path trigger only; removed with P0 cleanup.
 class K500Controller final : public QObject
 {
     Q_OBJECT
