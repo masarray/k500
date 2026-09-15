@@ -1,0 +1,126 @@
+name: P0 bypass map layering once
+
+on:
+  push:
+    branches: [hardening/p0-native-context-work]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Decouple canonical bypass map from protocol linker
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          hdr = Path('src/k500/K500EqBypass.h')
+          hdr.write_text(r'''#pragma once
+
+#include <QString>
+#include <QtGlobal>
+
+struct K500EqBypassImage
+{
+    quint8 m0 = 0;
+    quint8 m1 = 0;
+    quint8 m2 = 0;
+};
+
+namespace K500EqBypass {
+
+struct BitSpec
+{
+    int byteIndex = -1;
+    quint8 mask = 0;
+    bool valid() const { return byteIndex >= 0 && mask != 0; }
+};
+
+inline BitSpec spec(const QString &section)
+{
+    const QString key = section.trimmed().toLower();
+    if (key == QStringLiteral("mic") || key == QStringLiteral("mica") || key == QStringLiteral("micb")) return {0, 0x60};
+    if (key == QStringLiteral("music")) return {0, 0x80};
+    if (key == QStringLiteral("main")) return {1, 0x01};
+    if (key == QStringLiteral("surround")) return {1, 0x04};
+    if (key == QStringLiteral("center")) return {1, 0x10};
+    if (key == QStringLiteral("sub") || key == QStringLiteral("subwoofer")) return {1, 0x40};
+    if (key == QStringLiteral("reverb")) return {2, 0x01};
+    if (key == QStringLiteral("echo")) return {2, 0x02};
+    return {};
+}
+
+inline quint8 byte(const K500EqBypassImage &image, int index)
+{
+    return index == 0 ? image.m0 : (index == 1 ? image.m1 : image.m2);
+}
+
+inline quint8 *bytePtr(K500EqBypassImage &image, int index)
+{
+    return index == 0 ? &image.m0 : (index == 1 ? &image.m1 : &image.m2);
+}
+
+inline bool set(K500EqBypassImage &image, const QString &section, bool enabled)
+{
+    const BitSpec bits = spec(section);
+    if (!bits.valid())
+        return false;
+    quint8 *target = bytePtr(image, bits.byteIndex);
+    *target = enabled ? static_cast<quint8>(*target | bits.mask)
+                      : static_cast<quint8>(*target & static_cast<quint8>(~bits.mask));
+    return true;
+}
+
+inline bool enabled(const K500EqBypassImage &image, const QString &section)
+{
+    const BitSpec bits = spec(section);
+    if (!bits.valid())
+        return false;
+    return (byte(image, bits.byteIndex) & bits.mask) == bits.mask;
+}
+
+} // namespace K500EqBypass
+''')
+
+          p = Path('src/k500/K500Protocol.h')
+          text = p.read_text()
+          text = text.replace('#include <QByteArray>', '#include "K500EqBypass.h"\n\n#include <QByteArray>', 1)
+          text, n = re.subn(r'\nstruct K500EqBypassImage\n\{\n    quint8 m0 = 0;\n    quint8 m1 = 0;\n    quint8 m2 = 0;\n\};\n', '\n', text, count=1)
+          if n != 1: raise SystemExit('K500EqBypassImage struct not found in protocol header')
+          text = text.replace('bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled);\nbool eqBypassEnabled(const K500EqBypassImage &image, const QString &section);\n', '', 1)
+          p.write_text(text)
+
+          p = Path('src/k500/K500Protocol.cpp')
+          text = p.read_text()
+          text, n = re.subn(r'\nbool eqBypassSpec\(const QString &section, int \*byteIndex, quint8 \*mask\)\n\{.*?\n\}\n', '\n', text, count=1, flags=re.S)
+          if n != 1: raise SystemExit('eqBypassSpec not found')
+          text, n = re.subn(r'\nbool setEqBypass\(K500EqBypassImage &image, const QString &section, bool enabled\)\n\{.*?\n\}\n\nbool eqBypassEnabled\(const K500EqBypassImage &image, const QString &section\)\n\{.*?\n\}\n', '\n', text, count=1, flags=re.S)
+          if n != 1: raise SystemExit('protocol bypass set/enabled implementations not found')
+          text = text.replace('setEqBypass(bypass,', 'K500EqBypass::set(bypass,')
+          text = text.replace('eqBypassEnabled(bypass,', 'K500EqBypass::enabled(bypass,')
+          p.write_text(text)
+
+          p = Path('src/k500/K500Controller.cpp')
+          text = p.read_text().replace('K500Protocol::setEqBypass(m_eqBypass, section, value.toBool())', 'K500EqBypass::set(m_eqBypass, section, value.toBool())')
+          p.write_text(text)
+
+          p = Path('src/StudioEngine.cpp')
+          text = p.read_text()
+          text = text.replace('#include "k500/K500Protocol.h"', '#include "k500/K500EqBypass.h"', 1)
+          text = text.replace('K500Protocol::eqBypassEnabled(eqBypass, bypassKey)', 'K500EqBypass::enabled(eqBypass, bypassKey)')
+          p.write_text(text)
+          PY
+          git rm .github/workflows/p0-bypass-map-layering-once.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/k500/K500EqBypass.h src/k500/K500Protocol.h src/k500/K500Protocol.cpp src/k500/K500Controller.cpp src/StudioEngine.cpp
+          git commit -m "Decouple canonical EQ bypass map from protocol linking"
+          git push
