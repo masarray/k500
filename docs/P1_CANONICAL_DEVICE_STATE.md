@@ -30,3 +30,5 @@ P1 already gives every semantic command a coalescing key and replaces older queu
 - command revisions are monotonic within a session;
 - successful transport is not confused with hardware confirmation;
 - hardware-free self-tests exercise snapshot size, immutability, latest-wins replacement, reconciliation and stale-session rejection.
+
+<!-- P1_INTEGRATION_TRIGGER_V1: activates the registered one-shot source integration workflow. -->
