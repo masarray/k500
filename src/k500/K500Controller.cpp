@@ -193,6 +193,12 @@ void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)
     m_echo.leftPredelayMs = fileU16(memory, 0x00CE, 100);
     m_echoRaw = echoSeed(memory);
 
+    // EQ_BYPASS_24BIT_CAPTURED_V2 — Retrieve All contains the authoritative
+    // shared bypass image at active-memory offsets 0x027D..0x027F. Hydrate it
+    // before LIVE is enabled so the first toggle can always be a safe RMW.
+    m_eqBypass = K500EqBypassImage{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
+    m_eqBypassReady = memory.size() > 0x027F;
+
     K500OutputBlockState main;
     main.lVolDb = outputDb(fileU8(memory, 0x0024, 75));
     main.rVolDb = outputDb(fileU8(memory, 0x0026, 75));
@@ -277,9 +283,8 @@ void K500Controller::clearDeviceState()
     m_reverbRaw.clear();
     m_echo = K500EchoBlockState{};
     m_echoRaw.clear();
-    // FX_EQ_BYPASS_CAPTURED_V1 — no readback form of runtime register 0xFFFD
-    // has been captured, so a fresh device session starts from the UI default.
-    m_fxEqBypassMask = 0;
+    m_eqBypass = K500EqBypassImage{};
+    m_eqBypassReady = false;
     m_outputs.clear();
     m_outputRaw.clear();
     m_crossovers.clear();
@@ -398,16 +403,26 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         }
     }
 
-    // FX_EQ_BYPASS_CAPTURED_V1 — shared register 0xFFFD bit0=Reverb, bit1=Echo.
-    // Always update only the selected bit so toggling one section cannot silently
-    // disable the other section's bypass state.
-    if (path == QStringLiteral("eq.reverb.bypass") || path == QStringLiteral("eq.echo.bypass")) {
-        const quint8 bit = path == QStringLiteral("eq.reverb.bypass") ? quint8(0x01) : quint8(0x02);
-        if (value.toBool())
-            m_fxEqBypassMask = static_cast<quint8>(m_fxEqBypassMask | bit);
-        else
-            m_fxEqBypassMask = static_cast<quint8>(m_fxEqBypassMask & static_cast<quint8>(~bit));
-        queueFxEqBypass(path);
+    // EQ_BYPASS_24BIT_CAPTURED_V2 — every PEQ bypass button edits one bit-group
+    // inside the same device-owned 24-bit image. Never synthesize a mask from UI
+    // defaults; only mutate the Retrieve-All snapshot and preserve all other bits.
+    static const QRegularExpression eqBypassPath(QStringLiteral(R"(^eq\.(mic|music|main|surround|center|sub|reverb|echo)\.bypass$)"));
+    if (const auto match = eqBypassPath.match(path); match.hasMatch()) {
+        if (!m_liveEnabled || !m_eqBypassReady) {
+            emit writeDeferred(path, QStringLiteral("EQ bypass write requires complete device Retrieve All hydration"));
+            return;
+        }
+        const QString section = match.captured(1);
+        if (!K500Protocol::setEqBypass(m_eqBypass, section, value.toBool())) {
+            emit unsupportedPath(path);
+            return;
+        }
+        if (m_activeMemory.size() > 0x027F) {
+            m_activeMemory[0x027D] = char(m_eqBypass.m0);
+            m_activeMemory[0x027E] = char(m_eqBypass.m1);
+            m_activeMemory[0x027F] = char(m_eqBypass.m2);
+        }
+        queueEqBypass(path);
         return;
     }
 
@@ -539,14 +554,16 @@ void K500Controller::queueEcho(const QString &path)
                     QStringLiteral("Echo · %1").arg(path));
 }
 
-void K500Controller::queueFxEqBypass(const QString &path)
+void K500Controller::queueEqBypass(const QString &path)
 {
-    if (!m_liveEnabled)
+    if (!m_liveEnabled || !m_eqBypassReady)
         return;
-    queueBlockFrame(QStringLiteral("fx:eq-bypass"), K500Protocol::fxEqBypassMask(m_fxEqBypassMask),
-                    QStringLiteral("FX EQ Bypass · %1 · mask 0x%2")
+    queueBlockFrame(QStringLiteral("eq:bypass-global"), K500Protocol::eqBypassWrite(m_eqBypass),
+                    QStringLiteral("EQ Bypass · %1 · %2 %3 %4")
                         .arg(path)
-                        .arg(m_fxEqBypassMask, 2, 16, QLatin1Char('0')));
+                        .arg(m_eqBypass.m0, 2, 16, QLatin1Char('0'))
+                        .arg(m_eqBypass.m1, 2, 16, QLatin1Char('0'))
+                        .arg(m_eqBypass.m2, 2, 16, QLatin1Char('0')));
 }
 
 void K500Controller::queueOutput(const QString &section, const QString &path)

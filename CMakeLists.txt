@@ -76,6 +76,10 @@ add_executable(k500_p0_perf_selftest
     src/RuntimeMetrics.h
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/k500/K500Protocol.cpp
+    src/k500/K500Protocol.h
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
 )
 target_link_libraries(k500_p0_perf_selftest PRIVATE Qt6::Core)
 if(WIN32)
@@ -166,6 +170,10 @@ add_executable(k500_p42_batch_test
     src/k500/K500PresetCodec.h
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/k500/K500Protocol.cpp
+    src/k500/K500Protocol.h
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
 )
 target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core Qt6::Network)
 

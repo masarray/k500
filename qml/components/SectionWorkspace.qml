@@ -188,14 +188,13 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.minimumWidth: 360
                                     title: "Echo"
-                                    // ECHO_DIRECT_KNOB_PREP_V1 — reserve the fourth knob now so the
-                                    // final native mapping can be enabled without another UX reflow.
-                                    // It remains disabled until a donor capture verifies the write path.
+                                    // ECHO_CMD0D_CAPTURED_V2 — all four visible controls are live
+                                    // native fields; REPEAT uses the captured 0..10 scalar range.
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","echo","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",12)),from:0,to:100,step:1,unit:"",decimals:0},
-                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",400)),from:0,to:1000,step:1,unit:"ms",decimals:0},
-                                        {label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0,editable:false}
+                                        {label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",2)),from:0,to:10,step:1,unit:"",decimals:0},
+                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",300)),from:0,to:1000,step:1,unit:"ms",decimals:0},
+                                        {label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackFilterPanel {

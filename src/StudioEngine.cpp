@@ -1,4 +1,5 @@
 #include "StudioEngine.h"
+#include "k500/K500Protocol.h"
 
 #include <QtMath>
 
@@ -418,6 +419,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     syncDouble(m_hpfHz, fileU16(memory, 0x009C), [this] { emit hpfHzChanged(); });
     syncDouble(m_lpfHz, fileU16(memory, 0x009E), [this] { emit lpfHzChanged(); });
 
+    const K500EqBypassImage eqBypass{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
     QVariantMap eqState;
     for (const LiveEqDescriptor &section : LiveEqSections) {
         const QString key = QString::fromLatin1(section.key);
@@ -461,12 +463,16 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
             lpType = model->lpType();
             model->syncCrossover(hpf, lpf, hpType, lpType);
         }
+        QString bypassKey = key;
+        if (key == QStringLiteral("micA") || key == QStringLiteral("micB")) bypassKey = QStringLiteral("mic");
+        else if (key.endsWith(QStringLiteral("Alt"))) bypassKey.chop(3);
         eqState.insert(key, QVariantMap{
             {QStringLiteral("bands"), bands},
             {QStringLiteral("hpfHz"), hpf},
             {QStringLiteral("lpfHz"), lpf},
             {QStringLiteral("hpType"), hpType},
             {QStringLiteral("lpType"), lpType},
+            {QStringLiteral("bypass"), K500Protocol::eqBypassEnabled(eqBypass, bypassKey)},
         });
     }
     // Keep the canonical Music properties and graph model locked together.

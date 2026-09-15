@@ -28,12 +28,21 @@ StudioPanel {
     property string compareSide: "A"
     property var bypassSnapshot: null
     property bool eqBypassActive: false
-    // FX_EQ_BYPASS_CAPTURED_V1 — only Reverb/Echo currently have a verified
-    // hardware PEQ-bypass command. Other sections keep the reversible local
-    // zero-gain audition until their own native bypass captures exist.
-    readonly property string nativeFxEqBypassKey: {
+    // EQ_BYPASS_24BIT_CAPTURED_V2 — all visible PEQ sections now use the
+    // captured native shared bypass image; no section destructively zeros bands.
+    readonly property string nativeEqBypassKey: {
         var key = String(root.sectionLabel || "").trim().toLowerCase()
-        return key === "reverb" || key === "echo" ? key : ""
+        if (key === "mic a" || key === "mic b") return "mic"
+        if (key === "subwoofer") return "sub"
+        if (key === "music" || key === "reverb" || key === "echo" || key === "main" || key === "surround" || key === "center" || key === "sub") return key
+        return ""
+    }
+    readonly property string deviceEqStateKey: {
+        var key = String(root.sectionLabel || "").trim().toLowerCase()
+        if (key === "mic a") return "micA"
+        if (key === "mic b") return "micB"
+        if (key === "subwoofer") return "sub"
+        return root.nativeEqBypassKey
     }
 
     // PEQ_AB_AUTO_ACTIVE_V2
@@ -258,38 +267,27 @@ StudioPanel {
         initializeCompareIfNeeded()
         updateActiveCompareSnapshot()
     }
+    function deviceEqBypassValue(){
+        if(!root.engine || !root.engine.deviceStateReady || !root.deviceEqStateKey.length)return false
+        var eq=root.engine.deviceState ? root.engine.deviceState.eq : null
+        var section=eq ? eq[root.deviceEqStateKey] : null
+        return section && section.bypass !== undefined ? Boolean(section.bypass) : false
+    }
+    function syncEqBypassFromDevice(){
+        if(!root.engine || !root.engine.deviceStateReady || !root.nativeEqBypassKey.length)return
+        root.eqBypassActive=root.deviceEqBypassValue()
+        root.bypassSnapshot=null
+        curve.requestPaint()
+    }
     function setEqBypass(enabled){
         if(enabled===eqBypassActive)return
-
-        // FX_EQ_BYPASS_CAPTURED_V1 — Reverb/Echo bypass is a real native toggle.
-        // Do not destructively flatten their stored EQ bands: the device owns a
-        // separate bypass bit and should reveal the exact saved curve when disabled.
-        if(root.nativeFxEqBypassKey.length){
-            if(enabled)saveCompareSide()
-            eqBypassActive=enabled
-            bypassSnapshot=null
-            if(root.engine && typeof root.engine.editDevicePath === "function")
-                root.engine.editDevicePath("eq." + root.nativeFxEqBypassKey + ".bypass", enabled)
-            if(!enabled)updateActiveCompareSnapshot()
-            curve.requestPaint()
-            return
-        }
-
-        if(enabled){
-            saveCompareSide()
-            bypassSnapshot=captureEqState()
-            eqBypassActive=true
-            for(var i=0;i<bands.count;++i){
-                var b=bands.get(i)
-                bands.setBand(i,Number(b.freq),0,Number(b.q))
-            }
-        }else{
-            var restore=cloneState(bypassSnapshot)
-            eqBypassActive=false
-            bypassSnapshot=null
-            applyEqState(restore)
-            updateActiveCompareSnapshot()
-        }
+        if(!root.nativeEqBypassKey.length)return
+        if(enabled)saveCompareSide()
+        eqBypassActive=enabled
+        bypassSnapshot=null
+        if(root.engine && typeof root.engine.editDevicePath === "function")
+            root.engine.editDevicePath("eq." + root.nativeEqBypassKey + ".bypass", enabled)
+        if(!enabled)updateActiveCompareSnapshot()
         curve.requestPaint()
     }
     function selectCompareSide(side){
@@ -348,7 +346,12 @@ StudioPanel {
     Component.onCompleted: {
         ensureStartupCrossoverDefaults()
         selectBand(0)
-        Qt.callLater(function(){root.primeCompareFromCurrent()})
+        Qt.callLater(function(){root.primeCompareFromCurrent();root.syncEqBypassFromDevice()})
+    }
+
+    Connections {
+        target: root.engine
+        function onDeviceStateChanged(){ root.syncEqBypassFromDevice() }
     }
 
     ColumnLayout {
