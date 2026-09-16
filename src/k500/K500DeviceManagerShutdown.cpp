@@ -35,6 +35,11 @@ void K500DeviceManager::shutdown()
     }
     setLiveEnabled(false);
 
+    // P2_SCHEDULER_SHUTDOWN_BARRIER_V1 — setLiveEnabled(false) first surfaces
+    // queued work as rejected transport attempts; only then retire the session.
+    m_schedulerTimer.stop();
+    m_transactionScheduler.endSession();
+
     // 2) Stop all manager-side timers/state machines before native I/O closes.
     m_responseTimer.stop();
     m_probeDelayTimer.stop();
