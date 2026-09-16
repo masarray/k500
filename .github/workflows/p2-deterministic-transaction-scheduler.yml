@@ -1,0 +1,97 @@
+name: P2 Deterministic Transaction Scheduler
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500TransactionScheduler.*'
+      - 'src/k500/K500Controller.*'
+      - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/K500DeviceManagerShutdown.cpp'
+      - 'src/k500/P2TransactionSchedulerSelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - 'docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md'
+      - '.github/workflows/p2-deterministic-transaction-scheduler.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500TransactionScheduler.*'
+      - 'src/k500/K500Controller.*'
+      - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/K500DeviceManagerShutdown.cpp'
+      - 'src/k500/P2TransactionSchedulerSelfTestMain.cpp'
+      - 'CMakeLists.txt'
+      - 'docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md'
+      - '.github/workflows/p2-deterministic-transaction-scheduler.yml'
+
+jobs:
+  scheduler:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build scheduler self-test
+        shell: pwsh
+        run: cmake --build build --config Release --target k500_p2_scheduler_selftest
+
+      - name: Run scheduler self-test
+        shell: pwsh
+        run: build/k500_p2_scheduler_selftest.exe
+
+      - name: Guard P2 scheduler contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          h = Path('src/k500/K500TransactionScheduler.h').read_text(encoding='utf-8')
+          cpp = Path('src/k500/K500TransactionScheduler.cpp').read_text(encoding='utf-8')
+          test = Path('src/k500/P2TransactionSchedulerSelfTestMain.cpp').read_text(encoding='utf-8')
+          controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
+          manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
+          shutdown = Path('src/k500/K500DeviceManagerShutdown.cpp').read_text(encoding='utf-8')
+          docs = Path('docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md').read_text(encoding='utf-8')
+          docs_lower = docs.lower()
+          cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
+
+          checks = {
+              'scheduler contract marker': 'P2_DETERMINISTIC_TRANSACTION_SCHEDULER_V1' in h,
+              'hard bounded queue': 'maxQueued = 64' in h and 'RejectedBackpressure' in h,
+              'queue expiry': 'maxQueueAgeMs = 1500' in h and 'expire(qint64 nowMs)' in h,
+              'EQ pacing preserves 45ms policy': 'eqMinSpacingMs = 45' in h,
+              'block pacing preserves 55ms policy': 'blockMinSpacingMs = 55' in h,
+              'latest-wins coalescing': 'findCoalescingKey' in cpp and 'm_queue[replaceIndex]' in cpp,
+              'coalesced token recovery': 'P2_COALESCED_TOKEN_RECOVERY_V1' in cpp and 'm_dropped.append(m_queue.at(replaceIndex))' in cpp and 'superseded.first().token == 1' in test,
+              'priority then FIFO': 'candidatePriority > currentPriority' in cpp and 'candidate.sequence < current.sequence' in cpp,
+              'session rejection': 'RejectedStaleSession' in cpp and 'transaction.sessionEpoch != m_sessionEpoch' in cpp,
+              'telemetry': 'peakQueued' in h and 'coalesced' in h and 'dispatched' in h,
+              'dropped work recovery': 'takeDropped' in h and 'm_dropped' in cpp and 'takeDropped' in test,
+              'transport bridge': 'P2_SCHEDULER_TRANSPORT_BRIDGE_V1' in manager and 'm_transactionScheduler.enqueue' in manager and 'dispatchScheduledCommands' in manager,
+              'actual dispatch barrier': 'P2_ACTUAL_DISPATCH_BARRIER_V1' in controller and 'markCommandDispatched' in manager,
+              'controller does not pre-dispatch': 'm_canonicalState.markDispatched(command.token)' not in controller,
+              'scheduler shutdown barrier': 'P2_SCHEDULER_SHUTDOWN_BARRIER_V1' in shutdown and 'm_transactionScheduler.endSession()' in shutdown,
+              'hardware-free qualification': 'P2 deterministic transaction scheduler self-test passed' in test,
+              'built by cmake': 'k500_p2_scheduler_selftest' in cmake,
+              'authority boundary documented': 'transport acceptance' in docs_lower and 'hardware confirmation' in docs_lower,
+          }
+
+          failed = [name for name, ok in checks.items() if not ok]
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+          if failed:
+              raise SystemExit('P2 scheduler guard failed: ' + ', '.join(failed))
+          print('ALL P2 SCHEDULER GUARDS PASSED')

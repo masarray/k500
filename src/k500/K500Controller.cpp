@@ -806,6 +806,19 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
     }
 }
 
+bool K500Controller::markCommandDispatched(quint64 sessionEpoch, quint64 token)
+{
+    // P2_ACTUAL_DISPATCH_BARRIER_V1 — Queued remains Queued while the
+    // transaction waits inside the deterministic scheduler. Only the exact
+    // release to the asynchronous transport worker advances it to Dispatched.
+    if (sessionEpoch != m_canonicalState.sessionEpoch())
+        return false;
+    if (!m_canonicalState.markDispatched(token))
+        return false;
+    emit canonicalStateChanged();
+    return true;
+}
+
 void K500Controller::handleCommandDispatchResult(quint64 sessionEpoch, quint64 token,
                                                   const QString &path, bool accepted,
                                                   const QString &reason)
@@ -873,9 +886,8 @@ void K500Controller::flushEqFrames()
     m_pendingEqFrames.clear();
     for (const PendingFrame &pending : frames) {
         const auto &command = pending.command;
-        if (!m_canonicalState.isCurrent(command) || !m_canonicalState.markDispatched(command.token))
+        if (!m_canonicalState.isCurrent(command))
             continue;
-        emit canonicalStateChanged();
         emit commandReady(command.sessionEpoch, command.token, command.frame, command.label,
                           command.semanticPath, command.coalescingKey);
         emit frameReady(command.frame, command.label);
@@ -894,9 +906,8 @@ void K500Controller::flushBlockFrames()
     m_pendingBlockFrames.clear();
     for (const PendingFrame &pending : frames) {
         const auto &command = pending.command;
-        if (!m_canonicalState.isCurrent(command) || !m_canonicalState.markDispatched(command.token))
+        if (!m_canonicalState.isCurrent(command))
             continue;
-        emit canonicalStateChanged();
         emit commandReady(command.sessionEpoch, command.token, command.frame, command.label,
                           command.semanticPath, command.coalescingKey);
         emit frameReady(command.frame, command.label);

@@ -57,6 +57,8 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500Controller.h
     src/k500/K500CanonicalState.cpp
     src/k500/K500CanonicalState.h
+    src/k500/K500TransactionScheduler.cpp
+    src/k500/K500TransactionScheduler.h
     src/k500/K500ResponseParser.cpp
     src/k500/K500ResponseParser.h
     src/k500/K500WinIo.cpp
@@ -96,6 +98,15 @@ add_executable(k500_p1_state_selftest
 )
 target_include_directories(k500_p1_state_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(k500_p1_state_selftest PRIVATE Qt6::Core)
+
+# P2_DETERMINISTIC_TRANSACTION_SCHEDULER_V1 — bounded/latest-wins host scheduling.
+add_executable(k500_p2_scheduler_selftest
+    src/k500/P2TransactionSchedulerSelfTestMain.cpp
+    src/k500/K500TransactionScheduler.cpp
+    src/k500/K500TransactionScheduler.h
+)
+target_include_directories(k500_p2_scheduler_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(k500_p2_scheduler_selftest PRIVATE Qt6::Core)
 
 # P2_TRANSPORT_LIFECYCLE_STRESS_V1 — hardware-free worker lifecycle qualification.
 if(WIN32)
