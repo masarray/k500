@@ -31,6 +31,7 @@ void K500CanonicalState::resetSessionPayload()
     m_snapshotReady = false;
     m_rawSnapshot.clear();
     m_snapshotSha256.clear();
+    m_snapshotGeneration = 0;
     m_confirmed.clear();
     m_desired.clear();
     m_inFlightByKey.clear();
@@ -56,16 +57,52 @@ bool K500CanonicalState::adoptSnapshot(const QByteArray &memory, QString *error)
     m_rawSnapshot = memory;
     m_rawSnapshot.detach();
     m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);
+    m_snapshotGeneration = 1;
     m_snapshotReady = true;
 
-    // A complete readback is an authority barrier. Any pre-readback intent or
-    // queued command is stale relative to the just-adopted hardware truth.
+    // A complete initial/Recall readback is an authority barrier. Any
+    // pre-readback intent or queued command is stale relative to hardware truth.
     m_confirmed.clear();
     m_desired.clear();
     m_inFlightByKey.clear();
     m_keyByToken.clear();
     m_nextRevision = 1;
     m_nextToken = 1;
+    setReason(error, {});
+    return true;
+}
+
+bool K500CanonicalState::reconcileSnapshot(const QByteArray &memory, QString *error)
+{
+    // P3_AUTHORITATIVE_RECONCILIATION_V1
+    if (!m_sessionActive) {
+        setReason(error, QStringLiteral("No active device session"));
+        return false;
+    }
+    if (!m_snapshotReady) {
+        setReason(error, QStringLiteral("Initial authoritative snapshot has not been adopted"));
+        return false;
+    }
+    if (memory.size() != ActiveMemorySize) {
+        setReason(error, QStringLiteral("Reconciliation snapshot must be exactly %1 bytes, got %2")
+                             .arg(ActiveMemorySize).arg(memory.size()));
+        return false;
+    }
+    if (!m_inFlightByKey.isEmpty()) {
+        setReason(error, QStringLiteral("Cannot reconcile while canonical commands are still in flight"));
+        return false;
+    }
+
+    m_rawSnapshot = memory;
+    m_rawSnapshot.detach();
+    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);
+    ++m_snapshotGeneration;
+    if (m_snapshotGeneration == 0)
+        m_snapshotGeneration = 1;
+
+    // ConfirmedState is rebuilt from this authoritative image by Controller.
+    // DesiredState intentionally survives until confirm() sees the same value.
+    m_confirmed.clear();
     setReason(error, {});
     return true;
 }
@@ -239,6 +276,28 @@ bool K500CanonicalState::completeTransport(quint64 sessionEpoch, quint64 token, 
     m_inFlightByKey.erase(inFlightIt);
     m_keyByToken.remove(token);
     return true;
+}
+
+QStringList K500CanonicalState::divergentDesiredPaths() const
+{
+    QStringList paths;
+    for (auto it = m_desired.constBegin(); it != m_desired.constEnd(); ++it) {
+        if (it->sessionEpoch != m_sessionEpoch)
+            continue;
+        const auto confirmedIt = m_confirmed.constFind(it.key());
+        if (confirmedIt == m_confirmed.constEnd()
+            || confirmedIt->sessionEpoch != m_sessionEpoch)
+            continue;
+        if (confirmedIt->value != it->value)
+            paths.append(it.key());
+    }
+    paths.sort(Qt::CaseSensitive);
+    return paths;
+}
+
+int K500CanonicalState::divergentDesiredCount() const
+{
+    return divergentDesiredPaths().size();
 }
 
 QString K500CanonicalState::evidenceName(Evidence evidence)
