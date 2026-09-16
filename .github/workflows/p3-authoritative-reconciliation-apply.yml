@@ -30,385 +30,52 @@ jobs:
                   raise SystemExit(f'{path}: expected one match, got {count}: {old[:100]!r}')
               p.write_text(text.replace(old, new, 1), encoding='utf-8')
 
-          # Canonical state: accept later authoritative snapshots without erasing
-          # unresolved user intent, while never allowing in-flight work across the barrier.
-          replace_once(
-              'src/k500/K500CanonicalState.h',
-              '#include <QString>\n#include <QVariant>',
-              '#include <QString>\n#include <QStringList>\n#include <QVariant>')
-          replace_once(
-              'src/k500/K500CanonicalState.h',
-              '    bool adoptSnapshot(const QByteArray &memory, QString *error = nullptr);\n    bool snapshotReady() const { return m_snapshotReady; }',
-              '    bool adoptSnapshot(const QByteArray &memory, QString *error = nullptr);\n    // P3_AUTHORITATIVE_RECONCILIATION_V1 — replace hardware truth after a\n    // deliberate readback barrier while preserving unresolved DesiredState.\n    bool reconcileSnapshot(const QByteArray &memory, QString *error = nullptr);\n    bool snapshotReady() const { return m_snapshotReady; }\n    quint64 snapshotGeneration() const { return m_snapshotGeneration; }')
-          replace_once(
-              'src/k500/K500CanonicalState.h',
-              '    int confirmedCount() const { return m_confirmed.size(); }\n    int desiredCount() const { return m_desired.size(); }\n    int inFlightCount() const { return m_inFlightByKey.size(); }',
-              '    int confirmedCount() const { return m_confirmed.size(); }\n    int desiredCount() const { return m_desired.size(); }\n    int inFlightCount() const { return m_inFlightByKey.size(); }\n    int divergentDesiredCount() const;\n    QStringList divergentDesiredPaths() const;')
-          replace_once(
-              'src/k500/K500CanonicalState.h',
-              '    QByteArray m_rawSnapshot;\n    QByteArray m_snapshotSha256;\n    QHash<QString, ValueState> m_confirmed;',
-              '    QByteArray m_rawSnapshot;\n    QByteArray m_snapshotSha256;\n    quint64 m_snapshotGeneration = 0;\n    QHash<QString, ValueState> m_confirmed;')
+          replace_once('src/k500/K500CanonicalState.h', '#include <QString>\n#include <QVariant>', '#include <QString>\n#include <QStringList>\n#include <QVariant>')
+          replace_once('src/k500/K500CanonicalState.h', '    bool adoptSnapshot(const QByteArray &memory, QString *error = nullptr);\n    bool snapshotReady() const { return m_snapshotReady; }', '    bool adoptSnapshot(const QByteArray &memory, QString *error = nullptr);\n    // P3_AUTHORITATIVE_RECONCILIATION_V1 — replace hardware truth after a\n    // deliberate readback barrier while preserving unresolved DesiredState.\n    bool reconcileSnapshot(const QByteArray &memory, QString *error = nullptr);\n    bool snapshotReady() const { return m_snapshotReady; }\n    quint64 snapshotGeneration() const { return m_snapshotGeneration; }')
+          replace_once('src/k500/K500CanonicalState.h', '    int confirmedCount() const { return m_confirmed.size(); }\n    int desiredCount() const { return m_desired.size(); }\n    int inFlightCount() const { return m_inFlightByKey.size(); }', '    int confirmedCount() const { return m_confirmed.size(); }\n    int desiredCount() const { return m_desired.size(); }\n    int inFlightCount() const { return m_inFlightByKey.size(); }\n    int divergentDesiredCount() const;\n    QStringList divergentDesiredPaths() const;')
+          replace_once('src/k500/K500CanonicalState.h', '    QByteArray m_rawSnapshot;\n    QByteArray m_snapshotSha256;\n    QHash<QString, ValueState> m_confirmed;', '    QByteArray m_rawSnapshot;\n    QByteArray m_snapshotSha256;\n    quint64 m_snapshotGeneration = 0;\n    QHash<QString, ValueState> m_confirmed;')
 
-          replace_once(
-              'src/k500/K500CanonicalState.cpp',
-              '    m_rawSnapshot.clear();\n    m_snapshotSha256.clear();\n    m_confirmed.clear();',
-              '    m_rawSnapshot.clear();\n    m_snapshotSha256.clear();\n    m_snapshotGeneration = 0;\n    m_confirmed.clear();')
-          replace_once(
-              'src/k500/K500CanonicalState.cpp',
-              '    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);\n    m_snapshotReady = true;',
-              '    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);\n    m_snapshotGeneration = 1;\n    m_snapshotReady = true;')
-          replace_once(
-              'src/k500/K500CanonicalState.cpp',
-              'void K500CanonicalState::confirm(const QString &path, const QVariant &value, Evidence evidence)\n{',
-              '''bool K500CanonicalState::reconcileSnapshot(const QByteArray &memory, QString *error)\n{\n    // P3_AUTHORITATIVE_RECONCILIATION_V1\n    if (!m_sessionActive) {\n        setReason(error, QStringLiteral("No active device session"));\n        return false;\n    }\n    if (!m_snapshotReady) {\n        setReason(error, QStringLiteral("Initial authoritative snapshot has not been adopted"));\n        return false;\n    }\n    if (memory.size() != ActiveMemorySize) {\n        setReason(error, QStringLiteral("Reconciliation snapshot must be exactly %1 bytes, got %2")\n                             .arg(ActiveMemorySize).arg(memory.size()));\n        return false;\n    }\n    if (!m_inFlightByKey.isEmpty()) {\n        setReason(error, QStringLiteral("Cannot reconcile while canonical commands are still in flight"));\n        return false;\n    }\n\n    m_rawSnapshot = memory;\n    m_rawSnapshot.detach();\n    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);\n    ++m_snapshotGeneration;\n    if (m_snapshotGeneration == 0)\n        m_snapshotGeneration = 1;\n\n    // ConfirmedState is rebuilt from this authoritative image by Controller.\n    // DesiredState intentionally survives until confirm() sees the same value.\n    m_confirmed.clear();\n    setReason(error, {});\n    return true;\n}\n\nvoid K500CanonicalState::confirm(const QString &path, const QVariant &value, Evidence evidence)\n{''')
-          replace_once(
-              'src/k500/K500CanonicalState.cpp',
-              'QString K500CanonicalState::evidenceName(Evidence evidence)\n{',
-              '''QStringList K500CanonicalState::divergentDesiredPaths() const\n{\n    QStringList paths;\n    for (auto it = m_desired.constBegin(); it != m_desired.constEnd(); ++it) {\n        if (it->sessionEpoch != m_sessionEpoch)\n            continue;\n        const auto confirmedIt = m_confirmed.constFind(it.key());\n        if (confirmedIt == m_confirmed.constEnd()\n            || confirmedIt->sessionEpoch != m_sessionEpoch)\n            continue;\n        if (confirmedIt->value != it->value)\n            paths.append(it.key());\n    }\n    paths.sort(Qt::CaseSensitive);\n    return paths;\n}\n\nint K500CanonicalState::divergentDesiredCount() const\n{\n    return divergentDesiredPaths().size();\n}\n\nQString K500CanonicalState::evidenceName(Evidence evidence)\n{''')
+          replace_once('src/k500/K500CanonicalState.cpp', '    m_rawSnapshot.clear();\n    m_snapshotSha256.clear();\n    m_confirmed.clear();', '    m_rawSnapshot.clear();\n    m_snapshotSha256.clear();\n    m_snapshotGeneration = 0;\n    m_confirmed.clear();')
+          replace_once('src/k500/K500CanonicalState.cpp', '    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);\n    m_snapshotReady = true;', '    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);\n    m_snapshotGeneration = 1;\n    m_snapshotReady = true;')
+          replace_once('src/k500/K500CanonicalState.cpp', 'void K500CanonicalState::confirm(const QString &path, const QVariant &value, Evidence evidence)\n{', 'bool K500CanonicalState::reconcileSnapshot(const QByteArray &memory, QString *error)\n{\n    // P3_AUTHORITATIVE_RECONCILIATION_V1\n    if (!m_sessionActive) {\n        setReason(error, QStringLiteral("No active device session"));\n        return false;\n    }\n    if (!m_snapshotReady) {\n        setReason(error, QStringLiteral("Initial authoritative snapshot has not been adopted"));\n        return false;\n    }\n    if (memory.size() != ActiveMemorySize) {\n        setReason(error, QStringLiteral("Reconciliation snapshot must be exactly %1 bytes, got %2").arg(ActiveMemorySize).arg(memory.size()));\n        return false;\n    }\n    if (!m_inFlightByKey.isEmpty()) {\n        setReason(error, QStringLiteral("Cannot reconcile while canonical commands are still in flight"));\n        return false;\n    }\n\n    m_rawSnapshot = memory;\n    m_rawSnapshot.detach();\n    m_snapshotSha256 = QCryptographicHash::hash(m_rawSnapshot, QCryptographicHash::Sha256);\n    ++m_snapshotGeneration;\n    if (m_snapshotGeneration == 0)\n        m_snapshotGeneration = 1;\n\n    // ConfirmedState is rebuilt from this authoritative image by Controller.\n    // DesiredState intentionally survives until confirm() sees the same value.\n    m_confirmed.clear();\n    setReason(error, {});\n    return true;\n}\n\nvoid K500CanonicalState::confirm(const QString &path, const QVariant &value, Evidence evidence)\n{')
+          replace_once('src/k500/K500CanonicalState.cpp', 'QString K500CanonicalState::evidenceName(Evidence evidence)\n{', 'QStringList K500CanonicalState::divergentDesiredPaths() const\n{\n    QStringList paths;\n    for (auto it = m_desired.constBegin(); it != m_desired.constEnd(); ++it) {\n        if (it->sessionEpoch != m_sessionEpoch)\n            continue;\n        const auto confirmedIt = m_confirmed.constFind(it.key());\n        if (confirmedIt == m_confirmed.constEnd() || confirmedIt->sessionEpoch != m_sessionEpoch)\n            continue;\n        if (confirmedIt->value != it->value)\n            paths.append(it.key());\n    }\n    paths.sort(Qt::CaseSensitive);\n    return paths;\n}\n\nint K500CanonicalState::divergentDesiredCount() const\n{\n    return divergentDesiredPaths().size();\n}\n\nQString K500CanonicalState::evidenceName(Evidence evidence)\n{')
 
-          # Controller: keep initial/Recall hydration destructive, but give P3 a
-          # separate preserving reconciliation entry point.
-          replace_once(
-              'src/k500/K500Controller.h',
-              '    Q_PROPERTY(int desiredStateCount READ desiredStateCount NOTIFY canonicalStateChanged)\n    Q_PROPERTY(int inFlightStateCount READ inFlightStateCount NOTIFY canonicalStateChanged)',
-              '    Q_PROPERTY(int desiredStateCount READ desiredStateCount NOTIFY canonicalStateChanged)\n    Q_PROPERTY(int inFlightStateCount READ inFlightStateCount NOTIFY canonicalStateChanged)\n    Q_PROPERTY(qulonglong authoritativeSnapshotGeneration READ authoritativeSnapshotGeneration NOTIFY canonicalStateChanged)\n    Q_PROPERTY(int divergentDesiredStateCount READ divergentDesiredStateCount NOTIFY canonicalStateChanged)')
-          replace_once(
-              'src/k500/K500Controller.h',
-              '    int desiredStateCount() const { return m_canonicalState.desiredCount(); }\n    int inFlightStateCount() const { return m_canonicalState.inFlightCount(); }',
-              '    int desiredStateCount() const { return m_canonicalState.desiredCount(); }\n    int inFlightStateCount() const { return m_canonicalState.inFlightCount(); }\n    qulonglong authoritativeSnapshotGeneration() const { return m_canonicalState.snapshotGeneration(); }\n    int divergentDesiredStateCount() const { return m_canonicalState.divergentDesiredCount(); }')
-          replace_once(
-              'src/k500/K500Controller.h',
-              '    void hydrateFromDeviceMemory(const QByteArray &memory);\n    void clearDeviceState();',
-              '    void hydrateFromDeviceMemory(const QByteArray &memory);\n    void reconcileFromDeviceMemory(const QByteArray &memory);\n    void clearDeviceState();')
-          replace_once(
-              'src/k500/K500Controller.h',
-              '    void recordConfirmedState(const QByteArray &memory);',
-              '    void recordConfirmedState(const QByteArray &memory);\n    void applyDeviceMemory(const QByteArray &memory, bool preserveDesiredIntent);')
+          replace_once('src/k500/K500Controller.h', '    Q_PROPERTY(int desiredStateCount READ desiredStateCount NOTIFY canonicalStateChanged)\n    Q_PROPERTY(int inFlightStateCount READ inFlightStateCount NOTIFY canonicalStateChanged)', '    Q_PROPERTY(int desiredStateCount READ desiredStateCount NOTIFY canonicalStateChanged)\n    Q_PROPERTY(int inFlightStateCount READ inFlightStateCount NOTIFY canonicalStateChanged)\n    Q_PROPERTY(qulonglong authoritativeSnapshotGeneration READ authoritativeSnapshotGeneration NOTIFY canonicalStateChanged)\n    Q_PROPERTY(int divergentDesiredStateCount READ divergentDesiredStateCount NOTIFY canonicalStateChanged)')
+          replace_once('src/k500/K500Controller.h', '    int desiredStateCount() const { return m_canonicalState.desiredCount(); }\n    int inFlightStateCount() const { return m_canonicalState.inFlightCount(); }', '    int desiredStateCount() const { return m_canonicalState.desiredCount(); }\n    int inFlightStateCount() const { return m_canonicalState.inFlightCount(); }\n    qulonglong authoritativeSnapshotGeneration() const { return m_canonicalState.snapshotGeneration(); }\n    int divergentDesiredStateCount() const { return m_canonicalState.divergentDesiredCount(); }')
+          replace_once('src/k500/K500Controller.h', '    void hydrateFromDeviceMemory(const QByteArray &memory);\n    void clearDeviceState();', '    void hydrateFromDeviceMemory(const QByteArray &memory);\n    void reconcileFromDeviceMemory(const QByteArray &memory);\n    void clearDeviceState();')
+          replace_once('src/k500/K500Controller.h', '    void recordConfirmedState(const QByteArray &memory);', '    void recordConfirmedState(const QByteArray &memory);\n    void applyDeviceMemory(const QByteArray &memory, bool preserveDesiredIntent);')
 
-          replace_once(
-              'src/k500/K500Controller.cpp',
-              '''void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)\n{\n    // P1_CANONICAL_SNAPSHOT_BARRIER_V1 — only an exact Retrieve-All image can\n    // become hardware truth. No partial buffer may unlock native writes.\n    if (memory.size() != K500CanonicalState::ActiveMemorySize)\n        return;\n    if (!m_canonicalState.sessionActive())\n        m_canonicalState.beginSession(); // deterministic harness/recovery fallback\n    QString snapshotError;\n    if (!m_canonicalState.adoptSnapshot(memory, &snapshotError)) {\n        emit writeDeferred(QStringLiteral("__snapshot__"), snapshotError);\n        return;\n    }\n    emit canonicalStateChanged();''',
-              '''void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)\n{\n    applyDeviceMemory(memory, false);\n}\n\nvoid K500Controller::reconcileFromDeviceMemory(const QByteArray &memory)\n{\n    applyDeviceMemory(memory, true);\n}\n\nvoid K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDesiredIntent)\n{\n    // P1_CANONICAL_SNAPSHOT_BARRIER_V1 + P3_AUTHORITATIVE_RECONCILIATION_V1\n    // Initial/Recall hydration resets intent; a deliberate P3 verification\n    // snapshot preserves unresolved DesiredState until semantic confirmation.\n    if (memory.size() != K500CanonicalState::ActiveMemorySize)\n        return;\n    if (!m_canonicalState.sessionActive())\n        m_canonicalState.beginSession(); // deterministic harness/recovery fallback\n    QString snapshotError;\n    const bool accepted = preserveDesiredIntent\n        ? m_canonicalState.reconcileSnapshot(memory, &snapshotError)\n        : m_canonicalState.adoptSnapshot(memory, &snapshotError);\n    if (!accepted) {\n        emit writeDeferred(preserveDesiredIntent ? QStringLiteral("__reconcile__")\n                                                 : QStringLiteral("__snapshot__"),\n                           snapshotError);\n        return;\n    }\n    emit canonicalStateChanged();''')
+          old = 'void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)\n{\n    // P1_CANONICAL_SNAPSHOT_BARRIER_V1 — only an exact Retrieve-All image can\n    // become hardware truth. No partial buffer may unlock native writes.\n    if (memory.size() != K500CanonicalState::ActiveMemorySize)\n        return;\n    if (!m_canonicalState.sessionActive())\n        m_canonicalState.beginSession(); // deterministic harness/recovery fallback\n    QString snapshotError;\n    if (!m_canonicalState.adoptSnapshot(memory, &snapshotError)) {\n        emit writeDeferred(QStringLiteral("__snapshot__"), snapshotError);\n        return;\n    }\n    emit canonicalStateChanged();'
+          new = 'void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)\n{\n    applyDeviceMemory(memory, false);\n}\n\nvoid K500Controller::reconcileFromDeviceMemory(const QByteArray &memory)\n{\n    applyDeviceMemory(memory, true);\n}\n\nvoid K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDesiredIntent)\n{\n    // P1_CANONICAL_SNAPSHOT_BARRIER_V1 + P3_AUTHORITATIVE_RECONCILIATION_V1\n    // Initial/Recall hydration resets intent; deliberate verification preserves\n    // unresolved DesiredState until semantic confirmation.\n    if (memory.size() != K500CanonicalState::ActiveMemorySize)\n        return;\n    if (!m_canonicalState.sessionActive())\n        m_canonicalState.beginSession(); // deterministic harness/recovery fallback\n    QString snapshotError;\n    const bool accepted = preserveDesiredIntent\n        ? m_canonicalState.reconcileSnapshot(memory, &snapshotError)\n        : m_canonicalState.adoptSnapshot(memory, &snapshotError);\n    if (!accepted) {\n        emit writeDeferred(preserveDesiredIntent ? QStringLiteral("__reconcile__") : QStringLiteral("__snapshot__"), snapshotError);\n        return;\n    }\n    emit canonicalStateChanged();'
+          replace_once('src/k500/K500Controller.cpp', old, new)
 
-          # Device manager: after a quiet burst of accepted canonical writes,
-          # freeze LIVE, perform the already-proven full readback, reconcile, resume.
-          replace_once(
-              'src/k500/K500DeviceManager.h',
-              '    void activeMemoryReady(const QByteArray &memory);\n    void commandDispatchResult',
-              '    void activeMemoryReady(const QByteArray &memory);\n    void reconciliationMemoryReady(const QByteArray &memory);\n    void commandDispatchResult')
-          replace_once(
-              'src/k500/K500DeviceManager.h',
-              '    void setLiveEnabled(bool enabled);\n    qint64 schedulerNowMs() const;',
-              '    void setLiveEnabled(bool enabled);\n    void scheduleAuthoritativeReconciliation();\n    void startAuthoritativeReconciliation();\n    qint64 schedulerNowMs() const;')
-          replace_once(
-              'src/k500/K500DeviceManager.h',
-              '    bool m_liveEnabled = false;\n    bool m_muted = false;\n    bool m_shuttingDown = false;',
-              '    bool m_liveEnabled = false;\n    bool m_muted = false;\n    bool m_shuttingDown = false;\n    bool m_reconciliationInProgress = false;')
-          replace_once(
-              'src/k500/K500DeviceManager.h',
-              '    QTimer m_heartbeatTimer;\n    QTimer m_schedulerTimer;',
-              '    QTimer m_heartbeatTimer;\n    QTimer m_reconciliationTimer;\n    QTimer m_schedulerTimer;')
+          replace_once('src/k500/K500DeviceManager.h', '    void activeMemoryReady(const QByteArray &memory);\n    void commandDispatchResult', '    void activeMemoryReady(const QByteArray &memory);\n    void reconciliationMemoryReady(const QByteArray &memory);\n    void commandDispatchResult')
+          replace_once('src/k500/K500DeviceManager.h', '    void setLiveEnabled(bool enabled);\n    qint64 schedulerNowMs() const;', '    void setLiveEnabled(bool enabled);\n    void scheduleAuthoritativeReconciliation();\n    void startAuthoritativeReconciliation();\n    qint64 schedulerNowMs() const;')
+          replace_once('src/k500/K500DeviceManager.h', '    bool m_liveEnabled = false;\n    bool m_muted = false;\n    bool m_shuttingDown = false;', '    bool m_liveEnabled = false;\n    bool m_muted = false;\n    bool m_shuttingDown = false;\n    bool m_reconciliationInProgress = false;')
+          replace_once('src/k500/K500DeviceManager.h', '    QTimer m_heartbeatTimer;\n    QTimer m_schedulerTimer;', '    QTimer m_heartbeatTimer;\n    QTimer m_reconciliationTimer;\n    QTimer m_schedulerTimer;')
 
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              'constexpr int ConnectionWatchdogMs = 12000;\nconstexpr int DiagnosticLogLimit = 240;',
-              'constexpr int ConnectionWatchdogMs = 12000;\nconstexpr int DiagnosticLogLimit = 240;\nconstexpr int AuthoritativeReconcileIdleMs = 700;\nconstexpr int AuthoritativeReconcileRetryMs = 120;')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '    m_heartbeatTimer.setInterval(HeartbeatIntervalMs);\n    m_schedulerTimer.setSingleShot(true);',
-              '    m_heartbeatTimer.setInterval(HeartbeatIntervalMs);\n    m_reconciliationTimer.setSingleShot(true);\n    m_schedulerTimer.setSingleShot(true);')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '    connect(&m_heartbeatTimer, &QTimer::timeout,\n            this, &K500DeviceManager::heartbeatTick);\n    connect(&m_schedulerTimer, &QTimer::timeout,',
-              '    connect(&m_heartbeatTimer, &QTimer::timeout,\n            this, &K500DeviceManager::heartbeatTick);\n    connect(&m_reconciliationTimer, &QTimer::timeout,\n            this, &K500DeviceManager::startAuthoritativeReconciliation);\n    connect(&m_schedulerTimer, &QTimer::timeout,')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '        connect(this, &K500DeviceManager::activeMemoryReady,\n                m_controller, &K500Controller::hydrateFromDeviceMemory);',
-              '        connect(this, &K500DeviceManager::activeMemoryReady,\n                m_controller, &K500Controller::hydrateFromDeviceMemory);\n        connect(this, &K500DeviceManager::reconciliationMemoryReady,\n                m_controller, &K500Controller::reconcileFromDeviceMemory);')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '''        emit commandDispatchResult(\n            transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,\n            accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));\n\n        if (!accepted || !connected() || !m_liveEnabled)''',
-              '''        emit commandDispatchResult(\n            transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,\n            accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));\n        if (accepted)\n            scheduleAuthoritativeReconciliation();\n\n        if (!accepted || !connected() || !m_liveEnabled)''')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              'void K500DeviceManager::beginBluetoothScan()\n{',
-              '''void K500DeviceManager::scheduleAuthoritativeReconciliation()\n{\n    // P3_AUTHORITATIVE_RECONCILIATION_V1 — debounce a full, proven CMD 0x40\n    // readback until the current live-write burst has gone quiet.\n    if (!m_controller || m_stage != Stage::Ready || !connected() || !m_liveEnabled\n        || m_controller->desiredStateCount() <= 0)\n        return;\n    m_reconciliationTimer.start(AuthoritativeReconcileIdleMs);\n}\n\nvoid K500DeviceManager::startAuthoritativeReconciliation()\n{\n    if (!m_controller || m_stage != Stage::Ready || !connected() || !m_liveEnabled\n        || m_controller->desiredStateCount() <= 0)\n        return;\n\n    // Do not cross a producer/scheduler in-flight boundary. A short retry keeps\n    // the barrier deterministic without dropping the newest user intent.\n    if (!m_transactionScheduler.empty() || m_controller->inFlightStateCount() > 0) {\n        m_reconciliationTimer.start(AuthoritativeReconcileRetryMs);\n        return;\n    }\n\n    m_reconciliationInProgress = true;\n    setLiveEnabled(false);\n    setStatus(QStringLiteral("syncing"));\n    emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation"),\n                 QStringLiteral("LIVE paused; verifying 939-byte hardware state"));\n    requestActiveMemoryReadback();\n}\n\nvoid K500DeviceManager::beginBluetoothScan()\n{''')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '''    // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.\n    // Only after the complete 939-byte snapshot has propagated do edits become\n    // eligible to transmit back to the K500.\n    emit deviceScalarsReady(m_activeMemory.left(0x40));\n    emit activeMemoryReady(m_activeMemory);\n    setLiveEnabled(true);\n    setError({});\n    setStatus(QStringLiteral("connected"));\n\n    emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),\n                 QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));''',
-              '''    // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.\n    // Initial/Recall snapshots reset intent. P3 verification snapshots preserve\n    // DesiredState and let semantic confirm() calls prove convergence.\n    const bool wasReconciliation = m_reconciliationInProgress;\n    if (wasReconciliation) {\n        emit reconciliationMemoryReady(m_activeMemory);\n    } else {\n        emit deviceScalarsReady(m_activeMemory.left(0x40));\n        emit activeMemoryReady(m_activeMemory);\n    }\n    setLiveEnabled(true);\n    setError({});\n    setStatus(QStringLiteral("connected"));\n\n    if (wasReconciliation && m_controller) {\n        emit logLine(\n            QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation complete"),\n            QStringLiteral("generation %1 · unresolved %2 · divergent %3")\n                .arg(m_controller->authoritativeSnapshotGeneration())\n                .arg(m_controller->desiredStateCount())\n                .arg(m_controller->divergentDesiredStateCount()));\n    } else {\n        emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),\n                     QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));\n    }\n    m_reconciliationInProgress = false;''')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '''    root.insert(QStringLiteral("transactionScheduler"), scheduler);\n\n    QJsonObject presetOperation;''',
-              '''    root.insert(QStringLiteral("transactionScheduler"), scheduler);\n\n    QJsonObject canonical;\n    if (m_controller) {\n        canonical.insert(QStringLiteral("snapshotGeneration"),\n                         QString::number(m_controller->authoritativeSnapshotGeneration()));\n        canonical.insert(QStringLiteral("desired"), m_controller->desiredStateCount());\n        canonical.insert(QStringLiteral("inFlight"), m_controller->inFlightStateCount());\n        canonical.insert(QStringLiteral("divergentDesired"),\n                         m_controller->divergentDesiredStateCount());\n    }\n    canonical.insert(QStringLiteral("reconciliationInProgress"), m_reconciliationInProgress);\n    root.insert(QStringLiteral("canonicalState"), canonical);\n\n    QJsonObject presetOperation;''')
-          replace_once(
-              'src/k500/K500DeviceManager.cpp',
-              '''    m_heartbeatTimer.stop();\n    m_stage = Stage::Idle;''',
-              '''    m_heartbeatTimer.stop();\n    m_reconciliationTimer.stop();\n    m_reconciliationInProgress = false;\n    m_stage = Stage::Idle;''')
+          replace_once('src/k500/K500DeviceManager.cpp', 'constexpr int ConnectionWatchdogMs = 12000;\nconstexpr int DiagnosticLogLimit = 240;', 'constexpr int ConnectionWatchdogMs = 12000;\nconstexpr int DiagnosticLogLimit = 240;\nconstexpr int AuthoritativeReconcileIdleMs = 700;\nconstexpr int AuthoritativeReconcileRetryMs = 120;')
+          replace_once('src/k500/K500DeviceManager.cpp', '    m_heartbeatTimer.setInterval(HeartbeatIntervalMs);\n    m_schedulerTimer.setSingleShot(true);', '    m_heartbeatTimer.setInterval(HeartbeatIntervalMs);\n    m_reconciliationTimer.setSingleShot(true);\n    m_schedulerTimer.setSingleShot(true);')
+          replace_once('src/k500/K500DeviceManager.cpp', '    connect(&m_heartbeatTimer, &QTimer::timeout,\n            this, &K500DeviceManager::heartbeatTick);\n    connect(&m_schedulerTimer, &QTimer::timeout,', '    connect(&m_heartbeatTimer, &QTimer::timeout,\n            this, &K500DeviceManager::heartbeatTick);\n    connect(&m_reconciliationTimer, &QTimer::timeout,\n            this, &K500DeviceManager::startAuthoritativeReconciliation);\n    connect(&m_schedulerTimer, &QTimer::timeout,')
+          replace_once('src/k500/K500DeviceManager.cpp', '        connect(this, &K500DeviceManager::activeMemoryReady,\n                m_controller, &K500Controller::hydrateFromDeviceMemory);', '        connect(this, &K500DeviceManager::activeMemoryReady,\n                m_controller, &K500Controller::hydrateFromDeviceMemory);\n        connect(this, &K500DeviceManager::reconciliationMemoryReady,\n                m_controller, &K500Controller::reconcileFromDeviceMemory);')
+          replace_once('src/k500/K500DeviceManager.cpp', '        emit commandDispatchResult(\n            transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,\n            accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));\n\n        if (!accepted || !connected() || !m_liveEnabled)', '        emit commandDispatchResult(\n            transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,\n            accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));\n        if (accepted)\n            scheduleAuthoritativeReconciliation();\n\n        if (!accepted || !connected() || !m_liveEnabled)')
+          replace_once('src/k500/K500DeviceManager.cpp', 'void K500DeviceManager::beginBluetoothScan()\n{', 'void K500DeviceManager::scheduleAuthoritativeReconciliation()\n{\n    // P3_AUTHORITATIVE_RECONCILIATION_V1 — debounce the proven full readback\n    // until the current canonical live-write burst has gone quiet.\n    if (!m_controller || m_stage != Stage::Ready || !connected() || !m_liveEnabled\n        || m_controller->desiredStateCount() <= 0)\n        return;\n    m_reconciliationTimer.start(AuthoritativeReconcileIdleMs);\n}\n\nvoid K500DeviceManager::startAuthoritativeReconciliation()\n{\n    if (!m_controller || m_stage != Stage::Ready || !connected() || !m_liveEnabled\n        || m_controller->desiredStateCount() <= 0)\n        return;\n    if (!m_transactionScheduler.empty() || m_controller->inFlightStateCount() > 0) {\n        m_reconciliationTimer.start(AuthoritativeReconcileRetryMs);\n        return;\n    }\n\n    m_reconciliationInProgress = true;\n    setLiveEnabled(false);\n    setStatus(QStringLiteral("syncing"));\n    emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation"),\n                 QStringLiteral("LIVE paused; verifying 939-byte hardware state"));\n    requestActiveMemoryReadback();\n}\n\nvoid K500DeviceManager::beginBluetoothScan()\n{')
 
-          replace_once(
-              'src/k500/K500DeviceManagerShutdown.cpp',
-              '''    setLiveEnabled(false);\n\n    // P2_SCHEDULER_SHUTDOWN_BARRIER_V1''',
-              '''    setLiveEnabled(false);\n    m_reconciliationTimer.stop();\n    m_reconciliationInProgress = false;\n\n    // P2_SCHEDULER_SHUTDOWN_BARRIER_V1''')
+          old = '    // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.\n    // Only after the complete 939-byte snapshot has propagated do edits become\n    // eligible to transmit back to the K500.\n    emit deviceScalarsReady(m_activeMemory.left(0x40));\n    emit activeMemoryReady(m_activeMemory);\n    setLiveEnabled(true);\n    setError({});\n    setStatus(QStringLiteral("connected"));\n\n    emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),\n                 QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));'
+          new = '    // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.\n    // Initial/Recall snapshots reset intent; P3 verification preserves it.\n    const bool wasReconciliation = m_reconciliationInProgress;\n    if (wasReconciliation) {\n        emit reconciliationMemoryReady(m_activeMemory);\n    } else {\n        emit deviceScalarsReady(m_activeMemory.left(0x40));\n        emit activeMemoryReady(m_activeMemory);\n    }\n    setLiveEnabled(true);\n    setError({});\n    setStatus(QStringLiteral("connected"));\n\n    if (wasReconciliation && m_controller) {\n        emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation complete"),\n                     QStringLiteral("generation %1 · unresolved %2 · divergent %3")\n                         .arg(m_controller->authoritativeSnapshotGeneration())\n                         .arg(m_controller->desiredStateCount())\n                         .arg(m_controller->divergentDesiredStateCount()));\n    } else {\n        emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),\n                     QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));\n    }\n    m_reconciliationInProgress = false;'
+          replace_once('src/k500/K500DeviceManager.cpp', old, new)
 
-          replace_once(
-              'src/main.cpp',
-              '''    QObject::connect(&deviceManager, &K500DeviceManager::activeMemoryReady,\n                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);''',
-              '''    QObject::connect(&deviceManager, &K500DeviceManager::activeMemoryReady,\n                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);\n    QObject::connect(&deviceManager, &K500DeviceManager::reconciliationMemoryReady,\n                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);''')
-
-          # Dedicated hardware-free P3 qualification target.
-          replace_once(
-              'CMakeLists.txt',
-              '''target_include_directories(k500_p2_scheduler_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")\ntarget_link_libraries(k500_p2_scheduler_selftest PRIVATE Qt6::Core)\n''',
-              '''target_include_directories(k500_p2_scheduler_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")\ntarget_link_libraries(k500_p2_scheduler_selftest PRIVATE Qt6::Core)\n\n# P3_AUTHORITATIVE_RECONCILIATION_V1 — hardware-free truth/intent convergence.\nadd_executable(k500_p3_reconciliation_selftest\n    src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp\n    src/k500/K500CanonicalState.cpp\n    src/k500/K500CanonicalState.h\n)\ntarget_include_directories(k500_p3_reconciliation_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")\ntarget_link_libraries(k500_p3_reconciliation_selftest PRIVATE Qt6::Core)\n''')
-
-          Path('src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp').write_text(r'''#include "K500CanonicalState.h"
-
-#include <QCoreApplication>
-#include <QDebug>
-
-namespace {
-bool require(bool condition, const char *message)
-{
-    if (condition)
-        return true;
-    qCritical().noquote() << "P3 authoritative reconciliation self-test failed:" << message;
-    return false;
-}
-}
-
-int main(int argc, char **argv)
-{
-    QCoreApplication app(argc, argv);
-    K500CanonicalState state;
-    QString error;
-
-    QByteArray initial(K500CanonicalState::ActiveMemorySize, char(0));
-    initial[0x10] = char(0x55);
-    const quint64 epoch = state.beginSession();
-    if (!require(epoch != 0 && state.adoptSnapshot(initial, &error),
-                 "initial authoritative snapshot rejected")) return 1;
-    if (!require(state.snapshotGeneration() == 1, "initial snapshot generation must be one")) return 2;
-
-    state.confirm(QStringLiteral("effects.reverb.level"), 55,
-                  K500CanonicalState::Evidence::SnapshotCaptured);
-    quint64 revision = 0;
-    if (!require(state.stageDesired(QStringLiteral("effects.reverb.level"), 61,
-                                    &revision, &error),
-                 "could not stage desired value")) return 3;
-    const auto plan = state.plan(QStringLiteral("effects.reverb.level"),
-                                 QStringLiteral("fx:reverb"),
-                                 QByteArray::fromHex("aa010001fe"),
-                                 QStringLiteral("reverb 61"), &error);
-    if (!require(plan.has_value(), "could not build reconciliation test command")) return 4;
-
-    QByteArray readback = initial;
-    readback[0x10] = char(0x61);
-    if (!require(!state.reconcileSnapshot(readback, &error),
-                 "reconciliation crossed an in-flight command barrier")) return 5;
-    if (!require(state.markDispatched(plan->token)
-                 && state.completeTransport(epoch, plan->token, true),
-                 "transport completion failed")) return 6;
-    if (!require(state.desiredCount() == 1,
-                 "transport acceptance incorrectly confirmed DesiredState")) return 7;
-
-    if (!require(state.reconcileSnapshot(readback, &error),
-                 "authoritative reconciliation snapshot rejected")) return 8;
-    if (!require(state.snapshotGeneration() == 2 && state.desiredCount() == 1,
-                 "reconciliation did not preserve unresolved intent")) return 9;
-    if (!require(state.confirmedCount() == 0,
-                 "old ConfirmedState survived a new authoritative image")) return 10;
-
-    state.confirm(QStringLiteral("effects.reverb.level"), 61,
-                  K500CanonicalState::Evidence::SnapshotCaptured);
-    if (!require(state.desiredCount() == 0 && state.divergentDesiredCount() == 0,
-                 "matching hardware truth did not converge DesiredState")) return 11;
-
-    if (!require(state.stageDesired(QStringLiteral("music.key"), 3, nullptr, &error),
-                 "could not stage divergence case")) return 12;
-    QByteArray mismatch = readback;
-    mismatch[0x11] = char(0x07);
-    if (!require(state.reconcileSnapshot(mismatch, &error),
-                 "second reconciliation snapshot rejected")) return 13;
-    state.confirm(QStringLiteral("music.key"), 0,
-                  K500CanonicalState::Evidence::SnapshotDerived);
-    const QStringList divergent = state.divergentDesiredPaths();
-    if (!require(state.desiredCount() == 1 && state.divergentDesiredCount() == 1
-                 && divergent == QStringList{QStringLiteral("music.key")},
-                 "authoritative mismatch was not retained as explicit divergence")) return 14;
-
-    if (!require(!state.reconcileSnapshot(mismatch.left(mismatch.size() - 1), &error),
-                 "short reconciliation snapshot accepted")) return 15;
-
-    qInfo().noquote() << "P3 authoritative reconciliation self-test passed"
-                      << "generation" << state.snapshotGeneration()
-                      << "divergent" << state.divergentDesiredCount();
-    return 0;
-}
-''', encoding='utf-8')
-
-          Path('docs/P3_AUTHORITATIVE_RECONCILIATION.md').write_text(r'''# P3 — Authoritative State Reconciliation
-
-## Purpose
-
-P1 established session-bound `ConfirmedState`, `DesiredState`, and command envelopes. P2 made delivery deterministic, but transport acceptance still deliberately did not prove that K500 hardware applied a live edit. P3 closes that gap without inventing a new protocol command.
-
-The milestone reuses the already-proven full 939-byte CMD `0x40` active-memory readback as the authoritative verification barrier after a quiet burst of canonical live writes.
-
-## Runtime path
-
-```text
-user edit
- -> P1 DesiredState / CommandPlan
- -> P2 deterministic scheduler
- -> asynchronous native transport accepted
- -> quiet debounce
- -> LIVE OFF
- -> proven 939-byte active-memory readback
- -> P3 reconcileSnapshot
- -> semantic ConfirmedState rebuild
- -> matching DesiredState clears
- -> mismatching DesiredState remains explicit divergence
- -> StudioEngine hydrates hardware truth
- -> LIVE ON
-```
-
-Transport acceptance remains distinct from hardware confirmation.
-
-## Safety rules
-
-1. Reconciliation requires the current active device session and an already-adopted initial snapshot.
-2. A reconciliation snapshot must be exactly `0x03AB` (939) bytes.
-3. Reconciliation is rejected while canonical commands are still in flight.
-4. The scheduler queue must be empty before DeviceManager pauses LIVE and starts readback.
-5. The new raw snapshot and SHA-256 identity replace the previous hardware image.
-6. Existing `ConfirmedState` is cleared and rebuilt from the new image.
-7. Unresolved `DesiredState` is preserved across the barrier.
-8. `confirm(path, value)` clears DesiredState only when hardware truth equals the intended value.
-9. A mismatching confirmed value leaves that path as explicit divergence rather than pretending success.
-10. Initial connect and explicit Recall continue to use destructive `adoptSnapshot`; they do not inherit stale pre-recall intent.
-
-## Host timing policy
-
-The 700 ms quiet delay and 120 ms barrier retry are host-side scheduling policy, not reverse-engineered K500 constants. They exist only to avoid reading through an active burst. Device protocol bytes and the proven readback sequence are unchanged.
-
-## Diagnostics
-
-Support Report adds a bounded `canonicalState` summary containing snapshot generation, desired count, in-flight count, divergence count, and whether reconciliation is currently active. Raw active-memory bytes remain excluded.
-
-## Qualification
-
-`P3AuthoritativeReconciliationSelfTestMain.cpp` proves:
-
-- reconciliation cannot cross an in-flight command;
-- transport success alone leaves DesiredState unresolved;
-- a new authoritative snapshot preserves unresolved intent;
-- old ConfirmedState does not leak across generations;
-- matching hardware truth converges DesiredState;
-- mismatching hardware truth remains explicit divergence;
-- malformed snapshots fail closed.
-
-The dedicated P3 workflow also guards the DeviceManager readback barrier and builds the full Windows application so the integration remains compile-qualified.
-''', encoding='utf-8')
-
-          Path('.github/workflows/p3-authoritative-reconciliation.yml').write_text(r'''name: P3 Authoritative State Reconciliation
-
-on:
-  workflow_dispatch:
-  push:
-    paths:
-      - 'src/k500/K500CanonicalState.*'
-      - 'src/k500/K500Controller.*'
-      - 'src/k500/K500DeviceManager.*'
-      - 'src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp'
-      - 'src/main.cpp'
-      - 'CMakeLists.txt'
-      - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
-      - '.github/workflows/p3-authoritative-reconciliation.yml'
-  pull_request:
-    paths:
-      - 'src/k500/K500CanonicalState.*'
-      - 'src/k500/K500Controller.*'
-      - 'src/k500/K500DeviceManager.*'
-      - 'src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp'
-      - 'src/main.cpp'
-      - 'CMakeLists.txt'
-      - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
-      - '.github/workflows/p3-authoritative-reconciliation.yml'
-
-jobs:
-  reconciliation:
-    runs-on: windows-2022
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.8.3'
-          arch: 'win64_msvc2022_64'
-          cache: true
-
-      - name: Activate MSVC 2022
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Configure
-        shell: pwsh
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
-
-      - name: Build P3 reconciliation self-test
-        shell: pwsh
-        run: cmake --build build --config Release --target k500_p3_reconciliation_selftest
-
-      - name: Run P3 reconciliation self-test
-        shell: pwsh
-        run: build/k500_p3_reconciliation_selftest.exe
-
-      - name: Guard P3 reconciliation contract
-        shell: python
-        run: |
-          from pathlib import Path
-
-          state_h = Path('src/k500/K500CanonicalState.h').read_text(encoding='utf-8')
-          state_cpp = Path('src/k500/K500CanonicalState.cpp').read_text(encoding='utf-8')
-          controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
-          manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
-          manager_h = Path('src/k500/K500DeviceManager.h').read_text(encoding='utf-8')
-          main = Path('src/main.cpp').read_text(encoding='utf-8')
-          test = Path('src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp').read_text(encoding='utf-8')
-          cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
-
-          checks = {
-              'reconciliation API exists': 'reconcileSnapshot' in state_h and 'P3_AUTHORITATIVE_RECONCILIATION_V1' in state_cpp,
-              'inflight barrier': 'Cannot reconcile while canonical commands are still in flight' in state_cpp,
-              'desired intent preserved': 'DesiredState intentionally survives' in state_cpp,
-              'divergence is explicit': 'divergentDesiredPaths' in state_cpp and 'divergentDesiredCount' in state_h,
-              'controller has separate reconciliation path': 'reconcileFromDeviceMemory' in controller and 'applyDeviceMemory(memory, true)' in controller,
-              'device manager debounces verification': 'AuthoritativeReconcileIdleMs = 700' in manager and 'scheduleAuthoritativeReconciliation' in manager,
-              'full proven readback reused': 'requestActiveMemoryReadback();' in manager and 'reconciliationMemoryReady' in manager_h,
-              'live barrier precedes readback': 'm_reconciliationInProgress = true;\n    setLiveEnabled(false);' in manager,
-              'studio hydrates reconciliation truth': '&K500DeviceManager::reconciliationMemoryReady' in main,
-              'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
-              'cmake target': 'k500_p3_reconciliation_selftest' in cmake,
-          }
-          failed = [name for name, ok in checks.items() if not ok]
-          for name, ok in checks.items():
-              print(('PASS' if ok else 'FAIL') + '  ' + name)
-          if failed:
-              raise SystemExit('P3 reconciliation guard failed: ' + ', '.join(failed))
-          print('ALL P3 AUTHORITATIVE RECONCILIATION GUARDS PASSED')
-''', encoding='utf-8')
-
-      - name: Show changed files
-        run: git status --short
+          replace_once('src/k500/K500DeviceManager.cpp', '    root.insert(QStringLiteral("transactionScheduler"), scheduler);\n\n    QJsonObject presetOperation;', '    root.insert(QStringLiteral("transactionScheduler"), scheduler);\n\n    QJsonObject canonical;\n    if (m_controller) {\n        canonical.insert(QStringLiteral("snapshotGeneration"), QString::number(m_controller->authoritativeSnapshotGeneration()));\n        canonical.insert(QStringLiteral("desired"), m_controller->desiredStateCount());\n        canonical.insert(QStringLiteral("inFlight"), m_controller->inFlightStateCount());\n        canonical.insert(QStringLiteral("divergentDesired"), m_controller->divergentDesiredStateCount());\n    }\n    canonical.insert(QStringLiteral("reconciliationInProgress"), m_reconciliationInProgress);\n    root.insert(QStringLiteral("canonicalState"), canonical);\n\n    QJsonObject presetOperation;')
+          replace_once('src/k500/K500DeviceManager.cpp', '    m_heartbeatTimer.stop();\n    m_stage = Stage::Idle;', '    m_heartbeatTimer.stop();\n    m_reconciliationTimer.stop();\n    m_reconciliationInProgress = false;\n    m_stage = Stage::Idle;')
+          replace_once('src/k500/K500DeviceManagerShutdown.cpp', '    setLiveEnabled(false);\n\n    // P2_SCHEDULER_SHUTDOWN_BARRIER_V1', '    setLiveEnabled(false);\n    m_reconciliationTimer.stop();\n    m_reconciliationInProgress = false;\n\n    // P2_SCHEDULER_SHUTDOWN_BARRIER_V1')
+          replace_once('src/main.cpp', '    QObject::connect(&deviceManager, &K500DeviceManager::activeMemoryReady,\n                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);', '    QObject::connect(&deviceManager, &K500DeviceManager::activeMemoryReady,\n                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);\n    QObject::connect(&deviceManager, &K500DeviceManager::reconciliationMemoryReady,\n                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);')
+          replace_once('CMakeLists.txt', 'target_include_directories(k500_p2_scheduler_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")\ntarget_link_libraries(k500_p2_scheduler_selftest PRIVATE Qt6::Core)\n', 'target_include_directories(k500_p2_scheduler_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")\ntarget_link_libraries(k500_p2_scheduler_selftest PRIVATE Qt6::Core)\n\n# P3_AUTHORITATIVE_RECONCILIATION_V1 — hardware-free truth/intent convergence.\nadd_executable(k500_p3_reconciliation_selftest\n    src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp\n    src/k500/K500CanonicalState.cpp\n    src/k500/K500CanonicalState.h\n)\ntarget_include_directories(k500_p3_reconciliation_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")\ntarget_link_libraries(k500_p3_reconciliation_selftest PRIVATE Qt6::Core)\n')
 
       - name: Commit P3 milestone
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add CMakeLists.txt src/main.cpp src/k500 docs/P3_AUTHORITATIVE_RECONCILIATION.md .github/workflows/p3-authoritative-reconciliation.yml
+          git add CMakeLists.txt src/main.cpp src/k500/K500CanonicalState.h src/k500/K500CanonicalState.cpp src/k500/K500Controller.h src/k500/K500Controller.cpp src/k500/K500DeviceManager.h src/k500/K500DeviceManager.cpp src/k500/K500DeviceManagerShutdown.cpp
           git commit -m "feat: add P3 authoritative state reconciliation"
           git push origin HEAD:architecture/p3-authoritative-reconciliation
