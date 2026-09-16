@@ -65,6 +65,7 @@ jobs:
           manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
           shutdown = Path('src/k500/K500DeviceManagerShutdown.cpp').read_text(encoding='utf-8')
           docs = Path('docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md').read_text(encoding='utf-8')
+          docs_lower = docs.lower()
           cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
 
           checks = {
@@ -85,7 +86,7 @@ jobs:
               'scheduler shutdown barrier': 'P2_SCHEDULER_SHUTDOWN_BARRIER_V1' in shutdown and 'm_transactionScheduler.endSession()' in shutdown,
               'hardware-free qualification': 'P2 deterministic transaction scheduler self-test passed' in test,
               'built by cmake': 'k500_p2_scheduler_selftest' in cmake,
-              'authority boundary documented': 'transport acceptance' in docs and 'hardware confirmation' in docs,
+              'authority boundary documented': 'transport acceptance' in docs_lower and 'hardware confirmation' in docs_lower,
           }
 
           failed = [name for name, ok in checks.items() if not ok]
