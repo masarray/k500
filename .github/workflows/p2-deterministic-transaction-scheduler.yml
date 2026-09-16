@@ -7,6 +7,7 @@ on:
       - 'src/k500/K500TransactionScheduler.*'
       - 'src/k500/K500Controller.*'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/K500DeviceManagerShutdown.cpp'
       - 'src/k500/P2TransactionSchedulerSelfTestMain.cpp'
       - 'CMakeLists.txt'
       - 'docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md'
@@ -16,6 +17,7 @@ on:
       - 'src/k500/K500TransactionScheduler.*'
       - 'src/k500/K500Controller.*'
       - 'src/k500/K500DeviceManager.*'
+      - 'src/k500/K500DeviceManagerShutdown.cpp'
       - 'src/k500/P2TransactionSchedulerSelfTestMain.cpp'
       - 'CMakeLists.txt'
       - 'docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md'
@@ -61,6 +63,7 @@ jobs:
           test = Path('src/k500/P2TransactionSchedulerSelfTestMain.cpp').read_text(encoding='utf-8')
           controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
           manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
+          shutdown = Path('src/k500/K500DeviceManagerShutdown.cpp').read_text(encoding='utf-8')
           docs = Path('docs/P2_DETERMINISTIC_TRANSACTION_SCHEDULER.md').read_text(encoding='utf-8')
           cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
 
@@ -79,6 +82,7 @@ jobs:
               'transport bridge': 'P2_SCHEDULER_TRANSPORT_BRIDGE_V1' in manager and 'm_transactionScheduler.enqueue' in manager and 'dispatchScheduledCommands' in manager,
               'actual dispatch barrier': 'P2_ACTUAL_DISPATCH_BARRIER_V1' in controller and 'markCommandDispatched' in manager,
               'controller does not pre-dispatch': 'm_canonicalState.markDispatched(command.token)' not in controller,
+              'scheduler shutdown barrier': 'P2_SCHEDULER_SHUTDOWN_BARRIER_V1' in shutdown and 'm_transactionScheduler.endSession()' in shutdown,
               'hardware-free qualification': 'P2 deterministic transaction scheduler self-test passed' in test,
               'built by cmake': 'k500_p2_scheduler_selftest' in cmake,
               'authority boundary documented': 'transport acceptance' in docs and 'hardware confirmation' in docs,
