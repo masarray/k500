@@ -22,6 +22,8 @@ constexpr int HandshakeTimeoutMs = 2200;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int ConnectionWatchdogMs = 12000;
 constexpr int DiagnosticLogLimit = 240;
+constexpr int AuthoritativeReconcileIdleMs = 700;
+constexpr int AuthoritativeReconcileRetryMs = 120;
 
 // Exact donor/native active-memory readback used by the web editor.
 constexpr int ActiveMemorySize = 0x03AB;       // 0x0000..0x03AA = 939 bytes
@@ -45,6 +47,7 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
     m_responseTimer.setSingleShot(true);
     m_probeDelayTimer.setSingleShot(true);
     m_heartbeatTimer.setInterval(HeartbeatIntervalMs);
+    m_reconciliationTimer.setSingleShot(true);
     m_schedulerTimer.setSingleShot(true);
     m_schedulerClock.start();
 
@@ -58,6 +61,8 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
             this, &K500DeviceManager::sendProbeHeartbeat);
     connect(&m_heartbeatTimer, &QTimer::timeout,
             this, &K500DeviceManager::heartbeatTick);
+    connect(&m_reconciliationTimer, &QTimer::timeout,
+            this, &K500DeviceManager::startAuthoritativeReconciliation);
     connect(&m_schedulerTimer, &QTimer::timeout,
             this, &K500DeviceManager::dispatchScheduledCommands);
     connect(this, &K500DeviceManager::logLine, this,
@@ -74,6 +79,8 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
                 m_controller, &K500Controller::setDeviceScalars);
         connect(this, &K500DeviceManager::activeMemoryReady,
                 m_controller, &K500Controller::hydrateFromDeviceMemory);
+        connect(this, &K500DeviceManager::reconciliationMemoryReady,
+                m_controller, &K500Controller::reconcileFromDeviceMemory);
     }
 
     QSettings settings;
@@ -258,6 +265,8 @@ void K500DeviceManager::dispatchScheduledCommands()
         emit commandDispatchResult(
             transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,
             accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));
+        if (accepted)
+            scheduleAuthoritativeReconciliation();
 
         if (!accepted || !connected() || !m_liveEnabled)
             break;
@@ -329,6 +338,18 @@ QByteArray K500DeviceManager::supportReportJson() const
     scheduler.insert(QStringLiteral("rejectedStale"), QString::number(schedulerTelemetry.rejectedStale));
     scheduler.insert(QStringLiteral("dispatched"), QString::number(schedulerTelemetry.dispatched));
     root.insert(QStringLiteral("transactionScheduler"), scheduler);
+
+    QJsonObject canonical;
+    if (m_controller) {
+        canonical.insert(QStringLiteral("snapshotGeneration"),
+                         QString::number(m_controller->authoritativeSnapshotGeneration()));
+        canonical.insert(QStringLiteral("desired"), m_controller->desiredStateCount());
+        canonical.insert(QStringLiteral("inFlight"), m_controller->inFlightStateCount());
+        canonical.insert(QStringLiteral("divergentDesired"),
+                         m_controller->divergentDesiredStateCount());
+    }
+    canonical.insert(QStringLiteral("reconciliationInProgress"), m_reconciliationInProgress);
+    root.insert(QStringLiteral("canonicalState"), canonical);
 
     QJsonObject presetOperation;
     if (m_presetManager) {
@@ -464,6 +485,37 @@ void K500DeviceManager::setLiveEnabled(bool enabled)
     if (m_controller)
         m_controller->setLiveEnabled(enabled);
     emit liveEnabledChanged();
+}
+
+void K500DeviceManager::scheduleAuthoritativeReconciliation()
+{
+    // P3_AUTHORITATIVE_RECONCILIATION_V1 — debounce the already-proven full
+    // active-memory readback until the canonical live-write burst is quiet.
+    if (!m_controller || m_stage != Stage::Ready || !connected() || !m_liveEnabled
+        || m_controller->desiredStateCount() <= 0)
+        return;
+    m_reconciliationTimer.start(AuthoritativeReconcileIdleMs);
+}
+
+void K500DeviceManager::startAuthoritativeReconciliation()
+{
+    if (!m_controller || m_stage != Stage::Ready || !connected() || !m_liveEnabled
+        || m_controller->desiredStateCount() <= 0)
+        return;
+
+    // Never read through producer or scheduler work. Keep intent queued and
+    // retry the barrier rather than guessing which state the hardware owns.
+    if (!m_transactionScheduler.empty() || m_controller->inFlightStateCount() > 0) {
+        m_reconciliationTimer.start(AuthoritativeReconcileRetryMs);
+        return;
+    }
+
+    m_reconciliationInProgress = true;
+    setLiveEnabled(false);
+    setStatus(QStringLiteral("syncing"));
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation"),
+                 QStringLiteral("LIVE paused; verifying 939-byte hardware state"));
+    requestActiveMemoryReadback();
 }
 
 void K500DeviceManager::beginBluetoothScan()
@@ -643,16 +695,30 @@ void K500DeviceManager::finishConnected()
     m_stage = Stage::Ready;
 
     // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.
-    // Only after the complete 939-byte snapshot has propagated do edits become
-    // eligible to transmit back to the K500.
-    emit deviceScalarsReady(m_activeMemory.left(0x40));
-    emit activeMemoryReady(m_activeMemory);
+    // Initial/Recall snapshots reset intent. P3 verification preserves unresolved
+    // intent and lets semantic confirmation prove hardware convergence.
+    const bool wasReconciliation = m_reconciliationInProgress;
+    if (wasReconciliation) {
+        emit reconciliationMemoryReady(m_activeMemory);
+    } else {
+        emit deviceScalarsReady(m_activeMemory.left(0x40));
+        emit activeMemoryReady(m_activeMemory);
+    }
     setLiveEnabled(true);
     setError({});
     setStatus(QStringLiteral("connected"));
 
-    emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),
-                 QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));
+    if (wasReconciliation && m_controller) {
+        emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation complete"),
+                     QStringLiteral("generation %1 · unresolved %2 · divergent %3")
+                         .arg(m_controller->authoritativeSnapshotGeneration())
+                         .arg(m_controller->desiredStateCount())
+                         .arg(m_controller->divergentDesiredStateCount()));
+    } else {
+        emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),
+                     QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));
+    }
+    m_reconciliationInProgress = false;
 
     if (m_io.kind() == K500WinIo::Kind::Serial) {
         m_lastKnownSerialPort = m_currentSerialPort;
@@ -804,6 +870,8 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_responseTimer.stop();
     m_probeDelayTimer.stop();
     m_heartbeatTimer.stop();
+    m_reconciliationTimer.stop();
+    m_reconciliationInProgress = false;
     m_stage = Stage::Idle;
     m_parser.reset();
     m_io.close();

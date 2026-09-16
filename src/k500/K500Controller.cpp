@@ -151,15 +151,31 @@ void K500Controller::setDeviceScalars(const QByteArray &scalars)
 
 void K500Controller::hydrateFromDeviceMemory(const QByteArray &memory)
 {
-    // P1_CANONICAL_SNAPSHOT_BARRIER_V1 — only an exact Retrieve-All image can
-    // become hardware truth. No partial buffer may unlock native writes.
+    applyDeviceMemory(memory, false);
+}
+
+void K500Controller::reconcileFromDeviceMemory(const QByteArray &memory)
+{
+    applyDeviceMemory(memory, true);
+}
+
+void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDesiredIntent)
+{
+    // P1_CANONICAL_SNAPSHOT_BARRIER_V1 + P3_AUTHORITATIVE_RECONCILIATION_V1
+    // Initial/Recall hydration resets intent; verification hydration preserves
+    // unresolved DesiredState until semantic confirmation rebuilds hardware truth.
     if (memory.size() != K500CanonicalState::ActiveMemorySize)
         return;
     if (!m_canonicalState.sessionActive())
         m_canonicalState.beginSession(); // deterministic harness/recovery fallback
     QString snapshotError;
-    if (!m_canonicalState.adoptSnapshot(memory, &snapshotError)) {
-        emit writeDeferred(QStringLiteral("__snapshot__"), snapshotError);
+    const bool accepted = preserveDesiredIntent
+        ? m_canonicalState.reconcileSnapshot(memory, &snapshotError)
+        : m_canonicalState.adoptSnapshot(memory, &snapshotError);
+    if (!accepted) {
+        emit writeDeferred(preserveDesiredIntent ? QStringLiteral("__reconcile__")
+                                                 : QStringLiteral("__snapshot__"),
+                           snapshotError);
         return;
     }
     emit canonicalStateChanged();
