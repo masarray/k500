@@ -16,6 +16,10 @@ ApplicationWindow {
 
     readonly property int lowerRackHeight: 304
     readonly property int rightPanelWidth: 216
+    // P3_AUTHORITATIVE_RECONCILIATION_UI_BARRIER_V1 — during initial sync or
+    // P3 verification the central editor is read-only. This prevents a user
+    // gesture from being visually accepted while Controller LIVE is paused.
+    readonly property bool deviceSyncBarrier: deviceManager.status === "syncing"
     property int selectedSection: 0
 
     background: Rectangle {
@@ -45,6 +49,8 @@ ApplicationWindow {
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 12
+            enabled: !root.deviceSyncBarrier
+            opacity: enabled ? 1.0 : 0.72
 
             SectionDrawer {
                 Layout.preferredWidth: 170
