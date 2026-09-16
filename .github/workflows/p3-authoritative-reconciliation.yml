@@ -7,9 +7,8 @@ on:
       - 'src/k500/K500CanonicalState.*'
       - 'src/k500/K500Controller.*'
       - 'src/k500/K500DeviceManager.*'
-      - 'src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp'
+      - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
-      - 'CMakeLists.txt'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -17,9 +16,8 @@ on:
       - 'src/k500/K500CanonicalState.*'
       - 'src/k500/K500Controller.*'
       - 'src/k500/K500DeviceManager.*'
-      - 'src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp'
+      - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
-      - 'CMakeLists.txt'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
 
@@ -45,13 +43,13 @@ jobs:
         shell: pwsh
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
 
-      - name: Build P3 reconciliation self-test
+      - name: Build canonical/P3 reconciliation self-test
         shell: pwsh
-        run: cmake --build build --config Release --target k500_p3_reconciliation_selftest
+        run: cmake --build build --config Release --target k500_p1_state_selftest
 
-      - name: Run P3 reconciliation self-test
+      - name: Run canonical/P3 reconciliation self-test
         shell: pwsh
-        run: build/k500_p3_reconciliation_selftest.exe
+        run: build/k500_p1_state_selftest.exe
 
       - name: Guard P3 reconciliation contract
         shell: python
@@ -64,8 +62,7 @@ jobs:
           manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
           manager_h = Path('src/k500/K500DeviceManager.h').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
-          test = Path('src/k500/P3AuthoritativeReconciliationSelfTestMain.cpp').read_text(encoding='utf-8')
-          cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
+          test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
           checks = {
               'reconciliation API exists': 'reconcileSnapshot' in state_h and 'P3_AUTHORITATIVE_RECONCILIATION_V1' in state_cpp,
@@ -78,7 +75,6 @@ jobs:
               'live barrier precedes readback': 'm_reconciliationInProgress = true;\n    setLiveEnabled(false);' in manager,
               'studio hydrates reconciliation truth': '&K500DeviceManager::reconciliationMemoryReady' in main,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
-              'cmake target': 'k500_p3_reconciliation_selftest' in cmake,
           }
           failed = [name for name, ok in checks.items() if not ok]
           for name, ok in checks.items():
