@@ -67,6 +67,9 @@ K500TransactionScheduler::EnqueueResult K500TransactionScheduler::enqueue(
 
     const int replaceIndex = findCoalescingKey(transaction.coalescingKey);
     if (replaceIndex >= 0) {
+        // P2_COALESCED_TOKEN_RECOVERY_V1 — latest-wins must also surface the
+        // superseded envelope so CanonicalState can reject its in-flight token.
+        m_dropped.append(m_queue.at(replaceIndex));
         m_queue[replaceIndex] = std::move(transaction);
         ++m_telemetry.enqueued;
         ++m_telemetry.coalesced;
