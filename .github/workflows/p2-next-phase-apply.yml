@@ -26,10 +26,10 @@ jobs:
       - name: Commit P2 transport bridge
         shell: bash
         run: |
-          # Keep helper/workflow files for this one bot commit so GITHUB_TOKEN
-          # never has to mutate workflow files. ChatGPT removes all helpers via
-          # the GitHub connector after the implementation commit lands.
-          git checkout -- tools/p2_next_phase_patch.py tools/p2_next_phase_patch_v2.py .github/workflows/p2-next-phase-apply.yml
+          # Keep all workflow/helper files out of this bot push. The GitHub App
+          # token cannot mutate workflow files; ChatGPT updates the permanent
+          # qualification workflow separately through the repository connector.
+          git checkout -- tools/p2_next_phase_patch.py tools/p2_next_phase_patch_v2.py .github/workflows/p2-next-phase-apply.yml .github/workflows/p2-deterministic-transaction-scheduler.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
@@ -37,4 +37,4 @@ jobs:
           git commit -m "P2: wire scheduler into native transport"
           git push origin HEAD:architecture/p2-deterministic-transaction-scheduler
 
-# retry 3: use scoped patch wrapper and include the MSVC qsizetype/int compile fix.
+# retry 4: exclude permanent workflow mutation from the bot push; apply it via connector after success.
