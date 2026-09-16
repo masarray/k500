@@ -21,6 +21,8 @@ class K500Controller final : public QObject
     Q_PROPERTY(QString canonicalSnapshotSha256 READ canonicalSnapshotSha256 NOTIFY canonicalStateChanged)
     Q_PROPERTY(int desiredStateCount READ desiredStateCount NOTIFY canonicalStateChanged)
     Q_PROPERTY(int inFlightStateCount READ inFlightStateCount NOTIFY canonicalStateChanged)
+    Q_PROPERTY(qulonglong authoritativeSnapshotGeneration READ authoritativeSnapshotGeneration NOTIFY canonicalStateChanged)
+    Q_PROPERTY(int divergentDesiredStateCount READ divergentDesiredStateCount NOTIFY canonicalStateChanged)
 
 public:
     explicit K500Controller(QObject *parent = nullptr);
@@ -32,6 +34,8 @@ public:
     QString canonicalSnapshotSha256() const { return m_canonicalState.snapshotSha256Hex(); }
     int desiredStateCount() const { return m_canonicalState.desiredCount(); }
     int inFlightStateCount() const { return m_canonicalState.inFlightCount(); }
+    qulonglong authoritativeSnapshotGeneration() const { return m_canonicalState.snapshotGeneration(); }
+    int divergentDesiredStateCount() const { return m_canonicalState.divergentDesiredCount(); }
 
 public slots:
     void beginDeviceSession();
@@ -39,6 +43,7 @@ public slots:
     void setLiveEnabled(bool enabled);
     void setDeviceScalars(const QByteArray &scalars);
     void hydrateFromDeviceMemory(const QByteArray &memory);
+    void reconcileFromDeviceMemory(const QByteArray &memory);
     void clearDeviceState();
     void handleStateEdit(const QString &path, const QVariant &value);
     bool markCommandDispatched(quint64 sessionEpoch, quint64 token);
@@ -92,6 +97,7 @@ private:
     void rejectUnsupported(const QString &path);
     void deferWrite(const QString &path, const QString &reason);
     void recordConfirmedState(const QByteArray &memory);
+    void applyDeviceMemory(const QByteArray &memory, bool preserveDesiredIntent);
 
     static constexpr int EqSendIntervalMs = 45;
     static constexpr int BlockSendIntervalMs = 55;

@@ -132,6 +132,8 @@ int main(int argc, char *argv[])
                      &k500Controller, &K500Controller::handleStateEdit);
     QObject::connect(&deviceManager, &K500DeviceManager::activeMemoryReady,
                      &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
+    QObject::connect(&deviceManager, &K500DeviceManager::reconciliationMemoryReady,
+                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
 
     if (app.arguments().contains(QStringLiteral("--trace-k500"))) {
         QObject::connect(&deviceManager, &K500DeviceManager::logLine,

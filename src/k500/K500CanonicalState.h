@@ -3,6 +3,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QString>
+#include <QStringList>
 #include <QVariant>
 #include <QtGlobal>
 
@@ -66,7 +67,11 @@ public:
     quint64 sessionEpoch() const { return m_sessionEpoch; }
 
     bool adoptSnapshot(const QByteArray &memory, QString *error = nullptr);
+    // P3_AUTHORITATIVE_RECONCILIATION_V1 — replace hardware truth after a
+    // deliberate readback barrier while preserving unresolved DesiredState.
+    bool reconcileSnapshot(const QByteArray &memory, QString *error = nullptr);
     bool snapshotReady() const { return m_snapshotReady; }
+    quint64 snapshotGeneration() const { return m_snapshotGeneration; }
     QByteArray rawSnapshot() const { return m_rawSnapshot; }
     QByteArray snapshotSha256() const { return m_snapshotSha256; }
     QString snapshotSha256Hex() const { return QString::fromLatin1(m_snapshotSha256.toHex()); }
@@ -91,6 +96,8 @@ public:
     int confirmedCount() const { return m_confirmed.size(); }
     int desiredCount() const { return m_desired.size(); }
     int inFlightCount() const { return m_inFlightByKey.size(); }
+    int divergentDesiredCount() const;
+    QStringList divergentDesiredPaths() const;
 
     static QString evidenceName(Evidence evidence);
 
@@ -105,6 +112,7 @@ private:
 
     QByteArray m_rawSnapshot;
     QByteArray m_snapshotSha256;
+    quint64 m_snapshotGeneration = 0;
     QHash<QString, ValueState> m_confirmed;
     QHash<QString, ValueState> m_desired;
     QHash<QString, InFlightState> m_inFlightByKey;
