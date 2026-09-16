@@ -27,6 +27,16 @@ constexpr int DiagnosticLogLimit = 240;
 constexpr int ActiveMemorySize = 0x03AB;       // 0x0000..0x03AA = 939 bytes
 constexpr int ActiveMemoryBlockSize = 0x003A;  // 58-byte CMD 0x40 chunks
 constexpr int ActiveMemoryInterBlockMs = 35;
+
+K500TransactionScheduler::Family schedulerFamilyForPath(const QString &path)
+{
+    // Only PEQ band writes used the old 45 ms EQ timer. Crossovers and
+    // global bypass are complete-block traffic and retain 55 ms pacing.
+    if (path.startsWith(QStringLiteral("eq."))
+        && path.contains(QStringLiteral(".bands.")))
+        return K500TransactionScheduler::Family::Eq;
+    return K500TransactionScheduler::Family::Block;
+}
 }
 
 K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent)
@@ -35,6 +45,8 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
     m_responseTimer.setSingleShot(true);
     m_probeDelayTimer.setSingleShot(true);
     m_heartbeatTimer.setInterval(HeartbeatIntervalMs);
+    m_schedulerTimer.setSingleShot(true);
+    m_schedulerClock.start();
 
     connect(&m_io, &K500WinIo::bytesReceived,
             this, &K500DeviceManager::onBytesReceived);
@@ -46,6 +58,8 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
             this, &K500DeviceManager::sendProbeHeartbeat);
     connect(&m_heartbeatTimer, &QTimer::timeout,
             this, &K500DeviceManager::heartbeatTick);
+    connect(&m_schedulerTimer, &QTimer::timeout,
+            this, &K500DeviceManager::dispatchScheduledCommands);
     connect(this, &K500DeviceManager::logLine, this,
             [this](const QString &direction, const QString &label, const QString &hex) {
         appendDiagnosticLine(direction, label, hex);
@@ -98,8 +112,10 @@ void K500DeviceManager::toggleConnection()
 void K500DeviceManager::connectDevice()
 {
     resetConnectionState(false);
-    if (m_controller)
+    if (m_controller) {
         m_controller->beginDeviceSession();
+        m_transactionScheduler.beginSession(m_controller->sessionEpoch());
+    }
     setError({});
     setStatus(QStringLiteral("connecting"));
 
@@ -149,8 +165,12 @@ void K500DeviceManager::sendPlannedCommand(quint64 sessionEpoch, quint64 token,
                                             const QByteArray &frame, const QString &label,
                                             const QString &path, const QString &coalescingKey)
 {
-    Q_UNUSED(coalescingKey);
-    if (!m_controller || sessionEpoch != m_controller->sessionEpoch()) {
+    // P2_SCHEDULER_TRANSPORT_BRIDGE_V1 — every canonical live command crosses
+    // the bounded deterministic scheduler before entering K500WinIo. The worker
+    // remains asynchronous; this GUI-thread scheduler only owns ordering/pacing.
+    if (!m_controller || sessionEpoch != m_controller->sessionEpoch()
+        || !m_transactionScheduler.sessionActive()
+        || sessionEpoch != m_transactionScheduler.sessionEpoch()) {
         emit commandDispatchResult(sessionEpoch, token, path, false,
                                    QStringLiteral("Stale command rejected after device-session change"));
         return;
@@ -160,9 +180,107 @@ void K500DeviceManager::sendPlannedCommand(quint64 sessionEpoch, quint64 token,
                                    QStringLiteral("Native transport is not LIVE for this session"));
         return;
     }
-    const bool accepted = writeFrame(frame, label);
-    emit commandDispatchResult(sessionEpoch, token, path, accepted,
-                               accepted ? QString{} : QStringLiteral("Native transport write failed"));
+
+    K500TransactionScheduler::Transaction transaction;
+    transaction.sessionEpoch = sessionEpoch;
+    transaction.token = token;
+    transaction.frame = frame;
+    transaction.label = label;
+    transaction.semanticPath = path;
+    transaction.coalescingKey = coalescingKey;
+    transaction.family = schedulerFamilyForPath(path);
+    transaction.priority = K500TransactionScheduler::Priority::Interactive;
+
+    const auto result = m_transactionScheduler.enqueue(transaction, schedulerNowMs());
+    rejectDroppedTransactions(QStringLiteral("Native scheduler dropped queued command under bounded back-pressure/expiry"));
+
+    if (result == K500TransactionScheduler::EnqueueResult::RejectedInvalid
+        || result == K500TransactionScheduler::EnqueueResult::RejectedStaleSession
+        || result == K500TransactionScheduler::EnqueueResult::RejectedBackpressure) {
+        emit commandDispatchResult(
+            sessionEpoch, token, path, false,
+            QStringLiteral("Native scheduler rejected command: %1")
+                .arg(QString::fromLatin1(K500TransactionScheduler::enqueueResultName(result))));
+        return;
+    }
+
+    armTransactionScheduler();
+}
+
+qint64 K500DeviceManager::schedulerNowMs() const
+{
+    return m_schedulerClock.isValid() ? m_schedulerClock.elapsed() : 0;
+}
+
+void K500DeviceManager::armTransactionScheduler()
+{
+    if (!m_transactionScheduler.sessionActive() || m_transactionScheduler.empty()
+        || !connected() || !m_liveEnabled) {
+        m_schedulerTimer.stop();
+        return;
+    }
+
+    const qint64 delay = m_transactionScheduler.nextWakeDelayMs(schedulerNowMs());
+    if (delay < 0) {
+        m_schedulerTimer.stop();
+        return;
+    }
+    m_schedulerTimer.start(static_cast<int>(qMin<qint64>(delay, 2000)));
+}
+
+void K500DeviceManager::dispatchScheduledCommands()
+{
+    m_schedulerTimer.stop();
+    if (!m_controller || !connected() || !m_liveEnabled
+        || !m_transactionScheduler.sessionActive()) {
+        cancelScheduledTransactions(QStringLiteral("Native transport left LIVE state before scheduler dispatch"));
+        return;
+    }
+
+    for (;;) {
+        const auto transaction = m_transactionScheduler.takeReady(schedulerNowMs());
+        rejectDroppedTransactions(QStringLiteral("Native scheduler expired queued command before dispatch"));
+        if (!transaction)
+            break;
+
+        if (transaction->sessionEpoch != m_controller->sessionEpoch()
+            || !m_controller->markCommandDispatched(transaction->sessionEpoch,
+                                                     transaction->token)) {
+            emit commandDispatchResult(transaction->sessionEpoch, transaction->token,
+                                       transaction->semanticPath, false,
+                                       QStringLiteral("Command was superseded before scheduler dispatch"));
+            continue;
+        }
+
+        const qint64 dispatchMs = schedulerNowMs();
+        m_transactionScheduler.noteDispatched(*transaction, dispatchMs);
+        const bool accepted = writeFrame(transaction->frame, transaction->label);
+        emit commandDispatchResult(
+            transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,
+            accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));
+
+        if (!accepted || !connected() || !m_liveEnabled)
+            break;
+    }
+
+    if (connected() && m_liveEnabled)
+        armTransactionScheduler();
+}
+
+void K500DeviceManager::rejectDroppedTransactions(const QString &reason)
+{
+    const auto dropped = m_transactionScheduler.takeDropped();
+    for (const auto &transaction : dropped) {
+        emit commandDispatchResult(transaction.sessionEpoch, transaction.token,
+                                   transaction.semanticPath, false, reason);
+    }
+}
+
+void K500DeviceManager::cancelScheduledTransactions(const QString &reason)
+{
+    m_schedulerTimer.stop();
+    m_transactionScheduler.clearQueued();
+    rejectDroppedTransactions(reason);
 }
 
 QByteArray K500DeviceManager::supportReportJson() const
@@ -197,6 +315,20 @@ QByteArray K500DeviceManager::supportReportJson() const
     device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic);
     device.insert(QStringLiteral("lastRx"), m_lastRxDiagnostic);
     root.insert(QStringLiteral("device"), device);
+
+    const auto schedulerTelemetry = m_transactionScheduler.telemetry();
+    QJsonObject scheduler;
+    scheduler.insert(QStringLiteral("sessionEpoch"), QString::number(m_transactionScheduler.sessionEpoch()));
+    scheduler.insert(QStringLiteral("queued"), schedulerTelemetry.queued);
+    scheduler.insert(QStringLiteral("peakQueued"), schedulerTelemetry.peakQueued);
+    scheduler.insert(QStringLiteral("enqueued"), QString::number(schedulerTelemetry.enqueued));
+    scheduler.insert(QStringLiteral("coalesced"), QString::number(schedulerTelemetry.coalesced));
+    scheduler.insert(QStringLiteral("evicted"), QString::number(schedulerTelemetry.evicted));
+    scheduler.insert(QStringLiteral("expired"), QString::number(schedulerTelemetry.expired));
+    scheduler.insert(QStringLiteral("rejectedBackpressure"), QString::number(schedulerTelemetry.rejectedBackpressure));
+    scheduler.insert(QStringLiteral("rejectedStale"), QString::number(schedulerTelemetry.rejectedStale));
+    scheduler.insert(QStringLiteral("dispatched"), QString::number(schedulerTelemetry.dispatched));
+    root.insert(QStringLiteral("transactionScheduler"), scheduler);
 
     QJsonObject presetOperation;
     if (m_presetManager) {
@@ -324,6 +456,10 @@ void K500DeviceManager::setLiveEnabled(bool enabled)
 {
     if (m_liveEnabled == enabled)
         return;
+    if (!enabled) {
+        cancelScheduledTransactions(
+            QStringLiteral("Native LIVE state ended before queued command could dispatch"));
+    }
     m_liveEnabled = enabled;
     if (m_controller)
         m_controller->setLiveEnabled(enabled);
@@ -672,6 +808,8 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_parser.reset();
     m_io.close();
     setLiveEnabled(false);
+    m_schedulerTimer.stop();
+    m_transactionScheduler.endSession();
     if (m_controller)
         m_controller->clearDeviceState();
     m_activeMemory.clear();

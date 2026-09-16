@@ -150,11 +150,17 @@ int main(int argc, char **argv)
                       "critical input must deterministically evict oldest low-priority item");
         ok &= require(scheduler.queuedCount() == 2 && scheduler.telemetry().evicted == 1,
                       "bounded queue/eviction telemetry mismatch");
+        const auto evicted = scheduler.takeDropped();
+        ok &= require(evicted.size() == 1 && evicted.first().token == 1,
+                      "evicted work must be surfaced for canonical rejection");
         const auto first = scheduler.takeReady(1001);
         ok &= require(first.has_value() && first->token == 3,
                       "critical transaction must survive backpressure");
 
         scheduler.clearQueued();
+        const auto cancelled = scheduler.takeDropped();
+        ok &= require(!cancelled.isEmpty(),
+                      "clearQueued must surface cancelled transactions");
         scheduler.enqueue(tx(15, 4, "critical-a", Scheduler::Family::Immediate,
                              Scheduler::Priority::Critical), 1010);
         scheduler.enqueue(tx(15, 5, "critical-b", Scheduler::Family::Immediate,
@@ -175,6 +181,9 @@ int main(int argc, char **argv)
                       "aged transaction must expire deterministically");
         ok &= require(scheduler.telemetry().expired == 1,
                       "expiry telemetry must increment");
+        const auto expired = scheduler.takeDropped();
+        ok &= require(expired.size() == 1 && expired.first().token == 1,
+                      "expired work must be surfaced for canonical rejection");
     }
 
     {

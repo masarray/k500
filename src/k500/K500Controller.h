@@ -41,6 +41,7 @@ public slots:
     void hydrateFromDeviceMemory(const QByteArray &memory);
     void clearDeviceState();
     void handleStateEdit(const QString &path, const QVariant &value);
+    bool markCommandDispatched(quint64 sessionEpoch, quint64 token);
     void handleCommandDispatchResult(quint64 sessionEpoch, quint64 token,
                                      const QString &path, bool accepted,
                                      const QString &reason);

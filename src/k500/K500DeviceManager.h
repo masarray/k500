@@ -2,6 +2,7 @@
 
 #include "DevicePerformanceMonitor.h"
 #include "K500ResponseParser.h"
+#include "K500TransactionScheduler.h"
 #include "K500WinIo.h"
 
 #include <QByteArray>
@@ -113,6 +114,11 @@ private:
     void setPortLabel(const QString &label);
     void setError(const QString &message);
     void setLiveEnabled(bool enabled);
+    qint64 schedulerNowMs() const;
+    void armTransactionScheduler();
+    void dispatchScheduledCommands();
+    void rejectDroppedTransactions(const QString &reason);
+    void cancelScheduledTransactions(const QString &reason);
     void appendDiagnosticLine(const QString &direction, const QString &label, const QString &hex);
 
     void beginBluetoothScan();
@@ -137,6 +143,7 @@ private:
     DevicePerformanceMonitor m_performanceMonitor{this, m_controller};
     K500WinIo m_io;
     K500ResponseParser m_parser;
+    K500TransactionScheduler m_transactionScheduler;
     QObject *m_presetManager = nullptr;
     QObject *m_presetFileBridge = nullptr;
 
@@ -167,6 +174,8 @@ private:
     QTimer m_responseTimer;
     QTimer m_probeDelayTimer;
     QTimer m_heartbeatTimer;
+    QTimer m_schedulerTimer;
+    QElapsedTimer m_schedulerClock;
     QElapsedTimer m_lastValidRx;
     AppShutdownHook m_shutdownHook{this};
 };

@@ -25,6 +25,7 @@ void K500TransactionScheduler::beginSession(quint64 sessionEpoch)
     m_sessionEpoch = sessionEpoch;
     m_nextSequence = 1;
     m_queue.clear();
+    m_dropped.clear();
     m_lastImmediateDispatchMs = -1;
     m_lastEqDispatchMs = -1;
     m_lastBlockDispatchMs = -1;
@@ -37,6 +38,7 @@ void K500TransactionScheduler::endSession()
     m_sessionEpoch = 0;
     m_nextSequence = 1;
     m_queue.clear();
+    m_dropped.clear();
     m_lastImmediateDispatchMs = -1;
     m_lastEqDispatchMs = -1;
     m_lastBlockDispatchMs = -1;
@@ -80,6 +82,7 @@ K500TransactionScheduler::EnqueueResult K500TransactionScheduler::enqueue(
             syncQueueTelemetry();
             return EnqueueResult::RejectedBackpressure;
         }
+        m_dropped.append(m_queue.at(evictionIndex));
         m_queue.removeAt(evictionIndex);
         ++m_telemetry.evicted;
         result = EnqueueResult::AcceptedAfterEviction;
@@ -150,6 +153,7 @@ int K500TransactionScheduler::expire(qint64 nowMs)
         const bool agedOut = nowMs - transaction.enqueuedAtMs > m_config.maxQueueAgeMs;
         if (!stale && !agedOut)
             continue;
+        m_dropped.append(transaction);
         m_queue.removeAt(i);
         ++removed;
         if (stale)
@@ -163,8 +167,17 @@ int K500TransactionScheduler::expire(qint64 nowMs)
 
 void K500TransactionScheduler::clearQueued()
 {
+    for (const Transaction &transaction : m_queue)
+        m_dropped.append(transaction);
     m_queue.clear();
     syncQueueTelemetry();
+}
+
+QList<K500TransactionScheduler::Transaction> K500TransactionScheduler::takeDropped()
+{
+    QList<Transaction> dropped;
+    dropped.swap(m_dropped);
+    return dropped;
 }
 
 K500TransactionScheduler::Telemetry K500TransactionScheduler::telemetry() const
@@ -272,5 +285,5 @@ int K500TransactionScheduler::selectEvictionIndex(Priority incomingPriority) con
 void K500TransactionScheduler::syncQueueTelemetry()
 {
     m_telemetry.queued = m_queue.size();
-    m_telemetry.peakQueued = std::max(m_telemetry.peakQueued, m_queue.size());
+    m_telemetry.peakQueued = std::max(m_telemetry.peakQueued, static_cast<int>(m_queue.size()));
 }

@@ -92,6 +92,7 @@ public:
     void noteDispatched(const Transaction &transaction, qint64 nowMs);
     int expire(qint64 nowMs);
     void clearQueued();
+    QList<Transaction> takeDropped();
 
     int queuedCount() const { return m_queue.size(); }
     bool empty() const { return m_queue.isEmpty(); }
@@ -112,6 +113,7 @@ private:
     quint64 m_sessionEpoch = 0;
     quint64 m_nextSequence = 1;
     QList<Transaction> m_queue;
+    QList<Transaction> m_dropped;
     qint64 m_lastImmediateDispatchMs = -1;
     qint64 m_lastEqDispatchMs = -1;
     qint64 m_lastBlockDispatchMs = -1;
