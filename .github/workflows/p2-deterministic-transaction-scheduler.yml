@@ -71,6 +71,7 @@ jobs:
               'EQ pacing preserves 45ms policy': 'eqMinSpacingMs = 45' in h,
               'block pacing preserves 55ms policy': 'blockMinSpacingMs = 55' in h,
               'latest-wins coalescing': 'findCoalescingKey' in cpp and 'm_queue[replaceIndex]' in cpp,
+              'coalesced token recovery': 'P2_COALESCED_TOKEN_RECOVERY_V1' in cpp and 'm_dropped.append(m_queue.at(replaceIndex))' in cpp and 'superseded.first().token == 1' in test,
               'priority then FIFO': 'candidatePriority > currentPriority' in cpp and 'candidate.sequence < current.sequence' in cpp,
               'session rejection': 'RejectedStaleSession' in cpp and 'transaction.sessionEpoch != m_sessionEpoch' in cpp,
               'telemetry': 'peakQueued' in h and 'coalesced' in h and 'dispatched' in h,
