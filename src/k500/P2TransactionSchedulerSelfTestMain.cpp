@@ -62,6 +62,9 @@ int main(int argc, char **argv)
                           == Scheduler::EnqueueResult::Replaced,
                       "same coalescing key must latest-win replace");
         ok &= require(scheduler.queuedCount() == 1, "coalescing must keep one queue entry");
+        const auto superseded = scheduler.takeDropped();
+        ok &= require(superseded.size() == 1 && superseded.first().token == 1,
+                      "coalescing must surface the superseded token for canonical rejection");
         const auto ready = scheduler.takeReady(1001);
         ok &= require(ready.has_value() && ready->token == 2,
                       "coalesced queue must dispatch the newest token");
