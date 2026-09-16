@@ -32,3 +32,5 @@ jobs:
           git diff --cached --check
           git commit -m "P2: wire scheduler into native transport"
           git push origin HEAD:architecture/p2-deterministic-transaction-scheduler
+
+# retry: workflow now exists on the P2 branch, so this push can trigger it.
