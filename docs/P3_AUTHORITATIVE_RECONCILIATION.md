@@ -49,7 +49,7 @@ Support Report adds a bounded `canonicalState` summary containing snapshot gener
 
 ## Qualification
 
-`P3AuthoritativeReconciliationSelfTestMain.cpp` proves:
+The existing hardware-free `P1CanonicalStateSelfTestMain.cpp` now also carries the P3 reconciliation cases so one canonical-state harness protects both the original P1 contract and the new reconciliation semantics. It proves:
 
 - reconciliation cannot cross an in-flight command;
 - transport success alone leaves DesiredState unresolved;
@@ -57,6 +57,7 @@ Support Report adds a bounded `canonicalState` summary containing snapshot gener
 - old ConfirmedState does not leak across generations;
 - matching hardware truth converges DesiredState;
 - mismatching hardware truth remains explicit divergence;
-- malformed snapshots fail closed.
+- malformed snapshots fail closed;
+- reconnect still invalidates prior-session work and resets snapshot generation.
 
-The dedicated P3 workflow also guards the DeviceManager readback barrier and builds the full Windows application so the integration remains compile-qualified.
+The dedicated P3 workflow builds and runs `k500_p1_state_selftest`, guards the Controller/DeviceManager readback barrier, and the normal Windows build matrix compile-qualifies the full application integration.
