@@ -23,9 +23,14 @@ jobs:
       - name: Apply scheduler transport bridge
         run: python tools/p2_next_phase_patch.py
 
-      - name: Commit final P2 next-phase tree
+      - name: Commit P2 transport bridge
         shell: bash
         run: |
+          # The patcher removes its temporary machinery from the worktree, but
+          # keep it for this one bot commit so GITHUB_TOKEN never has to mutate
+          # workflow files. ChatGPT removes both helper files through the repo
+          # connector immediately after this implementation commit lands.
+          git checkout -- tools/p2_next_phase_patch.py .github/workflows/p2-next-phase-apply.yml
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
@@ -33,4 +38,4 @@ jobs:
           git commit -m "P2: wire scheduler into native transport"
           git push origin HEAD:architecture/p2-deterministic-transaction-scheduler
 
-# retry: workflow now exists on the P2 branch, so this push can trigger it.
+# retry 2: preserve temporary workflow during bot push; remove it via connector after success.
