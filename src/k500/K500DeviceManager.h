@@ -83,6 +83,7 @@ signals:
     void mutedChanged();
     void deviceScalarsReady(const QByteArray &scalars);
     void activeMemoryReady(const QByteArray &memory);
+    void reconciliationMemoryReady(const QByteArray &memory);
     void commandDispatchResult(quint64 sessionEpoch, quint64 token,
                                const QString &path, bool accepted,
                                const QString &reason);
@@ -114,6 +115,8 @@ private:
     void setPortLabel(const QString &label);
     void setError(const QString &message);
     void setLiveEnabled(bool enabled);
+    void scheduleAuthoritativeReconciliation();
+    void startAuthoritativeReconciliation();
     qint64 schedulerNowMs() const;
     void armTransactionScheduler();
     void dispatchScheduledCommands();
@@ -159,6 +162,7 @@ private:
     bool m_liveEnabled = false;
     bool m_muted = false;
     bool m_shuttingDown = false;
+    bool m_reconciliationInProgress = false;
 
     Stage m_stage = Stage::Idle;
     QStringList m_serialCandidates;
@@ -174,6 +178,7 @@ private:
     QTimer m_responseTimer;
     QTimer m_probeDelayTimer;
     QTimer m_heartbeatTimer;
+    QTimer m_reconciliationTimer;
     QTimer m_schedulerTimer;
     QElapsedTimer m_schedulerClock;
     QElapsedTimer m_lastValidRx;
