@@ -34,6 +34,8 @@ void K500DeviceManager::shutdown()
                    this, &K500DeviceManager::sendLiveFrame);
     }
     setLiveEnabled(false);
+    m_reconciliationTimer.stop();
+    m_reconciliationInProgress = false;
 
     // P2_SCHEDULER_SHUTDOWN_BARRIER_V1 — setLiveEnabled(false) first surfaces
     // queued work as rejected transport attempts; only then retire the session.
