@@ -48,6 +48,20 @@ for Echo and the Qt native bridge already carries captured CMD 0x0D mappings.
 Fields not listed here (for example hidden/right-channel timing metadata) remain
 device-owned/unverified unless a dedicated capture proves their user-facing range.
 
+## Music Tone — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Music Noise Gate | OFF, then -90 | -50 | dB | Native packet capture |
+| Music Bass | -12.0 | +12.0 | dB | Native packet capture |
+
+Music Noise Gate uses raw `0` for OFF and raw `1..41` for `-90..-50 dB`.
+Music Bass uses CMD `0x0C`, selector `0x02`, encoded in 0.1 dB units:
+`raw = round((dB + 12) * 10)`.
+
+Connect/readback offsets for these two Music Tone controls are still evidence-gated;
+the current checkpoint implements only their byte-verified live WRITE mappings.
+
 ## Common PEQ
 
 | Parameter | Minimum | Maximum | Unit | Evidence |
