@@ -165,10 +165,8 @@ void K500DeviceManager::toggleMute()
         return;
     const bool next = !m_muted;
     if (writeFrame(K500Protocol::mute(next), next ? QStringLiteral("Mute ON")
-                                                  : QStringLiteral("Mute OFF"))) {
-        m_muted = next;
-        emit mutedChanged();
-    }
+                                                  : QStringLiteral("Mute OFF")))
+        setMuted(next);
 }
 
 void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &label)
@@ -519,6 +517,16 @@ void K500DeviceManager::setPlaying(bool playing)
                  m_playing ? QStringLiteral("PLAYING") : QStringLiteral("STOPPED/PAUSED"));
 }
 
+void K500DeviceManager::setMuted(bool muted)
+{
+    if (m_muted == muted)
+        return;
+    m_muted = muted;
+    emit mutedChanged();
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("mute state"),
+                 m_muted ? QStringLiteral("MUTED") : QStringLiteral("UNMUTED"));
+}
+
 
 void K500DeviceManager::scheduleAuthoritativeReconciliation()
 {
@@ -841,6 +849,10 @@ void K500DeviceManager::handleResponse(const K500Response &response)
     if (K500ResponseParser::tryDecodePlaying(response, &decodedPlaying))
         setPlaying(decodedPlaying);
 
+    bool decodedMuted = false;
+    if (K500ResponseParser::tryDecodeMuted(response, &decodedMuted))
+        setMuted(decodedMuted);
+
     if ((m_stage == Stage::ProbeBluetooth || m_stage == Stage::ProbeUsb)
         && response.rsp == 0xE3) {
         beginSync();
@@ -921,8 +933,7 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_memoryReadOffset = 0;
     m_pendingReadLength = 0;
     setPlaying(false);
-    m_muted = false;
-    emit mutedChanged();
+    setMuted(false);
     if (!keepError)
         setError({});
 }
