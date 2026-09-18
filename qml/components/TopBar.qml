@@ -10,7 +10,6 @@ StudioPanel {
 
     required property var deviceManager
     required property var engine
-    property bool transportPlaying: false
     signal aboutRequested()
 
     readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
@@ -87,14 +86,6 @@ StudioPanel {
         onAccepted: root.deviceManager.saveSupportReport(selectedFile)
     }
 
-    Connections {
-        target: root.deviceManager
-        function onStatusChanged() {
-            if (!root.deviceManager.connected)
-                root.transportPlaying = false
-        }
-    }
-
     RowLayout {
         anchors.fill: parent
         anchors.leftMargin: 14
@@ -163,10 +154,10 @@ StudioPanel {
                 SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true;enabled:root.deviceManager.connected;onClicked:root.deviceManager.sendPlayerCommand("rewind") }
                 SoftButton {
                     Layout.preferredWidth:31;Layout.fillHeight:true;transport:true;toolbar:true
-                    iconName:root.transportPlaying?"pause":"play";iconOnly:true
-                    checked:root.transportPlaying;neonAccent:root.transportPlaying;accentIcon:true
+                    iconName:root.deviceManager.playing?"pause":"play";iconOnly:true
+                    checked:root.deviceManager.playing;neonAccent:root.deviceManager.playing;accentIcon:true
                     enabled:root.deviceManager.connected
-                    onClicked:{root.deviceManager.sendPlayerCommand("playPause");root.transportPlaying=!root.transportPlaying}
+                    onClicked:root.deviceManager.sendPlayerCommand("playPause")
                 }
                 SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true;enabled:root.deviceManager.connected;onClicked:root.deviceManager.sendPlayerCommand("forward") }
                 Rectangle { Layout.preferredWidth:1;Layout.preferredHeight:16;color:"#344049";opacity:.58 }
