@@ -43,9 +43,9 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
                 m_activeSlot = 0;
                 emit activeSlotChanged();
             }
-            // USE_INIT_DEVICE_TRUTH_V1 — do not retain a PC preference as if it
-            // were device truth. Current captures prove CMD 0x12 + RSP 0xED,
-            // but not the connect-time readback bit yet.
+            // OFFLINE_USE_INIT_V1 + USE_INIT_DEVICE_TRUTH_V1 — never retain a
+            // PC preference as device truth while offline. Connect-time C0
+            // hydration owns the actual Use Init Volume state.
             if (m_useInitVolumeKnown || m_useInitVolume) {
                 m_useInitVolume = false;
                 m_useInitVolumeKnown = false;
