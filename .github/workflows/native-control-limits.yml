@@ -10,6 +10,8 @@ on:
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/MusicInputPanel.qml'
       - 'docs/K500_NATIVE_CONTROL_LIMITS.md'
       - '.github/workflows/native-control-limits.yml'
   pull_request:
@@ -20,6 +22,8 @@ on:
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/RackFaderPanel.qml'
+      - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/MusicInputPanel.qml'
       - 'docs/K500_NATIVE_CONTROL_LIMITS.md'
       - '.github/workflows/native-control-limits.yml'
 
@@ -40,9 +44,18 @@ jobs:
           engine = Path('src/StudioEngine.cpp').read_text(encoding='utf-8')
           qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
           rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
+          master = Path('qml/components/MasterStripPanel.qml').read_text(encoding='utf-8')
+          music_input = Path('qml/components/MusicInputPanel.qml').read_text(encoding='utf-8')
           doc = Path('docs/K500_NATIVE_CONTROL_LIMITS.md').read_text(encoding='utf-8')
 
           expected_limits = {
+              'namespace TopVolume': 'Top volume domain',
+              'Max = 84': 'Top volume maximum',
+              'namespace MusicInputGain': 'Music input gain domain',
+              'MinDb = -12.0': 'Music input gain minimum',
+              'MaxDb = 12.0': 'Music input gain maximum',
+              'namespace MicFbx': 'Mic FBX domain',
+              'Max = 3': 'Mic FBX maximum',
               'DecayMinMs = 500': 'Reverb decay minimum',
               'DecayMaxMs = 5000': 'Reverb decay maximum',
               'PredelayMinMs = 0': 'Reverb predelay minimum',
@@ -63,9 +76,13 @@ jobs:
               'controller clamps to native limits': 'K500NativeLimits::Reverb::PredelayMaxMs' in controller and 'K500NativeLimits::Reverb::HpfMaxHz' in controller,
               'engine exposes native limits': 'QVariantMap StudioEngine::nativeLimits() const' in engine,
               'qml consumes native limits': 'nativeLimit("reverb","decayMinMs",500)' in qml and 'nativeLimit("reverb","lpfMaxHz",16000)' in qml,
+              'master strip consumes registry': 'nativeLimit("topVolume","max",84)' in master,
+              'music input consumes registry': music_input.count('nativeLimit("musicInputGain","minDb",-12)') >= 5 and music_input.count('nativeLimit("musicInputGain","maxDb",12)') >= 5,
+              'FBX consumes registry': 'nativeLimit("micFbx","max",3)' in qml,
               'effect filter types are hidden': qml.count('showTypes: false') >= 2,
               'Reverb visual uses native timing endpoints': '(root.fxVisual1 - 500) / 4500.0' in rack and 'root.fxVisual2 / 100.0' in rack,
               'evidence doc records native V3.10': 'native KTV V3.10' in doc and '500 ms' in doc and '16000 Hz' in doc,
+              'historical evidence is recoverable': '8524101578b18e96ffb5a8381b83036e37260718' in doc and 'a61b4ba3c3580d785f14123391de6d441ae71898' in doc and '6ca67ff22c7dd706f8c1bc53f59c81189ade7487' in doc,
               'wire width warning is explicit': 'Wire width is NOT a UI-domain specification' in limits,
           }
           failed += [name for name, ok in checks.items() if not ok]
