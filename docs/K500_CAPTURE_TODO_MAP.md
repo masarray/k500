@@ -161,16 +161,16 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 ### P1 — useful next
 
-9. Main L/R delay, Center delay, Sub delay.
-10. Equipment Mode Name rename.
-11. BT Name and BLE Name rename/reset.
-12. Adj Manner / VR OFF.
+8. Main L/R delay, Center delay, Sub delay.
+9. Equipment Mode Name rename.
+10. BT Name and BLE Name rename/reset.
+11. Adj Manner / VR OFF.
 
 ### P2 — last / potentially destructive
 
-13. Reset All Settings.
-14. Lock state/password flows.
-15. Admin/User mode and password flows.
+12. Reset All Settings.
+13. Lock state/password flows.
+14. Admin/User mode and password flows.
 
 ## Recommended capture method
 
