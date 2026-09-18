@@ -381,8 +381,10 @@ StudioPanel {
                                         width: Math.min(activeFieldVisual.width * .96, 440)
                                         height: Math.min(activeFieldVisual.height * .96, 154)
                                         anchors.centerIn: parent
-                                        readonly property real decayNorm: root.clamp((root.fxVisual1 - 100) / 4900.0, 0, 1)
-                                        readonly property real preNorm: root.clamp(root.fxVisual2 / 300.0, 0, 1)
+                                        // K500_NATIVE_UI_LIMITS_V1 — native V3.10 Reverb endpoints:
+                                        // DECAY 500..5000 ms, PRE 0..100 ms.
+                                        readonly property real decayNorm: root.clamp((root.fxVisual1 - 500) / 4500.0, 0, 1)
+                                        readonly property real preNorm: root.clamp(root.fxVisual2 / 100.0, 0, 1)
                                         readonly property real decayShape: Math.sqrt(decayNorm)
                                         readonly property int ringCount: 2 + Math.round(decayNorm * 6)
                                         readonly property int particleCount: 4 + Math.round(decayNorm * 10)
