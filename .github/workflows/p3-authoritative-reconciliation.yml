@@ -120,7 +120,7 @@ jobs:
               'mute hydrates from captured C0 bit': 'MUTE_CONNECT_CAPTURED_V1' in response_h and 'tryDecodeMuted' in response_cpp and '0x02u' in response_cpp and 'setMuted(decodedMuted)' in manager,
               'music tone captured writes are implemented': 'musicNoiseGateRaw' in protocol_cpp and 'musicBass' in protocol_cpp and 'music.noiseGateDb' in controller and 'music.bassDb' in controller,
               'music tone native UI range is guarded': 'from:-91;to:-50' in music_tone_qml and 'offAtMin:true' in music_tone_qml and 'from:-12;to:12' in music_tone_qml and 'offAtMin' in parameter_slider,
-              'music tone capture evidence documented': 'raw 0x00 = OFF' in music_tone_doc and 'raw = round((dB + 12.0) * 10)' in music_tone_doc,
+              'music tone capture evidence documented': 'raw `0x00` = OFF' in music_tone_doc and 'raw = round((dB + 12.0) * 10)' in music_tone_doc,
               'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
