@@ -222,7 +222,8 @@ qint64 K500DeviceManager::schedulerNowMs() const
 void K500DeviceManager::armTransactionScheduler()
 {
     if (!m_transactionScheduler.sessionActive() || m_transactionScheduler.empty()
-        || !connected() || !m_liveEnabled) {
+        || !connected() || !m_liveEnabled || m_reconciliationInProgress
+        || m_stage != Stage::Ready) {
         m_schedulerTimer.stop();
         return;
     }
@@ -243,6 +244,12 @@ void K500DeviceManager::dispatchScheduledCommands()
         cancelScheduledTransactions(QStringLiteral("Native transport left LIVE state before scheduler dispatch"));
         return;
     }
+
+    // P3_NONDISRUPTIVE_RECONCILIATION_V2 — the physical session remains ONLINE
+    // while authoritative readback owns the wire. Never cancel valid queued
+    // work just because verification temporarily suspends dispatch.
+    if (m_reconciliationInProgress || m_stage != Stage::Ready)
+        return;
 
     for (;;) {
         const auto transaction = m_transactionScheduler.takeReady(schedulerNowMs());
@@ -487,6 +494,14 @@ void K500DeviceManager::setLiveEnabled(bool enabled)
     emit liveEnabledChanged();
 }
 
+void K500DeviceManager::setReconciliationInProgress(bool active)
+{
+    if (m_reconciliationInProgress == active)
+        return;
+    m_reconciliationInProgress = active;
+    emit reconciliationInProgressChanged();
+}
+
 void K500DeviceManager::scheduleAuthoritativeReconciliation()
 {
     // P3_AUTHORITATIVE_RECONCILIATION_V1 — debounce the already-proven full
@@ -510,11 +525,16 @@ void K500DeviceManager::startAuthoritativeReconciliation()
         return;
     }
 
-    m_reconciliationInProgress = true;
-    setLiveEnabled(false);
-    setStatus(QStringLiteral("syncing"));
+    // P3_NONDISRUPTIVE_RECONCILIATION_V2
+    // Keep the physical session and user-visible LIVE state intact. Controller
+    // command planning is paused instead, so edits made during the readback are
+    // retained latest-wins and replayed only after the authoritative barrier.
+    if (m_controller)
+        m_controller->setCommandPlanningPaused(true);
+    setReconciliationInProgress(true);
+    m_schedulerTimer.stop();
     emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation"),
-                 QStringLiteral("LIVE paused; verifying 939-byte hardware state"));
+                 QStringLiteral("background verification; ONLINE retained; reading 939-byte hardware state"));
     requestActiveMemoryReadback();
 }
 
@@ -625,7 +645,8 @@ void K500DeviceManager::requestActiveMemoryReadback()
     m_activeMemory = QByteArray(ActiveMemorySize, char(0));
     m_memoryReadOffset = 0;
     m_pendingReadLength = 0;
-    setPortLabel(QStringLiteral("%1 · reading KTV 0/%2").arg(m_io.label()).arg(ActiveMemorySize));
+    if (!m_reconciliationInProgress)
+        setPortLabel(QStringLiteral("%1 · reading KTV 0/%2").arg(m_io.label()).arg(ActiveMemorySize));
     requestNextMemoryBlock();
 }
 
@@ -642,8 +663,10 @@ void K500DeviceManager::requestNextMemoryBlock()
     const int offset = m_memoryReadOffset;
     // RETRIEVE_ALL_USB_MODE02_CAPTURED_V1 — native KTV startup capture.
     const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x02 : 0x63;
-    setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
-                     .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
+    if (!m_reconciliationInProgress) {
+        setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
+                         .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
+    }
     if (!writeFrame(K500Protocol::readBlock(static_cast<quint16>(offset),
                                              static_cast<quint16>(m_pendingReadLength), mode),
                     QStringLiteral("Read 0x%1 len %2")
@@ -694,19 +717,22 @@ void K500DeviceManager::finishConnected()
     m_responseTimer.stop();
     m_stage = Stage::Ready;
 
-    // Important ordering: hydrate controller + StudioEngine while LIVE is OFF.
-    // Initial/Recall snapshots reset intent. P3 verification preserves unresolved
-    // intent and lets semantic confirmation prove hardware convergence.
+    // Initial/Recall hydration updates the editor. Background reconciliation is
+    // canonical-only: it must never replay the whole snapshot into the visible
+    // editor or make ONLINE/LIVE appear to disconnect.
     const bool wasReconciliation = m_reconciliationInProgress;
     if (wasReconciliation) {
         emit reconciliationMemoryReady(m_activeMemory);
+        setReconciliationInProgress(false);
+        if (m_controller)
+            m_controller->setCommandPlanningPaused(false);
     } else {
         emit deviceScalarsReady(m_activeMemory.left(0x40));
         emit activeMemoryReady(m_activeMemory);
+        setLiveEnabled(true);
+        setStatus(QStringLiteral("connected"));
     }
-    setLiveEnabled(true);
     setError({});
-    setStatus(QStringLiteral("connected"));
 
     if (wasReconciliation && m_controller) {
         emit logLine(QStringLiteral("SYS"), QStringLiteral("authoritative reconciliation complete"),
@@ -718,7 +744,6 @@ void K500DeviceManager::finishConnected()
         emit logLine(QStringLiteral("SYS"), QStringLiteral("device sync complete"),
                      QStringLiteral("%1 bytes loaded into native editor").arg(m_activeMemory.size()));
     }
-    m_reconciliationInProgress = false;
 
     if (m_io.kind() == K500WinIo::Kind::Serial) {
         m_lastKnownSerialPort = m_currentSerialPort;
@@ -761,7 +786,7 @@ void K500DeviceManager::connectionTimeout()
     }
 
     if (m_stage == Stage::AwaitMemoryBlock) {
-        setError(QStringLiteral("Timeout membaca active memory K500 di 0x%1. LIVE tetap OFF agar state device tidak tertimpa.")
+        setError(QStringLiteral("Timeout membaca active memory K500 di 0x%1; koneksi dilepas agar state device tidak tertimpa.")
                      .arg(m_memoryReadOffset, 4, 16, QLatin1Char('0')));
         resetConnectionState(true);
         setStatus(QStringLiteral("error"));
@@ -871,7 +896,7 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_probeDelayTimer.stop();
     m_heartbeatTimer.stop();
     m_reconciliationTimer.stop();
-    m_reconciliationInProgress = false;
+    setReconciliationInProgress(false);
     m_stage = Stage::Idle;
     m_parser.reset();
     m_io.close();
