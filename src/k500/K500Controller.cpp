@@ -193,6 +193,10 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, 0x0020, 9)) - 12;
     m_music.uDiskGainDb = static_cast<int>(fileU8(memory, 0x0021, 8)) - 12;
     m_music.digitalGainDb = static_cast<int>(fileU8(memory, 0x0022, 8)) - 12;
+    // Music Noise Gate readback offset is not yet capture-proven. Preserve the
+    // device scalar for unrelated Top-Music writes until this session explicitly
+    // edits the gate; do not pretend 0x001B is authoritative gate truth.
+    m_music.noiseGateRaw = -1;
 
     m_mic.topMicVol = fileU8(memory, 0x0009, 35);
     m_mic.micInitVol = fileU8(memory, 0x0012, 25);
@@ -481,8 +485,17 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     else if (path == QStringLiteral("music.bluetoothGainDb") || path == QStringLiteral("music.btGainDb")) m_music.bluetoothGainDb = value.toDouble();
     else if (path == QStringLiteral("music.uDiskGainDb")) m_music.uDiskGainDb = value.toDouble();
     else if (path == QStringLiteral("music.digitalGainDb")) m_music.digitalGainDb = value.toDouble();
+    else if (path == QStringLiteral("music.noiseGateDb")) {
+        m_music.noiseGateRaw = K500Protocol::musicNoiseGateRaw(value.toDouble());
+    }
     else isTopMusicPath = false;
     if (isTopMusicPath) { queueTopMusic(path); return; }
+
+    if (path == QStringLiteral("music.bassDb")) {
+        queueBlockFrame(QStringLiteral("music:bass"), path, K500Protocol::musicBass(value.toDouble()),
+                        QStringLiteral("Music Bass %1 dB").arg(value.toDouble(), 0, 'f', 1));
+        return;
+    }
 
     bool isTopMicPath = true;
     if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = qRound(value.toDouble());
