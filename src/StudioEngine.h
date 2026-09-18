@@ -52,6 +52,8 @@ public:
     void syncBand(int index, double frequency, double gain, double q, const QString &typeName);
     void syncCrossover(double hpfHz, double lpfHz,
                        const QString &hpType, const QString &lpType);
+    void setCrossoverLimits(double hpfMinHz, double hpfMaxHz,
+                            double lpfMinHz, double lpfMaxHz);
 
 signals:
     void bandChanged(int index, double frequency, double gain, double q, const QString &typeName);
@@ -69,6 +71,10 @@ private:
     QList<double> m_defaultFrequencies{80, 160, 315, 630, 1300, 2500, 8000};
     double m_hpfHz = 20.0;
     double m_lpfHz = 20000.0;
+    double m_hpfMinHz = 20.0;
+    double m_hpfMaxHz = 20000.0;
+    double m_lpfMinHz = 20.0;
+    double m_lpfMaxHz = 20000.0;
     QString m_hpType = QStringLiteral("HP Butter 12");
     QString m_lpType = QStringLiteral("LP Butter 12");
 };
@@ -87,6 +93,7 @@ class StudioEngine final : public QObject
     Q_PROPERTY(EqBandModel *subEqBands READ subEqBands CONSTANT)
     Q_PROPERTY(QVariantMap deviceState READ deviceState NOTIFY deviceStateChanged)
     Q_PROPERTY(bool deviceStateReady READ deviceStateReady NOTIFY deviceStateChanged)
+    Q_PROPERTY(QVariantMap nativeLimits READ nativeLimits CONSTANT)
     Q_PROPERTY(int musicKey READ musicKey WRITE setMusicKey NOTIFY musicKeyChanged)
     Q_PROPERTY(double noiseGate READ noiseGate WRITE setNoiseGate NOTIFY noiseGateChanged)
     Q_PROPERTY(double bass READ bass WRITE setBass NOTIFY bassChanged)
@@ -121,6 +128,7 @@ public:
     EqBandModel *subEqBands() { return &m_subEqBands; }
     QVariantMap deviceState() const { return m_deviceState; }
     bool deviceStateReady() const { return m_deviceStateReady; }
+    QVariantMap nativeLimits() const;
 
     // PRESET_CROSSOVER_HYDRATION_NO_EDIT_V1
     // Offline .k500 Preview has authoritative HPF/LPF footer metadata that is
