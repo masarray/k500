@@ -11,10 +11,13 @@ on:
       - 'src/main.cpp'
       - 'src/k500/K500Protocol.*'
       - 'src/k500/K500ResponseParser.*'
+      - 'src/k500/K500PresetManager.*'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
       - 'qml/components/TopBar.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
+      - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -74,10 +77,13 @@ jobs:
           protocol_h = Path('src/k500/K500Protocol.h').read_text(encoding='utf-8')
           protocol_cpp = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
           response_cpp = Path('src/k500/K500ResponseParser.cpp').read_text(encoding='utf-8')
+          preset_manager = Path('src/k500/K500PresetManager.cpp').read_text(encoding='utf-8')
           studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
           qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          system_qml = Path('qml/components/SystemWorkspaceImpl.qml').read_text(encoding='utf-8')
           topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
           native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
+          runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
@@ -98,6 +104,8 @@ jobs:
               'native range documentation present': 'Reverb Decay' in native_ranges and '4000' in native_ranges and '16000' in native_ranges,
               'player status comes from captured RX': 'PLAYER_STATUS_CAPTURED_V1' in response_cpp and '0x04u' in response_cpp and 'deviceManager.playing' in topbar,
               'player UI has no local optimistic toggle': 'transportPlaying' not in topbar and 'sendPlayerCommand("playPause")' in topbar,
+              'use-init never pretends PC preference is device truth': 'USE_INIT_DEVICE_TRUTH_V1' in preset_manager and 'QSettings' not in preset_manager and 'useInitVolumeKnown' in system_qml,
+              'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]
