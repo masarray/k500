@@ -24,6 +24,10 @@ public:
     // RSP 0xC0. Bit 0x04 is clear while stopped/paused (0x08) and set while
     // music is actively playing (0x0C).
     static bool tryDecodePlaying(const K500Response &response, bool *playing);
+    // USE_INIT_CONNECT_CAPTURED_V1
+    // Physical connect captures prove C0 data[7] bit 0x04 is the authoritative
+    // Use Init Volume state: clear=OFF (0x80), set=ON (0x84).
+    static bool tryDecodeUseInitVolume(const K500Response &response, bool *enabled);
     static bool selfTest(QString *error = nullptr);
 
 private:
