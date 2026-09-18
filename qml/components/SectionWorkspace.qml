@@ -151,12 +151,12 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.minimumWidth: 360
                                     title: "Reverb"
-                                    // REVERB_DIRECT_KNOB_NATIVE_V2 — DIRECT is the fourth matching knob.
-                                    // LEVEL/DECAY/PRE remain first so the visual-field mapping is unchanged.
+                                    // K500_NATIVE_VALUE_CONTRACT_V1 — manufacturer UI: LEVEL 0..100,
+                                    // DECAY 500..5000 ms, PRE 0..100 ms, DIRECT 0..100.
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
-                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0},
+                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:500,to:5000,step:5,unit:"ms",decimals:0},
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:100,step:1,unit:"ms",decimals:0},
                                         {label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
@@ -167,8 +167,8 @@ Item {
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
-                                        {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:root.engine.reverbEqBands.hpfMinHz,to:root.engine.reverbEqBands.hpfMaxHz,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:root.engine.reverbEqBands.lpfMinHz,to:root.engine.reverbEqBands.lpfMaxHz,step:1,unit:"Hz",decimals:0}
                                     ]
                                     hpType: root.engine.reverbEqBands.hpType
                                     lpType: root.engine.reverbEqBands.lpType
@@ -204,8 +204,8 @@ Item {
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
-                                        {label:"HPF",value:root.engine.echoEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:root.engine.echoEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.echoEqBands.hpfHz,from:root.engine.echoEqBands.hpfMinHz,to:root.engine.echoEqBands.hpfMaxHz,step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.echoEqBands.lpfHz,from:root.engine.echoEqBands.lpfMinHz,to:root.engine.echoEqBands.lpfMaxHz,step:1,unit:"Hz",decimals:0}
                                     ]
                                     hpType: root.engine.echoEqBands.hpType
                                     lpType: root.engine.echoEqBands.lpType
