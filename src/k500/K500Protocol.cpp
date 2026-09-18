@@ -530,6 +530,34 @@ bool selfTest(QString *error)
         || byteFromChar(preservedReverbFrame.at(6)) != 0x5A || byteFromChar(preservedReverbFrame.at(17)) != 0x5A)
         return fail(QStringLiteral("Reverb block must preserve unknown device bytes"));
 
+    // K500_NATIVE_VALUE_CONTRACT_V1 — transport clamping must be identical to
+    // the manufacturer UI domain even when called programmatically.
+    K500ReverbBlockState reverbLow = reverb;
+    reverbLow.level = -99; reverbLow.direct = -99; reverbLow.hpfHz = -1;
+    reverbLow.lpfHz = 1; reverbLow.decayMs = 1; reverbLow.predelayMs = -1;
+    K500ReverbBlockState reverbMin = reverbLow;
+    reverbMin.level = NativeRange::ReverbLevelMin;
+    reverbMin.direct = NativeRange::ReverbDirectMin;
+    reverbMin.hpfHz = NativeRange::FxHpfMinHz;
+    reverbMin.lpfHz = NativeRange::FxLpfMinHz;
+    reverbMin.decayMs = NativeRange::ReverbDecayMinMs;
+    reverbMin.predelayMs = NativeRange::ReverbPredelayMinMs;
+    if (reverbBlock(reverbLow, reverbSeed) != reverbBlock(reverbMin, reverbSeed))
+        return fail(QStringLiteral("Reverb native minimum clamp mismatch"));
+
+    K500ReverbBlockState reverbHigh = reverb;
+    reverbHigh.level = 999; reverbHigh.direct = 999; reverbHigh.hpfHz = 99999;
+    reverbHigh.lpfHz = 99999; reverbHigh.decayMs = 99999; reverbHigh.predelayMs = 99999;
+    K500ReverbBlockState reverbMax = reverbHigh;
+    reverbMax.level = NativeRange::ReverbLevelMax;
+    reverbMax.direct = NativeRange::ReverbDirectMax;
+    reverbMax.hpfHz = NativeRange::FxHpfMaxHz;
+    reverbMax.lpfHz = NativeRange::FxLpfMaxHz;
+    reverbMax.decayMs = NativeRange::ReverbDecayMaxMs;
+    reverbMax.predelayMs = NativeRange::ReverbPredelayMaxMs;
+    if (reverbBlock(reverbHigh, reverbSeed) != reverbBlock(reverbMax, reverbSeed))
+        return fail(QStringLiteral("Reverb native maximum clamp mismatch"));
+
     QByteArray echoSeed = bytes({0x01,0x5A,0x02,0x64,0x02,0x40,0x64,0x3C,0x3C,0x26,0x02,0x68,0x10,0x2C,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00});
     K500EchoBlockState echo;
     echo.level = 90; echo.repeat = 2; echo.direct = 99; echo.rightDelayPercent = 10; echo.rightPredelayPercent = 10;
@@ -544,6 +572,32 @@ bool selfTest(QString *error)
         || byteFromChar(preservedEchoFrame.at(7)) != 0x5A || byteFromChar(preservedEchoFrame.at(21)) != 0x5A
         || byteFromChar(preservedEchoFrame.at(24)) != 0x5A)
         return fail(QStringLiteral("Echo block must preserve unknown device bytes"));
+
+    K500EchoBlockState echoLow = echo;
+    echoLow.level = -1; echoLow.repeat = -1; echoLow.direct = -1;
+    echoLow.hpfHz = -1; echoLow.lpfHz = 1; echoLow.leftDelayMs = -1;
+    K500EchoBlockState echoMin = echoLow;
+    echoMin.level = NativeRange::EchoLevelMin;
+    echoMin.repeat = NativeRange::EchoRepeatMin;
+    echoMin.direct = NativeRange::EchoDirectMin;
+    echoMin.hpfHz = NativeRange::FxHpfMinHz;
+    echoMin.lpfHz = NativeRange::FxLpfMinHz;
+    echoMin.leftDelayMs = NativeRange::EchoDelayMinMs;
+    if (echoBlock(echoLow, echoSeed) != echoBlock(echoMin, echoSeed))
+        return fail(QStringLiteral("Echo native minimum clamp mismatch"));
+
+    K500EchoBlockState echoHigh = echo;
+    echoHigh.level = 999; echoHigh.repeat = 999; echoHigh.direct = 999;
+    echoHigh.hpfHz = 99999; echoHigh.lpfHz = 99999; echoHigh.leftDelayMs = 99999;
+    K500EchoBlockState echoMax = echoHigh;
+    echoMax.level = NativeRange::EchoLevelMax;
+    echoMax.repeat = NativeRange::EchoRepeatMax;
+    echoMax.direct = NativeRange::EchoDirectMax;
+    echoMax.hpfHz = NativeRange::FxHpfMaxHz;
+    echoMax.lpfHz = NativeRange::FxLpfMaxHz;
+    echoMax.leftDelayMs = NativeRange::EchoDelayMaxMs;
+    if (echoBlock(echoHigh, echoSeed) != echoBlock(echoMax, echoSeed))
+        return fail(QStringLiteral("Echo native maximum clamp mismatch"));
 
     // EQ_BYPASS_24BIT_CAPTURED_V2 — sequential donor vectors prove one shared
     // 24-bit image across Mic/Music/Main/Surround/Center/Sub/Reverb/Echo.
