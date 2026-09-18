@@ -155,14 +155,19 @@ public:
         const QString resolvedHpType = hpType.trimmed().isEmpty() ? model->hpType() : hpType.trimmed();
         const QString resolvedLpType = lpType.trimmed().isEmpty() ? model->lpType() : lpType.trimmed();
         model->syncCrossover(safeHpf, safeLpf, resolvedHpType, resolvedLpType);
+        // The model owns section-specific native limits (Reverb is narrower
+        // than the generic 20..20000 Hz DSP domain). Persist the resolved model
+        // value, not the pre-clamp request.
+        const double resolvedHpf = model->hpfHz();
+        const double resolvedLpf = model->lpfHz();
 
         if (section == QStringLiteral("music")) {
-            if (!qFuzzyCompare(m_hpfHz + 1000.0, safeHpf + 1000.0)) {
-                m_hpfHz = safeHpf;
+            if (!qFuzzyCompare(m_hpfHz + 1000.0, resolvedHpf + 1000.0)) {
+                m_hpfHz = resolvedHpf;
                 emit hpfHzChanged();
             }
-            if (!qFuzzyCompare(m_lpfHz + 1000.0, safeLpf + 1000.0)) {
-                m_lpfHz = safeLpf;
+            if (!qFuzzyCompare(m_lpfHz + 1000.0, resolvedLpf + 1000.0)) {
+                m_lpfHz = resolvedLpf;
                 emit lpfHzChanged();
             }
             if (m_hpType != resolvedHpType) {
@@ -178,8 +183,8 @@ public:
         if (m_deviceStateReady) {
             QVariantMap eqState = m_deviceState.value(QStringLiteral("eq")).toMap();
             QVariantMap sectionState = eqState.value(section).toMap();
-            sectionState.insert(QStringLiteral("hpfHz"), safeHpf);
-            sectionState.insert(QStringLiteral("lpfHz"), safeLpf);
+            sectionState.insert(QStringLiteral("hpfHz"), resolvedHpf);
+            sectionState.insert(QStringLiteral("lpfHz"), resolvedLpf);
             sectionState.insert(QStringLiteral("hpType"), resolvedHpType);
             sectionState.insert(QStringLiteral("lpType"), resolvedLpType);
             eqState.insert(section, sectionState);
