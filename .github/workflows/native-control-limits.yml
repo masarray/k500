@@ -1,0 +1,75 @@
+name: Native K500 Control Limits
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'src/k500/K500NativeLimits.h'
+      - 'src/k500/K500Protocol.cpp'
+      - 'src/k500/K500Controller.cpp'
+      - 'src/StudioEngine.*'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'docs/K500_NATIVE_CONTROL_LIMITS.md'
+      - '.github/workflows/native-control-limits.yml'
+  pull_request:
+    paths:
+      - 'src/k500/K500NativeLimits.h'
+      - 'src/k500/K500Protocol.cpp'
+      - 'src/k500/K500Controller.cpp'
+      - 'src/StudioEngine.*'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'docs/K500_NATIVE_CONTROL_LIMITS.md'
+      - '.github/workflows/native-control-limits.yml'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Guard physical native endpoint contract
+        shell: python
+        run: |
+          from pathlib import Path
+
+          limits = Path('src/k500/K500NativeLimits.h').read_text(encoding='utf-8')
+          protocol = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
+          engine = Path('src/StudioEngine.cpp').read_text(encoding='utf-8')
+          qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          doc = Path('docs/K500_NATIVE_CONTROL_LIMITS.md').read_text(encoding='utf-8')
+
+          expected_limits = {
+              'DecayMinMs = 500': 'Reverb decay minimum',
+              'DecayMaxMs = 5000': 'Reverb decay maximum',
+              'PredelayMinMs = 0': 'Reverb predelay minimum',
+              'PredelayMaxMs = 100': 'Reverb predelay maximum',
+              'HpfMinHz = 20': 'Reverb HPF minimum',
+              'HpfMaxHz = 1000': 'Reverb HPF maximum',
+              'LpfMinHz = 4000': 'Reverb LPF minimum',
+              'LpfMaxHz = 16000': 'Reverb LPF maximum',
+          }
+
+          failed = []
+          for token, label in expected_limits.items():
+              if token not in limits:
+                  failed.append(label)
+
+          checks = {
+              'protocol clamps to native limits': 'K500NativeLimits::Reverb::DecayMinMs' in protocol and 'K500NativeLimits::Reverb::LpfMaxHz' in protocol,
+              'controller clamps to native limits': 'K500NativeLimits::Reverb::PredelayMaxMs' in controller and 'K500NativeLimits::Reverb::HpfMaxHz' in controller,
+              'engine exposes native limits': 'QVariantMap StudioEngine::nativeLimits() const' in engine,
+              'qml consumes native limits': 'nativeLimit("reverb","decayMinMs",500)' in qml and 'nativeLimit("reverb","lpfMaxHz",16000)' in qml,
+              'effect filter types are hidden': qml.count('showTypes: false') >= 2,
+              'evidence doc records native V3.10': 'native KTV V3.10' in doc and '500 ms' in doc and '16000 Hz' in doc,
+              'wire width warning is explicit': 'Wire width is NOT a UI-domain specification' in limits,
+          }
+          failed += [name for name, ok in checks.items() if not ok]
+
+          for name, ok in checks.items():
+              print(('PASS' if ok else 'FAIL') + '  ' + name)
+
+          if failed:
+              raise SystemExit('Native limit contract failed: ' + ', '.join(failed))
+
+          print('ALL NATIVE K500 CONTROL LIMIT GUARDS PASSED')
