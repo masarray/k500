@@ -41,15 +41,39 @@ if ($Session -eq 'performance') {
 Write-Host ''
 Read-Host 'Press ENTER to launch the qualification build'
 
-$arguments = @(
-    '--device-perf',
-    "--device-perf-report=$reportPath"
-)
+# P4_LAUNCHER_PATH_QUOTING_V2
+# Start-Process joins ArgumentList into one Windows command line. Quote the
+# report value explicitly so paths such as "Software Buatanku" remain one argv
+# token. Also refuse an already-running copy: otherwise -Wait can observe the
+# wrong process lifetime and the evidence file becomes ambiguous.
+$processName = [System.IO.Path]::GetFileNameWithoutExtension($resolvedExe)
+$existing = Get-Process -Name $processName -ErrorAction SilentlyContinue
+if ($existing) {
+    throw "Close every existing $processName process before qualification. Running PID(s): $($existing.Id -join ', ')"
+}
 
-$process = Start-Process -FilePath $resolvedExe -ArgumentList $arguments -Wait -PassThru
+$argumentLine = "--device-perf --device-perf-report=`"$reportPath`""
+$process = Start-Process -FilePath $resolvedExe -ArgumentList $argumentLine -PassThru
+
+# The monitor writes an initial JSON as soon as the Qt event loop starts.
+# Prove telemetry is alive before the operator spends time on hardware tests.
+$telemetryDeadline = (Get-Date).AddSeconds(10)
+while (-not (Test-Path $reportPath) -and -not $process.HasExited -and (Get-Date) -lt $telemetryDeadline) {
+    Start-Sleep -Milliseconds 200
+}
+if (-not (Test-Path $reportPath)) {
+    if (-not $process.HasExited) {
+        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    }
+    throw "Qualification telemetry did not start within 10 s. Expected report: $reportPath"
+}
+
+Write-Host "Telemetry active (PID $($process.Id)): $reportPath" -ForegroundColor Green
+Write-Host 'Run the hardware procedure, then close SonKuPik to finalize the report.' -ForegroundColor Yellow
+$process.WaitForExit()
 
 if (-not (Test-Path $reportPath)) {
-    throw "Qualification report was not created: $reportPath"
+    throw "Qualification report disappeared or was not created: $reportPath"
 }
 
 $report = Get-Content -Raw -Path $reportPath | ConvertFrom-Json

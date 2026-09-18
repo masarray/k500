@@ -1,6 +1,7 @@
 #include "K500Protocol.h"
 
 #include "K500Frame.h"
+#include "K500NativeLimits.h"
 
 #include <QHash>
 #include <QtMath>
@@ -238,11 +239,17 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(mirrored(0x04, TopVolumeMax)));
     // MUSIC_SOURCE_SIX_WAY_V1 — INPUT1, INPUT2, BT, UDISK, OPTIC, UAUDIO.
     body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 5))));
-    body.append(char(K500Frame::clampByte(qRound(state.input1GainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.input2GainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.bluetoothGainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.uDiskGainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.digitalGainDb + 12.0))));
+    const auto inputGainRaw = [](double gainDb) {
+        const double bounded = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                      gainDb,
+                                      K500NativeLimits::MusicInputGain::MaxDb);
+        return K500Frame::clampByte(qRound(bounded - K500NativeLimits::MusicInputGain::MinDb));
+    };
+    body.append(char(inputGainRaw(state.input1GainDb)));
+    body.append(char(inputGainRaw(state.input2GainDb)));
+    body.append(char(inputGainRaw(state.bluetoothGainDb)));
+    body.append(char(inputGainRaw(state.uDiskGainDb)));
+    body.append(char(inputGainRaw(state.digitalGainDb)));
     body.append(char(K500Frame::clampByte(qBound(-7, state.key, 7) + 7)));
     body.append(char(mirrored(0x1B, 0x00)));
     body.append(char(mirrored(0x07, 0x02)));
@@ -303,12 +310,24 @@ QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &devi
     while (data.size() < ReverbDataLength)
         data.append(char(0));
 
-    data[0] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
-    data[2] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
-    writeU16Le(data, 6, qBound(20, state.hpfHz, 20000));
-    writeU16Le(data, 8, qBound(20, state.lpfHz, 20000));
-    writeU16Le(data, 10, qBound(0, state.decayMs, 65535));
-    writeU16Le(data, 12, qBound(0, state.predelayMs, 65535));
+    data[0] = char(K500Frame::clampByte(qBound(K500NativeLimits::Reverb::LevelMin,
+                                               state.level,
+                                               K500NativeLimits::Reverb::LevelMax)));
+    data[2] = char(K500Frame::clampByte(qBound(K500NativeLimits::Reverb::DirectMin,
+                                               state.direct,
+                                               K500NativeLimits::Reverb::DirectMax)));
+    writeU16Le(data, 6, qBound(K500NativeLimits::Reverb::HpfMinHz,
+                              state.hpfHz,
+                              K500NativeLimits::Reverb::HpfMaxHz));
+    writeU16Le(data, 8, qBound(K500NativeLimits::Reverb::LpfMinHz,
+                              state.lpfHz,
+                              K500NativeLimits::Reverb::LpfMaxHz));
+    writeU16Le(data, 10, qBound(K500NativeLimits::Reverb::DecayMinMs,
+                               state.decayMs,
+                               K500NativeLimits::Reverb::DecayMaxMs));
+    writeU16Le(data, 12, qBound(K500NativeLimits::Reverb::PredelayMinMs,
+                               state.predelayMs,
+                               K500NativeLimits::Reverb::PredelayMaxMs));
 
     QByteArray body;
     body.reserve(17);
@@ -493,6 +512,42 @@ bool selfTest(QString *error)
     music.topMusicVol = 70; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
     if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music mirrored scalar"))) return false;
 
+    // Recovered donor-domain guard: host values outside the documented UI
+    // range must encode exactly like their nearest native endpoint.
+    K500MusicBlockState musicBelow = music;
+    musicBelow.topMusicVol = -100;
+    musicBelow.input1GainDb = -60.0;
+    musicBelow.input2GainDb = -60.0;
+    musicBelow.bluetoothGainDb = -60.0;
+    musicBelow.uDiskGainDb = -60.0;
+    musicBelow.digitalGainDb = -60.0;
+    K500MusicBlockState musicMin = musicBelow;
+    musicMin.topMusicVol = K500NativeLimits::TopVolume::Min;
+    musicMin.input1GainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.input2GainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.bluetoothGainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.uDiskGainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.digitalGainDb = K500NativeLimits::MusicInputGain::MinDb;
+    if (topMusicBlock(musicBelow, scalars) != topMusicBlock(musicMin, scalars))
+        return fail(QStringLiteral("Top Music native minimum clamp mismatch"));
+
+    K500MusicBlockState musicAbove = music;
+    musicAbove.topMusicVol = 1000;
+    musicAbove.input1GainDb = 100.0;
+    musicAbove.input2GainDb = 100.0;
+    musicAbove.bluetoothGainDb = 100.0;
+    musicAbove.uDiskGainDb = 100.0;
+    musicAbove.digitalGainDb = 100.0;
+    K500MusicBlockState musicMax = musicAbove;
+    musicMax.topMusicVol = K500NativeLimits::TopVolume::Max;
+    musicMax.input1GainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.input2GainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.bluetoothGainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.uDiskGainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.digitalGainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    if (topMusicBlock(musicAbove, scalars) != topMusicBlock(musicMax, scalars))
+        return fail(QStringLiteral("Top Music native maximum clamp mismatch"));
+
     K500MicBlockState mic;
     if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x07, 0x07, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x4F}, QStringLiteral("top mic default"))) return false;
     QByteArray micScalars(0x40, char(0));
@@ -516,6 +571,43 @@ bool selfTest(QString *error)
     if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x5F,0x32,0x32,0x55,0xDD,0x00,0xB8,0x3D,0x95,0x06,0x32,0x00,0x00,0xCE}, QStringLiteral("Reverb HPF 221 USB capture"))) return false;
     reverb.hpfHz = 225; reverb.lpfHz = 16000;
     if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x5F,0x32,0x32,0x55,0xE1,0x00,0x80,0x3E,0x95,0x06,0x32,0x00,0x00,0x01}, QStringLiteral("Reverb LPF 16000 USB capture"))) return false;
+    // K500_NATIVE_UI_LIMITS_V1 — protocol encoding must enforce the same
+    // physically verified native endpoints as the UI/controller. Wire width is
+    // not permission to emit values outside the native control domain.
+    K500ReverbBlockState belowNative = reverb;
+    belowNative.level = -10;
+    belowNative.direct = -10;
+    belowNative.hpfHz = 0;
+    belowNative.lpfHz = 0;
+    belowNative.decayMs = 0;
+    belowNative.predelayMs = -10;
+    K500ReverbBlockState nativeMinimum = belowNative;
+    nativeMinimum.level = K500NativeLimits::Reverb::LevelMin;
+    nativeMinimum.direct = K500NativeLimits::Reverb::DirectMin;
+    nativeMinimum.hpfHz = K500NativeLimits::Reverb::HpfMinHz;
+    nativeMinimum.lpfHz = K500NativeLimits::Reverb::LpfMinHz;
+    nativeMinimum.decayMs = K500NativeLimits::Reverb::DecayMinMs;
+    nativeMinimum.predelayMs = K500NativeLimits::Reverb::PredelayMinMs;
+    if (reverbBlock(belowNative, reverbSeed) != reverbBlock(nativeMinimum, reverbSeed))
+        return fail(QStringLiteral("Reverb native minimum clamp mismatch"));
+
+    K500ReverbBlockState aboveNative = reverb;
+    aboveNative.level = 1000;
+    aboveNative.direct = 1000;
+    aboveNative.hpfHz = 20000;
+    aboveNative.lpfHz = 20000;
+    aboveNative.decayMs = 65535;
+    aboveNative.predelayMs = 65535;
+    K500ReverbBlockState nativeMaximum = aboveNative;
+    nativeMaximum.level = K500NativeLimits::Reverb::LevelMax;
+    nativeMaximum.direct = K500NativeLimits::Reverb::DirectMax;
+    nativeMaximum.hpfHz = K500NativeLimits::Reverb::HpfMaxHz;
+    nativeMaximum.lpfHz = K500NativeLimits::Reverb::LpfMaxHz;
+    nativeMaximum.decayMs = K500NativeLimits::Reverb::DecayMaxMs;
+    nativeMaximum.predelayMs = K500NativeLimits::Reverb::PredelayMaxMs;
+    if (reverbBlock(aboveNative, reverbSeed) != reverbBlock(nativeMaximum, reverbSeed))
+        return fail(QStringLiteral("Reverb native maximum clamp mismatch"));
+
     QByteArray preserveReverb(ReverbDataLength, char(0x5A));
     const QByteArray preservedReverbFrame = reverbBlock(reverb, preserveReverb);
     if (preservedReverbFrame.size() < 19 || byteFromChar(preservedReverbFrame.at(4)) != 0x5A

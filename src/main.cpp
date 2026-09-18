@@ -132,8 +132,10 @@ int main(int argc, char *argv[])
                      &k500Controller, &K500Controller::handleStateEdit);
     QObject::connect(&deviceManager, &K500DeviceManager::activeMemoryReady,
                      &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
-    QObject::connect(&deviceManager, &K500DeviceManager::reconciliationMemoryReady,
-                     &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
+    // P3_NONDISRUPTIVE_RECONCILIATION_V2
+    // Background verification updates CanonicalState only. Replaying the entire
+    // hardware snapshot into StudioEngine on every settled edit caused visible
+    // ONLINE/SYNC churn and could overwrite newer local user intent.
 
     if (app.arguments().contains(QStringLiteral("--trace-k500"))) {
         QObject::connect(&deviceManager, &K500DeviceManager::logLine,

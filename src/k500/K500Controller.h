@@ -41,6 +41,7 @@ public slots:
     void beginDeviceSession();
     void endDeviceSession();
     void setLiveEnabled(bool enabled);
+    void setCommandPlanningPaused(bool paused);
     void setDeviceScalars(const QByteArray &scalars);
     void hydrateFromDeviceMemory(const QByteArray &memory);
     void reconcileFromDeviceMemory(const QByteArray &memory);
@@ -103,6 +104,8 @@ private:
     static constexpr int BlockSendIntervalMs = 55;
 
     bool m_liveEnabled = false;
+    bool m_commandPlanningPaused = false;
+    QHash<QString, QVariant> m_deferredEdits;
     K500CanonicalState m_canonicalState;
     QByteArray m_deviceScalars;
 

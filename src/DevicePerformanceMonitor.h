@@ -68,6 +68,7 @@ private:
 
     quint64 m_readbackAttempts = 0;
     quint64 m_readbackCompletions = 0;
+    quint64 m_reconciliationCompletions = 0;
     qint64 m_readbackLastMs = -1;
     qint64 m_readbackBestMs = -1;
     qint64 m_readbackWorstMs = -1;

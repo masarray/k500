@@ -12,6 +12,13 @@ StudioPanel {
     Layout.maximumWidth: 216
     accentTop: false
 
+    function nativeLimit(group, key, fallback) {
+        var limits = root.engine && root.engine.nativeLimits ? root.engine.nativeLimits : null
+        var object = limits ? limits[group] : null
+        var value = object ? object[key] : undefined
+        return value === undefined || value === null ? fallback : Number(value)
+    }
+
     // RIGHT_COLUMN_WIDTH_PARITY_V1
     // Master Strip is the persistent right-most global control surface. Keep
     // its geometry identical to the Mic Band Limits reference column so page
@@ -103,8 +110,8 @@ StudioPanel {
                             Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
                             value: channel.liveValue
-                            from: 0
-                            to: 84
+                            from: root.nativeLimit("topVolume","min",0)
+                            to: root.nativeLimit("topVolume","max",84)
                             defaultValue: 35
                             step: 1
                             accentColor: Theme.accent

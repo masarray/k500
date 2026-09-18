@@ -16,13 +16,14 @@ The opt-in monitor is dormant in normal application runs. In qualification mode 
 
 - bootstrap-to-event-loop time (core objects -> QML loaded -> event loop starts);
 - CONNECT -> full 939-byte hydration -> LIVE timing;
-- first `Read 0x0000` -> full 939-byte hydration timing;
+- first `Read 0x0000` -> full 939-byte hydration timing, including background authoritative reconciliation reads;
 - `K500Controller::frameReady` -> DeviceManager TX accepted/logged latency on the GUI thread;
 - event-loop lag with a low-overhead 50 ms sampler;
 - process private bytes, working set, handles and threads;
 - reconnect/disconnect/error counts;
 - controller frame/deferred/unsupported-path counts;
-- exact build Git commit embedded at configure time.
+- exact build Git commit embedded at configure time;
+- canonical reconciliation generation / desired / in-flight / divergence counts.
 
 The JSON is atomically refreshed every five seconds and again on orderly exit.
 
@@ -100,6 +101,9 @@ Expected behavior:
 - controls track the mouse immediately;
 - no visible multi-hundred-millisecond freeze;
 - device follows the latest settled values;
+- **routine authoritative verification remains ONLINE/LIVE**; there is no visible disconnect/reconnect or SYNC cycle after each settled edit;
+- edits made while a background verification read is in progress are retained latest-wins and applied after the barrier;
+- after a settled verified edit, `canonicalState.snapshotGeneration` advances and successful convergence returns `desired=0`, `inFlight=0`, `divergentDesired=0`;
 - no crash, heap corruption, stale EQ page, or unintended write;
 - no unsupported-path event.
 
@@ -122,6 +126,8 @@ Do not power-cycle between these normal reconnect cycles unless investigating a 
 Keep the app connected for at least 10 minutes while using normal controls and switching sections occasionally.
 
 At the end of the clean session, close the app normally. The launcher prints the summary from `device-performance.json`.
+
+The launcher must print **Telemetry active (PID ...)** before hardware testing begins. If that line does not appear, stop: the run is not valid evidence.
 
 ### Clean performance PASS
 
@@ -198,7 +204,7 @@ Then run recovery separately:
   -Session recovery
 ```
 
-Each run creates a timestamped folder under `artifacts/` with `device-performance.json`.
+Each run creates a timestamped folder under `artifacts/` with `device-performance.json`. The launcher quotes report paths explicitly, so folders containing spaces are supported.
 
 ## Evidence to attach before landing
 

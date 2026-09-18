@@ -27,6 +27,7 @@ class K500DeviceManager final : public QObject
     Q_PROPERTY(QString lastTx READ lastTx NOTIFY lastTxChanged)
     Q_PROPERTY(bool connected READ connected NOTIFY statusChanged)
     Q_PROPERTY(bool liveEnabled READ liveEnabled NOTIFY liveEnabledChanged)
+    Q_PROPERTY(bool reconciliationInProgress READ reconciliationInProgress NOTIFY reconciliationInProgressChanged)
     Q_PROPERTY(bool muted READ muted NOTIFY mutedChanged)
     Q_PROPERTY(QObject *presetManager READ presetManager CONSTANT)
     Q_PROPERTY(QObject *presetFileBridge READ presetFileBridge CONSTANT)
@@ -43,6 +44,7 @@ public:
     QString lastTx() const { return m_lastTx; }
     bool connected() const { return m_status == QStringLiteral("connected"); }
     bool liveEnabled() const { return m_liveEnabled; }
+    bool reconciliationInProgress() const { return m_reconciliationInProgress; }
     bool muted() const { return m_muted; }
     QObject *presetManager() const;
     QObject *presetFileBridge() const;
@@ -80,6 +82,7 @@ signals:
     void lastRxChanged();
     void lastTxChanged();
     void liveEnabledChanged();
+    void reconciliationInProgressChanged();
     void mutedChanged();
     void deviceScalarsReady(const QByteArray &scalars);
     void activeMemoryReady(const QByteArray &memory);
@@ -115,6 +118,7 @@ private:
     void setPortLabel(const QString &label);
     void setError(const QString &message);
     void setLiveEnabled(bool enabled);
+    void setReconciliationInProgress(bool active);
     void scheduleAuthoritativeReconciliation();
     void startAuthoritativeReconciliation();
     qint64 schedulerNowMs() const;

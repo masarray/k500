@@ -1,4 +1,5 @@
 #include "StudioEngine.h"
+#include "k500/K500NativeLimits.h"
 #include "k500/K500Protocol.h"
 
 #include <QtMath>
@@ -270,7 +271,7 @@ void EqBandModel::resetAll()
 
 void EqBandModel::setHpfHz(double value)
 {
-    const double next = clampValue(value, 20.0, 20000.0);
+    const double next = clampValue(value, m_hpfMinHz, m_hpfMaxHz);
     if (qFuzzyCompare(m_hpfHz, next))
         return;
     m_hpfHz = next;
@@ -280,7 +281,7 @@ void EqBandModel::setHpfHz(double value)
 
 void EqBandModel::setLpfHz(double value)
 {
-    const double next = clampValue(value, 20.0, 20000.0);
+    const double next = clampValue(value, m_lpfMinHz, m_lpfMaxHz);
     if (qFuzzyCompare(m_lpfHz, next))
         return;
     m_lpfHz = next;
@@ -309,8 +310,8 @@ void EqBandModel::setLpType(const QString &value)
 void EqBandModel::syncCrossover(double hpfHz, double lpfHz,
                                 const QString &hpType, const QString &lpType)
 {
-    const double nextHpf = clampValue(hpfHz, 20.0, 20000.0);
-    const double nextLpf = clampValue(lpfHz, 20.0, 20000.0);
+    const double nextHpf = clampValue(hpfHz, m_hpfMinHz, m_hpfMaxHz);
+    const double nextLpf = clampValue(lpfHz, m_lpfMinHz, m_lpfMaxHz);
     if (qFuzzyCompare(m_hpfHz, nextHpf)
         && qFuzzyCompare(m_lpfHz, nextLpf)
         && m_hpType == hpType
@@ -321,6 +322,16 @@ void EqBandModel::syncCrossover(double hpfHz, double lpfHz,
     m_hpType = hpType;
     m_lpType = lpType;
     emit crossoverChanged();
+}
+
+void EqBandModel::setCrossoverLimits(double hpfMinHz, double hpfMaxHz,
+                                     double lpfMinHz, double lpfMaxHz)
+{
+    m_hpfMinHz = qMin(hpfMinHz, hpfMaxHz);
+    m_hpfMaxHz = qMax(hpfMinHz, hpfMaxHz);
+    m_lpfMinHz = qMin(lpfMinHz, lpfMaxHz);
+    m_lpfMaxHz = qMax(lpfMinHz, lpfMaxHz);
+    syncCrossover(m_hpfHz, m_lpfHz, m_hpType, m_lpType);
 }
 
 StudioEngine::StudioEngine(QObject *parent)
@@ -334,6 +345,10 @@ StudioEngine::StudioEngine(QObject *parent)
                             20, 20000, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
     m_reverbEqBands.configure(5, {125, 250, 1000, 2500, 8000},
                               217, 12000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+    m_reverbEqBands.setCrossoverLimits(K500NativeLimits::Reverb::HpfMinHz,
+                                       K500NativeLimits::Reverb::HpfMaxHz,
+                                       K500NativeLimits::Reverb::LpfMinHz,
+                                       K500NativeLimits::Reverb::LpfMaxHz);
     m_echoEqBands.configure(5, {125, 250, 1000, 2500, 8000},
                             700, 4400, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
     m_mainEqBands.configure(7, {80, 160, 315, 630, 1250, 2500, 8000},
@@ -355,6 +370,42 @@ StudioEngine::StudioEngine(QObject *parent)
     connectEqModel(&m_centerEqBands, QStringLiteral("center"));
     connectEqModel(&m_subEqBands, QStringLiteral("sub"));
     syncMusicCrossoverModel();
+}
+
+QVariantMap StudioEngine::nativeLimits() const
+{
+    return {
+        {QStringLiteral("topVolume"), QVariantMap{
+            {QStringLiteral("min"), K500NativeLimits::TopVolume::Min},
+            {QStringLiteral("max"), K500NativeLimits::TopVolume::Max},
+        }},
+        {QStringLiteral("musicInputGain"), QVariantMap{
+            {QStringLiteral("minDb"), K500NativeLimits::MusicInputGain::MinDb},
+            {QStringLiteral("maxDb"), K500NativeLimits::MusicInputGain::MaxDb},
+        }},
+        {QStringLiteral("micFbx"), QVariantMap{
+            {QStringLiteral("min"), K500NativeLimits::MicFbx::Min},
+            {QStringLiteral("max"), K500NativeLimits::MicFbx::Max},
+        }},
+        {QStringLiteral("reverb"), QVariantMap{
+            {QStringLiteral("levelMin"), K500NativeLimits::Reverb::LevelMin},
+            {QStringLiteral("levelMax"), K500NativeLimits::Reverb::LevelMax},
+            {QStringLiteral("directMin"), K500NativeLimits::Reverb::DirectMin},
+            {QStringLiteral("directMax"), K500NativeLimits::Reverb::DirectMax},
+            {QStringLiteral("decayMinMs"), K500NativeLimits::Reverb::DecayMinMs},
+            {QStringLiteral("decayMaxMs"), K500NativeLimits::Reverb::DecayMaxMs},
+            {QStringLiteral("predelayMinMs"), K500NativeLimits::Reverb::PredelayMinMs},
+            {QStringLiteral("predelayMaxMs"), K500NativeLimits::Reverb::PredelayMaxMs},
+            {QStringLiteral("hpfMinHz"), K500NativeLimits::Reverb::HpfMinHz},
+            {QStringLiteral("hpfMaxHz"), K500NativeLimits::Reverb::HpfMaxHz},
+            {QStringLiteral("lpfMinHz"), K500NativeLimits::Reverb::LpfMinHz},
+            {QStringLiteral("lpfMaxHz"), K500NativeLimits::Reverb::LpfMaxHz},
+        }},
+        {QStringLiteral("reverbEq"), QVariantMap{
+            {QStringLiteral("gainMinDb"), K500NativeLimits::ReverbEq::GainMinDb},
+            {QStringLiteral("gainMaxDb"), K500NativeLimits::ReverbEq::GainMaxDb},
+        }},
+    };
 }
 
 void StudioEngine::connectEqModel(EqBandModel *model, const QString &key)
@@ -684,42 +735,58 @@ void StudioEngine::setLpType(const QString &value)
 
 void StudioEngine::setInput1Gain(double value)
 {
-    if (assign(m_input1Gain, clampValue(value, -60.0, 10.0), "music.input1GainDb")) emit input1GainChanged();
+    if (assign(m_input1Gain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                        K500NativeLimits::MusicInputGain::MaxDb),
+               "music.input1GainDb")) emit input1GainChanged();
 }
 
 void StudioEngine::setInput2Gain(double value)
 {
-    if (assign(m_input2Gain, clampValue(value, -60.0, 10.0), "music.input2GainDb")) emit input2GainChanged();
+    if (assign(m_input2Gain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                        K500NativeLimits::MusicInputGain::MaxDb),
+               "music.input2GainDb")) emit input2GainChanged();
 }
 
 void StudioEngine::setBluetoothGain(double value)
 {
-    if (assign(m_bluetoothGain, clampValue(value, -60.0, 10.0), "music.bluetoothGainDb")) emit bluetoothGainChanged();
+    if (assign(m_bluetoothGain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                           K500NativeLimits::MusicInputGain::MaxDb),
+               "music.bluetoothGainDb")) emit bluetoothGainChanged();
 }
 
 void StudioEngine::setUDiskGain(double value)
 {
-    if (assign(m_uDiskGain, clampValue(value, -60.0, 10.0), "music.uDiskGainDb")) emit uDiskGainChanged();
+    if (assign(m_uDiskGain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                       K500NativeLimits::MusicInputGain::MaxDb),
+               "music.uDiskGainDb")) emit uDiskGainChanged();
 }
 
 void StudioEngine::setDigitalGain(double value)
 {
-    if (assign(m_digitalGain, clampValue(value, -60.0, 10.0), "music.digitalGainDb")) emit digitalGainChanged();
+    if (assign(m_digitalGain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                         K500NativeLimits::MusicInputGain::MaxDb),
+               "music.digitalGainDb")) emit digitalGainChanged();
 }
 
 void StudioEngine::setMasterMusic(double value)
 {
-    if (assign(m_masterMusic, clampValue(value, 0.0, 100.0), "system.topMusicVol")) emit masterMusicChanged();
+    if (assign(m_masterMusic, clampValue(value, K500NativeLimits::TopVolume::Min,
+                                         K500NativeLimits::TopVolume::Max),
+               "system.topMusicVol")) emit masterMusicChanged();
 }
 
 void StudioEngine::setMasterMic(double value)
 {
-    if (assign(m_masterMic, clampValue(value, 0.0, 100.0), "system.topMicVol")) emit masterMicChanged();
+    if (assign(m_masterMic, clampValue(value, K500NativeLimits::TopVolume::Min,
+                                       K500NativeLimits::TopVolume::Max),
+               "system.topMicVol")) emit masterMicChanged();
 }
 
 void StudioEngine::setMasterFx(double value)
 {
-    if (assign(m_masterFx, clampValue(value, 0.0, 100.0), "system.topEffectVol")) emit masterFxChanged();
+    if (assign(m_masterFx, clampValue(value, K500NativeLimits::TopVolume::Min,
+                                      K500NativeLimits::TopVolume::Max),
+               "system.topEffectVol")) emit masterFxChanged();
 }
 
 void StudioEngine::syncMusicCrossoverModel()

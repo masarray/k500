@@ -33,6 +33,12 @@ Item {
         var value = object ? object[key] : undefined
         return value === undefined || value === null ? fallback : value
     }
+    function nativeLimit(group, key, fallback) {
+        var limits = engine && engine.nativeLimits ? engine.nativeLimits : null
+        var object = limits ? limits[group] : null
+        var value = object ? object[key] : undefined
+        return value === undefined || value === null ? fallback : Number(value)
+    }
     function activeEqModel() {
         switch (sectionIndex) {
         case 1: return micChannel === 0 ? engine.micAEqBands : engine.micBEqBands
@@ -107,7 +113,7 @@ Item {
                                         {label:"MIC A",value:Number(root.groupValue("mic","micAVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
                                         {label:"MIC B",value:Number(root.groupValue("mic","micBVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
                                         // FBE_NATIVE_LEVEL_V1 — native UI/control range verified by 3→2→1→0 capture.
-                                        {label:"FBX",badge:"A+B",value:Number(root.groupValue("mic","fbxLevel",0)),from:0,to:3,step:1,unit:"",decimals:0}
+                                        {label:"FBX",badge:"A+B",value:Number(root.groupValue("mic","fbxLevel",0)),from:root.nativeLimit("micFbx","min",0),to:root.nativeLimit("micFbx","max",3),step:1,unit:"",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {
@@ -154,10 +160,10 @@ Item {
                                     // REVERB_DIRECT_KNOB_NATIVE_V2 — DIRECT is the fourth matching knob.
                                     // LEVEL/DECAY/PRE remain first so the visual-field mapping is unchanged.
                                     channels: [
-                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:100,to:5000,step:5,unit:"ms",decimals:0},
-                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:300,step:1,unit:"ms",decimals:0},
-                                        {label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:root.nativeLimit("reverb","levelMin",0),to:root.nativeLimit("reverb","levelMax",100),step:1,unit:"%",decimals:0},
+                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:root.nativeLimit("reverb","decayMinMs",500),to:root.nativeLimit("reverb","decayMaxMs",5000),step:5,unit:"ms",decimals:0},
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:root.nativeLimit("reverb","predelayMinMs",0),to:root.nativeLimit("reverb","predelayMaxMs",100),step:1,unit:"ms",decimals:0},
+                                        {label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100)),from:root.nativeLimit("reverb","directMin",0),to:root.nativeLimit("reverb","directMax",100),step:1,unit:"%",decimals:0}
                                     ]
                                 }
                                 RackFilterPanel {
@@ -167,9 +173,10 @@ Item {
                                     Layout.fillHeight: true
                                     title: "Tone"
                                     fields: [
-                                        {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
-                                        {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
+                                        {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:root.nativeLimit("reverb","hpfMinHz",20),to:root.nativeLimit("reverb","hpfMaxHz",1000),step:1,unit:"Hz",decimals:0},
+                                        {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:root.nativeLimit("reverb","lpfMinHz",4000),to:root.nativeLimit("reverb","lpfMaxHz",16000),step:1,unit:"Hz",decimals:0}
                                     ]
+                                    showTypes: false
                                     hpType: root.engine.reverbEqBands.hpType
                                     lpType: root.engine.reverbEqBands.lpType
                                     onFieldEdited: function(index,value){ if(index===0)root.engine.reverbEqBands.setHpfHz(value);else root.engine.reverbEqBands.setLpfHz(value) }
@@ -207,6 +214,9 @@ Item {
                                         {label:"HPF",value:root.engine.echoEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.echoEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
+                                    // Native effect filter-type writes are evidence-gated; do not
+                                    // expose a control that the backend intentionally rejects.
+                                    showTypes: false
                                     hpType: root.engine.echoEqBands.hpType
                                     lpType: root.engine.echoEqBands.lpType
                                     onFieldEdited: function(index,value){ if(index===0)root.engine.echoEqBands.setHpfHz(value);else root.engine.echoEqBands.setLpfHz(value) }
