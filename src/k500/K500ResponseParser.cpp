@@ -101,8 +101,8 @@ bool K500ResponseParser::selfTest(QString *error)
 
     // Exact physical K500 capture deltas from 2026-09-18:
     // STOPPED => status byte 0x08, PLAYING => status byte 0x0C.
-    QByteArray stoppedStatusData = QByteArray::fromHex("0005080D6666666666660000");
-    QByteArray playingStatusData = QByteArray::fromHex("00050C0D6666666666660000");
+    QByteArray stoppedStatusData = QByteArray::fromHex("0005080D666666666666660000");
+    QByteArray playingStatusData = QByteArray::fromHex("00050C0D666666666666660000");
     K500Response stoppedStatus;
     stoppedStatus.rsp = 0xE3;
     stoppedStatus.data = stoppedStatusData;
