@@ -28,6 +28,8 @@ on:
       - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
       - 'src/k500/K500Protocol.*'
+      - 'src/k500/K500ResponseParser.*'
+      - 'src/k500/K500PresetManager.*'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
@@ -76,6 +78,7 @@ jobs:
           manager_h = Path('src/k500/K500DeviceManager.h').read_text(encoding='utf-8')
           protocol_h = Path('src/k500/K500Protocol.h').read_text(encoding='utf-8')
           protocol_cpp = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          response_h = Path('src/k500/K500ResponseParser.h').read_text(encoding='utf-8')
           response_cpp = Path('src/k500/K500ResponseParser.cpp').read_text(encoding='utf-8')
           preset_manager = Path('src/k500/K500PresetManager.cpp').read_text(encoding='utf-8')
           studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
@@ -102,11 +105,13 @@ jobs:
               'qml uses native reverb domain': 'from:500,to:5000' in qml and 'from:0,to:100' in qml and 'hpfMinHz' in qml and 'lpfMaxHz' in qml,
               'engine exposes section ranges': 'hpfMinHz READ hpfMinHz' in studio_h and 'lpfMaxHz READ lpfMaxHz' in studio_h,
               'native range documentation present': 'Reverb Decay' in native_ranges and '4000' in native_ranges and '16000' in native_ranges,
-              'player status comes from captured RX': 'PLAYER_STATUS_CAPTURED_V1' in response_cpp and '0x04u' in response_cpp and 'deviceManager.playing' in topbar,
+              'player status comes from captured RX': 'PLAYER_STATUS_CAPTURED_V1' in response_h and 'tryDecodePlaying' in response_cpp and '0x04u' in response_cpp and 'deviceManager.playing' in topbar,
               'player UI has no local optimistic toggle': 'transportPlaying' not in topbar and 'sendPlayerCommand("playPause")' in topbar,
               'use-init never pretends PC preference is device truth': 'USE_INIT_DEVICE_TRUTH_V1' in preset_manager and 'QSettings' not in preset_manager and 'useInitVolumeKnown' in system_qml,
               'use-init hydrates from captured C0 bit': 'tryDecodeUseInitVolume' in response_cpp and 'response.data.at(7)' in response_cpp and 'm_useInitVolumeKnown = true' in preset_manager,
-              'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status,
+              'mute hydrates from captured C0 bit': 'MUTE_CONNECT_CAPTURED_V1' in response_h and 'tryDecodeMuted' in response_cpp and '0x02u' in response_cpp and 'setMuted(decodedMuted)' in manager,
+              'music tone captured writes are implemented': 'musicNoiseGateRaw' in protocol_cpp and 'musicBass' in protocol_cpp and 'music.noiseGateDb' in controller and 'music.bassDb' in controller,
+              'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]
