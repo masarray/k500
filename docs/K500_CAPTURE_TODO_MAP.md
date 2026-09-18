@@ -44,8 +44,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | HPF/LPF frequency | ✅ | ✅ | complete | no |
 | HPF/LPF filter type on WRITE | n/a | ✅ existing CMD 0x11 mapping | partial | optional reconfirm only |
 | HPF/LPF filter type on CONNECT | ❌ currently assumed/defaulted | n/a | partial | **YES** |
-| Music Noise Gate | ❌ | ❌ controller unsupported | missing | **YES** |
-| Music Bass | ❌ | ❌ controller unsupported | missing | **YES** |
+| Music Noise Gate | ❌ connect/readback not yet proven | ✅ CMD 0x02 block, raw 0=OFF / 1..41=-90..-50 dB | partial | **YES — reconnect OFF vs -50 dB** |
+| Music Bass | ❌ connect/readback not yet proven | ✅ CMD 0x0C selector 0x02, 0.1 dB encoding | partial | **YES — reconnect 0 dB vs +12/-12 dB** |
 | Music Mid | ❌ | ❌ controller unsupported | missing | **YES** |
 | Music Mid Frequency | ❌ | ❌ controller unsupported | missing | **YES** |
 | Music Treble | ❌ | ❌ controller unsupported | missing | **YES** |
@@ -152,7 +152,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 ### P0 — capture first
 
 1. **Mute OFF-connect vs ON-connect** — closes another false-local-runtime-status risk like Play/Pause.
-2. **Music Tone block** — Noise Gate, Bass, Mid, Mid Frequency, Treble, one parameter per capture.
+2. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
 3. **Mic Noise Gate write**.
 4. **FBE/FBX write**.
 5. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
