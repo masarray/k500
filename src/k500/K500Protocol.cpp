@@ -161,7 +161,7 @@ QByteArray eqWrite(const QString &section, int bandIndexZeroBased, const K500EqB
 
     const int frequency = qBound(20, qRound(band.frequencyHz), 20000);
     const int qValue = qBound(1, qRound(band.q * 10.0), 250);
-    const double gain = qBound(-24.0, band.gainDb, 24.0);
+    const double gain = qBound(NativeRange::EqGainMinDb, band.gainDb, NativeRange::EqGainMaxDb);
     const int gainMagnitude = qBound(0, qRound(qAbs(gain) * 10.0), 240);
     const quint8 typeSign = static_cast<quint8>(eqTypeNibble(band.type) | (gain < 0.0 ? 0x80 : 0x00));
 
@@ -303,12 +303,16 @@ QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &devi
     while (data.size() < ReverbDataLength)
         data.append(char(0));
 
-    data[0] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
-    data[2] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
-    writeU16Le(data, 6, qBound(20, state.hpfHz, 20000));
-    writeU16Le(data, 8, qBound(20, state.lpfHz, 20000));
-    writeU16Le(data, 10, qBound(0, state.decayMs, 65535));
-    writeU16Le(data, 12, qBound(0, state.predelayMs, 65535));
+    data[0] = char(K500Frame::clampByte(qBound(NativeRange::ReverbLevelMin, state.level,
+                                              NativeRange::ReverbLevelMax)));
+    data[2] = char(K500Frame::clampByte(qBound(NativeRange::ReverbDirectMin, state.direct,
+                                              NativeRange::ReverbDirectMax)));
+    writeU16Le(data, 6, qBound(NativeRange::FxHpfMinHz, state.hpfHz, NativeRange::FxHpfMaxHz));
+    writeU16Le(data, 8, qBound(NativeRange::FxLpfMinHz, state.lpfHz, NativeRange::FxLpfMaxHz));
+    writeU16Le(data, 10, qBound(NativeRange::ReverbDecayMinMs, state.decayMs,
+                                NativeRange::ReverbDecayMaxMs));
+    writeU16Le(data, 12, qBound(NativeRange::ReverbPredelayMinMs, state.predelayMs,
+                                NativeRange::ReverbPredelayMaxMs));
 
     QByteArray body;
     body.reserve(17);
@@ -327,14 +331,18 @@ QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceDa
     while (data.size() < EchoDataLength)
         data.append(char(0));
 
-    data[1] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
-    data[2] = char(K500Frame::clampByte(qBound(0, state.repeat, 10)));
-    data[6] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
+    data[1] = char(K500Frame::clampByte(qBound(NativeRange::EchoLevelMin, state.level,
+                                              NativeRange::EchoLevelMax)));
+    data[2] = char(K500Frame::clampByte(qBound(NativeRange::EchoRepeatMin, state.repeat,
+                                              NativeRange::EchoRepeatMax)));
+    data[6] = char(K500Frame::clampByte(qBound(NativeRange::EchoDirectMin, state.direct,
+                                              NativeRange::EchoDirectMax)));
     data[7] = char(K500Frame::clampByte(qBound(-50, state.rightDelayPercent, 50) + 50));
     data[8] = char(K500Frame::clampByte(qBound(-50, state.rightPredelayPercent, 50) + 50));
-    writeU16Le(data, 9, qBound(20, state.hpfHz, 20000));
-    writeU16Le(data, 11, qBound(20, state.lpfHz, 20000));
-    writeU16Le(data, 13, qBound(0, state.leftDelayMs, 65535));
+    writeU16Le(data, 9, qBound(NativeRange::FxHpfMinHz, state.hpfHz, NativeRange::FxHpfMaxHz));
+    writeU16Le(data, 11, qBound(NativeRange::FxLpfMinHz, state.lpfHz, NativeRange::FxLpfMaxHz));
+    writeU16Le(data, 13, qBound(NativeRange::EchoDelayMinMs, state.leftDelayMs,
+                                NativeRange::EchoDelayMaxMs));
     writeU16Le(data, 15, qBound(0, state.leftPredelayMs, 65535));
 
     QByteArray body;
