@@ -1,6 +1,7 @@
 #include "K500Controller.h"
 
 #include "K500Frame.h"
+#include "K500NativeLimits.h"
 
 #include <QRegularExpression>
 #include <QtMath>
@@ -137,8 +138,32 @@ void K500Controller::setLiveEnabled(bool enabled)
         m_blockTimer.stop();
         m_pendingEqFrames.clear();
         m_pendingBlockFrames.clear();
+        m_commandPlanningPaused = false;
+        m_deferredEdits.clear();
     }
     emit liveEnabledChanged();
+}
+
+void K500Controller::setCommandPlanningPaused(bool paused)
+{
+    if (m_commandPlanningPaused == paused)
+        return;
+
+    m_commandPlanningPaused = paused;
+    if (paused || !m_liveEnabled || m_deferredEdits.isEmpty())
+        return;
+
+    // P3_NONDISRUPTIVE_RECONCILIATION_V2 — edits made while the authoritative
+    // readback owns the wire are preserved latest-wins in DesiredState and only
+    // planned after the snapshot barrier has completed. Re-run only paths that
+    // are still unresolved after reconciliation.
+    const auto deferred = m_deferredEdits;
+    m_deferredEdits.clear();
+    for (auto it = deferred.constBegin(); it != deferred.constEnd(); ++it) {
+        if (!m_canonicalState.desired(it.key()).has_value())
+            continue;
+        handleStateEdit(it.key(), it.value());
+    }
 }
 
 void K500Controller::setDeviceScalars(const QByteArray &scalars)
@@ -331,6 +356,8 @@ void K500Controller::clearDeviceState()
     m_crossovers.clear();
     m_pendingEqFrames.clear();
     m_pendingBlockFrames.clear();
+    m_deferredEdits.clear();
+    m_commandPlanningPaused = false;
     m_eqTimer.stop();
     m_blockTimer.stop();
     if (wasReady)
@@ -350,6 +377,11 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         return;
     }
     emit canonicalStateChanged();
+
+    if (m_commandPlanningPaused) {
+        m_deferredEdits.insert(path, value);
+        return;
+    }
 
     // P1_FULL_LIVE_ROUTING_V1
     static const QRegularExpression eqBandPath(QStringLiteral(R"(^eq\.([^.]+)\.bands\.(\d+)$)"));
@@ -393,18 +425,17 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         // generic CMD 0x11 selector family. Filter type remains evidence-gated.
         if (section == QStringLiteral("reverb") || section == QStringLiteral("echo")) {
             if (field == QStringLiteral("hpfHz") || field == QStringLiteral("lpfHz")) {
-                const bool hpf = field == QStringLiteral("hpfHz");
-                if (hpf) m_crossovers[section].hpfHz = value.toDouble();
-                else m_crossovers[section].lpfHz = value.toDouble();
-                if (section == QStringLiteral("reverb")) {
-                    if (hpf) m_reverb.hpfHz = qRound(value.toDouble());
-                    else m_reverb.lpfHz = qRound(value.toDouble());
-                    queueReverb(path);
-                } else {
-                    if (hpf) m_echo.hpfHz = qRound(value.toDouble());
-                    else m_echo.lpfHz = qRound(value.toDouble());
-                    queueEcho(path);
+                const bool updated = section == QStringLiteral("reverb")
+                    ? updateReverbState(field, value)
+                    : updateEchoState(field, value);
+                if (!updated) {
+                    rejectUnsupported(path);
+                    return;
                 }
+                if (section == QStringLiteral("reverb"))
+                    queueReverb(path);
+                else
+                    queueEcho(path);
             } else {
                 rejectUnsupported(path);
             }
@@ -663,18 +694,34 @@ void K500Controller::queueCrossover(const QString &section, const QString &path,
 
 bool K500Controller::updateReverbState(const QString &field, const QVariant &value)
 {
-    if (field == QStringLiteral("level")) m_reverb.level = qBound(0, qRound(value.toDouble()), 100);
-    else if (field == QStringLiteral("direct")) m_reverb.direct = qBound(0, qRound(value.toDouble()), 100);
+    if (field == QStringLiteral("level"))
+        m_reverb.level = qBound(K500NativeLimits::Reverb::LevelMin,
+                               qRound(value.toDouble()),
+                               K500NativeLimits::Reverb::LevelMax);
+    else if (field == QStringLiteral("direct"))
+        m_reverb.direct = qBound(K500NativeLimits::Reverb::DirectMin,
+                                qRound(value.toDouble()),
+                                K500NativeLimits::Reverb::DirectMax);
     else if (field == QStringLiteral("hpfHz")) {
-        m_reverb.hpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_reverb.hpfHz = qBound(K500NativeLimits::Reverb::HpfMinHz,
+                               qRound(value.toDouble()),
+                               K500NativeLimits::Reverb::HpfMaxHz);
         m_crossovers[QStringLiteral("reverb")].hpfHz = m_reverb.hpfHz;
     }
     else if (field == QStringLiteral("lpfHz")) {
-        m_reverb.lpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_reverb.lpfHz = qBound(K500NativeLimits::Reverb::LpfMinHz,
+                               qRound(value.toDouble()),
+                               K500NativeLimits::Reverb::LpfMaxHz);
         m_crossovers[QStringLiteral("reverb")].lpfHz = m_reverb.lpfHz;
     }
-    else if (field == QStringLiteral("decayMs")) m_reverb.decayMs = qBound(0, qRound(value.toDouble()), 65535);
-    else if (field == QStringLiteral("predelayMs")) m_reverb.predelayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else if (field == QStringLiteral("decayMs"))
+        m_reverb.decayMs = qBound(K500NativeLimits::Reverb::DecayMinMs,
+                                 qRound(value.toDouble()),
+                                 K500NativeLimits::Reverb::DecayMaxMs);
+    else if (field == QStringLiteral("predelayMs"))
+        m_reverb.predelayMs = qBound(K500NativeLimits::Reverb::PredelayMinMs,
+                                    qRound(value.toDouble()),
+                                    K500NativeLimits::Reverb::PredelayMaxMs);
     else return false;
     return true;
 }
