@@ -65,6 +65,33 @@ The screenshots above prove Reverb PEQ **gain** endpoints only. They do not esta
 
 Existing protocol mappings for those fields may remain in use where already captured, but their generic software bounds must not be described as native endpoint limits until separate evidence exists.
 
+## Open endpoint audit matrix
+
+The following controls have live mappings or current UI ranges, but **their native minimum/maximum endpoints are not yet established by endpoint evidence in this repository**. The numbers shown under “current software range” describe the code that exists today; they are not promoted to native truth.
+
+| Area | Control | Current software range | What is actually proven | Status |
+| --- | --- | --- | --- | --- |
+| Mic | Mic A / Mic B level | 0..100 | live scalar mapping exists | ENDPOINT CAPTURE NEEDED |
+| Mic | Compressor threshold | -50..0 dB | storage/command mapping exists | ENDPOINT CAPTURE NEEDED |
+| Mic | Compressor ratio | 1..100 | storage/command mapping exists | ENDPOINT CAPTURE NEEDED |
+| Mic | Attack | 1..100 ms | storage/command mapping exists | ENDPOINT CAPTURE NEEDED |
+| Mic | Release | 20..5000 ms in rack UX | storage/command mapping exists | ENDPOINT CAPTURE NEEDED |
+| Mic/Music/Outputs | Generic HPF / LPF | 20..20000 Hz | CMD 0x11 selectors/mappings exist for supported sections | ENDPOINT CAPTURE NEEDED PER SECTION |
+| Echo | Level / Direct | 0..100 in UX | native CMD 0x0D delta captures prove byte mapping and values around 90..100 | ENDPOINT CAPTURE NEEDED |
+| Echo | Repeat | 0..10 in UX | capture proves at least 2→10 | MIN ENDPOINT NEEDED |
+| Echo | Left Delay | 0..1000 ms in UX | capture proves at least 300→310 ms | ENDPOINT CAPTURE NEEDED |
+| Echo | HPF | 20..20000 Hz in UX | capture proves at least 550→560 Hz | ENDPOINT CAPTURE NEEDED |
+| Echo | LPF | 20..20000 Hz in UX | capture proves at least 4200→4210 Hz | ENDPOINT CAPTURE NEEDED |
+| Outputs | L/R/mono level | -37.5..+24 dB in UX | raw↔dB mapping is implemented | ENDPOINT CAPTURE NEEDED |
+| Outputs | Mic/Music/Reverb/Echo mix | 0..100 in UX | native block byte mapping exists | ENDPOINT CAPTURE NEEDED |
+| Outputs | Delay | 0..50 ms in UX for exposed fields | some native delay mapping exists; some fields remain read-only | ENDPOINT CAPTURE NEEDED |
+| Dynamics | Output compressor controls | shared rack ranges | native block mapping exists | ENDPOINT CAPTURE NEEDED |
+| PEQ | Frequency | 20..20000 Hz in engine | EQ command encoding exists | ENDPOINT CAPTURE NEEDED |
+| PEQ | Q | 0.1..30 in engine | EQ command encoding exists | ENDPOINT CAPTURE NEEDED |
+| System | Recording / trigger / other limits | various UX ranges | mixed readback-only/local behavior | ENDPOINT CAPTURE NEEDED |
+
+Until endpoint evidence is added, these ranges must not be described in docs, tests, or UI comments as “native min/max”. If a range is changed, the change must state whether it is a temporary UX guard, a donor-web value, or a captured-native endpoint.
+
 ## Echo and other sections
 
 The repository contains captured wire mappings and many real parameter values for Echo, Music, Mic, Main, Surround, Center, Sub, and System. Those are **not automatically min/max evidence**.
