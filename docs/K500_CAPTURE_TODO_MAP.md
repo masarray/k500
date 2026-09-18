@@ -27,7 +27,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | 939-byte active memory | ✅ | n/a | complete | no |
 | Play/Pause state | ✅ E3/C0 bit 0x04 | ✅ CMD 0x06/02 | complete | no |
 | Rewind / Forward | n/a | ✅ CMD 0x06 | complete | no |
-| Mute state on connect/runtime | ❌ | ✅ CMD 0x15 | partial | **YES — Mute OFF connect vs Mute ON connect** |
+| Mute state on connect/runtime | ✅ C0 data[7] bit 0x02 | ✅ CMD 0x15 | complete | no |
 | Use Init Volume | ✅ C0 data[7] bit 0x04 | ✅ CMD 0x12 + ED ACK | complete | no |
 | Active Equipment Mode slot | ✅ C0 + readback | ✅ Recall CMD 0x01 | complete | no |
 
@@ -151,14 +151,13 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 ### P0 — capture first
 
-1. **Mute OFF-connect vs ON-connect** — closes another false-local-runtime-status risk like Play/Pause.
-2. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
-3. **Mic Noise Gate write**.
-4. **FBE/FBX write**.
-5. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
-6. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
-7. **Crossover filter-type readback** — connect after changing one representative non-FX type to a non-default value.
-8. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
+1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
+2. **Mic Noise Gate write**.
+3. **FBE/FBX write**.
+4. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
+5. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
+6. **Crossover filter-type readback** — connect after changing one representative non-FX type to a non-default value.
+7. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
 
 ### P1 — useful next
 
