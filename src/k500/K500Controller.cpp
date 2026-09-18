@@ -506,22 +506,46 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     }
 
     bool isTopMusicPath = true;
-    if (path == QStringLiteral("system.topMusicVol")) m_music.topMusicVol = qRound(value.toDouble());
+    if (path == QStringLiteral("system.topMusicVol"))
+        m_music.topMusicVol = qBound(K500NativeLimits::TopVolume::Min,
+                                    qRound(value.toDouble()),
+                                    K500NativeLimits::TopVolume::Max);
     else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);
     else if (path == QStringLiteral("music.key")) m_music.key = value.toInt();
-    else if (path == QStringLiteral("music.input1GainDb")) m_music.input1GainDb = value.toDouble();
-    else if (path == QStringLiteral("music.input2GainDb")) m_music.input2GainDb = value.toDouble();
-    else if (path == QStringLiteral("music.bluetoothGainDb") || path == QStringLiteral("music.btGainDb")) m_music.bluetoothGainDb = value.toDouble();
-    else if (path == QStringLiteral("music.uDiskGainDb")) m_music.uDiskGainDb = value.toDouble();
-    else if (path == QStringLiteral("music.digitalGainDb")) m_music.digitalGainDb = value.toDouble();
+    else if (path == QStringLiteral("music.input1GainDb"))
+        m_music.input1GainDb = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                     value.toDouble(),
+                                     K500NativeLimits::MusicInputGain::MaxDb);
+    else if (path == QStringLiteral("music.input2GainDb"))
+        m_music.input2GainDb = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                     value.toDouble(),
+                                     K500NativeLimits::MusicInputGain::MaxDb);
+    else if (path == QStringLiteral("music.bluetoothGainDb") || path == QStringLiteral("music.btGainDb"))
+        m_music.bluetoothGainDb = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                        value.toDouble(),
+                                        K500NativeLimits::MusicInputGain::MaxDb);
+    else if (path == QStringLiteral("music.uDiskGainDb"))
+        m_music.uDiskGainDb = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                    value.toDouble(),
+                                    K500NativeLimits::MusicInputGain::MaxDb);
+    else if (path == QStringLiteral("music.digitalGainDb"))
+        m_music.digitalGainDb = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                      value.toDouble(),
+                                      K500NativeLimits::MusicInputGain::MaxDb);
     else isTopMusicPath = false;
     if (isTopMusicPath) { queueTopMusic(path); return; }
 
     bool isTopMicPath = true;
-    if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = qRound(value.toDouble());
+    if (path == QStringLiteral("system.topMicVol"))
+        m_mic.topMicVol = qBound(K500NativeLimits::TopVolume::Min,
+                                qRound(value.toDouble()),
+                                K500NativeLimits::TopVolume::Max);
     else if (path == QStringLiteral("mic.micAVol")) m_mic.micAVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micBVol")) m_mic.micBVol = qRound(value.toDouble());
-    else if (path == QStringLiteral("mic.fbxLevel")) m_mic.fbxLevel = qBound(0, qRound(value.toDouble()), 3);
+    else if (path == QStringLiteral("mic.fbxLevel"))
+        m_mic.fbxLevel = qBound(K500NativeLimits::MicFbx::Min,
+                               qRound(value.toDouble()),
+                               K500NativeLimits::MicFbx::Max);
     else if (path == QStringLiteral("mic.compThresholdDb")) m_mic.compThresholdDb = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.compRatio")) m_mic.compRatio = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.attackMs")) m_mic.attackMs = qRound(value.toDouble());
@@ -530,7 +554,9 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     if (isTopMicPath) { queueTopMic(path); return; }
 
     if (path == QStringLiteral("system.topEffectVol")) {
-        m_effect.topEffectVol = qRound(value.toDouble());
+        m_effect.topEffectVol = qBound(K500NativeLimits::TopVolume::Min,
+                                      qRound(value.toDouble()),
+                                      K500NativeLimits::TopVolume::Max);
         queueTopEffect(path);
         return;
     }
