@@ -14,6 +14,10 @@ class EqBandModel final : public QAbstractListModel
     Q_PROPERTY(int count READ count CONSTANT)
     Q_PROPERTY(double hpfHz READ hpfHz NOTIFY crossoverChanged)
     Q_PROPERTY(double lpfHz READ lpfHz NOTIFY crossoverChanged)
+    Q_PROPERTY(double hpfMinHz READ hpfMinHz CONSTANT)
+    Q_PROPERTY(double hpfMaxHz READ hpfMaxHz CONSTANT)
+    Q_PROPERTY(double lpfMinHz READ lpfMinHz CONSTANT)
+    Q_PROPERTY(double lpfMaxHz READ lpfMaxHz CONSTANT)
     Q_PROPERTY(QString hpType READ hpType NOTIFY crossoverChanged)
     Q_PROPERTY(QString lpType READ lpType NOTIFY crossoverChanged)
 
@@ -33,6 +37,10 @@ public:
 
     double hpfHz() const { return m_hpfHz; }
     double lpfHz() const { return m_lpfHz; }
+    double hpfMinHz() const { return m_hpfMinHz; }
+    double hpfMaxHz() const { return m_hpfMaxHz; }
+    double lpfMinHz() const { return m_lpfMinHz; }
+    double lpfMaxHz() const { return m_lpfMaxHz; }
     QString hpType() const { return m_hpType; }
     QString lpType() const { return m_lpType; }
 
@@ -48,7 +56,9 @@ public:
 
     void configure(int bandCount, const QList<double> &defaultFrequencies,
                    double hpfHz, double lpfHz,
-                   const QString &hpType, const QString &lpType);
+                   const QString &hpType, const QString &lpType,
+                   double hpfMinHz = 20.0, double hpfMaxHz = 20000.0,
+                   double lpfMinHz = 20.0, double lpfMaxHz = 20000.0);
     void syncBand(int index, double frequency, double gain, double q, const QString &typeName);
     void syncCrossover(double hpfHz, double lpfHz,
                        const QString &hpType, const QString &lpType);
@@ -69,6 +79,10 @@ private:
     QList<double> m_defaultFrequencies{80, 160, 315, 630, 1300, 2500, 8000};
     double m_hpfHz = 20.0;
     double m_lpfHz = 20000.0;
+    double m_hpfMinHz = 20.0;
+    double m_hpfMaxHz = 20000.0;
+    double m_lpfMinHz = 20.0;
+    double m_lpfMaxHz = 20000.0;
     QString m_hpType = QStringLiteral("HP Butter 12");
     QString m_lpType = QStringLiteral("LP Butter 12");
 };
@@ -142,8 +156,8 @@ public:
         if (!model)
             return;
 
-        const double safeHpf = qBound(20.0, hpfHz, 20000.0);
-        const double safeLpf = qBound(20.0, lpfHz, 20000.0);
+        const double safeHpf = qBound(model->hpfMinHz(), hpfHz, model->hpfMaxHz());
+        const double safeLpf = qBound(model->lpfMinHz(), lpfHz, model->lpfMaxHz());
         const QString resolvedHpType = hpType.trimmed().isEmpty() ? model->hpType() : hpType.trimmed();
         const QString resolvedLpType = lpType.trimmed().isEmpty() ? model->lpType() : lpType.trimmed();
         model->syncCrossover(safeHpf, safeLpf, resolvedHpType, resolvedLpType);
