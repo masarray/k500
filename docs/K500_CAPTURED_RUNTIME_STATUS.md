@@ -32,6 +32,37 @@ PLAYING ... 00 00 00 0C 0D AB 03 CE 00 00 ...
 
 Contract: bit 0x04 clear = not playing (stopped/paused UI state); bit 0x04 set = actively playing. SonKuPik must derive the Play/Pause icon from device RX, never from a local optimistic boolean.
 
+## Mute — setter and connect read-side captured
+
+Native write frames remain:
+
+```text
+OFF  AA 03 15 00 00 E8
+ON   AA 03 15 01 00 E7
+```
+
+Paired Wireshark/USBPcap connect/change/disconnect captures:
+
+| Capture | Size | SHA-256 |
+| --- | ---: | --- |
+| Connect_MUTE_OFF.pcapng | 11932376 | 53db157ba1d0e4fddd31e0bf2c2c06eefd03b353e71d39af503bdd171fbbd36f |
+| Connect_MUTE_ON.pcapng | 25326260 | 2379a324c83abf4bc68a8f9ea8d5ce7c36c91c8a0453527812cc2dc8978825a0 |
+
+The filenames describe the value changed after CONNECT, so the C0 handshake carries
+the pre-change state. The stable delta is again C0 data[7]:
+
+```text
+Device UNMUTED before changing Mute ON: ... 5A 84 ...
+Device MUTED   before changing Mute OFF: ... 5A 86 ...
+```
+
+Contract:
+
+- C0 data[7] bit 0x02 clear => Mute OFF / unmuted
+- C0 data[7] bit 0x02 set   => Mute ON / muted
+
+This shares the same C0 flags byte as Use Init Volume (bit 0x04) but is a separate bit.
+
 ## Use Init Volume — setter and connect read-side captured
 
 The original toggle capture proves the exact USB setter frames:
