@@ -1,6 +1,7 @@
 #include "K500Protocol.h"
 
 #include "K500Frame.h"
+#include "K500NativeLimits.h"
 
 #include <QHash>
 #include <QtMath>
@@ -303,12 +304,24 @@ QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &devi
     while (data.size() < ReverbDataLength)
         data.append(char(0));
 
-    data[0] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
-    data[2] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
-    writeU16Le(data, 6, qBound(20, state.hpfHz, 20000));
-    writeU16Le(data, 8, qBound(20, state.lpfHz, 20000));
-    writeU16Le(data, 10, qBound(0, state.decayMs, 65535));
-    writeU16Le(data, 12, qBound(0, state.predelayMs, 65535));
+    data[0] = char(K500Frame::clampByte(qBound(K500NativeLimits::Reverb::LevelMin,
+                                               state.level,
+                                               K500NativeLimits::Reverb::LevelMax)));
+    data[2] = char(K500Frame::clampByte(qBound(K500NativeLimits::Reverb::DirectMin,
+                                               state.direct,
+                                               K500NativeLimits::Reverb::DirectMax)));
+    writeU16Le(data, 6, qBound(K500NativeLimits::Reverb::HpfMinHz,
+                              state.hpfHz,
+                              K500NativeLimits::Reverb::HpfMaxHz));
+    writeU16Le(data, 8, qBound(K500NativeLimits::Reverb::LpfMinHz,
+                              state.lpfHz,
+                              K500NativeLimits::Reverb::LpfMaxHz));
+    writeU16Le(data, 10, qBound(K500NativeLimits::Reverb::DecayMinMs,
+                               state.decayMs,
+                               K500NativeLimits::Reverb::DecayMaxMs));
+    writeU16Le(data, 12, qBound(K500NativeLimits::Reverb::PredelayMinMs,
+                               state.predelayMs,
+                               K500NativeLimits::Reverb::PredelayMaxMs));
 
     QByteArray body;
     body.reserve(17);
@@ -516,6 +529,43 @@ bool selfTest(QString *error)
     if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x5F,0x32,0x32,0x55,0xDD,0x00,0xB8,0x3D,0x95,0x06,0x32,0x00,0x00,0xCE}, QStringLiteral("Reverb HPF 221 USB capture"))) return false;
     reverb.hpfHz = 225; reverb.lpfHz = 16000;
     if (!expect(K500Frame::toUsbFrame(reverbBlock(reverb, reverbSeed)), {0xAA,0x10,0x00,0x0B,0x5F,0x01,0x5F,0x32,0x32,0x55,0xE1,0x00,0x80,0x3E,0x95,0x06,0x32,0x00,0x00,0x01}, QStringLiteral("Reverb LPF 16000 USB capture"))) return false;
+    // K500_NATIVE_UI_LIMITS_V1 — protocol encoding must enforce the same
+    // physically verified native endpoints as the UI/controller. Wire width is
+    // not permission to emit values outside the native control domain.
+    K500ReverbBlockState belowNative = reverb;
+    belowNative.level = -10;
+    belowNative.direct = -10;
+    belowNative.hpfHz = 0;
+    belowNative.lpfHz = 0;
+    belowNative.decayMs = 0;
+    belowNative.predelayMs = -10;
+    K500ReverbBlockState nativeMinimum = belowNative;
+    nativeMinimum.level = K500NativeLimits::Reverb::LevelMin;
+    nativeMinimum.direct = K500NativeLimits::Reverb::DirectMin;
+    nativeMinimum.hpfHz = K500NativeLimits::Reverb::HpfMinHz;
+    nativeMinimum.lpfHz = K500NativeLimits::Reverb::LpfMinHz;
+    nativeMinimum.decayMs = K500NativeLimits::Reverb::DecayMinMs;
+    nativeMinimum.predelayMs = K500NativeLimits::Reverb::PredelayMinMs;
+    if (reverbBlock(belowNative, reverbSeed) != reverbBlock(nativeMinimum, reverbSeed))
+        return fail(QStringLiteral("Reverb native minimum clamp mismatch"));
+
+    K500ReverbBlockState aboveNative = reverb;
+    aboveNative.level = 1000;
+    aboveNative.direct = 1000;
+    aboveNative.hpfHz = 20000;
+    aboveNative.lpfHz = 20000;
+    aboveNative.decayMs = 65535;
+    aboveNative.predelayMs = 65535;
+    K500ReverbBlockState nativeMaximum = aboveNative;
+    nativeMaximum.level = K500NativeLimits::Reverb::LevelMax;
+    nativeMaximum.direct = K500NativeLimits::Reverb::DirectMax;
+    nativeMaximum.hpfHz = K500NativeLimits::Reverb::HpfMaxHz;
+    nativeMaximum.lpfHz = K500NativeLimits::Reverb::LpfMaxHz;
+    nativeMaximum.decayMs = K500NativeLimits::Reverb::DecayMaxMs;
+    nativeMaximum.predelayMs = K500NativeLimits::Reverb::PredelayMaxMs;
+    if (reverbBlock(aboveNative, reverbSeed) != reverbBlock(nativeMaximum, reverbSeed))
+        return fail(QStringLiteral("Reverb native maximum clamp mismatch"));
+
     QByteArray preserveReverb(ReverbDataLength, char(0x5A));
     const QByteArray preservedReverbFrame = reverbBlock(reverb, preserveReverb);
     if (preservedReverbFrame.size() < 19 || byteFromChar(preservedReverbFrame.at(4)) != 0x5A
