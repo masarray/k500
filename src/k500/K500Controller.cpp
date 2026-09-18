@@ -397,13 +397,11 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
                 if (hpf) m_crossovers[section].hpfHz = value.toDouble();
                 else m_crossovers[section].lpfHz = value.toDouble();
                 if (section == QStringLiteral("reverb")) {
-                    if (hpf) m_reverb.hpfHz = qRound(value.toDouble());
-                    else m_reverb.lpfHz = qRound(value.toDouble());
-                    queueReverb(path);
+                    if (updateReverbState(field, value))
+                        queueReverb(path);
                 } else {
-                    if (hpf) m_echo.hpfHz = qRound(value.toDouble());
-                    else m_echo.lpfHz = qRound(value.toDouble());
-                    queueEcho(path);
+                    if (updateEchoState(field, value))
+                        queueEcho(path);
                 }
             } else {
                 rejectUnsupported(path);
@@ -663,38 +661,38 @@ void K500Controller::queueCrossover(const QString &section, const QString &path,
 
 bool K500Controller::updateReverbState(const QString &field, const QVariant &value)
 {
-    if (field == QStringLiteral("level")) m_reverb.level = qBound(0, qRound(value.toDouble()), 100);
-    else if (field == QStringLiteral("direct")) m_reverb.direct = qBound(0, qRound(value.toDouble()), 100);
+    if (field == QStringLiteral("level")) m_reverb.level = qBound(K500Protocol::NativeRange::ReverbLevelMin, qRound(value.toDouble()), K500Protocol::NativeRange::ReverbLevelMax);
+    else if (field == QStringLiteral("direct")) m_reverb.direct = qBound(K500Protocol::NativeRange::ReverbDirectMin, qRound(value.toDouble()), K500Protocol::NativeRange::ReverbDirectMax);
     else if (field == QStringLiteral("hpfHz")) {
-        m_reverb.hpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_reverb.hpfHz = qBound(K500Protocol::NativeRange::FxHpfMinHz, qRound(value.toDouble()), K500Protocol::NativeRange::FxHpfMaxHz);
         m_crossovers[QStringLiteral("reverb")].hpfHz = m_reverb.hpfHz;
     }
     else if (field == QStringLiteral("lpfHz")) {
-        m_reverb.lpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_reverb.lpfHz = qBound(K500Protocol::NativeRange::FxLpfMinHz, qRound(value.toDouble()), K500Protocol::NativeRange::FxLpfMaxHz);
         m_crossovers[QStringLiteral("reverb")].lpfHz = m_reverb.lpfHz;
     }
-    else if (field == QStringLiteral("decayMs")) m_reverb.decayMs = qBound(0, qRound(value.toDouble()), 65535);
-    else if (field == QStringLiteral("predelayMs")) m_reverb.predelayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else if (field == QStringLiteral("decayMs")) m_reverb.decayMs = qBound(K500Protocol::NativeRange::ReverbDecayMinMs, qRound(value.toDouble()), K500Protocol::NativeRange::ReverbDecayMaxMs);
+    else if (field == QStringLiteral("predelayMs")) m_reverb.predelayMs = qBound(K500Protocol::NativeRange::ReverbPredelayMinMs, qRound(value.toDouble()), K500Protocol::NativeRange::ReverbPredelayMaxMs);
     else return false;
     return true;
 }
 
 bool K500Controller::updateEchoState(const QString &field, const QVariant &value)
 {
-    if (field == QStringLiteral("level")) m_echo.level = qBound(0, qRound(value.toDouble()), 100);
-    else if (field == QStringLiteral("repeat")) m_echo.repeat = qBound(0, qRound(value.toDouble()), 10);
-    else if (field == QStringLiteral("direct")) m_echo.direct = qBound(0, qRound(value.toDouble()), 100);
+    if (field == QStringLiteral("level")) m_echo.level = qBound(K500Protocol::NativeRange::EchoLevelMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoLevelMax);
+    else if (field == QStringLiteral("repeat")) m_echo.repeat = qBound(K500Protocol::NativeRange::EchoRepeatMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoRepeatMax);
+    else if (field == QStringLiteral("direct")) m_echo.direct = qBound(K500Protocol::NativeRange::EchoDirectMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoDirectMax);
     else if (field == QStringLiteral("rightDelayPercent")) m_echo.rightDelayPercent = qBound(-50, qRound(value.toDouble()), 50);
     else if (field == QStringLiteral("rightPredelayPercent")) m_echo.rightPredelayPercent = qBound(-50, qRound(value.toDouble()), 50);
     else if (field == QStringLiteral("hpfHz")) {
-        m_echo.hpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_echo.hpfHz = qBound(K500Protocol::NativeRange::FxHpfMinHz, qRound(value.toDouble()), K500Protocol::NativeRange::FxHpfMaxHz);
         m_crossovers[QStringLiteral("echo")].hpfHz = m_echo.hpfHz;
     }
     else if (field == QStringLiteral("lpfHz")) {
-        m_echo.lpfHz = qBound(20, qRound(value.toDouble()), 20000);
+        m_echo.lpfHz = qBound(K500Protocol::NativeRange::FxLpfMinHz, qRound(value.toDouble()), K500Protocol::NativeRange::FxLpfMaxHz);
         m_crossovers[QStringLiteral("echo")].lpfHz = m_echo.lpfHz;
     }
-    else if (field == QStringLiteral("leftDelayMs")) m_echo.leftDelayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else if (field == QStringLiteral("leftDelayMs")) m_echo.leftDelayMs = qBound(K500Protocol::NativeRange::EchoDelayMinMs, qRound(value.toDouble()), K500Protocol::NativeRange::EchoDelayMaxMs);
     else if (field == QStringLiteral("leftPredelayMs")) m_echo.leftPredelayMs = qBound(0, qRound(value.toDouble()), 65535);
     else return false;
     return true;
