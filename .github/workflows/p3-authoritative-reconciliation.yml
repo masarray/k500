@@ -10,8 +10,10 @@ on:
       - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
       - 'src/k500/K500Protocol.*'
+      - 'src/k500/K500ResponseParser.*'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/TopBar.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
@@ -71,8 +73,10 @@ jobs:
           manager_h = Path('src/k500/K500DeviceManager.h').read_text(encoding='utf-8')
           protocol_h = Path('src/k500/K500Protocol.h').read_text(encoding='utf-8')
           protocol_cpp = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          response_cpp = Path('src/k500/K500ResponseParser.cpp').read_text(encoding='utf-8')
           studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
           qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
           native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
@@ -92,6 +96,8 @@ jobs:
               'qml uses native reverb domain': 'from:500,to:5000' in qml and 'from:0,to:100' in qml and 'hpfMinHz' in qml and 'lpfMaxHz' in qml,
               'engine exposes section ranges': 'hpfMinHz READ hpfMinHz' in studio_h and 'lpfMaxHz READ lpfMaxHz' in studio_h,
               'native range documentation present': 'Reverb Decay' in native_ranges and '4000' in native_ranges and '16000' in native_ranges,
+              'player status comes from captured RX': 'PLAYER_STATUS_CAPTURED_V1' in response_cpp and '0x04u' in response_cpp and 'deviceManager.playing' in topbar,
+              'player UI has no local optimistic toggle': 'transportPlaying' not in topbar and 'sendPlayerCommand("playPause")' in topbar,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]
