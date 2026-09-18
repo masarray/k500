@@ -41,15 +41,28 @@ if ($Session -eq 'performance') {
 Write-Host ''
 Read-Host 'Press ENTER to launch the qualification build'
 
+# Start-Process joins ArgumentList into one command line on Windows. Quote the
+# report value explicitly so paths such as "Software Buatanku" remain one argv.
+$quotedReportPath = '"' + $reportPath.Replace('"', '\"') + '"'
 $arguments = @(
     '--device-perf',
-    "--device-perf-report=$reportPath"
+    "--device-perf-report=$quotedReportPath"
 )
+
+# Qualification must own exactly one process instance. An already-running copy
+# can make Start-Process return immediately or send the tester to the wrong UI.
+$processName = [System.IO.Path]::GetFileNameWithoutExtension($resolvedExe)
+$existing = @(Get-Process -Name $processName -ErrorAction SilentlyContinue | Where-Object {
+    try { $_.Path -eq $resolvedExe } catch { $false }
+})
+if ($existing.Count -gt 0) {
+    throw "Qualification EXE is already running (PID $($existing[0].Id)). Close it before starting a measured session."
+}
 
 $process = Start-Process -FilePath $resolvedExe -ArgumentList $arguments -Wait -PassThru
 
 if (-not (Test-Path $reportPath)) {
-    throw "Qualification report was not created: $reportPath"
+    throw "Qualification report was not created: $reportPath. Verify --device-perf-report quoting/telemetry wiring."
 }
 
 $report = Get-Content -Raw -Path $reportPath | ConvertFrom-Json
