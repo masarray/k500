@@ -109,6 +109,11 @@ DevicePerformanceMonitor::DevicePerformanceMonitor(K500DeviceManager *manager,
                      m_manager, [this]() { onStatusChanged(); });
     QObject::connect(m_manager, &K500DeviceManager::activeMemoryReady,
                      m_manager, [this](const QByteArray &memory) { onActiveMemoryReady(memory); });
+    QObject::connect(m_manager, &K500DeviceManager::reconciliationMemoryReady,
+                     m_manager, [this](const QByteArray &memory) {
+        ++m_reconciliationCompletions;
+        onActiveMemoryReady(memory);
+    });
     QObject::connect(m_manager, &K500DeviceManager::logLine,
                      m_manager,
                      [this](const QString &direction, const QString &label, const QString &hex) {
@@ -381,6 +386,7 @@ void DevicePerformanceMonitor::flushReport()
         device.insert(QStringLiteral("portLabel"), m_manager->portLabel());
         device.insert(QStringLiteral("connected"), m_manager->connected());
         device.insert(QStringLiteral("liveEnabled"), m_manager->liveEnabled());
+        device.insert(QStringLiteral("reconciliationInProgress"), m_manager->reconciliationInProgress());
         device.insert(QStringLiteral("lastError"), m_manager->lastError());
     }
     root.insert(QStringLiteral("device"), device);
@@ -401,6 +407,7 @@ void DevicePerformanceMonitor::flushReport()
     QJsonObject readbackTiming;
     readbackTiming.insert(QStringLiteral("attempts"), double(m_readbackAttempts));
     readbackTiming.insert(QStringLiteral("completions"), double(m_readbackCompletions));
+    readbackTiming.insert(QStringLiteral("reconciliationCompletions"), double(m_reconciliationCompletions));
     readbackTiming.insert(QStringLiteral("lastMs"), double(m_readbackLastMs));
     readbackTiming.insert(QStringLiteral("bestMs"), double(m_readbackBestMs));
     readbackTiming.insert(QStringLiteral("worstMs"), double(m_readbackWorstMs));
@@ -417,6 +424,22 @@ void DevicePerformanceMonitor::flushReport()
     traffic.insert(QStringLiteral("unsupportedPaths"), double(m_unsupportedPaths));
     traffic.insert(QStringLiteral("errorLogLines"), double(m_errorLogLines));
     root.insert(QStringLiteral("traffic"), traffic);
+
+    QJsonObject canonical;
+    if (m_controller) {
+        canonical.insert(QStringLiteral("snapshotGeneration"),
+                         QString::number(m_controller->authoritativeSnapshotGeneration()));
+        canonical.insert(QStringLiteral("desired"), m_controller->desiredStateCount());
+        canonical.insert(QStringLiteral("inFlight"), m_controller->inFlightStateCount());
+        canonical.insert(QStringLiteral("divergentDesired"),
+                         m_controller->divergentDesiredStateCount());
+    }
+    if (m_manager)
+        canonical.insert(QStringLiteral("reconciliationInProgress"),
+                         m_manager->reconciliationInProgress());
+    canonical.insert(QStringLiteral("reconciliationCompletions"),
+                     QString::number(m_reconciliationCompletions));
+    root.insert(QStringLiteral("canonicalState"), canonical);
 
     QJsonObject dispatch;
     dispatch.insert(QStringLiteral("samples"), double(m_controllerToTxSamples));
