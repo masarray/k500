@@ -265,9 +265,15 @@ void K500DeviceManager::dispatchScheduledCommands()
         emit commandDispatchResult(
             transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,
             accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));
-        if (accepted)
-            scheduleAuthoritativeReconciliation();
 
+        // P3_1_NONDISRUPTIVE_LIVE_EDIT_V1
+        // Never force a full 939-byte reconciliation after an ordinary live
+        // control edit. The P3 hardware test proved that doing so made every
+        // settled edit visibly leave LIVE/SYNC and could drop edits during the
+        // verification window. DesiredState remains unresolved until an
+        // explicit/session-bound authoritative refresh (connect/reconnect/Recall
+        // or a future dedicated Verify action). Transport acceptance is still
+        // NOT treated as hardware confirmation.
         if (!accepted || !connected() || !m_liveEnabled)
             break;
     }
