@@ -564,19 +564,29 @@ Item {
                             Rectangle{
                                 id:initVolumeCheck
                                 width:13;height:13;radius:2
-                                color:root.presetManager&&root.presetManager.useInitVolume?Theme.accent:"#4A5055"
+                                readonly property bool known:root.presetManager&&root.presetManager.useInitVolumeKnown
+                                readonly property bool active:known&&root.presetManager.useInitVolume
+                                color:active?Theme.accent:(known?"#4A5055":"#17120A")
                                 border.width:1
-                                border.color:root.presetManager&&root.presetManager.useInitVolume?Theme.accentSoft:"#60676C"
-                                Text{anchors.centerIn:parent;visible:root.presetManager&&root.presetManager.useInitVolume;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
+                                border.color:active?Theme.accentSoft:(known?"#60676C":Theme.amber)
+                                Text{anchors.centerIn:parent;visible:initVolumeCheck.active;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
+                                Text{anchors.centerIn:parent;visible:!initVolumeCheck.known;text:"?";color:Theme.amber;font.pixelSize:9;font.weight:Font.Bold}
                                 MouseArea{
                                     anchors.fill:parent
-                                    cursorShape:Qt.PointingHandCursor
-                                    enabled:root.presetManager&&!root.presetManager.busy
+                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
+                                    enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
                                     onClicked:root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
                                 }
                             }
                             Text{text:"Use init volume";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
-                            Text{visible:root.offlineFileMode;text:"OFFLINE PREF";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7}
+                            Text{
+                                text:!root.deviceConnected?"CONNECT TO SET"
+                                     :root.presetManager&&root.presetManager.useInitVolumeKnown
+                                        ?(root.presetManager.useInitVolume?"DEVICE ON":"DEVICE OFF")
+                                        :"DEVICE STATE UNKNOWN"
+                                color:root.deviceConnected&&root.presetManager&&!root.presetManager.useInitVolumeKnown?Theme.amber:Theme.textDim
+                                font.family:Theme.monoFamily;font.pixelSize:7
+                            }
                             Item{Layout.fillWidth:true}
                             Text{
                                 visible:root.presetManager&&String(root.presetManager.progress||"").length>0

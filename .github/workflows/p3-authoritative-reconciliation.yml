@@ -9,6 +9,18 @@ on:
       - 'src/k500/K500DeviceManager.*'
       - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
+      - 'src/k500/K500Protocol.*'
+      - 'src/k500/K500ResponseParser.*'
+      - 'src/k500/K500PresetManager.*'
+      - 'src/StudioEngine.*'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/MusicTonePanel.qml'
+      - 'qml/components/ParameterSlider.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
+      - 'qml/components/TopBar.qml'
+      - 'docs/K500_NATIVE_VALUE_RANGES.md'
+      - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
+      - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -18,6 +30,14 @@ on:
       - 'src/k500/K500DeviceManager.*'
       - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
+      - 'src/k500/K500Protocol.*'
+      - 'src/k500/K500ResponseParser.*'
+      - 'src/k500/K500PresetManager.*'
+      - 'src/StudioEngine.*'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/MusicTonePanel.qml'
+      - 'qml/components/ParameterSlider.qml'
+      - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
 
@@ -61,6 +81,20 @@ jobs:
           controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
           manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
           manager_h = Path('src/k500/K500DeviceManager.h').read_text(encoding='utf-8')
+          protocol_h = Path('src/k500/K500Protocol.h').read_text(encoding='utf-8')
+          protocol_cpp = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          response_h = Path('src/k500/K500ResponseParser.h').read_text(encoding='utf-8')
+          response_cpp = Path('src/k500/K500ResponseParser.cpp').read_text(encoding='utf-8')
+          preset_manager = Path('src/k500/K500PresetManager.cpp').read_text(encoding='utf-8')
+          studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
+          qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          music_tone_qml = Path('qml/components/MusicTonePanel.qml').read_text(encoding='utf-8')
+          parameter_slider = Path('qml/components/ParameterSlider.qml').read_text(encoding='utf-8')
+          system_qml = Path('qml/components/SystemWorkspaceImpl.qml').read_text(encoding='utf-8')
+          topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
+          native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
+          runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
+          music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
@@ -70,10 +104,24 @@ jobs:
               'desired intent preserved': 'DesiredState intentionally survives' in state_cpp,
               'divergence is explicit': 'divergentDesiredPaths' in state_cpp and 'divergentDesiredCount' in state_h,
               'controller has separate reconciliation path': 'reconcileFromDeviceMemory' in controller and 'applyDeviceMemory(memory, true)' in controller,
-              'device manager debounces verification': 'AuthoritativeReconcileIdleMs = 700' in manager and 'scheduleAuthoritativeReconciliation' in manager,
+              'ordinary live edits are non-disruptive': 'P3_1_NONDISRUPTIVE_LIVE_EDIT_V1' in manager and 'if (accepted)\n            scheduleAuthoritativeReconciliation();' not in manager,
+              'explicit reconciliation machinery retained': 'AuthoritativeReconcileIdleMs = 700' in manager and 'startAuthoritativeReconciliation' in manager,
               'full proven readback reused': 'requestActiveMemoryReadback();' in manager and 'reconciliationMemoryReady' in manager_h,
-              'live barrier precedes readback': 'm_reconciliationInProgress = true;\n    setLiveEnabled(false);' in manager,
               'studio hydrates reconciliation truth': '&K500DeviceManager::reconciliationMemoryReady' in main,
+              'native range contract exists': 'K500_NATIVE_VALUE_CONTRACT_V1' in protocol_h and 'FxHpfMaxHz = 1000' in protocol_h and 'FxLpfMinHz = 4000' in protocol_h,
+              'transport clamps native reverb domain': 'ReverbDecayMinMs' in protocol_cpp and 'ReverbPredelayMaxMs' in protocol_cpp,
+              'qml uses native reverb domain': 'from:500,to:5000' in qml and 'from:0,to:100' in qml and 'hpfMinHz' in qml and 'lpfMaxHz' in qml,
+              'engine exposes section ranges': 'hpfMinHz READ hpfMinHz' in studio_h and 'lpfMaxHz READ lpfMaxHz' in studio_h,
+              'native range documentation present': 'Reverb Decay' in native_ranges and '4000' in native_ranges and '16000' in native_ranges,
+              'player status comes from captured RX': 'PLAYER_STATUS_CAPTURED_V1' in response_h and 'tryDecodePlaying' in response_cpp and '0x04u' in response_cpp and 'deviceManager.playing' in topbar,
+              'player UI has no local optimistic toggle': 'transportPlaying' not in topbar and 'sendPlayerCommand("playPause")' in topbar,
+              'use-init never pretends PC preference is device truth': 'USE_INIT_DEVICE_TRUTH_V1' in preset_manager and 'QSettings' not in preset_manager and 'useInitVolumeKnown' in system_qml,
+              'use-init hydrates from captured C0 bit': 'tryDecodeUseInitVolume' in response_cpp and 'response.data.at(7)' in response_cpp and 'm_useInitVolumeKnown = true' in preset_manager,
+              'mute hydrates from captured C0 bit': 'MUTE_CONNECT_CAPTURED_V1' in response_h and 'tryDecodeMuted' in response_cpp and '0x02u' in response_cpp and 'setMuted(decodedMuted)' in manager,
+              'music tone captured writes are implemented': 'musicNoiseGateRaw' in protocol_cpp and 'musicBass' in protocol_cpp and 'music.noiseGateDb' in controller and 'music.bassDb' in controller,
+              'music tone native UI range is guarded': 'from:-91;to:-50' in music_tone_qml and 'offAtMin:true' in music_tone_qml and 'from:-12;to:12' in music_tone_qml and 'offAtMin' in parameter_slider,
+              'music tone capture evidence documented': 'raw `0x00` = OFF' in music_tone_doc and 'raw = round((dB + 12.0) * 10)' in music_tone_doc,
+              'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]

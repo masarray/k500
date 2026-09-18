@@ -144,8 +144,19 @@ void K500DeviceManager::sendPlayerCommand(const QString &command)
 {
     if (!connected())
         return;
-    writeFrame(K500Protocol::playerCommand(command),
-               QStringLiteral("Player %1").arg(command));
+
+    if (!writeFrame(K500Protocol::playerCommand(command),
+                    QStringLiteral("Player %1").arg(command)))
+        return;
+
+    // PLAYER_STATUS_CAPTURED_V1
+    // Never toggle the UI optimistically. Query the same device status used by
+    // the manufacturer app so play/pause reflects BT/MP3 truth, including
+    // changes made outside SonKuPik.
+    QTimer::singleShot(180, this, [this] {
+        if (m_stage == Stage::Ready && connected())
+            writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status refresh"));
+    });
 }
 
 void K500DeviceManager::toggleMute()
@@ -154,10 +165,8 @@ void K500DeviceManager::toggleMute()
         return;
     const bool next = !m_muted;
     if (writeFrame(K500Protocol::mute(next), next ? QStringLiteral("Mute ON")
-                                                  : QStringLiteral("Mute OFF"))) {
-        m_muted = next;
-        emit mutedChanged();
-    }
+                                                  : QStringLiteral("Mute OFF")))
+        setMuted(next);
 }
 
 void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &label)
@@ -265,9 +274,15 @@ void K500DeviceManager::dispatchScheduledCommands()
         emit commandDispatchResult(
             transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,
             accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));
-        if (accepted)
-            scheduleAuthoritativeReconciliation();
 
+        // P3_1_NONDISRUPTIVE_LIVE_EDIT_V1
+        // Never force a full 939-byte reconciliation after an ordinary live
+        // control edit. The P3 hardware test proved that doing so made every
+        // settled edit visibly leave LIVE/SYNC and could drop edits during the
+        // verification window. DesiredState remains unresolved until an
+        // explicit/session-bound authoritative refresh (connect/reconnect/Recall
+        // or a future dedicated Verify action). Transport acceptance is still
+        // NOT treated as hardware confirmation.
         if (!accepted || !connected() || !m_liveEnabled)
             break;
     }
@@ -319,6 +334,7 @@ QByteArray K500DeviceManager::supportReportJson() const
     device.insert(QStringLiteral("portLabel"), m_portLabel);
     device.insert(QStringLiteral("connected"), connected());
     device.insert(QStringLiteral("liveEnabled"), m_liveEnabled);
+    device.insert(QStringLiteral("playing"), m_playing);
     device.insert(QStringLiteral("muted"), m_muted);
     device.insert(QStringLiteral("lastError"), m_lastError);
     device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic);
@@ -355,6 +371,10 @@ QByteArray K500DeviceManager::supportReportJson() const
     if (m_presetManager) {
         presetOperation.insert(QStringLiteral("busy"), m_presetManager->property("busy").toBool());
         presetOperation.insert(QStringLiteral("activeSlot"), m_presetManager->property("activeSlot").toInt());
+        presetOperation.insert(QStringLiteral("useInitVolumeKnown"),
+                               m_presetManager->property("useInitVolumeKnown").toBool());
+        presetOperation.insert(QStringLiteral("useInitVolume"),
+                               m_presetManager->property("useInitVolume").toBool());
         presetOperation.insert(QStringLiteral("progress"), m_presetManager->property("progress").toString());
     }
     root.insert(QStringLiteral("presetOperation"), presetOperation);
@@ -486,6 +506,27 @@ void K500DeviceManager::setLiveEnabled(bool enabled)
         m_controller->setLiveEnabled(enabled);
     emit liveEnabledChanged();
 }
+
+void K500DeviceManager::setPlaying(bool playing)
+{
+    if (m_playing == playing)
+        return;
+    m_playing = playing;
+    emit playingChanged();
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("player state"),
+                 m_playing ? QStringLiteral("PLAYING") : QStringLiteral("STOPPED/PAUSED"));
+}
+
+void K500DeviceManager::setMuted(bool muted)
+{
+    if (m_muted == muted)
+        return;
+    m_muted = muted;
+    emit mutedChanged();
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("mute state"),
+                 m_muted ? QStringLiteral("MUTED") : QStringLiteral("UNMUTED"));
+}
+
 
 void K500DeviceManager::scheduleAuthoritativeReconciliation()
 {
@@ -804,6 +845,14 @@ void K500DeviceManager::onBytesReceived(const QByteArray &bytes)
 
 void K500DeviceManager::handleResponse(const K500Response &response)
 {
+    bool decodedPlaying = false;
+    if (K500ResponseParser::tryDecodePlaying(response, &decodedPlaying))
+        setPlaying(decodedPlaying);
+
+    bool decodedMuted = false;
+    if (K500ResponseParser::tryDecodeMuted(response, &decodedMuted))
+        setMuted(decodedMuted);
+
     if ((m_stage == Stage::ProbeBluetooth || m_stage == Stage::ProbeUsb)
         && response.rsp == 0xE3) {
         beginSync();
@@ -883,8 +932,8 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_activeMemory.clear();
     m_memoryReadOffset = 0;
     m_pendingReadLength = 0;
-    m_muted = false;
-    emit mutedChanged();
+    setPlaying(false);
+    setMuted(false);
     if (!keepError)
         setError({});
 }

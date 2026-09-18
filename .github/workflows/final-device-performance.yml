@@ -36,6 +36,7 @@ jobs:
           $manager = Get-Content 'src/k500/K500DeviceManager.h' -Raw
           $cmake = Get-Content 'CMakeLists.txt' -Raw
           $doc = Get-Content 'docs/FINAL_DEVICE_PERFORMANCE_ACCEPTANCE.md' -Raw
+          $launcher = Get-Content 'tools/run-final-device-acceptance.ps1' -Raw
 
           foreach ($token in @('FINAL_DEVICE_PERFORMANCE_V1','--device-perf','--device-perf-report=')) {
             if (-not $header.Contains($token) -and -not $impl.Contains($token)) { throw "Final performance harness missing '$token'" }
@@ -51,6 +52,9 @@ jobs:
           }
           foreach ($token in @('25 disconnect/reconnect cycles','automatedPerformancePass == true','P2 -> P3 -> P4 -> P5 -> final qualification tooling')) {
             if (-not $doc.Contains($token)) { throw "Final device runbook missing '$token'" }
+          }
+          foreach ($token in @('$quotedReportPath','Qualification EXE is already running')) {
+            if (-not $launcher.Contains($token)) { throw "Qualification launcher hardening missing '$token'" }
           }
 
       - name: Install Qt
@@ -76,8 +80,9 @@ jobs:
       - name: Hardware-free monitor smoke
         shell: pwsh
         run: |
-          $report = Join-Path $PWD 'build/final-device-performance-smoke.json'
-          $args = @('--engine-self-test','--device-perf',"--device-perf-report=$report")
+          $report = Join-Path $PWD 'build/final device performance smoke.json'
+          $quotedReport = '"' + $report + '"'
+          $args = @('--engine-self-test','--device-perf',"--device-perf-report=$quotedReport")
           $p = Start-Process -FilePath 'build/SONKUPIK-STUDIO-Native-UI.exe' -ArgumentList $args -Wait -PassThru
           if ($p.ExitCode -ne 0) { throw "Qualification smoke exited with $($p.ExitCode)" }
           if (-not (Test-Path $report)) { throw 'Qualification smoke did not create JSON report' }

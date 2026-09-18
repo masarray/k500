@@ -180,16 +180,22 @@ QVariantMap EqBandModel::get(int index) const
 
 void EqBandModel::configure(int bandCount, const QList<double> &defaultFrequencies,
                             double hpfHz, double lpfHz,
-                            const QString &hpType, const QString &lpType)
+                            const QString &hpType, const QString &lpType,
+                            double hpfMinHz, double hpfMaxHz,
+                            double lpfMinHz, double lpfMaxHz)
 {
+    m_hpfMinHz = qMin(hpfMinHz, hpfMaxHz);
+    m_hpfMaxHz = qMax(hpfMinHz, hpfMaxHz);
+    m_lpfMinHz = qMin(lpfMinHz, lpfMaxHz);
+    m_lpfMaxHz = qMax(lpfMinHz, lpfMaxHz);
     m_defaultFrequencies = defaultFrequencies;
     if (m_defaultFrequencies.size() != bandCount) {
         m_defaultFrequencies.clear();
         for (int i = 0; i < bandCount; ++i)
             m_defaultFrequencies.append(1000.0);
     }
-    m_hpfHz = hpfHz;
-    m_lpfHz = lpfHz;
+    m_hpfHz = clampValue(hpfHz, m_hpfMinHz, m_hpfMaxHz);
+    m_lpfHz = clampValue(lpfHz, m_lpfMinHz, m_lpfMaxHz);
     m_hpType = hpType;
     m_lpType = lpType;
     resetAll();
@@ -270,7 +276,7 @@ void EqBandModel::resetAll()
 
 void EqBandModel::setHpfHz(double value)
 {
-    const double next = clampValue(value, 20.0, 20000.0);
+    const double next = clampValue(value, m_hpfMinHz, m_hpfMaxHz);
     if (qFuzzyCompare(m_hpfHz, next))
         return;
     m_hpfHz = next;
@@ -280,7 +286,7 @@ void EqBandModel::setHpfHz(double value)
 
 void EqBandModel::setLpfHz(double value)
 {
-    const double next = clampValue(value, 20.0, 20000.0);
+    const double next = clampValue(value, m_lpfMinHz, m_lpfMaxHz);
     if (qFuzzyCompare(m_lpfHz, next))
         return;
     m_lpfHz = next;
@@ -309,8 +315,8 @@ void EqBandModel::setLpType(const QString &value)
 void EqBandModel::syncCrossover(double hpfHz, double lpfHz,
                                 const QString &hpType, const QString &lpType)
 {
-    const double nextHpf = clampValue(hpfHz, 20.0, 20000.0);
-    const double nextLpf = clampValue(lpfHz, 20.0, 20000.0);
+    const double nextHpf = clampValue(hpfHz, m_hpfMinHz, m_hpfMaxHz);
+    const double nextLpf = clampValue(lpfHz, m_lpfMinHz, m_lpfMaxHz);
     if (qFuzzyCompare(m_hpfHz, nextHpf)
         && qFuzzyCompare(m_lpfHz, nextLpf)
         && m_hpType == hpType
@@ -333,9 +339,13 @@ StudioEngine::StudioEngine(QObject *parent)
     m_micBEqBands.configure(10, {80, 125, 250, 500, 1000, 2000, 4000, 6300, 10000, 12500},
                             20, 20000, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
     m_reverbEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                              217, 12000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+                              217, 12000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"),
+                              K500Protocol::NativeRange::FxHpfMinHz, K500Protocol::NativeRange::FxHpfMaxHz,
+                              K500Protocol::NativeRange::FxLpfMinHz, K500Protocol::NativeRange::FxLpfMaxHz);
     m_echoEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                            700, 4400, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+                            700, 4400, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"),
+                            K500Protocol::NativeRange::FxHpfMinHz, K500Protocol::NativeRange::FxHpfMaxHz,
+                            K500Protocol::NativeRange::FxLpfMinHz, K500Protocol::NativeRange::FxLpfMaxHz);
     m_mainEqBands.configure(7, {80, 160, 315, 630, 1250, 2500, 8000},
                             20, 20000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
     m_surroundEqBands.configure(5, {125, 250, 1000, 2500, 8000},
@@ -631,7 +641,13 @@ void StudioEngine::setMusicKey(int value)
 
 void StudioEngine::setNoiseGate(double value)
 {
-    if (assign(m_noiseGate, clampValue(value, -80.0, 0.0), "music.noiseGateDb")) emit noiseGateChanged();
+    const double clamped = value <= K500Protocol::NativeRange::MusicNoiseGateOffDb
+        ? K500Protocol::NativeRange::MusicNoiseGateOffDb
+        : clampValue(value,
+                     K500Protocol::NativeRange::MusicNoiseGateMinDb,
+                     K500Protocol::NativeRange::MusicNoiseGateMaxDb);
+    if (assign(m_noiseGate, clamped, "music.noiseGateDb"))
+        emit noiseGateChanged();
 }
 
 void StudioEngine::setBass(double value)

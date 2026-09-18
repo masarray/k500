@@ -44,7 +44,9 @@ StudioPanel {
                 key: root.engine.musicKey
                 onKeyEdited: function(v) { root.engine.musicKey = v }
             }
-            ParameterSlider { Layout.fillWidth:true;label:"NOISE GATE";value:root.engine.noiseGate;from:-80;to:0;step:1;defaultValue:-70;decimals:0;unit:"dB";onValueEdited:function(v){root.engine.noiseGate=v} }
+            // MUSIC_TONE_CAPTURED_V1 — native Noise Gate is OFF, then -90..-50 dB.
+            ParameterSlider { Layout.fillWidth:true;label:"NOISE GATE";value:root.engine.noiseGate;from:-91;to:-50;step:1;defaultValue:-70;decimals:0;unit:"dB";offAtMin:true;onValueEdited:function(v){root.engine.noiseGate=v} }
+            // Native Bass is -12.0..+12.0 dB in 0.1 dB steps (CMD 0x0C selector 0x02).
             ParameterSlider { Layout.fillWidth:true;label:"BASS";value:root.engine.bass;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";onValueEdited:function(v){root.engine.bass=v} }
             ParameterSlider { Layout.fillWidth:true;label:"MID";value:root.engine.mid;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";onValueEdited:function(v){root.engine.mid=v} }
             ParameterSlider { Layout.fillWidth:true;label:"MID FREQ";value:root.engine.midFreq;from:80;to:8000;step:10;defaultValue:1000;decimals:0;unit:"Hz";logarithmic:true;onValueEdited:function(v){root.engine.midFreq=v} }

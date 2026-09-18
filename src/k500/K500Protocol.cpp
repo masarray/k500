@@ -161,7 +161,7 @@ QByteArray eqWrite(const QString &section, int bandIndexZeroBased, const K500EqB
 
     const int frequency = qBound(20, qRound(band.frequencyHz), 20000);
     const int qValue = qBound(1, qRound(band.q * 10.0), 250);
-    const double gain = qBound(-24.0, band.gainDb, 24.0);
+    const double gain = qBound(NativeRange::EqGainMinDb, band.gainDb, NativeRange::EqGainMaxDb);
     const int gainMagnitude = qBound(0, qRound(qAbs(gain) * 10.0), 240);
     const quint8 typeSign = static_cast<quint8>(eqTypeNibble(band.type) | (gain < 0.0 ? 0x80 : 0x00));
 
@@ -221,6 +221,30 @@ QByteArray crossoverWrite(const QString &section,
     return K500Frame::build(body);
 }
 
+quint8 musicNoiseGateRaw(double gateDb)
+{
+    // MUSIC_TONE_CAPTURED_V1
+    // Native UI domain: OFF, then -90..-50 dB. Raw 0 is the dedicated OFF
+    // sentinel; raw 1..41 maps linearly to -90..-50 dB.
+    if (gateDb <= NativeRange::MusicNoiseGateOffDb)
+        return 0;
+    const int db = qBound(NativeRange::MusicNoiseGateMinDb, qRound(gateDb),
+                          NativeRange::MusicNoiseGateMaxDb);
+    return K500Frame::clampByte(db + 91);
+}
+
+QByteArray musicBass(double bassDb)
+{
+    // MUSIC_TONE_CAPTURED_V1 — CMD 0x0C selector 0x02, 0.1 dB encoding.
+    const double clamped = qBound(NativeRange::MusicBassMinDb, bassDb,
+                                  NativeRange::MusicBassMaxDb);
+    const quint16 raw = static_cast<quint16>(qRound((clamped + 12.0) * 10.0));
+    return K500Frame::build(bytes({
+        0x06, 0x0C, 0x02, 0x00,
+        raw & 0xFF, (raw >> 8) & 0xFF, 0x09,
+    }));
+}
+
 QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &deviceScalars)
 {
     const auto mirrored = [&deviceScalars](int offset, int fallback) -> quint8 {
@@ -244,7 +268,9 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(K500Frame::clampByte(qRound(state.uDiskGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.digitalGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qBound(-7, state.key, 7) + 7)));
-    body.append(char(mirrored(0x1B, 0x00)));
+    body.append(char(state.noiseGateRaw >= 0
+                         ? K500Frame::clampByte(qBound(0, state.noiseGateRaw, 41))
+                         : mirrored(0x1B, 0x00)));
     body.append(char(mirrored(0x07, 0x02)));
     return K500Frame::build(body);
 }
@@ -303,12 +329,16 @@ QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &devi
     while (data.size() < ReverbDataLength)
         data.append(char(0));
 
-    data[0] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
-    data[2] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
-    writeU16Le(data, 6, qBound(20, state.hpfHz, 20000));
-    writeU16Le(data, 8, qBound(20, state.lpfHz, 20000));
-    writeU16Le(data, 10, qBound(0, state.decayMs, 65535));
-    writeU16Le(data, 12, qBound(0, state.predelayMs, 65535));
+    data[0] = char(K500Frame::clampByte(qBound(NativeRange::ReverbLevelMin, state.level,
+                                              NativeRange::ReverbLevelMax)));
+    data[2] = char(K500Frame::clampByte(qBound(NativeRange::ReverbDirectMin, state.direct,
+                                              NativeRange::ReverbDirectMax)));
+    writeU16Le(data, 6, qBound(NativeRange::FxHpfMinHz, state.hpfHz, NativeRange::FxHpfMaxHz));
+    writeU16Le(data, 8, qBound(NativeRange::FxLpfMinHz, state.lpfHz, NativeRange::FxLpfMaxHz));
+    writeU16Le(data, 10, qBound(NativeRange::ReverbDecayMinMs, state.decayMs,
+                                NativeRange::ReverbDecayMaxMs));
+    writeU16Le(data, 12, qBound(NativeRange::ReverbPredelayMinMs, state.predelayMs,
+                                NativeRange::ReverbPredelayMaxMs));
 
     QByteArray body;
     body.reserve(17);
@@ -327,14 +357,18 @@ QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceDa
     while (data.size() < EchoDataLength)
         data.append(char(0));
 
-    data[1] = char(K500Frame::clampByte(qBound(0, state.level, 100)));
-    data[2] = char(K500Frame::clampByte(qBound(0, state.repeat, 10)));
-    data[6] = char(K500Frame::clampByte(qBound(0, state.direct, 100)));
+    data[1] = char(K500Frame::clampByte(qBound(NativeRange::EchoLevelMin, state.level,
+                                              NativeRange::EchoLevelMax)));
+    data[2] = char(K500Frame::clampByte(qBound(NativeRange::EchoRepeatMin, state.repeat,
+                                              NativeRange::EchoRepeatMax)));
+    data[6] = char(K500Frame::clampByte(qBound(NativeRange::EchoDirectMin, state.direct,
+                                              NativeRange::EchoDirectMax)));
     data[7] = char(K500Frame::clampByte(qBound(-50, state.rightDelayPercent, 50) + 50));
     data[8] = char(K500Frame::clampByte(qBound(-50, state.rightPredelayPercent, 50) + 50));
-    writeU16Le(data, 9, qBound(20, state.hpfHz, 20000));
-    writeU16Le(data, 11, qBound(20, state.lpfHz, 20000));
-    writeU16Le(data, 13, qBound(0, state.leftDelayMs, 65535));
+    writeU16Le(data, 9, qBound(NativeRange::FxHpfMinHz, state.hpfHz, NativeRange::FxHpfMaxHz));
+    writeU16Le(data, 11, qBound(NativeRange::FxLpfMinHz, state.lpfHz, NativeRange::FxLpfMaxHz));
+    writeU16Le(data, 13, qBound(NativeRange::EchoDelayMinMs, state.leftDelayMs,
+                                NativeRange::EchoDelayMaxMs));
     writeU16Le(data, 15, qBound(0, state.leftPredelayMs, 65535));
 
     QByteArray body;
@@ -488,6 +522,40 @@ bool selfTest(QString *error)
 
     K500MusicBlockState music;
     if (!expect(topMusicBlock(music, {}), {0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09, 0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}, QStringLiteral("top music default"))) return false;
+
+    K500MusicBlockState gateCapture;
+    gateCapture.topMusicVol = 25;
+    gateCapture.musicInitVol = 25;
+    gateCapture.sourceRaw = 2;
+    gateCapture.input1GainDb = -3.0;
+    gateCapture.input2GainDb = -3.0;
+    gateCapture.bluetoothGainDb = -3.0;
+    gateCapture.uDiskGainDb = -4.0;
+    gateCapture.digitalGainDb = -4.0;
+    gateCapture.key = 0;
+    QByteArray gateScalars(0x40, char(0));
+    gateScalars[0x03] = char(0x19);
+    gateScalars[0x04] = char(0x54);
+    gateScalars[0x07] = char(0x13);
+    gateCapture.noiseGateRaw = musicNoiseGateRaw(NativeRange::MusicNoiseGateOffDb);
+    if (!expect(topMusicBlock(gateCapture, gateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x00,0x13,0x24},
+                QStringLiteral("Music Noise Gate OFF capture"))) return false;
+    gateCapture.noiseGateRaw = musicNoiseGateRaw(-90);
+    if (!expect(topMusicBlock(gateCapture, gateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x01,0x13,0x23},
+                QStringLiteral("Music Noise Gate -90 capture"))) return false;
+    gateCapture.noiseGateRaw = musicNoiseGateRaw(-50);
+    if (!expect(topMusicBlock(gateCapture, gateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
+                QStringLiteral("Music Noise Gate -50 capture"))) return false;
+
+    if (!expect(musicBass(-12.0), {0xAA,0x06,0x0C,0x02,0x00,0x00,0x00,0x09,0xE3},
+                QStringLiteral("Music Bass -12 capture"))) return false;
+    if (!expect(musicBass(0.0), {0xAA,0x06,0x0C,0x02,0x00,0x78,0x00,0x09,0x6B},
+                QStringLiteral("Music Bass 0 capture"))) return false;
+    if (!expect(musicBass(9.0), {0xAA,0x06,0x0C,0x02,0x00,0xD2,0x00,0x09,0x11},
+                QStringLiteral("Music Bass +9 capture"))) return false;
     QByteArray scalars(0x40, char(0));
     scalars[0x03] = char(0x31); scalars[0x04] = char(0x52); scalars[0x1B] = char(0x0B); scalars[0x07] = char(0x06);
     music.topMusicVol = 70; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
@@ -522,6 +590,34 @@ bool selfTest(QString *error)
         || byteFromChar(preservedReverbFrame.at(6)) != 0x5A || byteFromChar(preservedReverbFrame.at(17)) != 0x5A)
         return fail(QStringLiteral("Reverb block must preserve unknown device bytes"));
 
+    // K500_NATIVE_VALUE_CONTRACT_V1 — transport clamping must be identical to
+    // the manufacturer UI domain even when called programmatically.
+    K500ReverbBlockState reverbLow = reverb;
+    reverbLow.level = -99; reverbLow.direct = -99; reverbLow.hpfHz = -1;
+    reverbLow.lpfHz = 1; reverbLow.decayMs = 1; reverbLow.predelayMs = -1;
+    K500ReverbBlockState reverbMin = reverbLow;
+    reverbMin.level = NativeRange::ReverbLevelMin;
+    reverbMin.direct = NativeRange::ReverbDirectMin;
+    reverbMin.hpfHz = NativeRange::FxHpfMinHz;
+    reverbMin.lpfHz = NativeRange::FxLpfMinHz;
+    reverbMin.decayMs = NativeRange::ReverbDecayMinMs;
+    reverbMin.predelayMs = NativeRange::ReverbPredelayMinMs;
+    if (reverbBlock(reverbLow, reverbSeed) != reverbBlock(reverbMin, reverbSeed))
+        return fail(QStringLiteral("Reverb native minimum clamp mismatch"));
+
+    K500ReverbBlockState reverbHigh = reverb;
+    reverbHigh.level = 999; reverbHigh.direct = 999; reverbHigh.hpfHz = 99999;
+    reverbHigh.lpfHz = 99999; reverbHigh.decayMs = 99999; reverbHigh.predelayMs = 99999;
+    K500ReverbBlockState reverbMax = reverbHigh;
+    reverbMax.level = NativeRange::ReverbLevelMax;
+    reverbMax.direct = NativeRange::ReverbDirectMax;
+    reverbMax.hpfHz = NativeRange::FxHpfMaxHz;
+    reverbMax.lpfHz = NativeRange::FxLpfMaxHz;
+    reverbMax.decayMs = NativeRange::ReverbDecayMaxMs;
+    reverbMax.predelayMs = NativeRange::ReverbPredelayMaxMs;
+    if (reverbBlock(reverbHigh, reverbSeed) != reverbBlock(reverbMax, reverbSeed))
+        return fail(QStringLiteral("Reverb native maximum clamp mismatch"));
+
     QByteArray echoSeed = bytes({0x01,0x5A,0x02,0x64,0x02,0x40,0x64,0x3C,0x3C,0x26,0x02,0x68,0x10,0x2C,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00});
     K500EchoBlockState echo;
     echo.level = 90; echo.repeat = 2; echo.direct = 99; echo.rightDelayPercent = 10; echo.rightPredelayPercent = 10;
@@ -536,6 +632,32 @@ bool selfTest(QString *error)
         || byteFromChar(preservedEchoFrame.at(7)) != 0x5A || byteFromChar(preservedEchoFrame.at(21)) != 0x5A
         || byteFromChar(preservedEchoFrame.at(24)) != 0x5A)
         return fail(QStringLiteral("Echo block must preserve unknown device bytes"));
+
+    K500EchoBlockState echoLow = echo;
+    echoLow.level = -1; echoLow.repeat = -1; echoLow.direct = -1;
+    echoLow.hpfHz = -1; echoLow.lpfHz = 1; echoLow.leftDelayMs = -1;
+    K500EchoBlockState echoMin = echoLow;
+    echoMin.level = NativeRange::EchoLevelMin;
+    echoMin.repeat = NativeRange::EchoRepeatMin;
+    echoMin.direct = NativeRange::EchoDirectMin;
+    echoMin.hpfHz = NativeRange::FxHpfMinHz;
+    echoMin.lpfHz = NativeRange::FxLpfMinHz;
+    echoMin.leftDelayMs = NativeRange::EchoDelayMinMs;
+    if (echoBlock(echoLow, echoSeed) != echoBlock(echoMin, echoSeed))
+        return fail(QStringLiteral("Echo native minimum clamp mismatch"));
+
+    K500EchoBlockState echoHigh = echo;
+    echoHigh.level = 999; echoHigh.repeat = 999; echoHigh.direct = 999;
+    echoHigh.hpfHz = 99999; echoHigh.lpfHz = 99999; echoHigh.leftDelayMs = 99999;
+    K500EchoBlockState echoMax = echoHigh;
+    echoMax.level = NativeRange::EchoLevelMax;
+    echoMax.repeat = NativeRange::EchoRepeatMax;
+    echoMax.direct = NativeRange::EchoDirectMax;
+    echoMax.hpfHz = NativeRange::FxHpfMaxHz;
+    echoMax.lpfHz = NativeRange::FxLpfMaxHz;
+    echoMax.leftDelayMs = NativeRange::EchoDelayMaxMs;
+    if (echoBlock(echoHigh, echoSeed) != echoBlock(echoMax, echoSeed))
+        return fail(QStringLiteral("Echo native maximum clamp mismatch"));
 
     // EQ_BYPASS_24BIT_CAPTURED_V2 — sequential donor vectors prove one shared
     // 24-bit image across Mic/Music/Main/Surround/Center/Sub/Reverb/Echo.

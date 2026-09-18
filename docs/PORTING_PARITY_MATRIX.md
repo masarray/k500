@@ -16,6 +16,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 - `READ ONLY 🟦` — value can be represented/read, but no donor-verified persistent/live write exists.
 - `NOT PORTED ❌` — known donor capability has no native implementation.
 - `DONOR EVIDENCE 🟨` — historical donor/capture remains a specification reference, not a runtime dependency.
+- `CAPTURE-MAPPED 🟧` — exact native packet mapping is implemented and regression-guarded, but the capability is not promoted to a full release hardware-qualification claim yet.
 
 ## P0 non-negotiable invariants
 
@@ -43,7 +44,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Full 939-byte active-memory readback | STABLE USB ✅ | engine/runtime tests + hardware-truth workflow |
 | Hydrate K500 before LIVE | STABLE USB ✅ | zero-echo hydration invariant |
 | Section navigation across Mic/Reverb/Echo/outputs/System | STABLE USB ✅ | repeated runtime stress test; fixed page/model lifetime |
-| Mute / media transport | STABLE USB ✅ | golden vectors + native routing |
+| Mute / media transport | STABLE USB ✅ | golden vectors + captured C0/E3 runtime-state decode |
 | Music master/input/key block | STABLE USB ✅ | mirrored-scalar safety vector |
 | PEQ: Mic A/B, Music, Main, Surround, Center, Sub, Reverb, Echo | STABLE USB ✅ | donor-verified command family; unsupported detail fields stay read-only |
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
@@ -54,11 +55,12 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Surround output block + L/R delay | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
 | Center output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
 | Sub output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Reverb detail level/decay/predelay live write | READ ONLY 🟦 | no verified live command; do not guess |
-| Echo detail level/repeat/delay live write | READ ONLY 🟦 | no verified live command; do not guess |
+| Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
+| Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
+| Music Noise Gate / Bass live write | CAPTURE-MAPPED 🟧 | captured CMD 0x02 gate field + CMD 0x0C Bass; connect readback pending |
 | Mic gate live write | READ ONLY 🟦 | no verified live command; do not guess |
 | Equipment Mode Recall 1–10 | STABLE USB ✅ | `0x01 -> settle -> 0x3F/C0 -> 939-byte resync` |
-| Use Init Volume | STABLE USB ✅ | exact `CMD 0x12` / `RSP 0xED` |
+| Use Init Volume | STABLE USB ✅ | exact `CMD 0x12` / `RSP 0xED` + captured C0 connect-state bit |
 | Current-device permanent Save | STABLE USB ✅ | native Store path; USB-only |
 | Store Begin/Chunk/Commit | STABLE USB ✅ | `0x41/0x42/0x43`, `BD/BC` transaction guards |
 | Mass Upload transaction engine | STABLE USB ✅ | batch validation + descending slot order + chain + final recall |

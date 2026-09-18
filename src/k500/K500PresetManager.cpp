@@ -4,7 +4,6 @@
 #include "K500Protocol.h"
 
 #include <QSet>
-#include <QSettings>
 #include <QVariantMap>
 #include <algorithm>
 
@@ -18,14 +17,12 @@ constexpr int UseInitTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
-constexpr auto UseInitPreferenceKey = "system/useInitVolume";
 }
 
 K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent)
     : QObject(parent), m_manager(manager)
 {
     m_timeout.setSingleShot(true);
-    m_useInitVolume = QSettings().value(QString::fromLatin1(UseInitPreferenceKey), false).toBool();
 
     if (!m_manager)
         return;
@@ -45,6 +42,14 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
             if (m_activeSlot != 0) {
                 m_activeSlot = 0;
                 emit activeSlotChanged();
+            }
+            // OFFLINE_USE_INIT_V1 + USE_INIT_DEVICE_TRUTH_V1 — never retain a
+            // PC preference as device truth while offline. Connect-time C0
+            // hydration owns the actual Use Init Volume state.
+            if (m_useInitVolumeKnown || m_useInitVolume) {
+                m_useInitVolume = false;
+                m_useInitVolumeKnown = false;
+                emit useInitVolumeChanged();
             }
             if (busy()) {
                 clearTimeout();
@@ -133,9 +138,11 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
     m_pendingReadLength = 0;
     m_pendingStoreLength = 0;
 
-    if (failedOperation == Operation::UseInit && m_useInitVolume != m_previousUseInitVolume) {
+    if (failedOperation == Operation::UseInit
+        && (m_useInitVolume != m_previousUseInitVolume
+            || m_useInitVolumeKnown != m_previousUseInitVolumeKnown)) {
         m_useInitVolume = m_previousUseInitVolume;
-        QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
+        m_useInitVolumeKnown = m_previousUseInitVolumeKnown;
         emit useInitVolumeChanged();
     }
     setProgress(QStringLiteral("%1 failed").arg(kind));
@@ -222,21 +229,20 @@ void K500PresetManager::sendRecallHandshake()
 
 void K500PresetManager::setUseInitVolume(bool enabled)
 {
-    // OFFLINE_USE_INIT_V1 — official KTV UI allows this checkbox to be prepared
-    // before a device exists. Offline changes are local preference only: no I/O,
-    // no fake connection error, and no mutation of the editor/device state.
+    // USE_INIT_DEVICE_TRUTH_V1
+    // Never treat a host-side preference as the K500's actual state. Physical
+    // capture proves only the setter/ACK pair:
+    // OFF AA 03 00 12 00 03 E8, ON AA 03 00 12 01 03 E7, ACK RSP 0xED.
+    // Until a dedicated connect OFF-vs-ON capture identifies the readback bit,
+    // the value is unknown after connect and becomes known only after device ACK.
     if (!connected()) {
-        if (enabled == m_useInitVolume)
-            return;
-        m_useInitVolume = enabled;
-        QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
-        setProgress(QStringLiteral("Use init volume %1 · offline preference")
-                        .arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
-        emit useInitVolumeChanged();
+        const QString error = QStringLiteral("Use Init Volume memerlukan K500 connected; device state tidak boleh dipalsukan dari preference PC.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("Use Init Volume"), error);
         return;
     }
 
-    if (enabled == m_useInitVolume && !busy())
+    if (m_useInitVolumeKnown && enabled == m_useInitVolume && !busy())
         return;
 
     QString error;
@@ -247,8 +253,9 @@ void K500PresetManager::setUseInitVolume(bool enabled)
     }
 
     m_previousUseInitVolume = m_useInitVolume;
+    m_previousUseInitVolumeKnown = m_useInitVolumeKnown;
     m_useInitVolume = enabled;
-    QSettings().setValue(QString::fromLatin1(UseInitPreferenceKey), m_useInitVolume);
+    m_useInitVolumeKnown = false;
     emit useInitVolumeChanged();
     m_step = Step::AwaitUseInitAck;
     setProgress(QStringLiteral("Use init volume %1").arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
@@ -353,6 +360,14 @@ void K500PresetManager::onResponse(const K500Response &response)
             m_activeSlot = slot;
             emit activeSlotChanged();
         }
+
+        bool deviceUseInit = false;
+        if (K500ResponseParser::tryDecodeUseInitVolume(response, &deviceUseInit)
+            && (!m_useInitVolumeKnown || m_useInitVolume != deviceUseInit)) {
+            m_useInitVolume = deviceUseInit;
+            m_useInitVolumeKnown = true;
+            emit useInitVolumeChanged();
+        }
     }
 
     if (!busy() || !response.checksumOk)
@@ -381,7 +396,9 @@ void K500PresetManager::onResponse(const K500Response &response)
 
     if (m_step == Step::AwaitUseInitAck && response.rsp == 0xED) {
         clearTimeout();
-        setProgress(QStringLiteral("Use init volume %1 · acknowledged").arg(m_useInitVolume ? QStringLiteral("ON") : QStringLiteral("OFF")));
+        m_useInitVolumeKnown = true;
+        emit useInitVolumeChanged();
+        setProgress(QStringLiteral("Use init volume %1 · device acknowledged").arg(m_useInitVolume ? QStringLiteral("ON") : QStringLiteral("OFF")));
         finishOperation(QStringLiteral("Use Init Volume"));
         return;
     }

@@ -19,6 +19,7 @@ class K500PresetManager final : public QObject
     Q_PROPERTY(bool recallBusy READ recallBusy NOTIFY busyChanged)
     Q_PROPERTY(bool storeBusy READ storeBusy NOTIFY busyChanged)
     Q_PROPERTY(bool useInitVolume READ useInitVolume NOTIFY useInitVolumeChanged)
+    Q_PROPERTY(bool useInitVolumeKnown READ useInitVolumeKnown NOTIFY useInitVolumeChanged)
     Q_PROPERTY(bool usbStoreAvailable READ usbStoreAvailable NOTIFY connectedChanged)
     Q_PROPERTY(int activeSlot READ activeSlot NOTIFY activeSlotChanged)
     Q_PROPERTY(QString progress READ progress NOTIFY progressChanged)
@@ -31,6 +32,7 @@ public:
     bool recallBusy() const { return m_operation == Operation::Recall; }
     bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
     bool useInitVolume() const { return m_useInitVolume; }
+    bool useInitVolumeKnown() const { return m_useInitVolumeKnown; }
     bool usbStoreAvailable() const;
     int activeSlot() const { return m_activeSlot; }
     QString progress() const { return m_progress; }
@@ -112,7 +114,9 @@ private:
     Step m_step = Step::Idle;
     ReadbackPurpose m_readbackPurpose = ReadbackPurpose::None;
     bool m_useInitVolume = false;
+    bool m_useInitVolumeKnown = false;
     bool m_previousUseInitVolume = false;
+    bool m_previousUseInitVolumeKnown = false;
     int m_requestedSlot = 1;
     int m_activeSlot = 0;
     QString m_progress;

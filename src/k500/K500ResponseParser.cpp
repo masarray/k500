@@ -68,6 +68,47 @@ QList<K500Response> K500ResponseParser::feed(const QByteArray &chunk)
     return parsed;
 }
 
+bool K500ResponseParser::tryDecodePlaying(const K500Response &response, bool *playing)
+{
+    if (!playing || !response.checksumOk)
+        return false;
+
+    int statusIndex = -1;
+    if (response.rsp == 0xE3)
+        statusIndex = 2;   // capture: E3 00 05 [08|0C] 0D ...
+    else if (response.rsp == 0xC0)
+        statusIndex = 15;  // capture: C0 ... [08|0C] 0D AB 03 ...
+
+    if (statusIndex < 0 || response.data.size() <= statusIndex)
+        return false;
+
+    const quint8 flags = u8(response.data.at(statusIndex));
+    *playing = (flags & 0x04u) != 0;
+    return true;
+}
+
+bool K500ResponseParser::tryDecodeUseInitVolume(const K500Response &response, bool *enabled)
+{
+    if (!enabled || !response.checksumOk || response.rsp != 0xC0
+        || response.data.size() <= 7)
+        return false;
+
+    const quint8 flags = u8(response.data.at(7));
+    *enabled = (flags & 0x04u) != 0;
+    return true;
+}
+
+bool K500ResponseParser::tryDecodeMuted(const K500Response &response, bool *muted)
+{
+    if (!muted || !response.checksumOk || response.rsp != 0xC0
+        || response.data.size() <= 7)
+        return false;
+
+    const quint8 flags = u8(response.data.at(7));
+    *muted = (flags & 0x02u) != 0;
+    return true;
+}
+
 bool K500ResponseParser::selfTest(QString *error)
 {
     const auto fail = [error](const QString &message) {
@@ -79,6 +120,64 @@ bool K500ResponseParser::selfTest(QString *error)
     K500ResponseParser parser;
     const QByteArray status = responseFrame(0xE3, QByteArray(1, char(0x01)));
     const QByteArray scalars(0x40, char(0x19));
+
+    // Exact physical K500 capture deltas from 2026-09-18:
+    // STOPPED => status byte 0x08, PLAYING => status byte 0x0C.
+    QByteArray stoppedStatusData = QByteArray::fromHex("0005080D666666666666660000");
+    QByteArray playingStatusData = QByteArray::fromHex("00050C0D666666666666660000");
+    K500Response stoppedStatus;
+    stoppedStatus.rsp = 0xE3;
+    stoppedStatus.data = stoppedStatusData;
+    stoppedStatus.checksumOk = true;
+    K500Response playingStatus = stoppedStatus;
+    playingStatus.data = playingStatusData;
+    bool playing = true;
+    if (!tryDecodePlaying(stoppedStatus, &playing) || playing)
+        return fail(QStringLiteral("captured STOPPED heartbeat playback decode mismatch"));
+    if (!tryDecodePlaying(playingStatus, &playing) || !playing)
+        return fail(QStringLiteral("captured PLAYING heartbeat playback decode mismatch"));
+
+    QByteArray stoppedHandshakeData = QByteArray::fromHex("0017010205005A800100F501000000080DAB03CE0000");
+    QByteArray playingHandshakeData = QByteArray::fromHex("0017010205005A800100F5010000000C0DAB03CE0000");
+
+    // Use Init Volume connect-state capture pair. The ON/OFF files are
+    // connect -> change value -> disconnect sessions, so the handshake reports
+    // the pre-change device state: 0x80 before setting ON (therefore OFF), and
+    // 0x84 before setting OFF (therefore ON).
+    K500Response useInitOffHandshake;
+    useInitOffHandshake.rsp = 0xC0;
+    useInitOffHandshake.data = QByteArray::fromHex("0017010205005A800100F5010000000C0DAB03CE0000");
+    useInitOffHandshake.checksumOk = true;
+    K500Response useInitOnHandshake = useInitOffHandshake;
+    useInitOnHandshake.data = QByteArray::fromHex("0017010205005A840100F5010000000C0DAB03CE0000");
+    bool useInitEnabled = true;
+    if (!tryDecodeUseInitVolume(useInitOffHandshake, &useInitEnabled) || useInitEnabled)
+        return fail(QStringLiteral("captured Use Init OFF handshake decode mismatch"));
+    if (!tryDecodeUseInitVolume(useInitOnHandshake, &useInitEnabled) || !useInitEnabled)
+        return fail(QStringLiteral("captured Use Init ON handshake decode mismatch"));
+
+    // Mute connect-state capture pair: files are connect -> change -> disconnect,
+    // therefore 0x84 was device-unmuted before setting Mute ON, and 0x86 was
+    // device-muted before setting Mute OFF. Bit 0x02 is the stable delta.
+    K500Response muteOffHandshake = useInitOnHandshake;
+    muteOffHandshake.data = QByteArray::fromHex("0017010205005A840100F5010000000C0DAB03CE0000");
+    K500Response muteOnHandshake = muteOffHandshake;
+    muteOnHandshake.data = QByteArray::fromHex("0017010205005A860100F5010000000C0DAB03CE0000");
+    bool muted = true;
+    if (!tryDecodeMuted(muteOffHandshake, &muted) || muted)
+        return fail(QStringLiteral("captured Mute OFF handshake decode mismatch"));
+    if (!tryDecodeMuted(muteOnHandshake, &muted) || !muted)
+        return fail(QStringLiteral("captured Mute ON handshake decode mismatch"));
+    K500Response stoppedHandshake;
+    stoppedHandshake.rsp = 0xC0;
+    stoppedHandshake.data = stoppedHandshakeData;
+    stoppedHandshake.checksumOk = true;
+    K500Response playingHandshake = stoppedHandshake;
+    playingHandshake.data = playingHandshakeData;
+    if (!tryDecodePlaying(stoppedHandshake, &playing) || playing)
+        return fail(QStringLiteral("captured STOPPED handshake playback decode mismatch"));
+    if (!tryDecodePlaying(playingHandshake, &playing) || !playing)
+        return fail(QStringLiteral("captured PLAYING handshake playback decode mismatch"));
     const QByteArray read = responseFrame(0xBF, scalars);
 
     // Feed a split status frame, then padding and a complete second response.
