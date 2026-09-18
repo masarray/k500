@@ -10,6 +10,13 @@ StudioPanel {
     implicitHeight: 304
     accentTop: false
 
+    function nativeLimit(group, key, fallback) {
+        var limits = root.engine && root.engine.nativeLimits ? root.engine.nativeLimits : null
+        var object = limits ? limits[group] : null
+        var value = object ? object[key] : undefined
+        return value === undefined || value === null ? fallback : Number(value)
+    }
+
     // MUSIC_SOURCE_SINGLE_CHOICE_V1
     // Native K500 exposes six mutually-exclusive playback sources but only five
     // physical gain parameters. OPTIC and UAUDIO intentionally share DIGITAL gain.
@@ -79,7 +86,7 @@ StudioPanel {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"INPUT1 GAIN"; sourceText:"INPUT1"; active:root.selectedSource===0
                 sourceButtonMixerSelect:true
-                value:root.engine.input1Gain; from:-12; to:12
+                value:root.engine.input1Gain; from:root.nativeLimit("musicInputGain","minDb",-12); to:root.nativeLimit("musicInputGain","maxDb",12)
                 selected:root.selectedFader===0
                 onSourceRequested:root.chooseSource(0)
                 onActivated:root.selectedFader=0
@@ -90,7 +97,7 @@ StudioPanel {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"INPUT2 GAIN"; sourceText:"INPUT2"; active:root.selectedSource===1
                 sourceButtonMixerSelect:true
-                value:root.engine.input2Gain; from:-12; to:12
+                value:root.engine.input2Gain; from:root.nativeLimit("musicInputGain","minDb",-12); to:root.nativeLimit("musicInputGain","maxDb",12)
                 selected:root.selectedFader===1
                 onSourceRequested:root.chooseSource(1)
                 onActivated:root.selectedFader=1
@@ -101,7 +108,7 @@ StudioPanel {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"BT GAIN"; sourceText:"BT"; active:root.selectedSource===2
                 sourceButtonMixerSelect:true
-                value:root.engine.bluetoothGain; from:-12; to:12
+                value:root.engine.bluetoothGain; from:root.nativeLimit("musicInputGain","minDb",-12); to:root.nativeLimit("musicInputGain","maxDb",12)
                 selected:root.selectedFader===2
                 onSourceRequested:root.chooseSource(2)
                 onActivated:root.selectedFader=2
@@ -112,7 +119,7 @@ StudioPanel {
                 Layout.fillWidth:true; Layout.fillHeight:true
                 label:"UDISK GAIN"; sourceText:"UDISK"; active:root.selectedSource===3
                 sourceButtonMixerSelect:true
-                value:root.engine.uDiskGain; from:-12; to:12
+                value:root.engine.uDiskGain; from:root.nativeLimit("musicInputGain","minDb",-12); to:root.nativeLimit("musicInputGain","maxDb",12)
                 selected:root.selectedFader===3
                 onSourceRequested:root.chooseSource(3)
                 onActivated:root.selectedFader=3
@@ -140,7 +147,7 @@ StudioPanel {
                         sourceText:modelData
                         active:parent.checked
                         sourceButtonMixerSelect: true
-                        value:root.engine.digitalGain; from:-12; to:12
+                        value:root.engine.digitalGain; from:root.nativeLimit("musicInputGain","minDb",-12); to:root.nativeLimit("musicInputGain","maxDb",12)
                         selected:root.selectedFader===parent.index
                         onSourceRequested:root.chooseSource(parent.index)
                         onActivated:root.selectedFader=parent.index
