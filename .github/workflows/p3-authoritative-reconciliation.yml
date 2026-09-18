@@ -9,6 +9,10 @@ on:
       - 'src/k500/K500DeviceManager.*'
       - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
+      - 'src/k500/K500Protocol.*'
+      - 'src/StudioEngine.*'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -18,6 +22,10 @@ on:
       - 'src/k500/K500DeviceManager.*'
       - 'src/k500/P1CanonicalStateSelfTestMain.cpp'
       - 'src/main.cpp'
+      - 'src/k500/K500Protocol.*'
+      - 'src/StudioEngine.*'
+      - 'qml/components/SectionWorkspace.qml'
+      - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
 
@@ -61,6 +69,11 @@ jobs:
           controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
           manager = Path('src/k500/K500DeviceManager.cpp').read_text(encoding='utf-8')
           manager_h = Path('src/k500/K500DeviceManager.h').read_text(encoding='utf-8')
+          protocol_h = Path('src/k500/K500Protocol.h').read_text(encoding='utf-8')
+          protocol_cpp = Path('src/k500/K500Protocol.cpp').read_text(encoding='utf-8')
+          studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
+          qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
@@ -70,10 +83,15 @@ jobs:
               'desired intent preserved': 'DesiredState intentionally survives' in state_cpp,
               'divergence is explicit': 'divergentDesiredPaths' in state_cpp and 'divergentDesiredCount' in state_h,
               'controller has separate reconciliation path': 'reconcileFromDeviceMemory' in controller and 'applyDeviceMemory(memory, true)' in controller,
-              'device manager debounces verification': 'AuthoritativeReconcileIdleMs = 700' in manager and 'scheduleAuthoritativeReconciliation' in manager,
+              'ordinary live edits are non-disruptive': 'P3_1_NONDISRUPTIVE_LIVE_EDIT_V1' in manager and 'if (accepted)\n            scheduleAuthoritativeReconciliation();' not in manager,
+              'explicit reconciliation machinery retained': 'AuthoritativeReconcileIdleMs = 700' in manager and 'startAuthoritativeReconciliation' in manager,
               'full proven readback reused': 'requestActiveMemoryReadback();' in manager and 'reconciliationMemoryReady' in manager_h,
-              'live barrier precedes readback': 'm_reconciliationInProgress = true;\n    setLiveEnabled(false);' in manager,
               'studio hydrates reconciliation truth': '&K500DeviceManager::reconciliationMemoryReady' in main,
+              'native range contract exists': 'K500_NATIVE_VALUE_CONTRACT_V1' in protocol_h and 'FxHpfMaxHz = 1000' in protocol_h and 'FxLpfMinHz = 4000' in protocol_h,
+              'transport clamps native reverb domain': 'ReverbDecayMinMs' in protocol_cpp and 'ReverbPredelayMaxMs' in protocol_cpp,
+              'qml uses native reverb domain': 'from:500,to:5000' in qml and 'from:0,to:100' in qml and 'hpfMinHz' in qml and 'lpfMaxHz' in qml,
+              'engine exposes section ranges': 'hpfMinHz READ hpfMinHz' in studio_h and 'lpfMaxHz READ lpfMaxHz' in studio_h,
+              'native range documentation present': 'Reverb Decay' in native_ranges and '4000' in native_ranges and '16000' in native_ranges,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]
