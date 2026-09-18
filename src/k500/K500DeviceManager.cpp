@@ -142,7 +142,7 @@ void K500DeviceManager::disconnectDevice()
 
 void K500DeviceManager::sendPlayerCommand(const QString &command)
 {
-    if (!connected())
+    if (!connected() || m_stage != Stage::Ready || m_reconciliationInProgress)
         return;
     writeFrame(K500Protocol::playerCommand(command),
                QStringLiteral("Player %1").arg(command));
@@ -150,7 +150,7 @@ void K500DeviceManager::sendPlayerCommand(const QString &command)
 
 void K500DeviceManager::toggleMute()
 {
-    if (!connected())
+    if (!connected() || m_stage != Stage::Ready || m_reconciliationInProgress)
         return;
     const bool next = !m_muted;
     if (writeFrame(K500Protocol::mute(next), next ? QStringLiteral("Mute ON")
@@ -162,7 +162,8 @@ void K500DeviceManager::toggleMute()
 
 void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &label)
 {
-    if (!connected() || !m_liveEnabled || frame.isEmpty())
+    if (!connected() || !m_liveEnabled || m_stage != Stage::Ready
+        || m_reconciliationInProgress || frame.isEmpty())
         return;
     writeFrame(frame, label);
 }
