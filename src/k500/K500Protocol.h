@@ -22,6 +22,9 @@ struct K500MusicBlockState
     double uDiskGainDb = -4.0;
     double digitalGainDb = -4.0;
     int key = 0;
+    // MUSIC_TONE_CAPTURED_V1 — -1 means preserve device scalar until the user
+    // explicitly edits Music Noise Gate in this session.
+    int noiseGateRaw = -1;
 };
 
 struct K500MicBlockState
@@ -126,6 +129,12 @@ constexpr int EchoDirectMin = 0;
 constexpr int EchoDirectMax = 100;
 constexpr int EchoDelayMinMs = 0;
 constexpr int EchoDelayMaxMs = 1000;
+
+constexpr int MusicNoiseGateOffDb = -91; // UI sentinel displayed as OFF
+constexpr int MusicNoiseGateMinDb = -90;
+constexpr int MusicNoiseGateMaxDb = -50;
+constexpr double MusicBassMinDb = -12.0;
+constexpr double MusicBassMaxDb = 12.0;
 } // namespace NativeRange
 
 QByteArray heartbeat();
@@ -140,6 +149,8 @@ QByteArray crossoverWrite(const QString &section,
                           const QString &filterLabel,
                           quint8 musicStateByte = 0x32);
 QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &deviceScalars);
+QByteArray musicBass(double bassDb);
+quint8 musicNoiseGateRaw(double gateDb);
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars);
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
