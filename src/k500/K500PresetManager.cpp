@@ -360,6 +360,14 @@ void K500PresetManager::onResponse(const K500Response &response)
             m_activeSlot = slot;
             emit activeSlotChanged();
         }
+
+        bool deviceUseInit = false;
+        if (K500ResponseParser::tryDecodeUseInitVolume(response, &deviceUseInit)
+            && (!m_useInitVolumeKnown || m_useInitVolume != deviceUseInit)) {
+            m_useInitVolume = deviceUseInit;
+            m_useInitVolumeKnown = true;
+            emit useInitVolumeChanged();
+        }
     }
 
     if (!busy() || !response.checksumOk)
