@@ -375,6 +375,18 @@ StudioEngine::StudioEngine(QObject *parent)
 QVariantMap StudioEngine::nativeLimits() const
 {
     return {
+        {QStringLiteral("topVolume"), QVariantMap{
+            {QStringLiteral("min"), K500NativeLimits::TopVolume::Min},
+            {QStringLiteral("max"), K500NativeLimits::TopVolume::Max},
+        }},
+        {QStringLiteral("musicInputGain"), QVariantMap{
+            {QStringLiteral("minDb"), K500NativeLimits::MusicInputGain::MinDb},
+            {QStringLiteral("maxDb"), K500NativeLimits::MusicInputGain::MaxDb},
+        }},
+        {QStringLiteral("micFbx"), QVariantMap{
+            {QStringLiteral("min"), K500NativeLimits::MicFbx::Min},
+            {QStringLiteral("max"), K500NativeLimits::MicFbx::Max},
+        }},
         {QStringLiteral("reverb"), QVariantMap{
             {QStringLiteral("levelMin"), K500NativeLimits::Reverb::LevelMin},
             {QStringLiteral("levelMax"), K500NativeLimits::Reverb::LevelMax},
@@ -723,42 +735,58 @@ void StudioEngine::setLpType(const QString &value)
 
 void StudioEngine::setInput1Gain(double value)
 {
-    if (assign(m_input1Gain, clampValue(value, -60.0, 10.0), "music.input1GainDb")) emit input1GainChanged();
+    if (assign(m_input1Gain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                        K500NativeLimits::MusicInputGain::MaxDb),
+               "music.input1GainDb")) emit input1GainChanged();
 }
 
 void StudioEngine::setInput2Gain(double value)
 {
-    if (assign(m_input2Gain, clampValue(value, -60.0, 10.0), "music.input2GainDb")) emit input2GainChanged();
+    if (assign(m_input2Gain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                        K500NativeLimits::MusicInputGain::MaxDb),
+               "music.input2GainDb")) emit input2GainChanged();
 }
 
 void StudioEngine::setBluetoothGain(double value)
 {
-    if (assign(m_bluetoothGain, clampValue(value, -60.0, 10.0), "music.bluetoothGainDb")) emit bluetoothGainChanged();
+    if (assign(m_bluetoothGain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                           K500NativeLimits::MusicInputGain::MaxDb),
+               "music.bluetoothGainDb")) emit bluetoothGainChanged();
 }
 
 void StudioEngine::setUDiskGain(double value)
 {
-    if (assign(m_uDiskGain, clampValue(value, -60.0, 10.0), "music.uDiskGainDb")) emit uDiskGainChanged();
+    if (assign(m_uDiskGain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                       K500NativeLimits::MusicInputGain::MaxDb),
+               "music.uDiskGainDb")) emit uDiskGainChanged();
 }
 
 void StudioEngine::setDigitalGain(double value)
 {
-    if (assign(m_digitalGain, clampValue(value, -60.0, 10.0), "music.digitalGainDb")) emit digitalGainChanged();
+    if (assign(m_digitalGain, clampValue(value, K500NativeLimits::MusicInputGain::MinDb,
+                                         K500NativeLimits::MusicInputGain::MaxDb),
+               "music.digitalGainDb")) emit digitalGainChanged();
 }
 
 void StudioEngine::setMasterMusic(double value)
 {
-    if (assign(m_masterMusic, clampValue(value, 0.0, 100.0), "system.topMusicVol")) emit masterMusicChanged();
+    if (assign(m_masterMusic, clampValue(value, K500NativeLimits::TopVolume::Min,
+                                         K500NativeLimits::TopVolume::Max),
+               "system.topMusicVol")) emit masterMusicChanged();
 }
 
 void StudioEngine::setMasterMic(double value)
 {
-    if (assign(m_masterMic, clampValue(value, 0.0, 100.0), "system.topMicVol")) emit masterMicChanged();
+    if (assign(m_masterMic, clampValue(value, K500NativeLimits::TopVolume::Min,
+                                       K500NativeLimits::TopVolume::Max),
+               "system.topMicVol")) emit masterMicChanged();
 }
 
 void StudioEngine::setMasterFx(double value)
 {
-    if (assign(m_masterFx, clampValue(value, 0.0, 100.0), "system.topEffectVol")) emit masterFxChanged();
+    if (assign(m_masterFx, clampValue(value, K500NativeLimits::TopVolume::Min,
+                                      K500NativeLimits::TopVolume::Max),
+               "system.topEffectVol")) emit masterFxChanged();
 }
 
 void StudioEngine::syncMusicCrossoverModel()
