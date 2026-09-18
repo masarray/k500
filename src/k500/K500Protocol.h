@@ -97,6 +97,37 @@ constexpr int ReverbDataLength = 15;
 constexpr int EchoDataLength = 22;
 constexpr int OutputDataLength = 35;
 
+// K500_NATIVE_VALUE_CONTRACT_V1
+// These bounds mirror the manufacturer UI / captured native behavior. They are
+// protocol constraints, not cosmetic slider limits. Keep UI, controller and
+// transport clamping aligned with docs/K500_NATIVE_VALUE_RANGES.md.
+namespace NativeRange {
+constexpr double EqGainMinDb = -24.0;
+constexpr double EqGainMaxDb = 24.0;
+constexpr int FxHpfMinHz = 20;
+constexpr int FxHpfMaxHz = 1000;
+constexpr int FxLpfMinHz = 4000;
+constexpr int FxLpfMaxHz = 16000;
+
+constexpr int ReverbLevelMin = 0;
+constexpr int ReverbLevelMax = 100;
+constexpr int ReverbDirectMin = 0;
+constexpr int ReverbDirectMax = 100;
+constexpr int ReverbDecayMinMs = 500;
+constexpr int ReverbDecayMaxMs = 5000;
+constexpr int ReverbPredelayMinMs = 0;
+constexpr int ReverbPredelayMaxMs = 100;
+
+constexpr int EchoLevelMin = 0;
+constexpr int EchoLevelMax = 100;
+constexpr int EchoRepeatMin = 0;
+constexpr int EchoRepeatMax = 10;
+constexpr int EchoDirectMin = 0;
+constexpr int EchoDirectMax = 100;
+constexpr int EchoDelayMinMs = 0;
+constexpr int EchoDelayMaxMs = 1000;
+} // namespace NativeRange
+
 QByteArray heartbeat();
 QByteArray handshake();
 QByteArray mute(bool enabled);
