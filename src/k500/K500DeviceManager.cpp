@@ -144,8 +144,19 @@ void K500DeviceManager::sendPlayerCommand(const QString &command)
 {
     if (!connected())
         return;
-    writeFrame(K500Protocol::playerCommand(command),
-               QStringLiteral("Player %1").arg(command));
+
+    if (!writeFrame(K500Protocol::playerCommand(command),
+                    QStringLiteral("Player %1").arg(command)))
+        return;
+
+    // PLAYER_STATUS_CAPTURED_V1
+    // Never toggle the UI optimistically. Query the same device status used by
+    // the manufacturer app so play/pause reflects BT/MP3 truth, including
+    // changes made outside SonKuPik.
+    QTimer::singleShot(180, this, [this] {
+        if (m_stage == Stage::Ready && connected())
+            writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status refresh"));
+    });
 }
 
 void K500DeviceManager::toggleMute()
@@ -325,6 +336,7 @@ QByteArray K500DeviceManager::supportReportJson() const
     device.insert(QStringLiteral("portLabel"), m_portLabel);
     device.insert(QStringLiteral("connected"), connected());
     device.insert(QStringLiteral("liveEnabled"), m_liveEnabled);
+    device.insert(QStringLiteral("playing"), m_playing);
     device.insert(QStringLiteral("muted"), m_muted);
     device.insert(QStringLiteral("lastError"), m_lastError);
     device.insert(QStringLiteral("lastTx"), m_lastTxDiagnostic);
@@ -492,6 +504,17 @@ void K500DeviceManager::setLiveEnabled(bool enabled)
         m_controller->setLiveEnabled(enabled);
     emit liveEnabledChanged();
 }
+
+void K500DeviceManager::setPlaying(bool playing)
+{
+    if (m_playing == playing)
+        return;
+    m_playing = playing;
+    emit playingChanged();
+    emit logLine(QStringLiteral("SYS"), QStringLiteral("player state"),
+                 m_playing ? QStringLiteral("PLAYING") : QStringLiteral("STOPPED/PAUSED"));
+}
+
 
 void K500DeviceManager::scheduleAuthoritativeReconciliation()
 {
@@ -810,6 +833,10 @@ void K500DeviceManager::onBytesReceived(const QByteArray &bytes)
 
 void K500DeviceManager::handleResponse(const K500Response &response)
 {
+    bool decodedPlaying = false;
+    if (K500ResponseParser::tryDecodePlaying(response, &decodedPlaying))
+        setPlaying(decodedPlaying);
+
     if ((m_stage == Stage::ProbeBluetooth || m_stage == Stage::ProbeUsb)
         && response.rsp == 0xE3) {
         beginSync();
@@ -889,6 +916,7 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_activeMemory.clear();
     m_memoryReadOffset = 0;
     m_pendingReadLength = 0;
+    setPlaying(false);
     m_muted = false;
     emit mutedChanged();
     if (!keepError)
