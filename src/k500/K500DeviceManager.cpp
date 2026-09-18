@@ -373,6 +373,10 @@ QByteArray K500DeviceManager::supportReportJson() const
     if (m_presetManager) {
         presetOperation.insert(QStringLiteral("busy"), m_presetManager->property("busy").toBool());
         presetOperation.insert(QStringLiteral("activeSlot"), m_presetManager->property("activeSlot").toInt());
+        presetOperation.insert(QStringLiteral("useInitVolumeKnown"),
+                               m_presetManager->property("useInitVolumeKnown").toBool());
+        presetOperation.insert(QStringLiteral("useInitVolume"),
+                               m_presetManager->property("useInitVolume").toBool());
         presetOperation.insert(QStringLiteral("progress"), m_presetManager->property("progress").toString());
     }
     root.insert(QStringLiteral("presetOperation"), presetOperation);
