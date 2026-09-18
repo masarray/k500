@@ -35,9 +35,9 @@ inline constexpr int LpfMinHz = 4000;
 inline constexpr int LpfMaxHz = 16000;
 } // namespace Reverb
 
-namespace Eq {
+namespace ReverbEq {
 inline constexpr double GainMinDb = -24.0;
 inline constexpr double GainMaxDb = 24.0;
-} // namespace Eq
+} // namespace ReverbEq
 
 } // namespace K500NativeLimits
