@@ -9,6 +9,7 @@ on:
       - 'src/k500/K500Controller.cpp'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/RackFaderPanel.qml'
       - 'docs/K500_NATIVE_CONTROL_LIMITS.md'
       - '.github/workflows/native-control-limits.yml'
   pull_request:
@@ -18,6 +19,7 @@ on:
       - 'src/k500/K500Controller.cpp'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
+      - 'qml/components/RackFaderPanel.qml'
       - 'docs/K500_NATIVE_CONTROL_LIMITS.md'
       - '.github/workflows/native-control-limits.yml'
 
@@ -37,6 +39,7 @@ jobs:
           controller = Path('src/k500/K500Controller.cpp').read_text(encoding='utf-8')
           engine = Path('src/StudioEngine.cpp').read_text(encoding='utf-8')
           qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
+          rack = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
           doc = Path('docs/K500_NATIVE_CONTROL_LIMITS.md').read_text(encoding='utf-8')
 
           expected_limits = {
@@ -61,6 +64,7 @@ jobs:
               'engine exposes native limits': 'QVariantMap StudioEngine::nativeLimits() const' in engine,
               'qml consumes native limits': 'nativeLimit("reverb","decayMinMs",500)' in qml and 'nativeLimit("reverb","lpfMaxHz",16000)' in qml,
               'effect filter types are hidden': qml.count('showTypes: false') >= 2,
+              'Reverb visual uses native timing endpoints': '(root.fxVisual1 - 500) / 4500.0' in rack and 'root.fxVisual2 / 100.0' in rack,
               'evidence doc records native V3.10': 'native KTV V3.10' in doc and '500 ms' in doc and '16000 Hz' in doc,
               'wire width warning is explicit': 'Wire width is NOT a UI-domain specification' in limits,
           }
