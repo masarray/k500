@@ -119,6 +119,7 @@ private:
     void setError(const QString &message);
     void setLiveEnabled(bool enabled);
     void setPlaying(bool playing);
+    void setMuted(bool muted);
     void scheduleAuthoritativeReconciliation();
     void startAuthoritativeReconciliation();
     qint64 schedulerNowMs() const;
