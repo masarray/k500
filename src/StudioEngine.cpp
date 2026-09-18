@@ -641,7 +641,13 @@ void StudioEngine::setMusicKey(int value)
 
 void StudioEngine::setNoiseGate(double value)
 {
-    if (assign(m_noiseGate, clampValue(value, -80.0, 0.0), "music.noiseGateDb")) emit noiseGateChanged();
+    const double clamped = value <= K500Protocol::NativeRange::MusicNoiseGateOffDb
+        ? K500Protocol::NativeRange::MusicNoiseGateOffDb
+        : clampValue(value,
+                     K500Protocol::NativeRange::MusicNoiseGateMinDb,
+                     K500Protocol::NativeRange::MusicNoiseGateMaxDb);
+    if (assign(m_noiseGate, clamped, "music.noiseGateDb"))
+        emit noiseGateChanged();
 }
 
 void StudioEngine::setBass(double value)
