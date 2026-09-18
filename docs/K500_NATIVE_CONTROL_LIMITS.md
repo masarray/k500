@@ -35,6 +35,26 @@ Before this evidence was recorded, SonKuPik used several generic/assumed limits:
 
 These values must now be clamped consistently in UI, controller state, and protocol encoding.
 
+## Recovered prior range evidence
+
+The repository history did contain several earlier range decisions, but they were scattered across UI commits instead of being kept in one authoritative contract. P3.1 recovers them here so future work does not depend on remembering an old thread.
+
+| Control family | Range | Evidence class | Repository evidence |
+| --- | --- | --- | --- |
+| Top/Master Music, Mic, FX | 0..84 | DONOR-WEB | `8524101578b18e96ffb5a8381b83036e37260718` — "Use web K500 master volume range" |
+| Music Input1/Input2/BT/UDisk/Digital gain | -12..+12 dB | DONOR-WEB | `a61b4ba3c3580d785f14123391de6d441ae71898` — "Use web music input gain range" |
+| Mic FBX/FBE level | 0..3 | CAPTURED-NATIVE | `6ca67ff22c7dd706f8c1bc53f59c81189ade7487` — native 3→2→1→0 capture |
+
+These recovered domains are now also declared in `src/k500/K500NativeLimits.h`. Their provenance is intentionally kept distinct from the 2026-09-18 physical Reverb endpoint screenshots.
+
+A key audit finding was that the old UI commits did **not** update every layer. Before P3.1:
+
+- Master faders displayed 0..84, while `StudioEngine` still accepted 0..100.
+- Music input faders displayed -12..+12 dB, while `StudioEngine` still clamped -60..+10 dB.
+- Protocol/controller layers had their own independent clamps.
+
+That split-source design is exactly what this registry is intended to eliminate.
+
 ## PEQ fields not yet endpoint-qualified
 
 The screenshots above prove Reverb PEQ **gain** endpoints only. They do not establish authoritative minimum/maximum values for:
