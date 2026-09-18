@@ -87,6 +87,17 @@ bool K500ResponseParser::tryDecodePlaying(const K500Response &response, bool *pl
     return true;
 }
 
+bool K500ResponseParser::tryDecodeUseInitVolume(const K500Response &response, bool *enabled)
+{
+    if (!enabled || !response.checksumOk || response.rsp != 0xC0
+        || response.data.size() <= 7)
+        return false;
+
+    const quint8 flags = u8(response.data.at(7));
+    *enabled = (flags & 0x04u) != 0;
+    return true;
+}
+
 bool K500ResponseParser::selfTest(QString *error)
 {
     const auto fail = [error](const QString &message) {
@@ -117,6 +128,22 @@ bool K500ResponseParser::selfTest(QString *error)
 
     QByteArray stoppedHandshakeData = QByteArray::fromHex("0017010205005A800100F501000000080DAB03CE0000");
     QByteArray playingHandshakeData = QByteArray::fromHex("0017010205005A800100F5010000000C0DAB03CE0000");
+
+    // Use Init Volume connect-state capture pair. The ON/OFF files are
+    // connect -> change value -> disconnect sessions, so the handshake reports
+    // the pre-change device state: 0x80 before setting ON (therefore OFF), and
+    // 0x84 before setting OFF (therefore ON).
+    K500Response useInitOffHandshake;
+    useInitOffHandshake.rsp = 0xC0;
+    useInitOffHandshake.data = QByteArray::fromHex("0017010205005A800100F5010000000C0DAB03CE0000");
+    useInitOffHandshake.checksumOk = true;
+    K500Response useInitOnHandshake = useInitOffHandshake;
+    useInitOnHandshake.data = QByteArray::fromHex("0017010205005A840100F5010000000C0DAB03CE0000");
+    bool useInitEnabled = true;
+    if (!tryDecodeUseInitVolume(useInitOffHandshake, &useInitEnabled) || useInitEnabled)
+        return fail(QStringLiteral("captured Use Init OFF handshake decode mismatch"));
+    if (!tryDecodeUseInitVolume(useInitOnHandshake, &useInitEnabled) || !useInitEnabled)
+        return fail(QStringLiteral("captured Use Init ON handshake decode mismatch"));
     K500Response stoppedHandshake;
     stoppedHandshake.rsp = 0xC0;
     stoppedHandshake.data = stoppedHandshakeData;
