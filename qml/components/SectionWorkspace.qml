@@ -151,8 +151,9 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.minimumWidth: 360
                                     title: "Reverb"
-                                    // K500_NATIVE_VALUE_CONTRACT_V1 — manufacturer UI: LEVEL 0..100,
-                                    // DECAY 500..5000 ms, PRE 0..100 ms, DIRECT 0..100.
+                                    // REVERB_DIRECT_KNOB_NATIVE_V2 + K500_NATIVE_VALUE_CONTRACT_V1
+                                    // Manufacturer UI: LEVEL 0..100, DECAY 500..5000 ms,
+                                    // PRE 0..100 ms, DIRECT 0..100.
                                     channels: [
                                         {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
                                         {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:500,to:5000,step:5,unit:"ms",decimals:0},
