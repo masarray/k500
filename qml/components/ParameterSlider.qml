@@ -13,6 +13,8 @@ Item {
     property string unit: "dB"
     property color accentColor: Theme.accent
     property bool logarithmic: false
+    property bool offAtMin: false
+    property string offText: "OFF"
     property bool dragging: false
     property bool editable: true
 
@@ -39,7 +41,8 @@ Item {
     function normToValue(n){n=Math.max(0,Math.min(1,n));return logarithmic?from*Math.pow(to/from,n):from+n*(to-from)}
     function quantize(v,fine){var s=fine?step/10:step;return Number(clamp(Math.round(v/s)*s).toFixed(Math.max(decimals+1,3)))}
     function nudge(direction,fine){if(root.editable)valueEdited(quantize(value+direction*(fine?step/10:step),fine))}
-    function display(v){if(unit==="Hz"&&v>=1000)return(v/1000).toFixed(v>=10000?1:2)+"k";return Number(v).toFixed(decimals)}
+    function isOffValue(v){return root.offAtMin && Math.abs(Number(v)-Number(root.from)) < 0.0001}
+    function display(v){if(isOffValue(v))return root.offText;if(unit==="Hz"&&v>=1000)return(v/1000).toFixed(v>=10000?1:2)+"k";return Number(v).toFixed(decimals)}
 
     Keys.onPressed:function(event){
         if(!root.editable){event.accepted=true;return}
@@ -107,7 +110,7 @@ Item {
             anchors.centerIn:parent
             spacing:3
             Text{text:root.display(root.value);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
-            Text{text:root.unit;color:root.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}
+            Text{text:root.isOffValue(root.value)?"":root.unit;color:root.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}
         }
     }
 
