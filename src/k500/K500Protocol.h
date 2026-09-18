@@ -1,5 +1,7 @@
 #pragma once
 
+#include "K500NativeLimits.h"
+
 #include <QByteArray>
 #include <QString>
 
@@ -92,7 +94,7 @@ struct K500OutputBlockState
 
 namespace K500Protocol {
 
-constexpr int TopVolumeMax = 84;
+constexpr int TopVolumeMax = K500NativeLimits::TopVolume::Max;
 constexpr int ReverbDataLength = 15;
 constexpr int EchoDataLength = 22;
 constexpr int OutputDataLength = 35;
