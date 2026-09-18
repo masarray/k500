@@ -105,7 +105,8 @@ jobs:
               'player status comes from captured RX': 'PLAYER_STATUS_CAPTURED_V1' in response_cpp and '0x04u' in response_cpp and 'deviceManager.playing' in topbar,
               'player UI has no local optimistic toggle': 'transportPlaying' not in topbar and 'sendPlayerCommand("playPause")' in topbar,
               'use-init never pretends PC preference is device truth': 'USE_INIT_DEVICE_TRUTH_V1' in preset_manager and 'QSettings' not in preset_manager and 'useInitVolumeKnown' in system_qml,
-              'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status,
+              'use-init hydrates from captured C0 bit': 'tryDecodeUseInitVolume' in response_cpp and 'response.data.at(7)' in response_cpp and 'm_useInitVolumeKnown = true' in preset_manager,
+              'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]
