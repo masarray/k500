@@ -32,34 +32,46 @@ PLAYING ... 00 00 00 0C 0D AB 03 CE 00 00 ...
 
 Contract: bit 0x04 clear = not playing (stopped/paused UI state); bit 0x04 set = actively playing. SonKuPik must derive the Play/Pause icon from device RX, never from a local optimistic boolean.
 
-## Use Init Volume — setter proven, connect readback not yet proven
+## Use Init Volume — setter and connect read-side captured
 
-The OFF/ON capture repeats the following exact USB writes:
+The original toggle capture proves the exact USB setter frames:
 
 ```text
 OFF  AA 03 00 12 00 03 E8
 ON   AA 03 00 12 01 03 E7
 ```
 
-Both receive RSP 0xED acknowledgements. This proves command 0x12 and its boolean payload.
+Both receive RSP 0xED acknowledgements.
 
-However this capture does not perform a fresh handshake or full readback once while OFF and once while ON. Its heartbeat response is unchanged across the toggle. Therefore this evidence does NOT identify the connect-time readback bit/offset.
+Two follow-up connect/change/disconnect captures close the read-side mapping:
 
-Until an OFF-connect versus ON-connect capture proves that read-side mapping:
+| Capture | Size | SHA-256 |
+| --- | ---: | --- |
+| Connect_UseInitVol_ON_Disconnect.dmslog8 | 93978 | 843f9a44e678560481c731a33eb41ff148c3b5c60713be52603cbc14d68e66bb |
+| Connect_UseInitVol_OFF_Disconnect.dmslog8 | 93170 | f649c4b457332e7385883e0e85381c6059be24b398e00ae92595896b2695bdd7 |
 
-- never infer Use Init Volume from QSettings/PC preferences;
-- never overwrite device state automatically on connect just to make the checkbox appear synchronized;
-- mark the value unknown after connect;
-- after SonKuPik sends CMD 0x12 and receives valid RSP 0xED, the new value is known for that live session.
+Both reconstruct to byte-identical 939-byte active memory. The stable delta is in the
+connect-time handshake response RSP 0xC0 at data byte index 7:
 
-## Capture required to close Use Init read-side mapping
+```text
+Device OFF before changing it ON:
+... 05 00 5A 80 01 00 F5 01 ...
+            ^^
 
-One capture is sufficient if it contains both cases:
+Device ON before changing it OFF:
+... 05 00 5A 84 01 00 F5 01 ...
+            ^^
+```
 
-1. Set Use Init Volume OFF in native app, disconnect/reconnect while capture is running, let heartbeat + handshake + full 939-byte readback complete.
-2. Set Use Init Volume ON, disconnect/reconnect again in the same capture, and let the same sequence complete.
+The filenames describe the value changed during that session, so the handshake occurs
+before the change. Therefore the authoritative contract is:
 
-Diff E3, C0 and the reconstructed 939-byte snapshots. Only a stable OFF/ON delta may become the connect-time decoder.
+- C0 data[7] bit 0x04 clear => Use Init Volume OFF
+- C0 data[7] bit 0x04 set   => Use Init Volume ON
+
+SonKuPik must hydrate the checkbox from this C0 bit on initial connect and Recall
+handshakes. QSettings/PC preferences must never override it. After a local CMD 0x12
+change, a valid RSP 0xED also establishes the current-session value immediately.
 
 ## Change control
 
