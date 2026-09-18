@@ -512,6 +512,42 @@ bool selfTest(QString *error)
     music.topMusicVol = 70; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
     if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music mirrored scalar"))) return false;
 
+    // Recovered donor-domain guard: host values outside the documented UI
+    // range must encode exactly like their nearest native endpoint.
+    K500MusicBlockState musicBelow = music;
+    musicBelow.topMusicVol = -100;
+    musicBelow.input1GainDb = -60.0;
+    musicBelow.input2GainDb = -60.0;
+    musicBelow.bluetoothGainDb = -60.0;
+    musicBelow.uDiskGainDb = -60.0;
+    musicBelow.digitalGainDb = -60.0;
+    K500MusicBlockState musicMin = musicBelow;
+    musicMin.topMusicVol = K500NativeLimits::TopVolume::Min;
+    musicMin.input1GainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.input2GainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.bluetoothGainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.uDiskGainDb = K500NativeLimits::MusicInputGain::MinDb;
+    musicMin.digitalGainDb = K500NativeLimits::MusicInputGain::MinDb;
+    if (topMusicBlock(musicBelow, scalars) != topMusicBlock(musicMin, scalars))
+        return fail(QStringLiteral("Top Music native minimum clamp mismatch"));
+
+    K500MusicBlockState musicAbove = music;
+    musicAbove.topMusicVol = 1000;
+    musicAbove.input1GainDb = 100.0;
+    musicAbove.input2GainDb = 100.0;
+    musicAbove.bluetoothGainDb = 100.0;
+    musicAbove.uDiskGainDb = 100.0;
+    musicAbove.digitalGainDb = 100.0;
+    K500MusicBlockState musicMax = musicAbove;
+    musicMax.topMusicVol = K500NativeLimits::TopVolume::Max;
+    musicMax.input1GainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.input2GainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.bluetoothGainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.uDiskGainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    musicMax.digitalGainDb = K500NativeLimits::MusicInputGain::MaxDb;
+    if (topMusicBlock(musicAbove, scalars) != topMusicBlock(musicMax, scalars))
+        return fail(QStringLiteral("Top Music native maximum clamp mismatch"));
+
     K500MicBlockState mic;
     if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x07, 0x07, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x4F}, QStringLiteral("top mic default"))) return false;
     QByteArray micScalars(0x40, char(0));
