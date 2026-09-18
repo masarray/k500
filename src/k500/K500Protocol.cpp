@@ -221,6 +221,30 @@ QByteArray crossoverWrite(const QString &section,
     return K500Frame::build(body);
 }
 
+quint8 musicNoiseGateRaw(double gateDb)
+{
+    // MUSIC_TONE_CAPTURED_V1
+    // Native UI domain: OFF, then -90..-50 dB. Raw 0 is the dedicated OFF
+    // sentinel; raw 1..41 maps linearly to -90..-50 dB.
+    if (gateDb <= NativeRange::MusicNoiseGateOffDb)
+        return 0;
+    const int db = qBound(NativeRange::MusicNoiseGateMinDb, qRound(gateDb),
+                          NativeRange::MusicNoiseGateMaxDb);
+    return K500Frame::clampByte(db + 91);
+}
+
+QByteArray musicBass(double bassDb)
+{
+    // MUSIC_TONE_CAPTURED_V1 — CMD 0x0C selector 0x02, 0.1 dB encoding.
+    const double clamped = qBound(NativeRange::MusicBassMinDb, bassDb,
+                                  NativeRange::MusicBassMaxDb);
+    const quint16 raw = static_cast<quint16>(qRound((clamped + 12.0) * 10.0));
+    return K500Frame::build(bytes({
+        0x06, 0x0C, 0x02, 0x00,
+        raw & 0xFF, (raw >> 8) & 0xFF, 0x09,
+    }));
+}
+
 QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &deviceScalars)
 {
     const auto mirrored = [&deviceScalars](int offset, int fallback) -> quint8 {
@@ -244,7 +268,9 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(K500Frame::clampByte(qRound(state.uDiskGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.digitalGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qBound(-7, state.key, 7) + 7)));
-    body.append(char(mirrored(0x1B, 0x00)));
+    body.append(char(state.noiseGateRaw >= 0
+                         ? K500Frame::clampByte(qBound(0, state.noiseGateRaw, 41))
+                         : mirrored(0x1B, 0x00)));
     body.append(char(mirrored(0x07, 0x02)));
     return K500Frame::build(body);
 }
@@ -496,6 +522,40 @@ bool selfTest(QString *error)
 
     K500MusicBlockState music;
     if (!expect(topMusicBlock(music, {}), {0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09, 0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}, QStringLiteral("top music default"))) return false;
+
+    K500MusicBlockState gateCapture;
+    gateCapture.topMusicVol = 25;
+    gateCapture.musicInitVol = 25;
+    gateCapture.sourceRaw = 2;
+    gateCapture.input1GainDb = -3.0;
+    gateCapture.input2GainDb = -3.0;
+    gateCapture.bluetoothGainDb = -3.0;
+    gateCapture.uDiskGainDb = -4.0;
+    gateCapture.digitalGainDb = -4.0;
+    gateCapture.key = 0;
+    QByteArray gateScalars(0x40, char(0));
+    gateScalars[0x03] = char(0x19);
+    gateScalars[0x04] = char(0x54);
+    gateScalars[0x07] = char(0x13);
+    gateCapture.noiseGateRaw = musicNoiseGateRaw(NativeRange::MusicNoiseGateOffDb);
+    if (!expect(topMusicBlock(gateCapture, gateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x00,0x13,0x24},
+                QStringLiteral("Music Noise Gate OFF capture"))) return false;
+    gateCapture.noiseGateRaw = musicNoiseGateRaw(-90);
+    if (!expect(topMusicBlock(gateCapture, gateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x01,0x13,0x23},
+                QStringLiteral("Music Noise Gate -90 capture"))) return false;
+    gateCapture.noiseGateRaw = musicNoiseGateRaw(-50);
+    if (!expect(topMusicBlock(gateCapture, gateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
+                QStringLiteral("Music Noise Gate -50 capture"))) return false;
+
+    if (!expect(musicBass(-12.0), {0xAA,0x06,0x0C,0x02,0x00,0x00,0x00,0x09,0xE3},
+                QStringLiteral("Music Bass -12 capture"))) return false;
+    if (!expect(musicBass(0.0), {0xAA,0x06,0x0C,0x02,0x00,0x78,0x00,0x09,0x6B},
+                QStringLiteral("Music Bass 0 capture"))) return false;
+    if (!expect(musicBass(9.0), {0xAA,0x06,0x0C,0x02,0x00,0xD2,0x00,0x09,0x11},
+                QStringLiteral("Music Bass +9 capture"))) return false;
     QByteArray scalars(0x40, char(0));
     scalars[0x03] = char(0x31); scalars[0x04] = char(0x52); scalars[0x1B] = char(0x0B); scalars[0x07] = char(0x06);
     music.topMusicVol = 70; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
