@@ -36,6 +36,40 @@ Forward       AA 03 06 01 05 F1
 Play/Pause    AA 03 06 02 05 F0
 ```
 
+Captured connect/runtime status:
+
+```text
+C0 data[7] bit 0x02  Mute: 0=OFF/unmuted, 1=ON/muted
+C0 data[7] bit 0x04  Use Init Volume: 0=OFF, 1=ON
+E3 data[2] bit 0x04  Playback: 0=stopped/paused, 1=playing
+C0 data[15] bit 0x04 Playback: 0=stopped/paused, 1=playing
+```
+
+## Music Tone captured writes
+
+Music Noise Gate is the captured field inside Top Music `CMD 0x02` immediately
+after Music Key. Its native domain is OFF, then -90..-50 dB:
+
+```text
+OFF     AA 0D 02 19 19 54 02 09 09 09 08 08 07 00 13 24
+-90 dB  AA 0D 02 19 19 54 02 09 09 09 08 08 07 01 13 23
+-50 dB  AA 0D 02 19 19 54 02 09 09 09 08 08 07 29 13 FB
+```
+
+Raw `0` is OFF; raw `1..41` maps to `-90..-50 dB` via
+`dB = raw - 91`.
+
+Music Bass uses `CMD 0x0C`, selector `0x02`, and 0.1 dB encoding:
+
+```text
+-12 dB  AA 06 0C 02 00 00 00 09 E3
+  0 dB  AA 06 0C 02 00 78 00 09 6B
+ +9 dB  AA 06 0C 02 00 D2 00 09 11
+```
+
+`raw = round((dB + 12) * 10)`, native range `-12..+12 dB`.
+The write mapping is captured; connect/readback offsets remain evidence-gated.
+
 ## PEQ
 
 Reference edit: band index 2, 355 Hz, Q 1.0, -11.1 dB Bell.
@@ -63,9 +97,12 @@ Sub LPF                              AA 06 11 0F 02 E8 03 00 ED
 
 Music uses current scalar `0x1B` as the final state byte. Verified non-Music crossover writes use `0x00`.
 
-## Top Music mirrored-scalar safety
+## Top Music device-seed safety
 
-`CMD 0x02` is a block write. Rarely edited fields are seeded from device scalar cache, never stale UI defaults. Regression tests deliberately provide different cached values and verify preservation.
+`CMD 0x02` is a block write. Unmapped fields are seeded from device scalar cache,
+never stale UI defaults. Music Noise Gate is now a capture-verified writable field;
+until the user edits it in the current session, its byte is still preserved from
+device scalar truth. Regression tests verify both preservation and captured gate writes.
 
 ## P1 Top Mic CMD 0x05
 
