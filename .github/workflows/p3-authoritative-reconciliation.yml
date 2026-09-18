@@ -72,8 +72,10 @@ jobs:
               'controller has separate reconciliation path': 'reconcileFromDeviceMemory' in controller and 'applyDeviceMemory(memory, true)' in controller,
               'device manager debounces verification': 'AuthoritativeReconcileIdleMs = 700' in manager and 'scheduleAuthoritativeReconciliation' in manager,
               'full proven readback reused': 'requestActiveMemoryReadback();' in manager and 'reconciliationMemoryReady' in manager_h,
-              'live barrier precedes readback': 'm_reconciliationInProgress = true;\n    setLiveEnabled(false);' in manager,
-              'studio hydrates reconciliation truth': '&K500DeviceManager::reconciliationMemoryReady' in main,
+              'non-disruptive verification marker': 'P3_NONDISRUPTIVE_RECONCILIATION_V2' in manager,
+              'controller planning pauses around verification': 'setCommandPlanningPaused(true)' in manager and 'setCommandPlanningPaused(false)' in manager,
+              'edits survive verification window': 'm_commandPlanningPaused' in controller and 'm_deferredEdits.insert(path, value)' in controller,
+              'background verification does not replay StudioEngine': '&K500DeviceManager::reconciliationMemoryReady' not in main,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
           failed = [name for name, ok in checks.items() if not ok]
