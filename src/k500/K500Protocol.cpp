@@ -239,11 +239,17 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(mirrored(0x04, TopVolumeMax)));
     // MUSIC_SOURCE_SIX_WAY_V1 — INPUT1, INPUT2, BT, UDISK, OPTIC, UAUDIO.
     body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 5))));
-    body.append(char(K500Frame::clampByte(qRound(state.input1GainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.input2GainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.bluetoothGainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.uDiskGainDb + 12.0))));
-    body.append(char(K500Frame::clampByte(qRound(state.digitalGainDb + 12.0))));
+    const auto inputGainRaw = [](double gainDb) {
+        const double bounded = qBound(K500NativeLimits::MusicInputGain::MinDb,
+                                      gainDb,
+                                      K500NativeLimits::MusicInputGain::MaxDb);
+        return K500Frame::clampByte(qRound(bounded - K500NativeLimits::MusicInputGain::MinDb));
+    };
+    body.append(char(inputGainRaw(state.input1GainDb)));
+    body.append(char(inputGainRaw(state.input2GainDb)));
+    body.append(char(inputGainRaw(state.bluetoothGainDb)));
+    body.append(char(inputGainRaw(state.uDiskGainDb)));
+    body.append(char(inputGainRaw(state.digitalGainDb)));
     body.append(char(K500Frame::clampByte(qBound(-7, state.key, 7) + 7)));
     body.append(char(mirrored(0x1B, 0x00)));
     body.append(char(mirrored(0x07, 0x02)));
