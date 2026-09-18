@@ -390,8 +390,8 @@ QVariantMap StudioEngine::nativeLimits() const
             {QStringLiteral("lpfMaxHz"), K500NativeLimits::Reverb::LpfMaxHz},
         }},
         {QStringLiteral("reverbEq"), QVariantMap{
-            {QStringLiteral("gainMinDb"), K500NativeLimits::Eq::GainMinDb},
-            {QStringLiteral("gainMaxDb"), K500NativeLimits::Eq::GainMaxDb},
+            {QStringLiteral("gainMinDb"), K500NativeLimits::ReverbEq::GainMinDb},
+            {QStringLiteral("gainMaxDb"), K500NativeLimits::ReverbEq::GainMaxDb},
         }},
     };
 }
