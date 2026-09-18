@@ -13,7 +13,9 @@ StudioPanel {
     property bool transportPlaying: false
     signal aboutRequested()
 
-    readonly property bool deviceBusy: deviceManager.status === "connecting" || deviceManager.status === "syncing"
+    readonly property bool deviceBusy: deviceManager.status === "connecting"
+                                       || deviceManager.status === "syncing"
+                                       || deviceManager.reconciliationInProgress
     readonly property string deviceStatusText: deviceManager.status === "connected" ? "ONLINE"
                                                 : deviceManager.status === "connecting" ? "CONNECT"
                                                 : deviceManager.status === "syncing" ? "SYNC"
@@ -160,17 +162,17 @@ StudioPanel {
                 anchors.fill: parent
                 anchors.margins: 4
                 spacing: 3
-                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true;enabled:root.deviceManager.connected;onClicked:root.deviceManager.sendPlayerCommand("rewind") }
+                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-back";iconOnly:true;enabled:root.deviceManager.connected&&!root.deviceManager.reconciliationInProgress;onClicked:root.deviceManager.sendPlayerCommand("rewind") }
                 SoftButton {
                     Layout.preferredWidth:31;Layout.fillHeight:true;transport:true;toolbar:true
                     iconName:root.transportPlaying?"pause":"play";iconOnly:true
                     checked:root.transportPlaying;neonAccent:root.transportPlaying;accentIcon:true
-                    enabled:root.deviceManager.connected
+                    enabled:root.deviceManager.connected&&!root.deviceManager.reconciliationInProgress
                     onClicked:{root.deviceManager.sendPlayerCommand("playPause");root.transportPlaying=!root.transportPlaying}
                 }
-                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true;enabled:root.deviceManager.connected;onClicked:root.deviceManager.sendPlayerCommand("forward") }
+                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"skip-forward";iconOnly:true;enabled:root.deviceManager.connected&&!root.deviceManager.reconciliationInProgress;onClicked:root.deviceManager.sendPlayerCommand("forward") }
                 Rectangle { Layout.preferredWidth:1;Layout.preferredHeight:16;color:"#344049";opacity:.58 }
-                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"volume-x";iconOnly:true;checked:root.deviceManager.muted;danger:root.deviceManager.muted;enabled:root.deviceManager.connected;onClicked:root.deviceManager.toggleMute() }
+                SoftButton { Layout.preferredWidth:27;Layout.fillHeight:true;transport:true;toolbar:true;iconName:"volume-x";iconOnly:true;checked:root.deviceManager.muted;danger:root.deviceManager.muted;enabled:root.deviceManager.connected&&!root.deviceManager.reconciliationInProgress;onClicked:root.deviceManager.toggleMute() }
             }
         }
 
