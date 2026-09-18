@@ -98,6 +98,17 @@ bool K500ResponseParser::tryDecodeUseInitVolume(const K500Response &response, bo
     return true;
 }
 
+bool K500ResponseParser::tryDecodeMuted(const K500Response &response, bool *muted)
+{
+    if (!muted || !response.checksumOk || response.rsp != 0xC0
+        || response.data.size() <= 7)
+        return false;
+
+    const quint8 flags = u8(response.data.at(7));
+    *muted = (flags & 0x02u) != 0;
+    return true;
+}
+
 bool K500ResponseParser::selfTest(QString *error)
 {
     const auto fail = [error](const QString &message) {
@@ -144,6 +155,19 @@ bool K500ResponseParser::selfTest(QString *error)
         return fail(QStringLiteral("captured Use Init OFF handshake decode mismatch"));
     if (!tryDecodeUseInitVolume(useInitOnHandshake, &useInitEnabled) || !useInitEnabled)
         return fail(QStringLiteral("captured Use Init ON handshake decode mismatch"));
+
+    // Mute connect-state capture pair: files are connect -> change -> disconnect,
+    // therefore 0x84 was device-unmuted before setting Mute ON, and 0x86 was
+    // device-muted before setting Mute OFF. Bit 0x02 is the stable delta.
+    K500Response muteOffHandshake = useInitOnHandshake;
+    muteOffHandshake.data = QByteArray::fromHex("0017010205005A840100F5010000000C0DAB03CE0000");
+    K500Response muteOnHandshake = muteOffHandshake;
+    muteOnHandshake.data = QByteArray::fromHex("0017010205005A860100F5010000000C0DAB03CE0000");
+    bool muted = true;
+    if (!tryDecodeMuted(muteOffHandshake, &muted) || muted)
+        return fail(QStringLiteral("captured Mute OFF handshake decode mismatch"));
+    if (!tryDecodeMuted(muteOnHandshake, &muted) || !muted)
+        return fail(QStringLiteral("captured Mute ON handshake decode mismatch"));
     K500Response stoppedHandshake;
     stoppedHandshake.rsp = 0xC0;
     stoppedHandshake.data = stoppedHandshakeData;
