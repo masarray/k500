@@ -310,7 +310,11 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
         m_crossovers.insert(key, state);
     };
     seedCrossover(QStringLiteral("mic"), 0x0098, 0x009A, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
-    seedCrossover(QStringLiteral("music"), 0x009C, 0x009E, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+    // MUSIC_CROSSOVER_TYPE_READBACK_V1 — physical Music reconnect captures:
+    // activeMemory[0x0007] = HP Type, activeMemory[0x0008] = LP Type.
+    seedCrossover(QStringLiteral("music"), 0x009C, 0x009E,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0007), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false));
     seedCrossover(QStringLiteral("main"), 0x00A0, 0x00A4, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
     seedCrossover(QStringLiteral("surround"), 0x00A8, 0x00AC, QStringLiteral("HP Bessel 12"), QStringLiteral("LP Bessel 12"));
     seedCrossover(QStringLiteral("center"), 0x00B0, 0x00B4, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
@@ -820,8 +824,14 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
         const QString prefix = QStringLiteral("eq.%1.crossover.").arg(it.key());
         captured(prefix + QStringLiteral("hpfHz"), it->hpfHz);
         captured(prefix + QStringLiteral("lpfHz"), it->lpfHz);
-        assumed(prefix + QStringLiteral("hpType"), it->hpType);
-        assumed(prefix + QStringLiteral("lpType"), it->lpType);
+        if (it.key() == QStringLiteral("music")) {
+            // Music type bytes are now capture-backed device truth.
+            captured(prefix + QStringLiteral("hpType"), it->hpType);
+            captured(prefix + QStringLiteral("lpType"), it->lpType);
+        } else {
+            assumed(prefix + QStringLiteral("hpType"), it->hpType);
+            assumed(prefix + QStringLiteral("lpType"), it->lpType);
+        }
     }
 
     static const QStringList bypassSections{
