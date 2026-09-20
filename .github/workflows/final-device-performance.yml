@@ -108,7 +108,7 @@ jobs:
           New-Item -ItemType Directory -Force -Path package/qualification | Out-Null
           Copy-Item tools/run-final-device-acceptance.ps1 package/qualification/
           Copy-Item docs/FINAL_DEVICE_PERFORMANCE_ACCEPTANCE.md package/qualification/
-          Copy-Item build/final-device-performance-smoke.json package/qualification/
+          Copy-Item 'build/final device performance smoke.json' package/qualification/
 
       - name: Upload final device qualification build
         uses: actions/upload-artifact@v4
