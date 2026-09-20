@@ -15,6 +15,9 @@ struct K500MusicBlockState
 {
     int topMusicVol = 35;
     int musicInitVol = 25;
+    // MUSIC_MAX_NATIVE_CEILING_V1 — physical System/Music Max captures prove
+    // this scalar is part of Top Music CMD 0x02 and hard-limits topMusicVol.
+    int musicMaxVol = 84;
     int sourceRaw = 2; // Bluetooth
     double input1GainDb = -3.0;
     double input2GainDb = -3.0;
