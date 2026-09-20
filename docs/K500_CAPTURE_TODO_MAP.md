@@ -1,7 +1,7 @@
 # K500 Capture Coverage & TODO Map
 
 Status date: 2026-09-20
-Baseline: `main` @ `70ec5a8f36fc66e45c5c20ae9edc2426b3c01032`; FBX follow-up branch `fix/fbx-0-4-native-capture`
+Baseline: `main` @ `29442f4be8a8845256563e922282b988f8f13018`; Music HP/LP type follow-up branch `fix/music-hp-lp-type-readback`
 
 This document is the capture-planning source of truth. It separates:
 - device READ mapping (connect/readback/runtime state),
@@ -42,8 +42,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | PEQ bands freq/Q/gain/type | ✅ | ✅ | complete | no |
 | EQ bypass | ✅ | ✅ | complete | no |
 | HPF/LPF frequency | ✅ | ✅ | complete | no |
-| HPF/LPF filter type on WRITE | n/a | ✅ existing CMD 0x11 mapping | partial | optional reconfirm only |
-| HPF/LPF filter type on CONNECT | ❌ currently assumed/defaulted | n/a | partial | **YES** |
+| HPF/LPF filter type on WRITE | n/a | ✅ CMD 0x11 mapping | complete | no |
+| HPF/LPF filter type on CONNECT | ✅ HP=activeMemory[0x0007], LP=activeMemory[0x0008] | n/a | complete for Music | no |
 | Music Noise Gate | ❌ connect/readback not yet proven | ✅ CMD 0x02 block, raw 0=OFF / 1..41=-90..-50 dB | partial | **YES — reconnect OFF vs -50 dB** |
 | Music Bass | ❌ connect/readback not yet proven | ✅ CMD 0x0C selector 0x02, 0.1 dB encoding | partial | **YES — reconnect 0 dB vs +12/-12 dB** |
 | Music Mid | ❌ | ❌ controller unsupported | missing | **YES** |
@@ -155,7 +155,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 2. **Mic Noise Gate write**.
 3. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
 4. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
-5. **Crossover filter-type readback** — connect after changing one representative non-FX type to a non-default value.
+5. **Remaining non-Music crossover filter-type readback** — Mic/Main/Surround/Center/Sub still need their own connect-state mapping.
 6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
 
 ### P1 — useful next
