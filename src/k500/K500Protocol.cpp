@@ -185,10 +185,8 @@ quint8 crossoverFilterCode(const QString &label)
     const QString normalized = label.trimmed().toUpper();
     // CROSSOVER_NATIVE_BYPASS_TYPE0_V1
     // Native K500 keeps the cutoff anchor unchanged while the type dropdown is
-    // set to bypass. The preset format uses the same 0x03xx/0x04xx type family,
-    // with active filters occupying contiguous codes 0x01..0x07; code 0x00 is
-    // therefore the native bypass member of that enum. Keep this behind the
-    // physical-device acceptance gate just like every newly replayed command.
+    // set to bypass. Physical Music HP captures now prove the complete 0..7
+    // sequence; Music LP captures independently prove 0=Bypass and 2=Butter12.
     if (normalized == QStringLiteral("BYPASS")) return 0x00;
     if (normalized.contains(QStringLiteral("BESSEL 12"))) return 0x01;
     if (normalized.contains(QStringLiteral("BUTTER 12"))) return 0x02;
@@ -196,8 +194,34 @@ quint8 crossoverFilterCode(const QString &label)
     if (normalized.contains(QStringLiteral("BUTTER 18"))) return 0x04;
     if (normalized.contains(QStringLiteral("BESSEL 24"))) return 0x05;
     if (normalized.contains(QStringLiteral("BUTTER 24"))) return 0x06;
-    if (normalized.contains(QStringLiteral("LR 24"))) return 0x07;
+    if (normalized.contains(QStringLiteral("LR 24"))
+        || normalized.contains(QStringLiteral("LINK RILEY 24"))
+        || normalized.contains(QStringLiteral("LINKWITZ RILEY 24")))
+        return 0x07;
     return 0x02;
+}
+
+QString crossoverFilterLabel(quint8 code, bool highPass)
+{
+    // MUSIC_CROSSOVER_TYPE_READBACK_V1
+    // HP: full physical sequence captured 0..7.
+    // LP: physical reconnect delta proves 0=Bypass and 2=Butter12. The remaining
+    // labels intentionally reuse the same shared protocol enum already used by
+    // crossoverFilterCode()/CMD 0x11 rather than inventing a second LP enum.
+    if (code == 0x00)
+        return QStringLiteral("Bypass");
+
+    const QString prefix = highPass ? QStringLiteral("HP ") : QStringLiteral("LP ");
+    switch (code) {
+    case 0x01: return prefix + QStringLiteral("Bessel 12");
+    case 0x02: return prefix + QStringLiteral("Butter 12");
+    case 0x03: return prefix + QStringLiteral("Bessel 18");
+    case 0x04: return prefix + QStringLiteral("Butter 18");
+    case 0x05: return prefix + QStringLiteral("Bessel 24");
+    case 0x06: return prefix + QStringLiteral("Butter 24");
+    case 0x07: return prefix + QStringLiteral("LR 24");
+    default:   return prefix + QStringLiteral("Butter 12");
+    }
 }
 
 QByteArray crossoverWrite(const QString &section,
@@ -521,6 +545,18 @@ bool selfTest(QString *error)
     if (!expect(eqWrite(QStringLiteral("micA"), 2, band), {0xAA, 0x09, 0x03, 0x00, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x00, 0x95}, QStringLiteral("mic A EQ"))) return false;
     if (!expect(eqWrite(QStringLiteral("sub"), 2, band), {0xAA, 0x09, 0x03, 0x08, 0x02, 0x63, 0x01, 0x0A, 0x80, 0x6F, 0x00, 0x8D}, QStringLiteral("sub EQ"))) return false;
     if (!eqWrite(QStringLiteral("unknown"), 0, band).isEmpty()) return fail(QStringLiteral("unsupported EQ section must not produce a frame"));
+
+    // MUSIC_CROSSOVER_TYPE_READBACK_V1 — exact native HP enum and shared LP decode.
+    if (crossoverFilterLabel(0x00, true) != QStringLiteral("Bypass")) return fail(QStringLiteral("Music HP Bypass decode mismatch"));
+    if (crossoverFilterLabel(0x01, true) != QStringLiteral("HP Bessel 12")) return fail(QStringLiteral("Music HP Bessel12 decode mismatch"));
+    if (crossoverFilterLabel(0x02, true) != QStringLiteral("HP Butter 12")) return fail(QStringLiteral("Music HP Butter12 decode mismatch"));
+    if (crossoverFilterLabel(0x03, true) != QStringLiteral("HP Bessel 18")) return fail(QStringLiteral("Music HP Bessel18 decode mismatch"));
+    if (crossoverFilterLabel(0x04, true) != QStringLiteral("HP Butter 18")) return fail(QStringLiteral("Music HP Butter18 decode mismatch"));
+    if (crossoverFilterLabel(0x05, true) != QStringLiteral("HP Bessel 24")) return fail(QStringLiteral("Music HP Bessel24 decode mismatch"));
+    if (crossoverFilterLabel(0x06, true) != QStringLiteral("HP Butter 24")) return fail(QStringLiteral("Music HP Butter24 decode mismatch"));
+    if (crossoverFilterLabel(0x07, true) != QStringLiteral("HP LR 24")) return fail(QStringLiteral("Music HP LR24 decode mismatch"));
+    if (crossoverFilterLabel(0x00, false) != QStringLiteral("Bypass")) return fail(QStringLiteral("Music LP Bypass decode mismatch"));
+    if (crossoverFilterLabel(0x02, false) != QStringLiteral("LP Butter 12")) return fail(QStringLiteral("Music LP Butter12 decode mismatch"));
 
     if (!expect(crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0, QStringLiteral("HP Butter 12"), 0x32), {0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}, QStringLiteral("music crossover"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x00, 0x02, 0xE8, 0x03, 0x00, 0xFC}, QStringLiteral("mic HPF selector"))) return false;
