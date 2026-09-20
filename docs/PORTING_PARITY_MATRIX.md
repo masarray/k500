@@ -48,6 +48,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Music master/input/key block | STABLE USB ✅ | mirrored-scalar safety vector |
 | PEQ: Mic A/B, Music, Main, Surround, Center, Sub, Reverb, Echo | STABLE USB ✅ | donor-verified command family; unsupported detail fields stay read-only |
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
+| Music HP/LP filter type readback | CAPTURE-MAPPED 🟧 | READ activeMemory[0x0007]/[0x0008] + existing CMD 0x11 write enum |
 | Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored unrelated scalars + captured FBX 0..4 direct byte |
 | Top Effect `CMD 0x09` | STABLE USB ✅ | mirrored init preservation |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
