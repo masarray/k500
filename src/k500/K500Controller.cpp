@@ -186,6 +186,8 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
 
     m_music.topMusicVol = fileU8(memory, 0x0008, 35);
     m_music.musicInitVol = fileU8(memory, 0x000B, 25);
+    m_music.musicMaxVol = fileU8(memory, 0x000C, K500Protocol::TopVolumeMax);
+    m_music.topMusicVol = qMin(m_music.topMusicVol, m_music.musicMaxVol);
     m_music.sourceRaw = fileU8(memory, 0x000E, 2);
     m_music.key = static_cast<int>(fileU8(memory, 0x0011, 7)) - 7;
     m_music.input1GainDb = static_cast<int>(fileU8(memory, 0x001E, 9)) - 12;
@@ -238,9 +240,10 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_echo.leftPredelayMs = fileU16(memory, 0x00CE, 100);
     m_echoRaw = echoSeed(memory);
 
-    // EQ_BYPASS_24BIT_CAPTURED_V2 — Retrieve All contains the authoritative
-    // shared bypass image at active-memory offsets 0x027D..0x027F. Hydrate it
-    // before LIVE is enabled so the first toggle can always be a safe RMW.
+    // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — Retrieve All contains the authoritative
+    // shared EQ-enable image at active-memory offsets 0x027D..0x027F.
+    // Relevant bit SET = EQ active; bit CLEAR = bypass. Hydrate before LIVE so
+    // the first toggle remains a safe read-modify-write.
     m_eqBypass = K500EqBypassImage{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
     m_eqBypassReady = memory.size() > 0x027F;
 
@@ -465,9 +468,9 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         }
     }
 
-    // EQ_BYPASS_24BIT_CAPTURED_V2 — every PEQ bypass button edits one bit-group
-    // inside the same device-owned 24-bit image. Never synthesize a mask from UI
-    // defaults; only mutate the Retrieve-All snapshot and preserve all other bits.
+    // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — every PEQ bypass button edits one
+    // active-low bypass bit inside the device-owned 24-bit EQ-enable image.
+    // Never synthesize a mask from UI defaults; preserve all unrelated bits.
     static const QRegularExpression eqBypassPath(QStringLiteral(R"(^eq\.(mic|music|main|surround|center|sub|reverb|echo)\.bypass$)"));
     if (const auto match = eqBypassPath.match(path); match.hasMatch()) {
         if (!m_liveEnabled || !m_eqBypassReady) {
@@ -484,7 +487,14 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     }
 
     bool isTopMusicPath = true;
-    if (path == QStringLiteral("system.topMusicVol")) m_music.topMusicVol = qRound(value.toDouble());
+    if (path == QStringLiteral("system.topMusicVol")) {
+        m_music.topMusicVol = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);
+    } else if (path == QStringLiteral("system.musicMaxVol")) {
+        // MUSIC_MAX_NATIVE_CEILING_V1 — native CMD 0x02 changes Music Max and,
+        // only when necessary, clamps Top Music in the same full-block write.
+        m_music.musicMaxVol = qBound(0, qRound(value.toDouble()), K500Protocol::TopVolumeMax);
+        m_music.topMusicVol = qMin(m_music.topMusicVol, m_music.musicMaxVol);
+    }
     else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);
     else if (path == QStringLiteral("music.key")) m_music.key = value.toInt();
     else if (path == QStringLiteral("music.input1GainDb")) m_music.input1GainDb = value.toDouble();
@@ -766,6 +776,7 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
     };
 
     captured(QStringLiteral("system.topMusicVol"), m_music.topMusicVol);
+    captured(QStringLiteral("system.musicMaxVol"), m_music.musicMaxVol);
     captured(QStringLiteral("system.topMicVol"), m_mic.topMicVol);
     captured(QStringLiteral("system.topEffectVol"), m_effect.topEffectVol);
     captured(QStringLiteral("system.effectInitLevel"), m_effect.effectInitLevel);
