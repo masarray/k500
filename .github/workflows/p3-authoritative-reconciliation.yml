@@ -21,6 +21,7 @@ on:
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
+      - 'docs/K500_FBX_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -87,6 +88,7 @@ jobs:
           response_cpp = Path('src/k500/K500ResponseParser.cpp').read_text(encoding='utf-8')
           preset_manager = Path('src/k500/K500PresetManager.cpp').read_text(encoding='utf-8')
           studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
+          studio_cpp = Path('src/StudioEngine.cpp').read_text(encoding='utf-8')
           qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
           music_tone_qml = Path('qml/components/MusicTonePanel.qml').read_text(encoding='utf-8')
           parameter_slider = Path('qml/components/ParameterSlider.qml').read_text(encoding='utf-8')
@@ -95,6 +97,7 @@ jobs:
           native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
           runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
           music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
+          fbx_doc = Path('docs/K500_FBX_CAPTURE_MAP.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
@@ -121,6 +124,10 @@ jobs:
               'music tone captured writes are implemented': 'musicNoiseGateRaw' in protocol_cpp and 'musicBass' in protocol_cpp and 'music.noiseGateDb' in controller and 'music.bassDb' in controller,
               'music tone native UI range is guarded': 'from:-91;to:-50' in music_tone_qml and 'offAtMin:true' in music_tone_qml and 'from:-12;to:12' in music_tone_qml and 'offAtMin' in parameter_slider,
               'music tone capture evidence documented': 'raw `0x00` = OFF' in music_tone_doc and 'raw = round((dB + 12.0) * 10)' in music_tone_doc,
+              'fbx native range is 0..4': 'MicFbxMinLevel = 0' in protocol_h and 'MicFbxMaxLevel = 4' in protocol_h and 'from:0,to:4' in qml,
+              'fbx read uses direct active-memory offset': 'byteAt(memory, 0x001B, 0)' in controller and 'byteAt(memory, 0x001B)' in studio_cpp and 'fileU8(memory, 0x001B)' not in studio_cpp,
+              'fbx write owns one byte and fixed neighbour': 'FBX_NATIVE_0_4_CAPTURED_V1' in protocol_cpp and 'qBound(NativeRange::MicFbxMinLevel' in protocol_cpp and 'body.append(char(0x00));' in protocol_cpp,
+              'fbx capture evidence documented': 'activeMemory[0x001B]' in fbx_doc and 'Level 4' in fbx_doc and 'RSP `0xFA`' in fbx_doc and 'observational evidence only' in fbx_doc,
               'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
