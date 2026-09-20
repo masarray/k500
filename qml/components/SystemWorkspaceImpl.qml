@@ -788,7 +788,7 @@ Item {
                 title:"Startup Limits"
                 channels:[
                     {label:"MUSIC INIT",value:Number(root.systemValue("musicInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"MUSIC MAX",value:Number(root.systemValue("musicMaxVol",84)),from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MUSIC MAX",value:Number(root.engine.musicMaxVol),from:0,to:84,step:1,unit:"",decimals:0},
                     {label:"MIC INIT",value:Number(root.systemValue("micInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0},
                     {label:"MIC MAX",value:Number(root.systemValue("micMaxVol",84)),from:0,to:84,step:1,unit:"",decimals:0},
                     {label:"EFFECT INIT",value:Number(root.systemValue("effectInitLevel",25)),from:0,to:84,step:1,unit:"",decimals:0}
