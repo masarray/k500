@@ -1,7 +1,7 @@
 # K500 Capture Coverage & TODO Map
 
-Status date: 2026-09-18
-Branch reference: `fix/p3-1-nondisruptive-native-ranges` / PR #79
+Status date: 2026-09-20
+Baseline: `main` @ `70ec5a8f36fc66e45c5c20ae9edc2426b3c01032`; FBX follow-up branch `fix/fbx-0-4-native-capture`
 
 This document is the capture-planning source of truth. It separates:
 - device READ mapping (connect/readback/runtime state),
@@ -62,7 +62,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | Mic HPF/LPF frequency | ✅ | ✅ | complete | no |
 | Mic HPF/LPF filter type on CONNECT | ❌ assumed/defaulted | n/a | partial | **YES** |
 | Mic Noise Gate | ✅ active memory 0x0016 | ❌ no donor-verified write | partial | **YES — write delta** |
-| FBE/FBX level | ✅ active memory 0x001B | ❌ current top-Mic block preserves device bytes | partial | **YES — write delta** |
+| FBX / anti-feedback level | ✅ direct activeMemory[0x001B], range 0..4 | ✅ CMD 0x05 direct byte + RSP 0xFA | complete | no |
 
 ## Reverb
 
@@ -153,24 +153,23 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
 2. **Mic Noise Gate write**.
-3. **FBE/FBX write**.
-4. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
-5. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
-6. **Crossover filter-type readback** — connect after changing one representative non-FX type to a non-default value.
-7. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
+3. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
+4. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
+5. **Crossover filter-type readback** — connect after changing one representative non-FX type to a non-default value.
+6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
 
 ### P1 — useful next
 
-8. Main L/R delay, Center delay, Sub delay.
-9. Equipment Mode Name rename.
-10. BT Name and BLE Name rename/reset.
-11. Adj Manner / VR OFF.
+7. Main L/R delay, Center delay, Sub delay.
+8. Equipment Mode Name rename.
+9. BT Name and BLE Name rename/reset.
+10. Adj Manner / VR OFF.
 
 ### P2 — last / potentially destructive
 
-12. Reset All Settings.
-13. Lock state/password flows.
-14. Admin/User mode and password flows.
+11. Reset All Settings.
+12. Lock state/password flows.
+13. Admin/User mode and password flows.
 
 ## Recommended capture method
 
