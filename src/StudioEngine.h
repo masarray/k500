@@ -117,6 +117,7 @@ class StudioEngine final : public QObject
     Q_PROPERTY(double uDiskGain READ uDiskGain WRITE setUDiskGain NOTIFY uDiskGainChanged)
     Q_PROPERTY(double digitalGain READ digitalGain WRITE setDigitalGain NOTIFY digitalGainChanged)
     Q_PROPERTY(double masterMusic READ masterMusic WRITE setMasterMusic NOTIFY masterMusicChanged)
+    Q_PROPERTY(double musicMaxVol READ musicMaxVol WRITE setMusicMaxVol NOTIFY musicMaxVolChanged)
     Q_PROPERTY(double masterMic READ masterMic WRITE setMasterMic NOTIFY masterMicChanged)
     Q_PROPERTY(double masterFx READ masterFx WRITE setMasterFx NOTIFY masterFxChanged)
     Q_PROPERTY(QString lastChangedPath READ lastChangedPath NOTIFY stateEdited)
@@ -210,6 +211,7 @@ public:
     double uDiskGain() const { return m_uDiskGain; }
     double digitalGain() const { return m_digitalGain; }
     double masterMusic() const { return m_masterMusic; }
+    double musicMaxVol() const { return m_musicMaxVol; }
     double masterMic() const { return m_masterMic; }
     double masterFx() const { return m_masterFx; }
     QString lastChangedPath() const { return m_lastChangedPath; }
@@ -244,6 +246,7 @@ public slots:
     void setUDiskGain(double value);
     void setDigitalGain(double value);
     void setMasterMusic(double value);
+    void setMusicMaxVol(double value);
     void setMasterMic(double value);
     void setMasterFx(double value);
 
@@ -265,6 +268,7 @@ signals:
     void uDiskGainChanged();
     void digitalGainChanged();
     void masterMusicChanged();
+    void musicMaxVolChanged();
     void masterMicChanged();
     void masterFxChanged();
     void stateEdited(const QString &path, const QVariant &value);
@@ -313,6 +317,7 @@ private:
     double m_uDiskGain = -4.0;
     double m_digitalGain = -4.0;
     double m_masterMusic = 35.0;
+    double m_musicMaxVol = 84.0;
     double m_masterMic = 35.0;
     double m_masterFx = 35.0;
     QString m_lastChangedPath;
