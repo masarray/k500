@@ -422,7 +422,10 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         notify();
     };
 
-    syncDouble(m_masterMusic, fileU8(memory, 0x0008), [this] { emit masterMusicChanged(); });
+    syncDouble(m_musicMaxVol, fileU8(memory, 0x000C), [this] { emit musicMaxVolChanged(); });
+    syncDouble(m_masterMusic,
+               qMin<double>(fileU8(memory, 0x0008), m_musicMaxVol),
+               [this] { emit masterMusicChanged(); });
     syncDouble(m_masterMic, fileU8(memory, 0x0009), [this] { emit masterMicChanged(); });
     syncDouble(m_masterFx, fileU8(memory, 0x000A), [this] { emit masterFxChanged(); });
     syncInt(m_musicKey, static_cast<int>(fileU8(memory, 0x0011)) - 7, [this] { emit musicKeyChanged(); });
@@ -444,6 +447,8 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
                K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false),
                [this] { emit lpTypeChanged(); });
 
+    // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — these three bytes are a shared
+    // EQ-enable image. Set bit = active, clear bit = bypass.
     const K500EqBypassImage eqBypass{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
     QVariantMap eqState;
     for (const LiveEqDescriptor &section : LiveEqSections) {
@@ -750,7 +755,31 @@ void StudioEngine::setDigitalGain(double value)
 
 void StudioEngine::setMasterMusic(double value)
 {
-    if (assign(m_masterMusic, clampValue(value, 0.0, 100.0), "system.topMusicVol")) emit masterMusicChanged();
+    // MUSIC_MAX_NATIVE_CEILING_V1 — keep the visual fader on the native 0..84
+    // ruler, but never let the desired Top Music value exceed Music Max.
+    if (assign(m_masterMusic, clampValue(value, 0.0, m_musicMaxVol), "system.topMusicVol"))
+        emit masterMusicChanged();
+}
+
+void StudioEngine::setMusicMaxVol(double value)
+{
+    const double nextMax = clampValue(value, 0.0, K500Protocol::TopVolumeMax);
+    if (qFuzzyCompare(m_musicMaxVol + 1000.0, nextMax + 1000.0)
+        && m_masterMusic <= nextMax)
+        return;
+
+    m_musicMaxVol = nextMax;
+    emit musicMaxVolChanged();
+
+    // Native behavior: lowering Max below the current master clamps the master
+    // immediately; raising Max never raises the current master.
+    if (m_masterMusic > m_musicMaxVol) {
+        m_masterMusic = m_musicMaxVol;
+        emit masterMusicChanged();
+    }
+
+    m_lastChangedPath = QStringLiteral("system.musicMaxVol");
+    emit stateEdited(m_lastChangedPath, m_musicMaxVol);
 }
 
 void StudioEngine::setMasterMic(double value)
