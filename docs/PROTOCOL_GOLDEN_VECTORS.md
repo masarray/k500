@@ -130,6 +130,46 @@ never stale UI defaults. Music Noise Gate is now a capture-verified writable fie
 until the user edits it in the current session, its byte is still preserved from
 device scalar truth. Regression tests verify both preservation and captured gate writes.
 
+### System Music Max — native hard ceiling
+
+Music Max is a direct `0..84` field inside the same Top Music block. The native
+application enforces:
+
+```text
+TopMusic = min(TopMusic, MusicMax)
+```
+
+Exact captured vectors:
+
+```text
+Top 25 / Max 60  AA 0D 02 19 19 3C 02 09 09 09 08 08 07 15 02 38
+Top 20 / Max 20  AA 0D 02 14 19 14 02 09 09 09 08 08 07 15 02 65
+Top  0 / Max 84  AA 0D 02 00 19 54 02 09 09 09 08 08 07 15 02 39
+```
+
+Lowering Max below the current master clamps the master in the same frame.
+Raising Max never raises the current master automatically.
+
+## Shared EQ enable image / active-low bypass
+
+Physical reconnect captures prove `activeMemory[0x027D..0x027F]` is best
+interpreted as a shared EQ-enable image, not a bypass-on bitmap:
+
+```text
+relevant bit SET   -> EQ active / not bypassed
+relevant bit CLEAR -> EQ bypassed
+```
+
+Music proof:
+
+```text
+FD FF 03 -> Music active
+7D FF 03 -> Music bypassed
+delta 80
+```
+
+Therefore bypass writes clear the relevant enable mask; un-bypass writes set it.
+
 ## P1 Top Mic CMD 0x05
 
 FBX 0–4 is now physically captured. Reference default state:

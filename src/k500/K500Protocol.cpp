@@ -282,9 +282,11 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.reserve(14);
     body.append(char(0x0D));
     body.append(char(0x02));
-    body.append(char(K500Frame::clampByte(qBound(0, state.topMusicVol, TopVolumeMax))));
+    const int safeMusicMax = qBound(0, state.musicMaxVol, TopVolumeMax);
+    const int safeTopMusic = qBound(0, qMin(state.topMusicVol, safeMusicMax), TopVolumeMax);
+    body.append(char(K500Frame::clampByte(safeTopMusic)));
     body.append(char(mirrored(0x03, state.musicInitVol)));
-    body.append(char(mirrored(0x04, TopVolumeMax)));
+    body.append(char(K500Frame::clampByte(safeMusicMax)));
     // MUSIC_SOURCE_SIX_WAY_V1 — INPUT1, INPUT2, BT, UDISK, OPTIC, UAUDIO.
     body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 5))));
     body.append(char(K500Frame::clampByte(qRound(state.input1GainDb + 12.0))));
@@ -412,8 +414,10 @@ bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled)
     if (!eqBypassSpec(section, &byteIndex, &mask))
         return false;
     quint8 *target = byteIndex == 0 ? &image.m0 : (byteIndex == 1 ? &image.m1 : &image.m2);
-    *target = enabled ? static_cast<quint8>(*target | mask)
-                      : static_cast<quint8>(*target & static_cast<quint8>(~mask));
+    // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — reconnect captures prove these are
+    // EQ-enable bits: set=EQ active, clear=EQ bypassed.
+    *target = enabled ? static_cast<quint8>(*target & static_cast<quint8>(~mask))
+                      : static_cast<quint8>(*target | mask);
     return true;
 }
 
@@ -424,13 +428,15 @@ bool eqBypassEnabled(const K500EqBypassImage &image, const QString &section)
     if (!eqBypassSpec(section, &byteIndex, &mask))
         return false;
     const quint8 value = byteIndex == 0 ? image.m0 : (byteIndex == 1 ? image.m1 : image.m2);
-    return (value & mask) == mask;
+    // set bit = EQ enabled; clear bit = bypass.
+    return (value & mask) != mask;
 }
 
 QByteArray eqBypassWrite(const K500EqBypassImage &image)
 {
-    // EQ_BYPASS_24BIT_CAPTURED_V2 — native KTV writes the complete shared
-    // 3-byte bypass image. Preserve every unrelated/reserved bit via RMW.
+    // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — native KTV writes the complete shared
+    // 3-byte EQ-enable image. Preserve every unrelated/reserved bit via RMW;
+    // bypass is represented by clearing the relevant enable bit.
     return K500Frame::build(bytes({0x06, 0x0F, 0x40, image.m0, image.m1, image.m2, 0x02}));
 }
 
@@ -572,6 +578,31 @@ bool selfTest(QString *error)
     K500MusicBlockState music;
     if (!expect(topMusicBlock(music, {}), {0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09, 0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}, QStringLiteral("top music default"))) return false;
 
+    // MUSIC_MAX_NATIVE_CEILING_V1 — exact native capture points.
+    K500MusicBlockState maxCapture;
+    maxCapture.topMusicVol = 25;
+    maxCapture.musicInitVol = 25;
+    maxCapture.musicMaxVol = 60;
+    maxCapture.sourceRaw = 2;
+    maxCapture.input1GainDb = -3; maxCapture.input2GainDb = -3;
+    maxCapture.bluetoothGainDb = -3; maxCapture.uDiskGainDb = -4; maxCapture.digitalGainDb = -4;
+    maxCapture.key = 0; maxCapture.noiseGateRaw = 21;
+    QByteArray maxScalars(0x40, char(0));
+    maxScalars[0x03] = char(25);
+    maxScalars[0x07] = char(2);
+    if (!expect(topMusicBlock(maxCapture, maxScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x3C,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x38},
+                QStringLiteral("Music Max 60 preserves Top Music 25"))) return false;
+    maxCapture.musicMaxVol = 20;
+    if (!expect(topMusicBlock(maxCapture, maxScalars),
+                {0xAA,0x0D,0x02,0x14,0x19,0x14,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x65},
+                QStringLiteral("Music Max 20 clamps Top Music to 20"))) return false;
+    maxCapture.topMusicVol = 0;
+    maxCapture.musicMaxVol = 84;
+    if (!expect(topMusicBlock(maxCapture, maxScalars),
+                {0xAA,0x0D,0x02,0x00,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x39},
+                QStringLiteral("raising Music Max does not raise Top Music"))) return false;
+
     K500MusicBlockState gateCapture;
     gateCapture.topMusicVol = 25;
     gateCapture.musicInitVol = 25;
@@ -607,7 +638,7 @@ bool selfTest(QString *error)
                 QStringLiteral("Music Bass +9 capture"))) return false;
     QByteArray scalars(0x40, char(0));
     scalars[0x03] = char(0x31); scalars[0x04] = char(0x52); scalars[0x1B] = char(0x0B); scalars[0x07] = char(0x06);
-    music.topMusicVol = 70; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
+    music.topMusicVol = 70; music.musicMaxVol = 82; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
     if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music mirrored scalar"))) return false;
 
     K500MicBlockState mic;
@@ -736,19 +767,35 @@ bool selfTest(QString *error)
     if (echoBlock(echoHigh, echoSeed) != echoBlock(echoMax, echoSeed))
         return fail(QStringLiteral("Echo native maximum clamp mismatch"));
 
-    // EQ_BYPASS_24BIT_CAPTURED_V2 — sequential donor vectors prove one shared
-    // 24-bit image across Mic/Music/Main/Surround/Center/Sub/Reverb/Echo.
-    K500EqBypassImage bypass{0x1D, 0xAA, 0x00};
-    if (!expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xAA,0x00,0x02,0xE2}, QStringLiteral("EQ bypass baseline USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("sub"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xEA,0x00,0x02,0xA2}, QStringLiteral("Sub EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("center"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xFA,0x00,0x02,0x92}, QStringLiteral("Center EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("surround"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xFE,0x00,0x02,0x8E}, QStringLiteral("Surround EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("main"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x1D,0xFF,0x00,0x02,0x8D}, QStringLiteral("Main EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("mic"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0x7D,0xFF,0x00,0x02,0x2D}, QStringLiteral("Mic EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("music"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x00,0x02,0xAD}, QStringLiteral("Music EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("reverb"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x01,0x02,0xAC}, QStringLiteral("Reverb EQ bypass ON USB capture"))) return false;
-    if (!setEqBypass(bypass, QStringLiteral("echo"), true) || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)), {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0xAA}, QStringLiteral("Echo EQ bypass ON USB capture"))) return false;
-    if (!eqBypassEnabled(bypass, QStringLiteral("mic")) || !eqBypassEnabled(bypass, QStringLiteral("echo"))) return fail(QStringLiteral("EQ bypass decode mismatch"));
+    // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — physical Music reconnect captures:
+    // FD = Music EQ ACTIVE, 7D = Music EQ BYPASSED (delta 0x80).
+    K500EqBypassImage bypass{0xFD, 0xFF, 0x03};
+    if (eqBypassEnabled(bypass, QStringLiteral("music"))
+        || eqBypassEnabled(bypass, QStringLiteral("mic"))
+        || eqBypassEnabled(bypass, QStringLiteral("main"))
+        || eqBypassEnabled(bypass, QStringLiteral("reverb")))
+        return fail(QStringLiteral("all-enable image must decode as EQ active"));
+
+    if (!setEqBypass(bypass, QStringLiteral("music"), true)
+        || !eqBypassEnabled(bypass, QStringLiteral("music"))
+        || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)),
+                   {0xAA,0x06,0x00,0x0F,0x40,0x7D,0xFF,0x03,0x02,0x2A},
+                   QStringLiteral("Music EQ bypass ON clears enable bit")))
+        return false;
+
+    if (!setEqBypass(bypass, QStringLiteral("music"), false)
+        || eqBypassEnabled(bypass, QStringLiteral("music"))
+        || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)),
+                   {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0xAA},
+                   QStringLiteral("Music EQ bypass OFF restores enable bit")))
+        return false;
+
+    if (!setEqBypass(bypass, QStringLiteral("reverb"), true)
+        || !eqBypassEnabled(bypass, QStringLiteral("reverb"))
+        || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)),
+                   {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x02,0x02,0xAB},
+                   QStringLiteral("Reverb EQ bypass ON clears enable bit")))
+        return false;
 
     if (!expect(micEqLink(false), {0xAA, 0x04, 0x3C, 0x00, 0x00, 0xC4, 0xFC}, QStringLiteral("mic EQ link off"))) return false;
     if (!expect(micEqLink(true), {0xAA, 0x04, 0x3C, 0x01, 0x01, 0x9E, 0x20}, QStringLiteral("mic EQ link on"))) return false;

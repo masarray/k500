@@ -8,6 +8,11 @@ Item {
     property real from: -60.0
     property real to: 10.0
     property real defaultValue: 0.0
+    // Optional interaction ceiling that does not change the visual ruler.
+    // MUSIC_MAX_NATIVE_CEILING_V1 uses this so 25 remains at the 25/84 physical
+    // position instead of becoming the top of a rescaled 0..25 fader.
+    property real hardMax: to
+    readonly property real effectiveMax: Math.max(from, Math.min(to, hardMax))
     property color accentColor: Theme.accent
     // Kept for source compatibility with older panel bindings. Visual ownership
     // is intentionally focus-based so two independent panels can never leave
@@ -45,15 +50,15 @@ Item {
     function normToValue(n){ return from+clamp(n,0,1)*(to-from) }
     function quantize(v,fine){
         var s=fine?step/5:step
-        if(s<=0)return clamp(v,from,to)
-        return clamp(Math.round(v/s)*s,from,to)
+        if(s<=0)return clamp(v,from,effectiveMax)
+        return clamp(Math.round(v/s)*s,from,effectiveMax)
     }
     function activate(){
         forceActiveFocus()
         activated()
     }
     function commitPreview(next){
-        next=clamp(next,from,to)
+        next=clamp(next,from,effectiveMax)
         if(Math.abs(next-previewValue)<0.000001)return
         previewValue=next
         valueEdited(next)
@@ -70,7 +75,7 @@ Item {
         // Relative drag avoids the abrupt jump of absolute track mapping and
         // stays controllable even when the pointer starts away from the cap.
         var sensitivity=fine?0.20:1.0
-        dragRawValue=clamp(dragRawValue-(dy/travel)*(to-from)*sensitivity,from,to)
+        dragRawValue=clamp(dragRawValue-(dy/travel)*(to-from)*sensitivity,from,effectiveMax)
         commitPreview(quantize(dragRawValue,fine))
     }
 
@@ -78,7 +83,7 @@ Item {
     Keys.onPressed: function(event){
         if(event.key===Qt.Key_Up||event.key===Qt.Key_Right){activate();nudge(1,(event.modifiers&Qt.ShiftModifier)!==0);event.accepted=true}
         else if(event.key===Qt.Key_Down||event.key===Qt.Key_Left){activate();nudge(-1,(event.modifiers&Qt.ShiftModifier)!==0);event.accepted=true}
-        else if(event.key===Qt.Key_Home){activate();previewValue=defaultValue;dragRawValue=defaultValue;valueEdited(defaultValue);event.accepted=true}
+        else if(event.key===Qt.Key_Home){activate();var v=clamp(defaultValue,from,effectiveMax);previewValue=v;dragRawValue=v;valueEdited(v);event.accepted=true}
     }
     onValueChanged: if(!dragging){previewValue=value;dragRawValue=value}
 
@@ -198,9 +203,10 @@ Item {
         onCanceled:{root.dragging=false;root.dragRawValue=root.previewValue}
         onDoubleClicked:function(e){
             root.activate()
-            root.previewValue=root.defaultValue
-            root.dragRawValue=root.defaultValue
-            root.valueEdited(root.defaultValue)
+            var v=root.clamp(root.defaultValue,root.from,root.effectiveMax)
+            root.previewValue=v
+            root.dragRawValue=v
+            root.valueEdited(v)
             e.accepted=true
         }
         onWheel:function(e){

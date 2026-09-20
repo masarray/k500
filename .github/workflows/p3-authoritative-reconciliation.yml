@@ -17,12 +17,17 @@ on:
       - 'qml/components/MusicTonePanel.qml'
       - 'qml/components/ParameterSlider.qml'
       - 'qml/components/SystemWorkspaceImpl.qml'
+      - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/StudioFader.qml'
+      - 'qml/components/RackFaderPanel.qml'
       - 'qml/components/TopBar.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
       - 'docs/K500_FBX_CAPTURE_MAP.md'
       - 'docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md'
+      - 'docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md'
+      - 'docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -39,7 +44,13 @@ on:
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/MusicTonePanel.qml'
       - 'qml/components/ParameterSlider.qml'
+      - 'qml/components/SystemWorkspaceImpl.qml'
+      - 'qml/components/MasterStripPanel.qml'
+      - 'qml/components/StudioFader.qml'
+      - 'qml/components/RackFaderPanel.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
+      - 'docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md'
+      - 'docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
 
@@ -94,12 +105,17 @@ jobs:
           music_tone_qml = Path('qml/components/MusicTonePanel.qml').read_text(encoding='utf-8')
           parameter_slider = Path('qml/components/ParameterSlider.qml').read_text(encoding='utf-8')
           system_qml = Path('qml/components/SystemWorkspaceImpl.qml').read_text(encoding='utf-8')
+          master_strip_qml = Path('qml/components/MasterStripPanel.qml').read_text(encoding='utf-8')
+          studio_fader_qml = Path('qml/components/StudioFader.qml').read_text(encoding='utf-8')
+          rack_fader_qml = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
           topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
           native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
           runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
           music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
           fbx_doc = Path('docs/K500_FBX_CAPTURE_MAP.md').read_text(encoding='utf-8')
           music_xover_doc = Path('docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md').read_text(encoding='utf-8')
+          music_max_doc = Path('docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md').read_text(encoding='utf-8')
+          eq_bypass_doc = Path('docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
@@ -134,6 +150,10 @@ jobs:
               'music crossover type readback uses exact active offsets': 'byteAt(memory, 0x0007)' in studio_cpp and 'byteAt(memory, 0x0008)' in studio_cpp and 'byteAt(memory, 0x0007)' in controller and 'byteAt(memory, 0x0008)' in controller,
               'music crossover types are canonical captured truth': 'it.key() == QStringLiteral("music")' in controller and 'captured(prefix + QStringLiteral("hpType")' in controller and 'captured(prefix + QStringLiteral("lpType")' in controller,
               'music crossover capture evidence documented': 'activeMemory[0x0007]' in music_xover_doc and 'activeMemory[0x0008]' in music_xover_doc and '0 = Bypass' in music_xover_doc and '7 | HP LR 24' in music_xover_doc,
+              'eq bypass is active-low enable semantics': 'EQ_ENABLE_ACTIVE_LOW_BYPASS_V1' in protocol_cpp and 'return (value & mask) != mask;' in protocol_cpp and '*target & static_cast<quint8>(~mask)' in protocol_cpp and 'activeMemory[0x027D] = FD' in eq_bypass_doc and 'activeMemory[0x027D] = 7D' in eq_bypass_doc,
+              'music max protocol ceiling is captured': 'musicMaxVol = 84' in protocol_h and 'qMin(state.topMusicVol, safeMusicMax)' in protocol_cpp and 'system.musicMaxVol' in controller and 'qMin(m_music.topMusicVol, m_music.musicMaxVol)' in controller,
+              'music max UI keeps native ruler ceiling': 'musicMaxVol READ musicMaxVol' in studio_h and 'setMusicMaxVol' in studio_cpp and 'hardMax' in studio_fader_qml and 'root.engine.musicMaxVol' in master_strip_qml and 'system.musicMaxVol' in rack_fader_qml and 'root.engine.musicMaxVol' in system_qml,
+              'music max capture evidence documented': 'TopMusic = min(TopMusic, MusicMax)' in music_max_doc and 'Music Max 20' in music_max_doc and 'raising Max' in music_max_doc,
               'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }

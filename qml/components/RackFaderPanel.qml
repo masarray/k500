@@ -89,6 +89,11 @@ StudioPanel {
             if (l === "DIRECT") return "effects.echo.direct"
             return ""
         }
+        if (t === "Startup Limits") {
+            if (l === "MUSIC MAX") return "system.musicMaxVol"
+            return ""
+        }
+
         var section = ""
         if (t === "Main Bus") section = "main"
         else if (t === "Surround Bus") section = "surround"
@@ -108,7 +113,12 @@ StudioPanel {
     function dispatchLive(label, value) {
         var path = livePathFor(label)
         var engine = studioEngine()
-        if (path.length && engine) engine.editDevicePath(path, value)
+        if (!path.length || !engine) return
+        if (path === "system.musicMaxVol") {
+            engine.musicMaxVol = value
+            return
+        }
+        engine.editDevicePath(path, value)
     }
     function muteCapable(label) {
         var t = String(root.title || "")

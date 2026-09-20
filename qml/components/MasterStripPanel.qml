@@ -105,6 +105,7 @@ StudioPanel {
                             value: channel.liveValue
                             from: 0
                             to: 84
+                            hardMax: modelData.field === "music" ? Number(root.engine.musicMaxVol) : 84
                             defaultValue: 35
                             step: 1
                             accentColor: Theme.accent
