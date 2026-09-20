@@ -72,6 +72,16 @@ READ truth is direct `activeMemory[0x001B]`. WRITE uses Top Mic `CMD 0x05`
 with the same raw integer level `0..4`; the following command byte is fixed
 `0x00` in all five captured levels.
 
+## System Music Max — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Music Max | 0 | 84 | scalar | Native packet capture |
+| Top Music / Master Music | 0 | Music Max | scalar | Native packet capture |
+
+Lowering Music Max below the current Top Music value clamps Top Music in the
+same native `CMD 0x02` block. Raising Music Max does not raise Top Music.
+
 ## Common PEQ
 
 | Parameter | Minimum | Maximum | Unit | Evidence |
