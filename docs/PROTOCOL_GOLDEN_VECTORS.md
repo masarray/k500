@@ -82,6 +82,32 @@ Sub EQ        AA 09 03 08 02 63 01 0A 80 6F 00 8D
 
 ## Crossover `CMD 0x11`
 
+### Music HP/LP type READ truth
+
+Physical reconnect captures prove these direct active-memory bytes:
+
+```text
+activeMemory[0x0007] = Music HP Type
+activeMemory[0x0008] = Music LP Type
+```
+
+The native filter enum is shared with `crossoverFilterCode()`:
+
+```text
+0 Bypass
+1 Bessel 12
+2 Butter 12
+3 Bessel 18
+4 Butter 18
+5 Bessel 24
+6 Butter 24
+7 LR 24 / Link Riley 24
+```
+
+The complete 0..7 sequence is physically captured for Music HP. Music LP
+independently proves 0=Bypass and 2=Butter12; remaining LP labels reuse the
+same shared enum and remain explicitly documented as protocol-family inference.
+
 Reference 1000 Hz, Butterworth 12 unless noted:
 
 ```text

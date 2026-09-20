@@ -167,6 +167,10 @@ QByteArray outputBlock(const QString &section,
 QByteArray micEqLink(bool enabled);
 
 quint8 crossoverFilterCode(const QString &label);
+// MUSIC_CROSSOVER_TYPE_READBACK_V1 — manufacturer reconnect captures map
+// Music HP Type to activeMemory[0x0007] and LP Type to activeMemory[0x0008].
+// Decode the shared native 0..7 filter enum into the UI labels used by K500.
+QString crossoverFilterLabel(quint8 code, bool highPass);
 bool selfTest(QString *error = nullptr);
 
 } // namespace K500Protocol

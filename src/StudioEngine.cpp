@@ -416,6 +416,11 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         target = value;
         notify();
     };
+    const auto syncString = [](QString &target, const QString &value, const auto &notify) {
+        if (target == value) return;
+        target = value;
+        notify();
+    };
 
     syncDouble(m_masterMusic, fileU8(memory, 0x0008), [this] { emit masterMusicChanged(); });
     syncDouble(m_masterMic, fileU8(memory, 0x0009), [this] { emit masterMicChanged(); });
@@ -428,6 +433,16 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     syncDouble(m_digitalGain, static_cast<int>(fileU8(memory, 0x0022)) - 12, [this] { emit digitalGainChanged(); });
     syncDouble(m_hpfHz, fileU16(memory, 0x009C), [this] { emit hpfHzChanged(); });
     syncDouble(m_lpfHz, fileU16(memory, 0x009E), [this] { emit lpfHzChanged(); });
+
+    // MUSIC_CROSSOVER_TYPE_READBACK_V1 — physical reconnect captures prove
+    // direct active-memory offsets 0x0007=Music HP Type and 0x0008=Music LP Type.
+    // These bytes are authoritative device state and must replace stale/default UI.
+    syncString(m_hpType,
+               K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0007), true),
+               [this] { emit hpTypeChanged(); });
+    syncString(m_lpType,
+               K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false),
+               [this] { emit lpTypeChanged(); });
 
     const K500EqBypassImage eqBypass{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
     QVariantMap eqState;
@@ -468,11 +483,17 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         const double lpf = fileU16(memory, section.lpfFileOffset, 20000);
         QString hpType = QStringLiteral("HP Butter 12");
         QString lpType = QStringLiteral("LP Butter 12");
-        if (model) {
+        if (key == QStringLiteral("music")) {
+            hpType = m_hpType;
+            lpType = m_lpType;
+        } else if (model) {
+            // Other sections remain evidence-gated until their own reconnect
+            // captures identify authoritative type bytes.
             hpType = model->hpType();
             lpType = model->lpType();
-            model->syncCrossover(hpf, lpf, hpType, lpType);
         }
+        if (model)
+            model->syncCrossover(hpf, lpf, hpType, lpType);
         QString bypassKey = key;
         if (key == QStringLiteral("micA") || key == QStringLiteral("micB")) bypassKey = QStringLiteral("mic");
         else if (key.endsWith(QStringLiteral("Alt"))) bypassKey.chop(3);
