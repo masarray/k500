@@ -476,6 +476,7 @@ bool selfTest(QString *error)
     // P1_PROTOCOL_GOLDEN_VECTORS_V1
     // REVERB_CMD0B_CAPTURED_V1
     // ECHO_CMD0D_CAPTURED_V1
+    // FBX_NATIVE_0_4_CAPTURED_V1
     const auto fail = [error](const QString &message) {
         if (error) *error = message;
         return false;
@@ -498,9 +499,19 @@ bool selfTest(QString *error)
     if (!expect(playerCommand(QStringLiteral("playPause")), {0xAA, 0x03, 0x06, 0x02, 0x05, 0xF0}, QStringLiteral("play/pause"))) return false;
 
     if (!expect(readBlock(0x0000, 0x003A, 0x63), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x63, 0x1D}, QStringLiteral("Bluetooth read-block"))) return false;
-    if (!expect(readBlock(0x0000, 0x003A, 0x02), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x02, 0x7E}, QStringLiteral("USB read-block captured mode 0x02"))) return false;
+    if (!expect(K500Frame::toUsbFrame(readBlock(0x0000, 0x003A, 0x00)),
+                {0xAA, 0x06, 0x00, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80},
+                QStringLiteral("USB read-block established wire byte"))) return false;
+    // Native FBX captures correlate its final read-request byte with FBX 0..4.
+    // Until replay necessity is proven, SonKuPik intentionally keeps the
+    // established USB wire value 0x00 even if a caller supplies another value.
+    if (!expect(K500Frame::toUsbFrame(readBlock(0x0000, 0x003A, 0x04)),
+                {0xAA, 0x06, 0x00, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80},
+                QStringLiteral("USB read-block FBX correlation remains evidence-gated"))) return false;
     if (!expect(readBlock(0x03A0, 0x000B, 0x63), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x63, 0xA9}, QStringLiteral("Bluetooth final read-block"))) return false;
-    if (!expect(readBlock(0x03A0, 0x000B, 0x02), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x02, 0x0A}, QStringLiteral("USB final read-block captured mode 0x02"))) return false;
+    if (!expect(K500Frame::toUsbFrame(readBlock(0x03A0, 0x000B, 0x00)),
+                {0xAA, 0x06, 0x00, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x00, 0x0C},
+                QStringLiteral("USB final read-block established wire byte"))) return false;
 
     K500EqBand band;
     band.frequencyHz = 355.0;
