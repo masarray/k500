@@ -3,6 +3,7 @@
 #include "K500Frame.h"
 
 #include <QHash>
+#include <QList>
 #include <QtMath>
 #include <initializer_list>
 
