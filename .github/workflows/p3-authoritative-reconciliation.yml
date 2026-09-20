@@ -22,6 +22,7 @@ on:
       - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
       - 'docs/K500_FBX_CAPTURE_MAP.md'
+      - 'docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
       - '.github/workflows/p3-authoritative-reconciliation.yml'
   pull_request:
@@ -98,6 +99,7 @@ jobs:
           runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
           music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
           fbx_doc = Path('docs/K500_FBX_CAPTURE_MAP.md').read_text(encoding='utf-8')
+          music_xover_doc = Path('docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
           test = Path('src/k500/P1CanonicalStateSelfTestMain.cpp').read_text(encoding='utf-8')
 
@@ -128,6 +130,10 @@ jobs:
               'fbx read uses direct active-memory offset': 'byteAt(memory, 0x001B, 0)' in controller and 'byteAt(memory, 0x001B)' in studio_cpp and 'fileU8(memory, 0x001B)' not in studio_cpp,
               'fbx write owns one byte and fixed neighbour': 'FBX_NATIVE_0_4_CAPTURED_V1' in protocol_cpp and 'qBound(NativeRange::MicFbxMinLevel' in protocol_cpp and 'body.append(char(0x00));' in protocol_cpp,
               'fbx capture evidence documented': 'activeMemory[0x001B]' in fbx_doc and 'Level 4' in fbx_doc and 'RSP `0xFA`' in fbx_doc and 'observational evidence only' in fbx_doc,
+              'music crossover type decoder exists': 'MUSIC_CROSSOVER_TYPE_READBACK_V1' in protocol_h and 'crossoverFilterLabel' in protocol_cpp and 'case 0x07' in protocol_cpp,
+              'music crossover type readback uses exact active offsets': 'byteAt(memory, 0x0007)' in studio_cpp and 'byteAt(memory, 0x0008)' in studio_cpp and 'byteAt(memory, 0x0007)' in controller and 'byteAt(memory, 0x0008)' in controller,
+              'music crossover types are canonical captured truth': 'it.key() == QStringLiteral("music")' in controller and 'captured(prefix + QStringLiteral("hpType")' in controller and 'captured(prefix + QStringLiteral("lpType")' in controller,
+              'music crossover capture evidence documented': 'activeMemory[0x0007]' in music_xover_doc and 'activeMemory[0x0008]' in music_xover_doc and '0 = Bypass' in music_xover_doc and '7 | HP LR 24' in music_xover_doc,
               'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
