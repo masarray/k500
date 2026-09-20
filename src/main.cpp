@@ -216,8 +216,10 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0018, 3);
         putFileU8(memory, 0x0019, 10);
         putFileU8(memory, 0x001A, 2);  // 0.2 sec
-        putFileU8(memory, 0x001B, 3);  // FBE native level
-        putFileU8(memory, 0x001C, 0);  // independent neighbour, not FBE
+        // FBX_NATIVE_0_4_CAPTURED_V1 — this is a direct live offset, not a
+        // .k500 file offset. Poison neighbour 0x001C to catch accidental mirror.
+        memory[0x001B] = char(3);       // FBX level 3
+        memory[0x001C] = char(0x63);    // independent neighbour, not FBX
         putFileU8(memory, 0x0092, 1);  // EQ link
         putFileU16(memory, 0x0098, 90);
         putFileU16(memory, 0x009A, 16000);
