@@ -297,6 +297,12 @@ int main(int argc, char *argv[])
         putLiveEqBand(memory, 0x00E7, 0, 125, 14, 0x10, 25);  // Mic A B1 low-shelf +2.5
         putLiveEqBand(memory, 0x0218, 4, 96, 20, 0xA0, 30);   // Sub B5 high-shelf -3.0
 
+        // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — all relevant enable bits set means
+        // EQ active / NOT bypassed, matching physical reconnect capture truth.
+        memory[0x027D] = char(0xFD);
+        memory[0x027E] = char(0xFF);
+        memory[0x027F] = char(0x03);
+
         const QStringList names{
             QStringLiteral("ARTIST GEN3 ARI"), QStringLiteral("PODCAST REBORN"),
             QStringLiteral("DANGDUT GEN3"), QStringLiteral("KARAOKE ARTIST"),
@@ -337,6 +343,7 @@ int main(int argc, char *argv[])
             && state.value(QStringLiteral("memorySize")).toInt() == 0x03AB
             && state.value(QStringLiteral("presetName")).toString() == QStringLiteral("KARAOKE ARTIST")
             && qFuzzyCompare(studioEngine.masterMusic(), 61.0)
+            && qFuzzyCompare(studioEngine.musicMaxVol(), 84.0)
             && qFuzzyCompare(studioEngine.masterMic(), 57.0)
             && qFuzzyCompare(studioEngine.masterFx(), 49.0)
             && studioEngine.musicKey() == 3
@@ -351,6 +358,8 @@ int main(int argc, char *argv[])
             && studioEngine.lpType() == QStringLiteral("Bypass")
             && musicEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
             && musicEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("Bypass")
+            && !musicEq.value(QStringLiteral("bypass")).toBool()
+            && !mainEq.value(QStringLiteral("bypass")).toBool()
             && system.value(QStringLiteral("musicInitVol")).toInt() == 25
             && system.value(QStringLiteral("musicMaxVol")).toInt() == 84
             && system.value(QStringLiteral("micInitVol")).toInt() == 26
@@ -400,6 +409,26 @@ int main(int argc, char *argv[])
             && hydrationEdits == 0;
         if (!hydrationValid)
             return 7;
+
+        // MUSIC_MAX_NATIVE_CEILING_V1 — lowering Max clamps current Music master
+        // immediately; raising Max back does not raise the master.
+        const int editsBeforeCeilingTest = hydrationEdits;
+        studioEngine.setMusicMaxVol(25);
+        const bool loweredCeilingValid =
+            qFuzzyCompare(studioEngine.musicMaxVol(), 25.0)
+            && qFuzzyCompare(studioEngine.masterMusic(), 25.0)
+            && studioEngine.lastChangedPath() == QStringLiteral("system.musicMaxVol")
+            && hydrationEdits == editsBeforeCeilingTest + 1;
+        studioEngine.setMusicMaxVol(84);
+        const bool raisedCeilingValid =
+            qFuzzyCompare(studioEngine.musicMaxVol(), 84.0)
+            && qFuzzyCompare(studioEngine.masterMusic(), 25.0)
+            && hydrationEdits == editsBeforeCeilingTest + 2;
+        if (!loweredCeilingValid || !raisedCeilingValid)
+            return 7;
+
+        // Restore authoritative fixture state for the QML/runtime half of this test.
+        studioEngine.hydrateFromDeviceMemory(memory);
     }
 
     QQmlApplicationEngine engine;
