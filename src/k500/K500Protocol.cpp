@@ -779,21 +779,21 @@ bool selfTest(QString *error)
     if (!setEqBypass(bypass, QStringLiteral("music"), true)
         || !eqBypassEnabled(bypass, QStringLiteral("music"))
         || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)),
-                   {0xAA,0x06,0x00,0x0F,0x40,0x7D,0xFF,0x03,0x02,0x80},
+                   {0xAA,0x06,0x00,0x0F,0x40,0x7D,0xFF,0x03,0x02,0x2A},
                    QStringLiteral("Music EQ bypass ON clears enable bit")))
         return false;
 
     if (!setEqBypass(bypass, QStringLiteral("music"), false)
         || eqBypassEnabled(bypass, QStringLiteral("music"))
         || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)),
-                   {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0x00},
+                   {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x03,0x02,0xAA},
                    QStringLiteral("Music EQ bypass OFF restores enable bit")))
         return false;
 
     if (!setEqBypass(bypass, QStringLiteral("reverb"), true)
         || !eqBypassEnabled(bypass, QStringLiteral("reverb"))
         || !expect(K500Frame::toUsbFrame(eqBypassWrite(bypass)),
-                   {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x02,0x02,0x01},
+                   {0xAA,0x06,0x00,0x0F,0x40,0xFD,0xFF,0x02,0x02,0xAB},
                    QStringLiteral("Reverb EQ bypass ON clears enable bit")))
         return false;
 
