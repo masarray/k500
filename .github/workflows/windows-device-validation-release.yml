@@ -1,0 +1,293 @@
+name: Windows Device Validation Release
+
+# One-shot prerelease publisher for validating the latest captured K500 mappings
+# on physical hardware before promoting the same line to public stable.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/windows-device-validation-release.yml'
+      - 'CMakeLists.txt'
+
+permissions:
+  contents: write
+
+env:
+  QT_VERSION: '6.10.2'
+  DEVICE_VALIDATION_TAG: 'v1.0.3-rc.1'
+  DEVICE_VALIDATION_VERSION: '1.0.3'
+  HARDWARE_ACCEPTANCE: pending-device-validation
+
+jobs:
+  package-device-validation:
+    name: Device validation installer + portable ZIP
+    runs-on: windows-2022
+
+    steps:
+      - name: Checkout exact candidate commit
+        uses: actions/checkout@v4
+
+      - name: Guard candidate identity
+        shell: pwsh
+        run: |
+          $cmake = Get-Content 'CMakeLists.txt' -Raw
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') {
+            throw 'Unable to read project version from CMakeLists.txt'
+          }
+          $version = $Matches[1]
+          if ($version -ne $env:DEVICE_VALIDATION_VERSION) {
+            throw "Candidate version mismatch: CMake=$version expected=$env:DEVICE_VALIDATION_VERSION"
+          }
+          if ($env:HARDWARE_ACCEPTANCE -ne 'pending-device-validation') {
+            throw 'Device-validation publisher must not claim hardware acceptance.'
+          }
+          Write-Host "Packaging $env:DEVICE_VALIDATION_TAG from commit $env:GITHUB_SHA"
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+          cmake --build build --config Release
+
+      - name: Run hardware-free regression suite
+        shell: pwsh
+        run: |
+          $tests = @(
+            'k500_p1_state_selftest.exe',
+            'k500_p2_scheduler_selftest.exe',
+            'k500_p2_selftest.exe',
+            'k500_p3_selftest.exe',
+            'k500_p42_batch_test.exe'
+          )
+          foreach ($test in $tests) {
+            $path = Join-Path 'build' $test
+            if (-not (Test-Path $path)) { throw "Missing regression executable: $path" }
+            if ($test -eq 'k500_p42_batch_test.exe') {
+              & $path tests/fixtures/donor-sample.k500
+            } else {
+              & $path
+            }
+            if ($LASTEXITCODE -ne 0) { throw "$test failed with exit code $LASTEXITCODE" }
+          }
+
+      - name: Deploy direct Qt application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
+          if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
+          windeployqt --release --qmldir qml package/SonKuPik-K500.exe
+
+          @"
+          Product: SonKuPik K500
+          Channel: Device Validation Candidate
+          Release tag: $env:DEVICE_VALIDATION_TAG
+          Application version: $env:DEVICE_VALIDATION_VERSION
+          Commit: $env:GITHUB_SHA
+          Qt: $env:QT_VERSION
+          Physical hardware acceptance: PENDING
+          Intended test transport: Windows x64 + K500 USB HID
+          Bluetooth SPP: experimental / outside this validation
+          "@ | Set-Content -Encoding utf8 package/BUILD-INFO.txt
+
+      - name: Validate deployed application self-tests
+        shell: pwsh
+        run: |
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
+          }
+
+      - name: Generate Windows installer branding
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          @'
+          from PIL import Image
+
+          source = Image.open('assets/SonKuPik-k500-logo.png').convert('RGBA')
+          source.save('package/SonKuPik-K500.ico', format='ICO',
+                      sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
+
+          def branded_bmp(size, logo_box, out_path):
+              canvas = Image.new('RGB', size, (13, 18, 22))
+              logo = source.copy()
+              logo.thumbnail(logo_box, Image.Resampling.LANCZOS)
+              x = (size[0] - logo.width) // 2
+              y = max(12, (size[1] - logo.height) // 3)
+              canvas.paste(logo, (x, y), logo)
+              canvas.save(out_path, format='BMP')
+
+          branded_bmp((164, 314), (132, 132), 'build/packaging/SonKuPik-K500-wizard.bmp')
+          branded_bmp((55, 55), (48, 48), 'build/packaging/SonKuPik-K500-wizard-small.bmp')
+          '@ | python -
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = $null
+          $command = Get-Command ISCC.exe -ErrorAction SilentlyContinue
+          if ($command) { $iscc = $command.Source }
+          if (-not $iscc) {
+            $candidates = @(
+              "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+              "$env:ProgramFiles\Inno Setup 6\ISCC.exe",
+              "$env:ChocolateyInstall\bin\ISCC.exe"
+            ) | Where-Object { $_ -and (Test-Path $_) }
+            $iscc = $candidates | Select-Object -First 1
+          }
+          if (-not $iscc) { throw 'Inno Setup ISCC.exe not found.' }
+          "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Build installer and portable candidate
+        shell: pwsh
+        run: |
+          $version = $env:DEVICE_VALIDATION_VERSION
+          $tag = $env:DEVICE_VALIDATION_TAG
+          $env:SONKUPIK_APP_DIR = (Resolve-Path package).Path
+          $env:SONKUPIK_OUTPUT_DIR = (Resolve-Path dist).Path
+          $env:SONKUPIK_APP_ICON = (Resolve-Path package/SonKuPik-K500.ico).Path
+          $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard.bmp).Path
+          $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard-small.bmp).Path
+
+          & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Inno Setup packaging failed' }
+
+          $stableName = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
+          $rcName = "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
+          if (-not (Test-Path $stableName)) { throw 'Inno Setup output not found' }
+          Move-Item $stableName $rcName -Force
+
+          $portable = "dist/SonKuPik-K500-$tag-Windows-Portable.zip"
+          Compress-Archive -Path 'package/*' -DestinationPath $portable -CompressionLevel Optimal -Force
+
+      - name: Validate portable candidate end-to-end
+        shell: pwsh
+        run: |
+          $portable = "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Portable.zip"
+          $testDir = Join-Path $env:RUNNER_TEMP 'sonkupik-device-validation-portable'
+          if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
+          Expand-Archive -Path $portable -DestinationPath $testDir -Force
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath (Join-Path $testDir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Portable $arg failed with exit code $($p.ExitCode)" }
+          }
+
+      - name: Validate installer candidate end-to-end
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Setup.exe").Path
+          $installDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-device-validation-install'
+          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
+          $args = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir"))
+          $install = Start-Process -FilePath $setup -ArgumentList $args -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Installer failed with exit code $($install.ExitCode)" }
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Installed app $arg failed with exit code $($p.ExitCode)" }
+          }
+
+      - name: Generate hashes and validation manifest
+        shell: pwsh
+        run: |
+          $files = @(
+            Get-Item "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Setup.exe"
+            Get-Item "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Portable.zip"
+          )
+          $artifacts = @()
+          foreach ($file in ($files | Sort-Object Name)) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
+            $artifacts += [ordered]@{ file = $file.Name; sha256 = $hash; bytes = $file.Length }
+          }
+
+          $manifest = [ordered]@{
+            schema = 'sonkupik-k500-device-validation-v1'
+            product = 'SonKuPik K500'
+            channel = 'device-validation-rc'
+            releaseTag = $env:DEVICE_VALIDATION_TAG
+            version = $env:DEVICE_VALIDATION_VERSION
+            commit = $env:GITHUB_SHA
+            generatedUtc = [DateTime]::UtcNow.ToString('o')
+            target = 'windows-x64'
+            qtVersion = $env:QT_VERSION
+            hardwareAcceptance = $env:HARDWARE_ACCEPTANCE
+            stableReleaseEligible = $false
+            intendedPhysicalTest = 'K500 USB HID'
+            validationFocus = @(
+              'Use Init Volume device truth',
+              'Play/Pause actual device state',
+              'Mute connect/runtime truth',
+              'Reverb native ranges',
+              'Music Noise Gate write',
+              'Music Bass write',
+              'Mic FBX levels 0..4 read/write',
+              'Music HP/LP filter type connect readback'
+            )
+            artifacts = $artifacts
+          }
+          $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/device-validation-manifest.json
+          Get-Content dist/SHA256SUMS.txt
+          Get-Content dist/device-validation-manifest.json
+
+      - name: Upload device-validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonKuPik-K500-${{ env.DEVICE_VALIDATION_TAG }}-Windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+            dist/SHA256SUMS.txt
+            dist/device-validation-manifest.json
+          if-no-files-found: error
+
+      - name: Publish GitHub prerelease
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.DEVICE_VALIDATION_TAG }}
+          target_commitish: ${{ github.sha }}
+          name: SonKuPik K500 ${{ env.DEVICE_VALIDATION_TAG }} — Device Validation Candidate
+          prerelease: true
+          make_latest: false
+          generate_release_notes: true
+          body: |
+            **Device-validation prerelease — not yet hardware-qualified as stable.**
+
+            This build is intended for physical K500 USB testing after the latest reverse-engineered protocol fixes.
+
+            Validation focus:
+            - Use Init Volume read/write truth
+            - Play/Pause actual device state
+            - Mute connect/runtime state
+            - Reverb native min/max ranges
+            - Music Noise Gate and Bass live writes
+            - Mic FBX / anti-feedback levels 0..4 read/write
+            - Music HP/LP filter type readback on CONNECT
+            - non-disruptive live editing without full 939-byte resync after every edit
+
+            Please test this exact candidate on the KTV/K500 device before promoting v1.0.3 to stable.
+
+            Windows binaries are unsigned. Installer uses Inno Setup 6; portable package is a normal ZIP.
+          files: |
+            dist/SonKuPik-K500-${{ env.DEVICE_VALIDATION_TAG }}-Windows-Setup.exe
+            dist/SonKuPik-K500-${{ env.DEVICE_VALIDATION_TAG }}-Windows-Portable.zip
+            dist/SHA256SUMS.txt
+            dist/device-validation-manifest.json
+          fail_on_unmatched_files: true
+          overwrite_files: false
