@@ -125,7 +125,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | Mass Upload | n/a | ✅ | complete | no |
 | Reset All Settings | ❌ | ❌ disabled | missing | **YES — destructive, last priority** |
 | Music Init Vol | ✅ 0x000B | ❌ preserved-only | partial | **YES** |
-| Music Max Vol | ✅ 0x000C | ❌ preserved-only | partial | **YES** |
+| Music Max Vol | ✅ 0x000C | ✅ Top Music CMD 0x02 + hard ceiling clamp | complete | no |
 | Mic Init Vol | ✅ 0x0012 | ❌ preserved-only | partial | **YES** |
 | Mic Max Vol | ✅ 0x0013 | ❌ preserved-only | partial | **YES** |
 | Effect Init Level | ✅ 0x001D | ❌ current write path is effectively mirrored/preserved | partial | **YES** |
@@ -153,7 +153,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
 2. **Mic Noise Gate write**.
-3. **System Startup Limits** — Music Init, Music Max, Mic Init, Mic Max, Effect Init.
+3. **System Startup Limits remaining** — Music Init, Mic Init, Mic Max, Effect Init. Music Max is complete.
 4. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
 5. **Remaining non-Music crossover filter-type readback** — Mic/Main/Surround/Center/Sub still need their own connect-state mapping.
 6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
