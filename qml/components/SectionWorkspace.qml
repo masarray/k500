@@ -106,8 +106,9 @@ Item {
                                     channels: [
                                         {label:"MIC A",value:Number(root.groupValue("mic","micAVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
                                         {label:"MIC B",value:Number(root.groupValue("mic","micBVol",96)),from:0,to:100,step:1,unit:"",decimals:0},
-                                        // FBE_NATIVE_LEVEL_V1 — native UI/control range verified by 3→2→1→0 capture.
-                                        {label:"FBX",badge:"A+B",value:Number(root.groupValue("mic","fbxLevel",0)),from:0,to:3,step:1,unit:"",decimals:0}
+                                        // FBX_NATIVE_0_4_CAPTURED_V1 — paired 0→1→2→3→4 and
+                                        // 4→3→2→1→0 captures verify the complete native domain.
+                                        {label:"FBX",badge:"A+B",value:Number(root.groupValue("mic","fbxLevel",0)),from:0,to:4,step:1,unit:"",decimals:0}
                                     ]
                                 }
                                 RackDynamicsPanel {

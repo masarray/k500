@@ -58,7 +58,10 @@ QByteArray toUsbFrame(const QByteArray &btFrame)
         return btFrame;
 
     QByteArray body = btFrame.mid(2, bodyLength);
-    // Native USB read-block uses mode 0x00; Bluetooth uses 0x63.
+    // USB_READBLOCK_TRAILING_EVIDENCE_GATE_V1
+    // Preserve SonKuPik's established USB wire byte 0x00. Native 2026-09-20
+    // captures correlate this byte with FBX 0..4, but replay necessity is not
+    // proven yet, so do not infer or mirror FBX here.
     if (body.size() == 6 && u8(body.at(0)) == 0x40)
         body[5] = char(0x00);
 

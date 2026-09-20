@@ -202,9 +202,12 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_mic.micInitVol = fileU8(memory, 0x0012, 25);
     m_mic.micAVol = fileU8(memory, 0x0014, 96);
     m_mic.micBVol = fileU8(memory, 0x0015, 96);
-    // FBE_NATIVE_LEVEL_V1 — native delta capture proves FBE is file 0x001B only.
-    // File 0x001C is an independent neighbour and must never be averaged into FBE.
-    m_mic.fbxLevel = fileU8(memory, 0x001B, 0);
+    // FBX_NATIVE_0_4_CAPTURED_V1 — physical reconnect captures prove the
+    // authoritative live active-memory byte is offset 0x001B (not file offset
+    // 0x001B, which maps to a different live byte through fileU8()).
+    m_mic.fbxLevel = qBound(K500Protocol::NativeRange::MicFbxMinLevel,
+                            static_cast<int>(byteAt(memory, 0x001B, 0)),
+                            K500Protocol::NativeRange::MicFbxMaxLevel);
     m_mic.compThresholdDb = static_cast<int>(fileU8(memory, 0x0017, 38)) - 50;
     m_mic.compRatio = fileU8(memory, 0x0018, 3);
     m_mic.attackMs = fileU8(memory, 0x0019, 10);
@@ -501,7 +504,10 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micAVol")) m_mic.micAVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micBVol")) m_mic.micBVol = qRound(value.toDouble());
-    else if (path == QStringLiteral("mic.fbxLevel")) m_mic.fbxLevel = qBound(0, qRound(value.toDouble()), 3);
+    else if (path == QStringLiteral("mic.fbxLevel"))
+        m_mic.fbxLevel = qBound(K500Protocol::NativeRange::MicFbxMinLevel,
+                                qRound(value.toDouble()),
+                                K500Protocol::NativeRange::MicFbxMaxLevel);
     else if (path == QStringLiteral("mic.compThresholdDb")) m_mic.compThresholdDb = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.compRatio")) m_mic.compRatio = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.attackMs")) m_mic.attackMs = qRound(value.toDouble());
@@ -562,15 +568,10 @@ void K500Controller::queueTopMic(const QString &path)
         return;
     }
 
-    // FBE_NATIVE_LEVEL_V1 — native 3→2→1→0 capture changes only CMD 0x05
-    // payload byte mapped to live scalar 0x1B; neighbour 0x1C stays untouched.
-    QByteArray scalars = m_deviceScalars;
-    if (scalars.size() > 0x1B) {
-        const char fbe = char(K500Frame::clampByte(qBound(0, m_mic.fbxLevel, 3)));
-        scalars[0x1B] = fbe;
-    }
-
-    queueBlockFrame(QStringLiteral("top:mic"), path, K500Protocol::topMicBlock(m_mic, scalars),
+    // FBX_NATIVE_0_4_CAPTURED_V1 — topMicBlock owns the captured FBX byte
+    // directly from m_mic.fbxLevel. Do not mutate or mirror scalar neighbour 0x1C.
+    queueBlockFrame(QStringLiteral("top:mic"), path,
+                    K500Protocol::topMicBlock(m_mic, m_deviceScalars),
                     QStringLiteral("Top Mic · %1").arg(path));
 }
 

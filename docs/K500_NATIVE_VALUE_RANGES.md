@@ -62,6 +62,16 @@ Music Bass uses CMD `0x0C`, selector `0x02`, encoded in 0.1 dB units:
 Connect/readback offsets for these two Music Tone controls are still evidence-gated;
 the current checkpoint implements only their byte-verified live WRITE mappings.
 
+## Mic FBX / anti-feedback — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| FBX Level | 0 | 4 | integer level | Paired physical USB captures |
+
+READ truth is direct `activeMemory[0x001B]`. WRITE uses Top Mic `CMD 0x05`
+with the same raw integer level `0..4`; the following command byte is fixed
+`0x00` in all five captured levels.
+
 ## Common PEQ
 
 | Parameter | Minimum | Maximum | Unit | Evidence |

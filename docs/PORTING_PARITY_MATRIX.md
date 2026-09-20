@@ -48,7 +48,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Music master/input/key block | STABLE USB ✅ | mirrored-scalar safety vector |
 | PEQ: Mic A/B, Music, Main, Surround, Center, Sub, Reverb, Echo | STABLE USB ✅ | donor-verified command family; unsupported detail fields stay read-only |
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
-| Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored scalar preservation |
+| Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored unrelated scalars + captured FBX 0..4 direct byte |
 | Top Effect `CMD 0x09` | STABLE USB ✅ | mirrored init preservation |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
@@ -58,6 +58,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
 | Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
 | Music Noise Gate / Bass live write | CAPTURE-MAPPED 🟧 | captured CMD 0x02 gate field + CMD 0x0C Bass; connect readback pending |
+| Mic FBX / anti-feedback level | CAPTURE-MAPPED 🟧 | READ activeMemory[0x001B], WRITE CMD 0x05 levels 0..4, RSP 0xFA |
 | Mic gate live write | READ ONLY 🟦 | no verified live command; do not guess |
 | Equipment Mode Recall 1–10 | STABLE USB ✅ | `0x01 -> settle -> 0x3F/C0 -> 939-byte resync` |
 | Use Init Volume | STABLE USB ✅ | exact `CMD 0x12` / `RSP 0xED` + captured C0 connect-state bit |

@@ -31,7 +31,7 @@ struct K500MicBlockState
 {
     int topMicVol = 35;
     int micInitVol = 25;
-    int fbxLevel = 7;
+    int fbxLevel = 0;
     int micAVol = 96;
     int micBVol = 96;
     int compThresholdDb = -12;
@@ -135,6 +135,9 @@ constexpr int MusicNoiseGateMinDb = -90;
 constexpr int MusicNoiseGateMaxDb = -50;
 constexpr double MusicBassMinDb = -12.0;
 constexpr double MusicBassMaxDb = 12.0;
+
+constexpr int MicFbxMinLevel = 0;
+constexpr int MicFbxMaxLevel = 4;
 } // namespace NativeRange
 
 QByteArray heartbeat();

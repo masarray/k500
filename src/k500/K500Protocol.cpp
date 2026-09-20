@@ -3,6 +3,7 @@
 #include "K500Frame.h"
 
 #include <QHash>
+#include <QList>
 #include <QtMath>
 #include <initializer_list>
 
@@ -277,10 +278,10 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
 
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars)
 {
-    // P1_TOP_MIC_VERIFIED_V1 — native CMD 0x05 layout.
-    // Native capture: Mic Volume changes only its own byte plus checksum.
-    // Preserve the two FBE/FBX bytes independently from device truth; they are not
-    // one scalar. Dedicated FBE mapping will be added only after its own capture.
+    // FBX_NATIVE_0_4_CAPTURED_V1 + P1_TOP_MIC_VERIFIED_V1
+    // Paired physical captures prove CMD 0x05 carries FBX as one direct byte
+    // in the 0..4 domain. The following byte is a fixed 0x00 in every captured
+    // level and is NOT active-memory neighbour 0x1C.
     const auto mirrored = [&deviceScalars](int offset, int fallback) -> quint8 {
         if (offset >= 0 && offset < deviceScalars.size())
             return byteFromChar(deviceScalars.at(offset));
@@ -295,8 +296,9 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
     body.append(char(mirrored(0x0A, state.micInitVol)));
     body.append(char(mirrored(0x0B, TopVolumeMax)));
     body.append(char(mirrored(0x0E, 0x0B)));
-    body.append(char(mirrored(0x1B, state.fbxLevel)));
-    body.append(char(mirrored(0x1C, state.fbxLevel)));
+    body.append(char(K500Frame::clampByte(
+        qBound(NativeRange::MicFbxMinLevel, state.fbxLevel, NativeRange::MicFbxMaxLevel))));
+    body.append(char(0x00));
     body.append(char(K500Frame::clampByte(state.micAVol)));
     body.append(char(K500Frame::clampByte(state.micBVol)));
     body.append(char(K500Frame::clampByte(state.compThresholdDb + 50)));
@@ -474,6 +476,7 @@ bool selfTest(QString *error)
     // P1_PROTOCOL_GOLDEN_VECTORS_V1
     // REVERB_CMD0B_CAPTURED_V1
     // ECHO_CMD0D_CAPTURED_V1
+    // FBX_NATIVE_0_4_CAPTURED_V1
     const auto fail = [error](const QString &message) {
         if (error) *error = message;
         return false;
@@ -496,9 +499,19 @@ bool selfTest(QString *error)
     if (!expect(playerCommand(QStringLiteral("playPause")), {0xAA, 0x03, 0x06, 0x02, 0x05, 0xF0}, QStringLiteral("play/pause"))) return false;
 
     if (!expect(readBlock(0x0000, 0x003A, 0x63), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x63, 0x1D}, QStringLiteral("Bluetooth read-block"))) return false;
-    if (!expect(readBlock(0x0000, 0x003A, 0x02), {0xAA, 0x06, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x02, 0x7E}, QStringLiteral("USB read-block captured mode 0x02"))) return false;
+    if (!expect(K500Frame::toUsbFrame(readBlock(0x0000, 0x003A, 0x00)),
+                {0xAA, 0x06, 0x00, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80},
+                QStringLiteral("USB read-block established wire byte"))) return false;
+    // Native FBX captures correlate its final read-request byte with FBX 0..4.
+    // Until replay necessity is proven, SonKuPik intentionally keeps the
+    // established USB wire value 0x00 even if a caller supplies another value.
+    if (!expect(K500Frame::toUsbFrame(readBlock(0x0000, 0x003A, 0x04)),
+                {0xAA, 0x06, 0x00, 0x40, 0x00, 0x00, 0x3A, 0x00, 0x00, 0x80},
+                QStringLiteral("USB read-block FBX correlation remains evidence-gated"))) return false;
     if (!expect(readBlock(0x03A0, 0x000B, 0x63), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x63, 0xA9}, QStringLiteral("Bluetooth final read-block"))) return false;
-    if (!expect(readBlock(0x03A0, 0x000B, 0x02), {0xAA, 0x06, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x02, 0x0A}, QStringLiteral("USB final read-block captured mode 0x02"))) return false;
+    if (!expect(K500Frame::toUsbFrame(readBlock(0x03A0, 0x000B, 0x00)),
+                {0xAA, 0x06, 0x00, 0x40, 0xA0, 0x03, 0x0B, 0x00, 0x00, 0x0C},
+                QStringLiteral("USB final read-block established wire byte"))) return false;
 
     K500EqBand band;
     band.frequencyHz = 355.0;
@@ -562,13 +575,41 @@ bool selfTest(QString *error)
     if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music mirrored scalar"))) return false;
 
     K500MicBlockState mic;
-    if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x07, 0x07, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x4F}, QStringLiteral("top mic default"))) return false;
+    if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x00, 0x00, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x5D}, QStringLiteral("top mic default"))) return false;
+
     QByteArray micScalars(0x40, char(0));
     micScalars[0x0A] = char(0x19); micScalars[0x0B] = char(0x54); micScalars[0x0E] = char(0x0B);
-    micScalars[0x1B] = char(0x03); micScalars[0x1C] = char(0x00);
+    // Deliberately poison neighbour 0x1C: captured FBX write must never replay it.
+    micScalars[0x1B] = char(0x03); micScalars[0x1C] = char(0x7F);
     mic.topMicVol = 30; mic.fbxLevel = 19; mic.micAVol = 100; mic.micBVol = 100;
     mic.compThresholdDb = 0; mic.compRatio = 2; mic.attackMs = 1; mic.releaseSec = 1.2;
-    if (!expect(topMicBlock(mic, micScalars), {0xAA, 0x0E, 0x05, 0x1E, 0x19, 0x54, 0x0B, 0x03, 0x00, 0x64, 0x64, 0x32, 0x02, 0x01, 0x0C, 0x00, 0x4B}, QStringLiteral("top mic preserves captured FBE bytes"))) return false;
+    if (!expect(topMicBlock(mic, micScalars), {0xAA, 0x0E, 0x05, 0x1E, 0x19, 0x54, 0x0B, 0x04, 0x00, 0x64, 0x64, 0x32, 0x02, 0x01, 0x0C, 0x00, 0x4A}, QStringLiteral("top mic FBX clamps to captured level 4"))) return false;
+
+    K500MicBlockState fbxCapture;
+    fbxCapture.topMicVol = 25;
+    fbxCapture.micInitVol = 25;
+    fbxCapture.micAVol = 96;
+    fbxCapture.micBVol = 96;
+    fbxCapture.compThresholdDb = -11;
+    fbxCapture.compRatio = 3;
+    fbxCapture.attackMs = 10;
+    fbxCapture.releaseSec = 0.2;
+    QByteArray fbxScalars(0x40, char(0));
+    fbxScalars[0x0A] = char(0x19);
+    fbxScalars[0x0B] = char(0x54);
+    fbxScalars[0x0E] = char(0x0B);
+    const QList<QByteArray> expectedFbx{
+        bytes({0xAA,0x0E,0x05,0x19,0x19,0x54,0x0B,0x00,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x66}),
+        bytes({0xAA,0x0E,0x05,0x19,0x19,0x54,0x0B,0x01,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x65}),
+        bytes({0xAA,0x0E,0x05,0x19,0x19,0x54,0x0B,0x02,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x64}),
+        bytes({0xAA,0x0E,0x05,0x19,0x19,0x54,0x0B,0x03,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x63}),
+        bytes({0xAA,0x0E,0x05,0x19,0x19,0x54,0x0B,0x04,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x62}),
+    };
+    for (int level = 0; level <= 4; ++level) {
+        fbxCapture.fbxLevel = level;
+        if (topMicBlock(fbxCapture, fbxScalars) != expectedFbx.at(level))
+            return fail(QStringLiteral("captured FBX level %1 frame mismatch").arg(level));
+    }
 
     K500EffectBlockState effect;
     effect.topEffectVol = 49;

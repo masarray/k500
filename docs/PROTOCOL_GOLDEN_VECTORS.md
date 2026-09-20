@@ -9,8 +9,8 @@ These vectors freeze the accepted native SonKuPik K500 protocol behavior. They a
 - Bluetooth/shared frame: `AA len8 body checksum`.
 - USB HID conversion: `AA len16LE body checksum`.
 - Checksum is chosen so the sum from the length byte through checksum is `0 mod 256`.
-- Bluetooth `CMD 0x40` final mode byte: `0x63`.
-- USB `CMD 0x40` final mode byte: `0x00`.
+- Bluetooth `CMD 0x40` final byte remains `0x63` in the established transport.
+- SonKuPik USB `CMD 0x40` currently emits final byte `0x00`. New FBX captures show the manufacturer app mirrors the current FBX level (`0..4`) in this byte, but replay necessity is not yet proven; see `docs/K500_FBX_CAPTURE_MAP.md`.
 
 ## Connection and transport
 
@@ -106,20 +106,30 @@ device scalar truth. Regression tests verify both preservation and captured gate
 
 ## P1 Top Mic CMD 0x05
 
-Reference state:
+FBX 0–4 is now physically captured. Reference default state:
 
 ```text
-AA 0E 05 23 19 54 0B 07 07 60 60 26 03 0A 02 00 4F
+AA 0E 05 23 19 54 0B 00 00 60 60 26 03 0A 02 00 5D
 ```
 
 Body layout after command byte:
 
 ```text
 [topMicVol] [micInit mirrored] [micMax mirrored] [gate mirrored]
-[fbxA] [fbxB] [micA] [micB] [TH+50] [ratio] [attack] [release*10] [00]
+[FBX 0..4] [00 fixed] [micA] [micB] [TH+50] [ratio] [attack] [release*10] [00]
 ```
 
-The final `00` is explicitly **not** EQ Link.
+Exact native FBX write vectors from the paired 2026-09-20 captures:
+
+```text
+FBX 0  AA 0E 05 19 19 54 0B 00 00 60 60 27 03 0A 02 00 66
+FBX 1  AA 0E 05 19 19 54 0B 01 00 60 60 27 03 0A 02 00 65
+FBX 2  AA 0E 05 19 19 54 0B 02 00 60 60 27 03 0A 02 00 64
+FBX 3  AA 0E 05 19 19 54 0B 03 00 60 60 27 03 0A 02 00 63
+FBX 4  AA 0E 05 19 19 54 0B 04 00 60 60 27 03 0A 02 00 62
+```
+
+FBX READ truth is direct live `activeMemory[0x001B]`; do not pass that through the file-offset helper. The byte immediately following FBX in CMD `0x05` is captured as fixed `0x00`, not active-memory neighbour `0x001C`. The final `00` is explicitly **not** EQ Link.
 
 ## P1 Top Effect CMD 0x09
 
