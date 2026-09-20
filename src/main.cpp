@@ -207,6 +207,10 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0022, 8);  // Digital -4 dB
         putFileU16(memory, 0x009C, 80);    // Music HPF
         putFileU16(memory, 0x009E, 18000); // Music LPF
+        // MUSIC_CROSSOVER_TYPE_READBACK_V1 — direct active-memory bytes from
+        // physical reconnect captures, not .k500 file-offset defaults.
+        memory[0x0007] = char(0x07); // Music HP Type = HP LR 24
+        memory[0x0008] = char(0x00); // Music LP Type = Bypass
 
         // Mic state and dynamics.
         putFileU8(memory, 0x0014, 96);
@@ -323,6 +327,7 @@ int main(int argc, char *argv[])
         const QVariantMap reverb = effects.value(QStringLiteral("reverb")).toMap();
         const QVariantMap echo = effects.value(QStringLiteral("echo")).toMap();
         const QVariantMap eq = state.value(QStringLiteral("eq")).toMap();
+        const QVariantMap musicEq = eq.value(QStringLiteral("music")).toMap();
         const QVariantMap mainEq = eq.value(QStringLiteral("main")).toMap();
         const QVariantMap hydratedMusicBand = studioEngine.musicEqBands()->get(2);
         const QVariantMap hydratedMicBand = studioEngine.micAEqBands()->get(0);
@@ -342,6 +347,10 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.digitalGain(), -4.0)
             && qFuzzyCompare(studioEngine.hpfHz(), 80.0)
             && qFuzzyCompare(studioEngine.lpfHz(), 18000.0)
+            && studioEngine.hpType() == QStringLiteral("HP LR 24")
+            && studioEngine.lpType() == QStringLiteral("Bypass")
+            && musicEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
+            && musicEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("Bypass")
             && system.value(QStringLiteral("musicInitVol")).toInt() == 25
             && system.value(QStringLiteral("musicMaxVol")).toInt() == 84
             && system.value(QStringLiteral("micInitVol")).toInt() == 26
