@@ -71,7 +71,7 @@ jobs:
               'confirmed desired inflight are distinct': 'm_confirmed' in state_h and 'm_desired' in state_h and 'm_inFlightByKey' in state_h,
               'commands carry epoch revision token': 'sessionEpoch' in state_h and 'revision' in state_h and 'token' in state_h,
               'controller requires canonical snapshot barrier': 'P1_CANONICAL_SNAPSHOT_BARRIER_V1' in controller_cpp,
-              'controller stages desired state before native plan': 'P1_CANONICAL_EDIT_GATE_V1' in controller_cpp and 'stageDesired(path, value' in controller_cpp,
+              'controller stages normalized desired state before native plan': 'P1_CANONICAL_EDIT_GATE_V1' in controller_cpp and 'MUSIC_MAX_CANONICAL_CEILING_V2' in controller_cpp and 'stageDesired(path, normalizedValue' in controller_cpp,
               'manager transports session envelope': '&K500Controller::commandReady' in manager_cpp and 'sendPlannedCommand' in manager_cpp,
               'manager rejects stale session': 'sessionEpoch != m_controller->sessionEpoch()' in manager_cpp,
               'legacy direct frame transport disconnected': 'connect(m_controller, &K500Controller::frameReady' not in manager_cpp,
