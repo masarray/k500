@@ -1,4 +1,5 @@
 #include <QDebug>
+#include <QEventLoop>
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
@@ -429,6 +430,68 @@ int main(int argc, char *argv[])
 
         // Restore authoritative fixture state for the QML/runtime half of this test.
         studioEngine.hydrateFromDeviceMemory(memory);
+
+        // MUSIC_MAX_CANONICAL_CEILING_V2 — exercise the actual controller's
+        // queued full-block writes and P3 DesiredState, without a USB device.
+        // An old Master=70 edit must not survive when Max forces Master=20.
+        K500Controller ceilingProbe;
+        ceilingProbe.beginDeviceSession();
+        ceilingProbe.hydrateFromDeviceMemory(memory);
+        ceilingProbe.setLiveEnabled(true);
+        QByteArray lastCeilingFrame;
+        quint64 lastEpoch = 0;
+        quint64 lastToken = 0;
+        QString lastPath;
+        QObject::connect(&ceilingProbe, &K500Controller::commandReady,
+                         [&](quint64 epoch, quint64 token, const QByteArray &frame,
+                             const QString &, const QString &path, const QString &) {
+            lastCeilingFrame = frame;
+            lastEpoch = epoch;
+            lastToken = token;
+            lastPath = path;
+        });
+        const auto waitForBlockFlush = [] {
+            QEventLoop wait;
+            QTimer::singleShot(180, &wait, &QEventLoop::quit);
+            wait.exec();
+        };
+        const auto frameHasCeiling = [&] {
+            // BT frame: AA 0D 02 [TopMusic] [MusicInit] [MusicMax] ...
+            return lastCeilingFrame.size() > 5
+                && static_cast<quint8>(lastCeilingFrame.at(2)) == 0x02
+                && static_cast<quint8>(lastCeilingFrame.at(3)) == 20
+                && static_cast<quint8>(lastCeilingFrame.at(5)) == 20;
+        };
+        ceilingProbe.handleStateEdit(QStringLiteral("system.topMusicVol"), 70);
+        ceilingProbe.handleStateEdit(QStringLiteral("system.musicMaxVol"), 20);
+        waitForBlockFlush();
+        if (ceilingProbe.desiredStateCount() != 2
+            || ceilingProbe.divergentDesiredStateCount() != 2
+            || lastPath != QStringLiteral("system.musicMaxVol")
+            || !frameHasCeiling()
+            || !ceilingProbe.markCommandDispatched(lastEpoch, lastToken))
+            return 7;
+        ceilingProbe.handleCommandDispatchResult(lastEpoch, lastToken, lastPath, true, {});
+
+        // Bypassing the QML ceiling with a programmatic Master=90 must still
+        // serialize and stage Master=20, never an impossible desired 90.
+        ceilingProbe.handleStateEdit(QStringLiteral("system.topMusicVol"), 90);
+        waitForBlockFlush();
+        if (lastPath != QStringLiteral("system.topMusicVol")
+            || !frameHasCeiling()
+            || !ceilingProbe.markCommandDispatched(lastEpoch, lastToken))
+            return 7;
+        ceilingProbe.handleCommandDispatchResult(lastEpoch, lastToken, lastPath, true, {});
+        QByteArray confirmedCeiling = memory;
+        putFileU8(confirmedCeiling, 0x0008, 20);
+        putFileU8(confirmedCeiling, 0x000C, 20);
+        ceilingProbe.reconcileFromDeviceMemory(confirmedCeiling);
+        if (ceilingProbe.desiredStateCount() != 0
+            || ceilingProbe.divergentDesiredStateCount() != 0
+            || ceilingProbe.authoritativeSnapshotGeneration() != 2)
+            return 7;
+        ceilingProbe.endDeviceSession();
+        qInfo() << "Music Max controller/DesiredState ceiling regression passed";
     }
 
     QQmlApplicationEngine engine;
