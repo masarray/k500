@@ -14,7 +14,7 @@ from generate_brand_assets import BACKGROUND, branded_bitmap, generate_assets  #
 class InstallerBrandAssetsTests(unittest.TestCase):
     def setUp(self):
         # A fully opaque square exposes any clipped bottom edge.
-        self.logo = Image.new("RGBA", (100, 100), (255, 255, 255, 255))
+        self.logo = Image.new("RGBA", (256, 256), (255, 255, 255, 255))
 
     def test_small_logo_is_centered_and_has_safe_margins(self):
         image = branded_bitmap(
