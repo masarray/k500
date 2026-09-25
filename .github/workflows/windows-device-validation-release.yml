@@ -16,7 +16,7 @@ permissions:
 
 env:
   QT_VERSION: '6.10.2'
-  DEVICE_VALIDATION_TAG: 'v1.0.3-rc.1'
+  DEVICE_VALIDATION_TAG: 'v1.0.3-rc.2'
   DEVICE_VALIDATION_VERSION: '1.0.3'
   HARDWARE_ACCEPTANCE: pending-device-validation
 
@@ -237,7 +237,9 @@ jobs:
               'Music Noise Gate write',
               'Music Bass write',
               'Mic FBX levels 0..4 read/write',
-              'Music HP/LP filter type connect readback'
+              'Music HP/LP filter type connect readback',
+              'EQ enable polarity: Music FD active / 7D bypassed; all-section connect hydration and toggle',
+              'System Music Max 0..84: CMD 0x02 hard ceiling, Master clamp and non-rescaling fader'
             )
             artifacts = $artifacts
           }
@@ -279,6 +281,8 @@ jobs:
             - Music Noise Gate and Bass live writes
             - Mic FBX / anti-feedback levels 0..4 read/write
             - Music HP/LP filter type readback on CONNECT
+            - **EQ bypass active-low polarity**: all sections active on CONNECT; Music FD active / 7D bypassed, and reversible toggles
+            - **System Music Max**: native CMD 0x02, range 0..84, immediate Master clamp, visual 0..84 ruler with hard ceiling
             - non-disruptive live editing without full 939-byte resync after every edit
 
             Please test this exact candidate on the KTV/K500 device before promoting v1.0.3 to stable.

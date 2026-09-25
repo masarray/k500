@@ -358,8 +358,16 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     // exist after the exact Retrieve-All snapshot has become authoritative.
     if (!m_liveEnabled)
         return;
+    // MUSIC_MAX_CANONICAL_CEILING_V2 — stage the actual clamped intent, never
+    // a Master value above the current hardware ceiling. Otherwise a direct
+    // programmatic edit could leave impossible DesiredState after CMD 0x02.
+    QVariant normalizedValue = value;
+    if (path == QStringLiteral("system.topMusicVol"))
+        normalizedValue = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);
+    else if (path == QStringLiteral("system.musicMaxVol"))
+        normalizedValue = qBound(0, qRound(value.toDouble()), K500Protocol::TopVolumeMax);
     QString canonicalReason;
-    if (!m_canonicalState.stageDesired(path, value, nullptr, &canonicalReason)) {
+    if (!m_canonicalState.stageDesired(path, normalizedValue, nullptr, &canonicalReason)) {
         deferWrite(path, canonicalReason);
         return;
     }
@@ -490,10 +498,18 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     if (path == QStringLiteral("system.topMusicVol")) {
         m_music.topMusicVol = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);
     } else if (path == QStringLiteral("system.musicMaxVol")) {
-        // MUSIC_MAX_NATIVE_CEILING_V1 — native CMD 0x02 changes Music Max and,
-        // only when necessary, clamps Top Music in the same full-block write.
-        m_music.musicMaxVol = qBound(0, qRound(value.toDouble()), K500Protocol::TopVolumeMax);
-        m_music.topMusicVol = qMin(m_music.topMusicVol, m_music.musicMaxVol);
+        // MUSIC_MAX_CANONICAL_CEILING_V2 — native CMD 0x02 changes Music Max and
+        // clamps Top Music in the SAME full-block write. Replace any superseded
+        // Master DesiredState (and invalidate its old queued revision) so
+        // reconciliation cannot report an impossible previous Master target.
+        m_music.musicMaxVol = normalizedValue.toInt();
+        const int clampedMaster = qMin(m_music.topMusicVol, m_music.musicMaxVol);
+        if (clampedMaster != m_music.topMusicVol) {
+            m_music.topMusicVol = clampedMaster;
+            m_canonicalState.stageDesired(QStringLiteral("system.topMusicVol"),
+                                          clampedMaster);
+            emit canonicalStateChanged();
+        }
     }
     else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);
     else if (path == QStringLiteral("music.key")) m_music.key = value.toInt();

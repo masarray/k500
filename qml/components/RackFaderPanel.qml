@@ -673,6 +673,17 @@ StudioPanel {
                         Layout.minimumWidth: 48
                         Layout.fillHeight: true
                         property real localValue: Number(modelData.value)
+                        // MUSIC_MAX_FADER_DEVICE_SYNC_V2 — native change/reconnect
+                        // must replace the local drag value. Assignment during a
+                        // drag intentionally breaks the original model binding.
+                        onModelDataChanged: {
+                            if (root.title === "Startup Limits"
+                                && String(modelData.label) === "MUSIC MAX"
+                                && (!rackFader || !rackFader.dragging))
+                                localValue = Number(modelData.value)
+                        }
+                        readonly property bool channelEditable: modelData.editable === undefined
+                                                                || Boolean(modelData.editable)
                         property bool muted: false
                         readonly property bool selected: root.selectedFader === channel.index
                         readonly property bool canMute: root.muteCapable(modelData.label)
@@ -765,6 +776,7 @@ StudioPanel {
                                 Layout.maximumHeight: root.faderHeight
                                 Layout.preferredWidth: 48
                                 Layout.alignment: Qt.AlignHCenter
+                                enabled: channel.channelEditable
                                 value: channel.localValue
                                 from: Number(channel.modelData.from)
                                 to: Number(channel.modelData.to)
@@ -774,9 +786,16 @@ StudioPanel {
                                 selected: channel.selected
                                 onActivated: root.selectedFader = channel.index
                                 onValueEdited: function(v) {
-                                    channel.localValue = v
                                     root.dispatchLive(channel.modelData.label,
                                                       channel.muted ? channel.muteFloor : v)
+                                    if (root.title === "Startup Limits"
+                                        && String(channel.modelData.label) === "MUSIC MAX") {
+                                        var engine = root.studioEngine()
+                                        channel.localValue = engine
+                                            ? Number(engine.musicMaxVol) : Number(channel.modelData.value)
+                                    } else {
+                                        channel.localValue = v
+                                    }
                                 }
                             }
 
