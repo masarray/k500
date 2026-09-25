@@ -154,6 +154,9 @@ jobs:
               'music max protocol ceiling is captured': 'musicMaxVol = 84' in protocol_h and 'qMin(state.topMusicVol, safeMusicMax)' in protocol_cpp and 'system.musicMaxVol' in controller and 'qMin(m_music.topMusicVol, m_music.musicMaxVol)' in controller,
               'music max UI keeps native ruler ceiling': 'musicMaxVol READ musicMaxVol' in studio_h and 'setMusicMaxVol' in studio_cpp and 'hardMax' in studio_fader_qml and 'root.engine.musicMaxVol' in master_strip_qml and 'system.musicMaxVol' in rack_fader_qml and 'root.engine.musicMaxVol' in system_qml,
               'music max capture evidence documented': 'TopMusic = min(TopMusic, MusicMax)' in music_max_doc and 'Music Max 20' in music_max_doc and 'raising Max' in music_max_doc,
+              'music max canonical intent normalization': 'MUSIC_MAX_CANONICAL_CEILING_V2' in controller and 'normalizedValue = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);' in controller and 'm_canonicalState.stageDesired(QStringLiteral("system.topMusicVol")' in controller,
+              'music max device refresh and offline gating': 'MUSIC_MAX_FADER_DEVICE_SYNC_V2' in rack_fader_qml and 'onModelDataChanged:' in rack_fader_qml and 'channel.channelEditable' in rack_fader_qml and 'root.deviceConnected && root.engine.deviceStateReady' in system_qml,
+              'music max controller regression': 'Music Max controller/DesiredState ceiling regression passed' in main and 'ceilingProbe.reconcileFromDeviceMemory(confirmedCeiling)' in main,
               'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
