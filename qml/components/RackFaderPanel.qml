@@ -679,7 +679,7 @@ StudioPanel {
                         onModelDataChanged: {
                             if (root.title === "Startup Limits"
                                 && String(modelData.label) === "MUSIC MAX"
-                                && !rackFader.dragging)
+                                && (!rackFader || !rackFader.dragging))
                                 localValue = Number(modelData.value)
                         }
                         readonly property bool channelEditable: modelData.editable === undefined
