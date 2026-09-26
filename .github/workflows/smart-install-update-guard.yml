@@ -33,6 +33,9 @@ jobs:
         run: |
           set -euo pipefail
           grep -F 'SMART_INSTALL_LAYOUT_V2' packaging/windows/installer.iss
+          grep -F 'P2_INSTALL_SCOPE_V1' packaging/windows/installer.iss
+          grep -F 'PrivilegesRequired=lowest' packaging/windows/installer.iss
+          grep -F 'OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup-PerUser' packaging/windows/installer.iss
           grep -F 'DefaultDirName={autopf}\{#AppName}' packaging/windows/installer.iss
           grep -F 'PrivilegesRequired=admin' packaging/windows/installer.iss
           grep -F 'DisableDirPage=yes' packaging/windows/installer.iss
@@ -191,6 +194,26 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup script failed to compile' }
           $setup = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
           if (-not (Test-Path $setup)) { throw 'Expected Setup EXE was not produced' }
+          # P2: compile a separately named per-user installer from the same
+          # package, with lowest privileges and no machine-wide migration.
+          & $env:INNO_ISCC "/DAppVersion=$version" "/DPerUser=1" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Per-user Inno Setup script failed to compile' }
+          $perUserSetup = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
+          if (-not (Test-Path $perUserSetup)) { throw 'Expected per-user Setup EXE was not produced' }
+          $testDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-P2-CI'
+          if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
+          $install = Start-Process -FilePath (Resolve-Path $perUserSetup).Path -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$testDir"
+          ) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Per-user installer smoke test failed: $($install.ExitCode)" }
+          foreach ($name in @('SonKuPik-K500.exe', 'SonKuPik-K500-Updater.exe', 'unins000.exe')) {
+            if (-not (Test-Path (Join-Path $testDir $name))) { throw "Per-user installation missing $name" }
+          }
+          $uninstall = Start-Process -FilePath (Join-Path $testDir 'unins000.exe') -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          ) -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Per-user uninstall failed: $($uninstall.ExitCode)" }
+          if (Test-Path (Join-Path $testDir 'SonKuPik-K500.exe')) { throw 'Per-user uninstall left application EXE behind' }
 
       # This is an installer UI fixture, NOT a distributable application:
       # the package contains a placeholder SonKuPik-K500.exe for wizard review.
