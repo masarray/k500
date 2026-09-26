@@ -41,7 +41,9 @@ jobs:
           grep -F 'MIGRATE_LOCALAPPDATA_INSTALL_V1' packaging/windows/installer.iss
           grep -F 'ExecAsOriginalUser' packaging/windows/installer.iss
           grep -F '%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe' packaging/windows/installer.iss
-          grep -F '/AUToupdate=1' src/AppUpdateManager.cpp
+          # The standalone helper now owns installer launch arguments; keep the legacy Inno contract.
+          grep -F '/AUToupdate=1' packaging/windows/update_helper.cpp
+          grep -F '/HELPERUPDATE=1' packaging/windows/update_helper.cpp
           grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
           if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
             echo 'Stable installer must not default to LocalAppData' >&2
