@@ -40,6 +40,31 @@ directory and checks the copy's SHA-256 against the installed helper.
 No preset protocol, official preset, local preset, or Windows security setting
 is changed by P1. The helper is not a privileged service or a UAC bypass.
 
+## P2: separate per-user installer (this stacked PR; not yet released)
+
+The legacy `SonKuPik-K500-v<version>-Windows-Setup.exe` filename remains
+**machine-wide** for older installed v1.0.3 updaters. The new
+`SonKuPik-K500-v<version>-Windows-Setup-PerUser.exe` package uses
+`PrivilegesRequired=lowest` and `{userpf}\\SonKuPik K500` (the current
+user's LocalAppData Programs directory).
+
+The two installers use the original Inno AppId but separate uninstall registry
+roots (HKLM machine / HKCU current user). The per-user installer rejects an
+existing registered machine-wide copy rather than creating duplicate shortcuts.
+Neither package silently moves a registered machine-wide install to per-user.
+
+The application checks the actual Inno uninstall registration **and its exact
+installed path**, not a writable marker or just a Program Files path prefix.
+If registration is missing/ambiguous or the path changes, automatic updates
+fail closed; extracted portable ZIPs do not become installations. The
+installed scope chooses the matching asset, checksum and manifest entry:
+machine continues to request UAC only for its installer; per-user launches
+the matching lowest-privilege Setup without UAC.
+
+Both packages and the portable ZIP have independent release SHA-256 entries
+and manifest artifact identities. Per-user installers must not be published
+before the full P2 asset-routing and per-user upgrade qualification pass.
+
 ## Deliberate scope boundaries and remaining work
 
 - **P1 qualification:** exact-head Windows CI, Inno compile, helper self-test,
