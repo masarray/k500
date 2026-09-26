@@ -115,7 +115,8 @@ bool AppUpdateManager::busy() const
         || m_state == QStringLiteral("preparing")
         || m_state == QStringLiteral("downloading")
         || m_state == QStringLiteral("verifying")
-        || m_state == QStringLiteral("installing");
+        || m_state == QStringLiteral("installing")
+        || m_state == QStringLiteral("waiting-for-device");
 }
 
 void AppUpdateManager::setState(const QString &state, const QString &status, const QString &error)
