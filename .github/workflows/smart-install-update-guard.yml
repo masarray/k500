@@ -146,7 +146,10 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
-          Set-Content -Path package/SonKuPik-K500.exe -Value 'CI installer fixture' -Encoding ascii
+          # Native dummy implements ONLY updater health/relaunch tests. It does
+          # not access K500 hardware and must never be published as an app.
+          & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fepackage/SonKuPik-K500.exe tests/windows/update_handoff_fixture.cpp /link /SUBSYSTEM:WINDOWS shell32.lib
+          if ($LASTEXITCODE -ne 0) { throw 'Installer test-only application fixture failed to compile' }
           # Compile the actual standalone Win32 helper without a Qt dependency.
           & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fepackage/SonKuPik-K500-Updater.exe packaging/windows/update_helper.cpp /link /SUBSYSTEM:WINDOWS shell32.lib bcrypt.lib user32.lib
           if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator compilation failed' }
@@ -214,6 +217,42 @@ jobs:
           ) -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Per-user uninstall failed: $($uninstall.ExitCode)" }
           if (Test-Path (Join-Path $testDir 'SonKuPik-K500.exe')) { throw 'Per-user uninstall left application EXE behind' }
+          # Exercise the actual helper -> wait-for-parent -> SHA-256 -> non-UAC
+          # per-user Inno -> health check -> relaunch sequence with dummy EXE.
+          # Never use production app/device or publish this fixture installer.
+          $defaultDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik K500'
+          if (Test-Path $defaultDir) { throw 'CI fixture must start with no pre-existing default installation' }
+          $healthMarker = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-health.marker'
+          $restartMarker = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-relaunch.marker'
+          Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
+          $setupAbs = (Resolve-Path $perUserSetup).Path
+          $setupHash = (Get-FileHash $setupAbs -Algorithm SHA256).Hash.ToLowerInvariant()
+          $log = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-handoff.log'
+          Remove-Item $log,("$log.inno.log") -Force -ErrorAction SilentlyContinue
+          $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 4') -PassThru
+          $helperArgs = @(
+            '--parent-pid', "$($parent.Id)",
+            '--setup', ('"' + $setupAbs + '"'),
+            '--app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+            '--version', $version,
+            '--log', ('"' + $log + '"'),
+            '--sha256', $setupHash,
+            '--scope', 'user'
+          )
+          $handoff = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $helperArgs -Wait -PassThru
+          if ($handoff.ExitCode -ne 0) { throw "Non-admin update handoff failed: $($handoff.ExitCode); log: $log" }
+          $ready = $false
+          foreach ($attempt in 1..30) {
+            if ((Test-Path $healthMarker) -and (Test-Path $restartMarker)) { $ready = $true; break }
+            Start-Sleep -Milliseconds 500
+          }
+          if (-not $ready) { throw 'Updater did not health-check AND relaunch installed application' }
+          if (-not ((Get-Content $log -Raw).Contains('Installer and app health check passed'))) {
+            throw 'Updater log did not report successful verified installation'
+          }
+          if (-not (Test-Path (Join-Path $defaultDir 'unins000.exe'))) { throw 'Per-user update did not install the correct package' }
+          $cleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($cleanup.ExitCode -ne 0) { throw "Per-user update fixture cleanup failed: $($cleanup.ExitCode)" }
 
       # This is an installer UI fixture, NOT a distributable application:
       # the package contains a placeholder SonKuPik-K500.exe for wizard review.
