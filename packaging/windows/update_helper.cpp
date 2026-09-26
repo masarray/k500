@@ -8,6 +8,7 @@
 #include <shellapi.h>
 #include <bcrypt.h>
 #include <array>
+#include <climits>
 #include <cwchar>
 #include <string>
 #include <vector>
@@ -135,15 +136,19 @@ bool verifySetup(const Request &request, HANDLE &lockedFile)
                 std::array<UCHAR, 64 * 1024> buffer{};
                 DWORD received = 0;
                 ok = true;
-                while (ReadFile(lockedFile, buffer.data(), static_cast<DWORD>(buffer.size()),
-                                &received, nullptr) && received > 0) {
+                for (;;) {
+                    if (!ReadFile(lockedFile, buffer.data(), static_cast<DWORD>(buffer.size()),
+                                  &received, nullptr)) {
+                        ok = false;
+                        break;
+                    }
+                    if (received == 0)
+                        break; // Successful EOF.
                     if (BCryptHashData(hash, buffer.data(), received, 0) < 0) {
                         ok = false;
                         break;
                     }
                 }
-                if (GetLastError() != ERROR_HANDLE_EOF && !received)
-                    ; // An ordinary EOF is also successful; the final digest proves the stream.
                 if (ok && BCryptFinishHash(hash, digest.data(), static_cast<ULONG>(digest.size()), 0) < 0)
                     ok = false;
             }
@@ -191,8 +196,7 @@ DWORD runAndWait(const std::wstring &exe, const std::wstring &parameters,
     CloseHandle(process.hThread);
     const DWORD result = WaitForSingleObject(process.hProcess, timeout);
     if (result != WAIT_OBJECT_0) {
-        // A timed-out installer may still own an installation: never kill it
-        // or start the app into potentially inconsistent files.
+        // A timed-out process may still be active. Do not kill it or relaunch.
         CloseHandle(process.hProcess);
         return result == WAIT_TIMEOUT ? ERROR_TIMEOUT : ERROR_GEN_FAILURE;
     }
@@ -201,6 +205,36 @@ DWORD runAndWait(const std::wstring &exe, const std::wstring &parameters,
         return ERROR_GEN_FAILURE;
     }
     CloseHandle(process.hProcess);
+    return ERROR_SUCCESS;
+}
+
+// The helper stays at the original, non-elevated user's integrity level.
+// Only the existing machine-wide installer requests administrator permission.
+// K500 health checks and relaunch therefore never inherit an elevated token.
+DWORD installElevatedAndWait(const Request &request, const std::wstring &parameters,
+                             DWORD &exitCode)
+{
+    SHELLEXECUTEINFOW info{};
+    info.cbSize = sizeof(info);
+    info.fMask = SEE_MASK_NOCLOSEPROCESS;
+    info.lpVerb = L"runas";
+    info.lpFile = request.setup.c_str();
+    info.lpParameters = parameters.c_str();
+    info.nShow = SW_SHOWNORMAL;
+    if (!ShellExecuteExW(&info))
+        return GetLastError();
+    if (!info.hProcess)
+        return ERROR_GEN_FAILURE;
+    const DWORD result = WaitForSingleObject(info.hProcess, InstallTimeoutMs);
+    if (result != WAIT_OBJECT_0) {
+        CloseHandle(info.hProcess);
+        return result == WAIT_TIMEOUT ? ERROR_TIMEOUT : ERROR_GEN_FAILURE;
+    }
+    if (!GetExitCodeProcess(info.hProcess, &exitCode)) {
+        CloseHandle(info.hProcess);
+        return ERROR_GEN_FAILURE;
+    }
+    CloseHandle(info.hProcess);
     return ERROR_SUCCESS;
 }
 
@@ -256,8 +290,15 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     const std::wstring args = L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS "
                               L"/AUToupdate=1 /HELPERUPDATE=1 /LOG=" + quote(request.log);
     DWORD installerExit = ~0UL;
-    const DWORD launchError = runAndWait(request.setup, args, InstallTimeoutMs, installerExit);
+    const DWORD launchError = installElevatedAndWait(request, args, installerExit);
     CloseHandle(lockedSetup);
+    if (launchError == ERROR_CANCELLED) {
+        // UAC cancellation happened before installation. Restore the old app.
+        logLine(request, L"Administrator prompt was cancelled; restoring previous app.");
+        if (!startApplication(request.app))
+            return fail(request, 15, L"Administrator permission was cancelled; reopen K500 manually.");
+        return 15;
+    }
     if (launchError != ERROR_SUCCESS)
         return fail(request, 15, L"Installer did not finish successfully (Windows error "
                    + std::to_wstring(launchError) + L").");
