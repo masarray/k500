@@ -195,6 +195,11 @@ jobs:
             if ($p.ExitCode -ne 0) { throw "Installed app $arg failed with exit code $($p.ExitCode)" }
           }
 
+          # Clean the HKLM uninstall registration before the per-user test.
+          # Otherwise its coexistence guard must (correctly) refuse the fixture.
+          $cleanup = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($cleanup.ExitCode -ne 0) { throw "Machine-wide fixture cleanup failed: $($cleanup.ExitCode)" }
+
       - name: Validate per-user installer candidate
         shell: pwsh
         run: |
