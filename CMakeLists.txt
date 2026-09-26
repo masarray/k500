@@ -78,7 +78,7 @@ target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURC
 # before replacement so Inno never attempts to overwrite a running helper.
 if(WIN32)
     add_executable(k500_update_helper WIN32 packaging/windows/update_helper.cpp)
-    target_link_libraries(k500_update_helper PRIVATE shell32 bcrypt)
+    target_link_libraries(k500_update_helper PRIVATE shell32 bcrypt user32)
     set_target_properties(k500_update_helper PROPERTIES OUTPUT_NAME "SonKuPik-K500-Updater")
     add_custom_command(TARGET k500_update_helper POST_BUILD
         COMMAND $<TARGET_FILE:k500_update_helper> --self-test
