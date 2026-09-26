@@ -160,6 +160,18 @@ ApplicationWindow {
         }
     }
 
+    // UPDATE_DEVICE_TRANSACTION_BARRIER_P1 — pass the authoritative coordinator
+    // state to the backend. The backend checks again AFTER the download finishes,
+    // not only when the Update button was initially enabled.
+    Component.onCompleted: AppUpdater.setDeviceTransactionBusy(
+        !!root.deviceManager.presetManager && root.deviceManager.presetManager.busy)
+    Connections {
+        target: root.deviceManager ? root.deviceManager.presetManager : null
+        function onBusyChanged() {
+            AppUpdater.setDeviceTransactionBusy(root.deviceManager.presetManager.busy)
+        }
+    }
+
     // STARTUP_UPDATE_DISCOVERY_V1 — let the control surface paint and device
     // startup settle before the first network request. Long-running studio
     // sessions re-check every six hours; AppUpdateManager applies its own
