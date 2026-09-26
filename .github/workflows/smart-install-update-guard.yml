@@ -157,3 +157,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup script failed to compile' }
           $setup = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
           if (-not (Test-Path $setup)) { throw 'Expected Setup EXE was not produced' }
+
+      # This is an installer UI fixture, NOT a distributable application:
+      # the package contains a placeholder SonKuPik-K500.exe for wizard review.
+      - name: Prepare wizard-only visual preview (do not install)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter 'SonKuPik-K500-v*-Windows-Setup.exe' -File | Select-Object -First 1
+          if (-not $setup) { throw 'Preview fixture Setup EXE is missing' }
+          Copy-Item $setup.FullName 'build/packaging/INNO-WIZARD-PREVIEW-DO-NOT-INSTALL.exe'
+
+      - name: Upload wizard-only preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: K500-Inno-Wizard-Preview-${{ github.sha }}
+          path: build/packaging/INNO-WIZARD-PREVIEW-DO-NOT-INSTALL.exe
+          if-no-files-found: error
+          retention-days: 7
