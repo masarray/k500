@@ -267,6 +267,8 @@ jobs:
             $p = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "Installed application $arg failed with exit code $($p.ExitCode)" }
           }
+          $scope = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList '--update-scope-check=machine' -Wait -PassThru
+          if ($scope.ExitCode -ne 0) { throw 'machine installer registry scope failed' }
 
       - name: Validate per-user installer end-to-end
         shell: pwsh
@@ -281,6 +283,8 @@ jobs:
             $p = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "Per-user installed application $arg failed: $($p.ExitCode)" }
           }
+          $scope = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList '--update-scope-check=user' -Wait -PassThru
+          if ($scope.ExitCode -ne 0) { throw 'user installer registry scope failed' }
           $helper = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
           if ($helper.ExitCode -ne 0) { throw "Per-user updater self-test failed: $($helper.ExitCode)" }
           $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
