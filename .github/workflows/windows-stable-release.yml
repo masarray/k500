@@ -270,6 +270,11 @@ jobs:
           $scope = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList '--update-scope-check=machine' -Wait -PassThru
           if ($scope.ExitCode -ne 0) { throw 'machine installer registry scope failed' }
 
+          # Clean the HKLM uninstall registration before the per-user test.
+          # Otherwise its coexistence guard must (correctly) refuse the fixture.
+          $cleanup = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($cleanup.ExitCode -ne 0) { throw "Machine-wide fixture cleanup failed: $($cleanup.ExitCode)" }
+
       - name: Validate per-user installer end-to-end
         shell: pwsh
         run: |
