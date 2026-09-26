@@ -274,6 +274,19 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         LocalFree(argv);
         return result;
     }
+    // Non-destructive hash regression: exercises the production BCrypt path
+    // without invoking an installer or requesting UAC.
+    if (argc == 4 && std::wstring(argv[1]) == L"--verify-self-test") {
+        Request fixture;
+        fixture.setup = argv[2];
+        fixture.sha256 = argv[3];
+        LocalFree(argv);
+        HANDLE locked = INVALID_HANDLE_VALUE;
+        const bool ok = verifySetup(fixture, locked);
+        if (locked != INVALID_HANDLE_VALUE)
+            CloseHandle(locked);
+        return ok ? 0 : 41;
+    }
     Request request;
     const bool valid = parse(argc, argv, request);
     LocalFree(argv);
