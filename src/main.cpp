@@ -104,6 +104,19 @@ int main(int argc, char *argv[])
         return 5;
     }
 
+    // UPDATE_HANDOFF_HEALTH_V1 — the external updater runs this without opening
+    // QML or touching K500 hardware. It rejects a stale/incorrect replacement.
+    for (const QString &argument : app.arguments()) {
+        const QString prefix = QStringLiteral("--update-health-check=");
+        if (argument.startsWith(prefix)) {
+            const QString expected = argument.mid(prefix.size());
+            const bool versionOk = !expected.isEmpty()
+                && QCoreApplication::applicationVersion() == expected;
+            const bool fontOk = QFontDatabase::families().contains(kUiFontFamily);
+            return versionOk && fontOk ? 0 : 12;
+        }
+    }
+
     QFont appFont(kUiFontFamily);
     appFont.setStyleStrategy(QFont::PreferAntialias);
     app.setFont(appFont);
