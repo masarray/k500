@@ -9,6 +9,7 @@
 #include <bcrypt.h>
 #include <array>
 #include <climits>
+#include <cstdlib>
 #include <cwchar>
 #include <string>
 #include <vector>
