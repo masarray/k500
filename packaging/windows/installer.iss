@@ -15,6 +15,12 @@
   #define AppVersion "0.0.0-dev"
 #endif
 
+; Per-user package is a separate asset. The legacy filename MUST remain machine-wide
+; so already-published v1.0.3 updaters can never silently switch install scope.
+#ifndef PerUser
+  #define PerUser 0
+#endif
+
 #if AppDir == ""
   #error SONKUPIK_APP_DIR is required
 #endif
@@ -44,9 +50,16 @@ AppUpdatesURL={#AppURL}/releases
 ; SMART_INSTALL_LAYOUT_V2
 ; Application/runtime belongs to Program Files. User .k500 content is created by
 ; the application under Documents\SonKuPik K500\Presets and is never uninstalled.
+#if PerUser
+; P2_INSTALL_SCOPE_V1 — separate per-user package, without UAC.
+DefaultDirName={userpf}\{#AppName}
+DefaultGroupName={#AppName}
+PrivilegesRequired=lowest
+#else
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
 PrivilegesRequired=admin
+#endif
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
@@ -61,7 +74,11 @@ DisableWelcomePage=no
 DisableReadyPage=no
 
 OutputDir={#OutputDir}
+#if PerUser
+OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup-PerUser
+#else
 OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup
+#endif
 SetupIconFile={#AppIcon}
 WizardImageFile={#WizardImage}
 WizardSmallImageFile={#WizardSmallImage}
@@ -117,6 +134,25 @@ begin
   Result := ExpandConstant('{param:HELPERUPDATE|0}') = '1';
 end;
 
+#if PerUser
+// A per-user install must never coexist silently with a registered machine-wide
+// installation. Require an explicit migration outside this installer instead.
+function InitializeSetup(): Boolean;
+var
+  MachineKey: String;
+begin
+  MachineKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
+  Result := not (RegKeyExists(HKLM64, MachineKey) or RegKeyExists(HKLM32, MachineKey));
+  if not Result then
+  begin
+    Log('Per-user install refused: existing machine-wide SonKuPik registration.');
+    if not WizardSilent then
+      MsgBox('An all-users SonKuPik K500 installation already exists. ' +
+             'This per-user installer will not create a second copy. ' +
+             'Use the existing application or perform a separately confirmed migration.', mbError, MB_OK);
+  end;
+end;
+#else
 procedure MigrateLegacyPerUserInstall;
 var
   Cmd: String;
@@ -147,3 +183,5 @@ begin
   MigrateLegacyPerUserInstall;
   Result := '';
 end;
+
+#endif

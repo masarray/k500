@@ -17,6 +17,7 @@ class AppUpdateManager : public QObject
     QML_NAMED_ELEMENT(AppUpdater)
     QML_SINGLETON
     Q_PROPERTY(QString currentVersion READ currentVersion CONSTANT)
+    Q_PROPERTY(QString installationScope READ installationScope CONSTANT)
     Q_PROPERTY(QString latestVersion READ latestVersion NOTIFY updateChanged)
     Q_PROPERTY(QString releaseNotes READ releaseNotes NOTIFY updateChanged)
     Q_PROPERTY(QString state READ state NOTIFY stateChanged)
@@ -30,6 +31,7 @@ public:
     explicit AppUpdateManager(QObject *parent = nullptr);
 
     QString currentVersion() const;
+    QString installationScope() const; // machine, user, or unknown (read-only diagnostic)
     QString latestVersion() const { return m_latestVersion; }
     QString releaseNotes() const { return m_releaseNotes; }
     QString state() const { return m_state; }
@@ -58,6 +60,8 @@ signals:
     void updateReadyToInstall();
 
 private:
+    enum class InstallScope { Unknown, Machine, User };
+    InstallScope detectedInstallScope() const;
     void setState(const QString &state, const QString &status = {}, const QString &error = {});
     void setProgress(qreal value);
     void resetReleaseMetadata();
@@ -82,6 +86,7 @@ private:
     qreal m_progress = 0.0;
     bool m_updateAvailable = false;
     bool m_deviceTransactionBusy = true; // Fail closed until QML supplies actual state.
+    InstallScope m_installScope = InstallScope::Unknown;
     QString m_setupAssetName;
     QUrl m_setupAssetUrl;
     QUrl m_manifestUrl;
