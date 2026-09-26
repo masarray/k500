@@ -58,6 +58,8 @@ signals:
     void updateReadyToInstall();
 
 private:
+    enum class InstallScope { Unknown, Machine, User };
+    InstallScope detectedInstallScope() const;
     void setState(const QString &state, const QString &status = {}, const QString &error = {});
     void setProgress(qreal value);
     void resetReleaseMetadata();
@@ -82,6 +84,7 @@ private:
     qreal m_progress = 0.0;
     bool m_updateAvailable = false;
     bool m_deviceTransactionBusy = true; // Fail closed until QML supplies actual state.
+    InstallScope m_installScope = InstallScope::Unknown;
     QString m_setupAssetName;
     QUrl m_setupAssetUrl;
     QUrl m_manifestUrl;
