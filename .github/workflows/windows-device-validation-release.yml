@@ -110,7 +110,7 @@ jobs:
       - name: Validate deployed application self-tests
         shell: pwsh
         run: |
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=$env:DEVICE_VALIDATION_VERSION")) {
             $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
           }
