@@ -303,7 +303,9 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                text: "SonKuPik akan mengunduh Setup resmi, mencocokkan manifest + SHA-256, meminta izin Administrator Windows, memasang update, lalu membuka aplikasi kembali."
+                text: root.updateManager && root.updateManager.installationScope === "user"
+                      ? "SonKuPik akan mengunduh Setup resmi, memverifikasi manifest + SHA-256, memasang pembaruan pada akun pengguna tanpa Administrator, lalu membuka aplikasi kembali."
+                      : "SonKuPik akan mengunduh Setup resmi, memverifikasi manifest + SHA-256, meminta izin Administrator untuk instalasi Program Files, lalu membuka aplikasi kembali."
                 color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.fontFamily
