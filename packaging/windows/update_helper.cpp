@@ -290,7 +290,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     // /HELPERUPDATE=1 prevents Inno Setup from racing this coordinator to
     // restart the application. Legacy updaters still retain their old [Run] path.
     const std::wstring args = L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS "
-                              L"/AUToupdate=1 /HELPERUPDATE=1 /LOG=" + quote(request.log);
+                              L"/AUToupdate=1 /HELPERUPDATE=1 /LOG=" + quote(request.log + L".inno.log");
     DWORD installerExit = ~0UL;
     const DWORD launchError = installElevatedAndWait(request, args, installerExit);
     CloseHandle(lockedSetup);
