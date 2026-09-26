@@ -164,7 +164,7 @@ ApplicationWindow {
     // state to the backend. The backend checks again AFTER the download finishes,
     // not only when the Update button was initially enabled.
     Component.onCompleted: AppUpdater.setDeviceTransactionBusy(
-        !!root.deviceManager.presetManager && root.deviceManager.presetManager.busy)
+        !root.deviceManager || !root.deviceManager.presetManager || root.deviceManager.presetManager.busy)
     Connections {
         target: root.deviceManager ? root.deviceManager.presetManager : null
         function onBusyChanged() {
