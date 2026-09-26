@@ -73,6 +73,21 @@ target_compile_definitions(sonkupik_studio_native PRIVATE
 )
 target_include_directories(sonkupik_studio_native PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
+# UPDATE_HANDOFF_P1 — standalone Win32 coordinator with no Qt runtime dependency.
+# Its executable is packaged with the app and copied to the update cache
+# before replacement so Inno never attempts to overwrite a running helper.
+if(WIN32)
+    add_executable(k500_update_helper WIN32 packaging/windows/update_helper.cpp)
+    target_link_libraries(k500_update_helper PRIVATE shell32 bcrypt)
+    set_target_properties(k500_update_helper PROPERTIES OUTPUT_NAME "SonKuPik-K500-Updater")
+    add_custom_command(TARGET k500_update_helper POST_BUILD
+        COMMAND $<TARGET_FILE:k500_update_helper> --self-test
+        COMMENT "Running native update coordinator self-test"
+    )
+endif()
+
+
+
 # P0_RUNTIME_TELEMETRY_V1 — deterministic, hardware-free resource qualification.
 add_executable(k500_p0_perf_selftest
     src/P0PerfSelfTestMain.cpp
