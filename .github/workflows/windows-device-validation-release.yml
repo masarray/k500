@@ -159,6 +159,13 @@ jobs:
           if (-not (Test-Path $stableName)) { throw 'Inno Setup output not found' }
           Move-Item $stableName $rcName -Force
 
+          & $env:INNO_ISCC "/DAppVersion=$version" "/DPerUser=1" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Per-user Inno Setup packaging failed' }
+          $perUserStable = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
+          $perUserRc = "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
+          if (-not (Test-Path $perUserStable)) { throw 'Per-user installer output not found' }
+          Move-Item $perUserStable $perUserRc -Force
+
           $portable = "dist/SonKuPik-K500-$tag-Windows-Portable.zip"
           Compress-Archive -Path 'package/*' -DestinationPath $portable -CompressionLevel Optimal -Force
 
@@ -188,11 +195,27 @@ jobs:
             if ($p.ExitCode -ne 0) { throw "Installed app $arg failed with exit code $($p.ExitCode)" }
           }
 
+      - name: Validate per-user installer candidate
+        shell: pwsh
+        run: |
+          $setup = (Resolve-Path "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Setup-PerUser.exe").Path
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik-K500-validation-user-test'
+          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Per-user installer failed: $($install.ExitCode)" }
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+            $p = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Per-user installed app $arg failed: $($p.ExitCode)" }
+          }
+          $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Per-user uninstall failed: $($uninstall.ExitCode)" }
+
       - name: Generate hashes and validation manifest
         shell: pwsh
         run: |
           $files = @(
             Get-Item "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Setup.exe"
+            Get-Item "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Setup-PerUser.exe"
             Get-Item "dist/SonKuPik-K500-$env:DEVICE_VALIDATION_TAG-Windows-Portable.zip"
           )
           $artifacts = @()
@@ -276,6 +299,7 @@ jobs:
             Windows binaries are unsigned. Installer uses Inno Setup 6; portable package is a normal ZIP.
           files: |
             dist/SonKuPik-K500-${{ env.DEVICE_VALIDATION_TAG }}-Windows-Setup.exe
+            dist/SonKuPik-K500-${{ env.DEVICE_VALIDATION_TAG }}-Windows-Setup-PerUser.exe
             dist/SonKuPik-K500-${{ env.DEVICE_VALIDATION_TAG }}-Windows-Portable.zip
             dist/SHA256SUMS.txt
             dist/device-validation-manifest.json
