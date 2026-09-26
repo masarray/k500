@@ -2,13 +2,10 @@ name: Windows Stable Release
 
 # Public stable publisher for the hardware-accepted Windows USB baseline.
 # Standard Inno Setup installer + ordinary portable ZIP; unsigned open-source build.
+# Explicit release only: ordinary merges must never replace the same-version
+# public installer or silently change the bytes trusted by existing updaters.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/windows-stable-release.yml'
 
 permissions:
   contents: write
@@ -41,6 +38,18 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=v$version" >> $env:GITHUB_OUTPUT
           Write-Host "Packaging SonKuPik K500 v$version PUBLIC STABLE"
+
+      - name: Refuse a previously published version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Stable releases must be dispatched from main.' }
+          $tag = 'v${{ steps.meta.outputs.version }}'
+          $response = gh api -i "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag" 2>&1 | Out-String
+          if ($LASTEXITCODE -eq 0) { throw "Release tag $tag already exists; bump CMake version before publishing." }
+          if ($response -notmatch 'HTTP/.* 404') { throw "Could not verify that release tag $tag is unused: $response" }
+          Write-Host "Release identity available: $tag"
 
       - name: Guard stable release truth
         shell: pwsh
@@ -344,4 +353,4 @@ jobs:
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true
-          overwrite_files: true
+          overwrite_files: false
