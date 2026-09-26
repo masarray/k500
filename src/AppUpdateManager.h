@@ -30,6 +30,7 @@ public:
     explicit AppUpdateManager(QObject *parent = nullptr);
 
     QString currentVersion() const;
+    QString installationScope() const; // machine, user, or unknown (read-only diagnostic)
     QString latestVersion() const { return m_latestVersion; }
     QString releaseNotes() const { return m_releaseNotes; }
     QString state() const { return m_state; }
