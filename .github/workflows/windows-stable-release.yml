@@ -46,9 +46,14 @@ jobs:
         run: |
           if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Stable releases must be dispatched from main.' }
           $tag = 'v${{ steps.meta.outputs.version }}'
-          $response = gh api -i "repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag" 2>&1 | Out-String
-          if ($LASTEXITCODE -eq 0) { throw "Release tag $tag already exists; bump CMake version before publishing." }
-          if ($response -notmatch 'HTTP/.* 404') { throw "Could not verify that release tag $tag is unused: $response" }
+          $url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"
+          $response = Invoke-WebRequest -Uri $url -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-stable-release'
+            Accept = 'application/vnd.github+json'
+          } -SkipHttpErrorCheck -ErrorAction Stop
+          if ($response.StatusCode -eq 200) { throw "Release tag $tag already exists; bump CMake version before publishing." }
+          if ($response.StatusCode -ne 404) { throw "Could not verify unused release tag $tag (HTTP $($response.StatusCode))." }
           Write-Host "Release identity available: $tag"
 
       - name: Guard stable release truth
