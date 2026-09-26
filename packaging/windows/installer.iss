@@ -144,9 +144,13 @@ begin
   MachineKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
   Result := not (RegKeyExists(HKLM64, MachineKey) or RegKeyExists(HKLM32, MachineKey));
   if not Result then
-    MsgBox('An all-users SonKuPik K500 installation already exists. ' +
-           'This per-user installer will not create a second copy. ' +
-           'Use the existing application or perform a separately confirmed migration.', mbError, MB_OK);
+  begin
+    Log('Per-user install refused: existing machine-wide SonKuPik registration.');
+    if not WizardSilent then
+      MsgBox('An all-users SonKuPik K500 installation already exists. ' +
+             'This per-user installer will not create a second copy. ' +
+             'Use the existing application or perform a separately confirmed migration.', mbError, MB_OK);
+  end;
 end;
 #else
 procedure MigrateLegacyPerUserInstall;
