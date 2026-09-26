@@ -137,6 +137,15 @@ AppUpdateManager::InstallScope AppUpdateManager::detectedInstallScope() const
 #endif
 }
 
+QString AppUpdateManager::installationScope() const
+{
+    switch (detectedInstallScope()) {
+    case InstallScope::Machine: return QStringLiteral("machine");
+    case InstallScope::User: return QStringLiteral("user");
+    default: return QStringLiteral("unknown");
+    }
+}
+
 QString AppUpdateManager::currentVersion() const
 {
     return QCoreApplication::applicationVersion();
