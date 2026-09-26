@@ -89,6 +89,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
+          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
+          & package/SonKuPik-K500-Updater.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native updater coordinator self-test failed' }
           if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
           windeployqt --release --qmldir qml package/SonKuPik-K500.exe
 
