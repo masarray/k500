@@ -17,6 +17,7 @@ class AppUpdateManager : public QObject
     QML_NAMED_ELEMENT(AppUpdater)
     QML_SINGLETON
     Q_PROPERTY(QString currentVersion READ currentVersion CONSTANT)
+    Q_PROPERTY(QString installationScope READ installationScope CONSTANT)
     Q_PROPERTY(QString latestVersion READ latestVersion NOTIFY updateChanged)
     Q_PROPERTY(QString releaseNotes READ releaseNotes NOTIFY updateChanged)
     Q_PROPERTY(QString state READ state NOTIFY stateChanged)
