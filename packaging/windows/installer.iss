@@ -135,8 +135,8 @@ begin
 end;
 
 #if PerUser
-; A per-user install must never coexist silently with a registered machine-wide
-; installation. Require an explicit migration outside this installer instead.
+// A per-user install must never coexist silently with a registered machine-wide
+// installation. Require an explicit migration outside this installer instead.
 function InitializeSetup(): Boolean;
 var
   MachineKey: String;
