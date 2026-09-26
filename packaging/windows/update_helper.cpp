@@ -126,6 +126,8 @@ bool verifySetup(const Request &request, HANDLE &lockedFile)
     BCRYPT_ALG_HANDLE algorithm = nullptr;
     BCRYPT_HASH_HANDLE hash = nullptr;
     std::array<UCHAR, 32> digest{};
+    // BCrypt keeps the caller-supplied hash object alive until DestroyHash.
+    std::vector<UCHAR> hashObject;
     bool ok = false;
     if (BCryptOpenAlgorithmProvider(&algorithm, BCRYPT_SHA256_ALGORITHM, nullptr, 0) >= 0) {
         DWORD objectBytes = 0;
@@ -133,8 +135,8 @@ bool verifySetup(const Request &request, HANDLE &lockedFile)
         if (BCryptGetProperty(algorithm, BCRYPT_OBJECT_LENGTH,
                               reinterpret_cast<PUCHAR>(&objectBytes), sizeof(objectBytes),
                               &cbResult, 0) >= 0 && objectBytes > 0) {
-            std::vector<UCHAR> object(objectBytes);
-            if (BCryptCreateHash(algorithm, &hash, object.data(), objectBytes, nullptr, 0, 0) >= 0) {
+            hashObject.resize(objectBytes);
+            if (BCryptCreateHash(algorithm, &hash, hashObject.data(), objectBytes, nullptr, 0, 0) >= 0) {
                 std::array<UCHAR, 64 * 1024> buffer{};
                 DWORD received = 0;
                 ok = true;
