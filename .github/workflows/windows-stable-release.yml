@@ -141,7 +141,7 @@ jobs:
       - name: Validate direct deployed application
         shell: pwsh
         run: |
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=${{ steps.meta.outputs.version }}")) {
             $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
           }
