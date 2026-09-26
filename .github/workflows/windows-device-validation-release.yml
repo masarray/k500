@@ -116,25 +116,8 @@ jobs:
         shell: pwsh
         run: |
           python -m pip install --disable-pip-version-check --quiet pillow
-          @'
-          from PIL import Image
-
-          source = Image.open('assets/SonKuPik-k500-logo.png').convert('RGBA')
-          source.save('package/SonKuPik-K500.ico', format='ICO',
-                      sizes=[(16,16),(24,24),(32,32),(48,48),(64,64),(128,128),(256,256)])
-
-          def branded_bmp(size, logo_box, out_path):
-              canvas = Image.new('RGB', size, (13, 18, 22))
-              logo = source.copy()
-              logo.thumbnail(logo_box, Image.Resampling.LANCZOS)
-              x = (size[0] - logo.width) // 2
-              y = max(12, (size[1] - logo.height) // 3)
-              canvas.paste(logo, (x, y), logo)
-              canvas.save(out_path, format='BMP')
-
-          branded_bmp((164, 314), (132, 132), 'build/packaging/SonKuPik-K500-wizard.bmp')
-          branded_bmp((55, 55), (48, 48), 'build/packaging/SonKuPik-K500-wizard-small.bmp')
-          '@ | python -
+          python packaging/windows/generate_brand_assets.py --icon package/SonKuPik-K500.ico --wizard build/packaging/SonKuPik-K500-wizard.bmp --wizard-small build/packaging/SonKuPik-K500-wizard-small.bmp
+          if ($LASTEXITCODE -ne 0) { throw 'Installer branding generation failed' }
 
       - name: Install Inno Setup
         shell: pwsh

@@ -128,19 +128,10 @@ jobs:
           Set-Content -Path package/SonKuPik-K500.exe -Value 'CI installer fixture' -Encoding ascii
           Copy-Item LICENSE package/LICENSE
           python -m pip install --disable-pip-version-check --quiet pillow
-          @'
-          from PIL import Image
-          source = Image.open('assets/SonKuPik-k500-logo.png').convert('RGBA')
-          source.save('package/SonKuPik-K500.ico', format='ICO', sizes=[(16,16),(32,32),(48,48),(256,256)])
-          for size, box, path in [
-              ((164,314),(132,132),'build/packaging/wizard.bmp'),
-              ((55,55),(48,48),'build/packaging/wizard-small.bmp')]:
-              canvas = Image.new('RGB', size, (13,18,22))
-              logo = source.copy()
-              logo.thumbnail(box, Image.Resampling.LANCZOS)
-              canvas.paste(logo, ((size[0]-logo.width)//2, max(4,(size[1]-logo.height)//3)), logo)
-              canvas.save(path, format='BMP')
-          '@ | python -
+          python -m unittest discover -s tests -p test_installer_brand_assets.py
+          if ($LASTEXITCODE -ne 0) { throw 'Installer branding tests failed' }
+          python packaging/windows/generate_brand_assets.py --icon package/SonKuPik-K500.ico --wizard build/packaging/wizard.bmp --wizard-small build/packaging/wizard-small.bmp
+          if ($LASTEXITCODE -ne 0) { throw 'Installer branding generation failed' }
 
       - name: Install Inno Setup
         shell: pwsh
@@ -166,3 +157,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Inno Setup script failed to compile' }
           $setup = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
           if (-not (Test-Path $setup)) { throw 'Expected Setup EXE was not produced' }
+
+      # This is an installer UI fixture, NOT a distributable application:
+      # the package contains a placeholder SonKuPik-K500.exe for wizard review.
+      - name: Prepare wizard-only visual preview (do not install)
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem dist -Filter 'SonKuPik-K500-v*-Windows-Setup.exe' -File | Select-Object -First 1
+          if (-not $setup) { throw 'Preview fixture Setup EXE is missing' }
+          Copy-Item $setup.FullName 'build/packaging/INNO-WIZARD-PREVIEW-DO-NOT-INSTALL.exe'
+
+      - name: Upload wizard-only preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: K500-Inno-Wizard-Preview-${{ github.sha }}
+          path: build/packaging/INNO-WIZARD-PREVIEW-DO-NOT-INSTALL.exe
+          if-no-files-found: error
+          retention-days: 7
