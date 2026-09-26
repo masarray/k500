@@ -16,6 +16,7 @@
 
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "shell32.lib")
+#pragma comment(lib, "user32.lib")
 
 namespace {
 constexpr DWORD ParentTimeoutMs = 120000;
