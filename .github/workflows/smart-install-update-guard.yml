@@ -9,6 +9,7 @@ on:
       - 'qml/Main.qml'
       - 'qml/components/UpdateDialog.qml'
       - 'packaging/windows/installer.iss'
+      - 'packaging/windows/update_helper.cpp'
       - '.github/workflows/smart-install-update-guard.yml'
   push:
     branches: [ main ]
@@ -87,7 +88,17 @@ jobs:
           grep -F 'SHA256SUMS.txt disagrees with release-manifest.json' src/AppUpdateManager.cpp
           grep -F 'Downloaded package is not a Windows executable' src/AppUpdateManager.cpp
           grep -F 'ShellExecuteExW' src/AppUpdateManager.cpp
-          grep -F 'info.lpVerb = L"runas"' src/AppUpdateManager.cpp
+          grep -F 'info.lpVerb = L"open"' src/AppUpdateManager.cpp
+          grep -F 'info.lpVerb = L"runas"' packaging/windows/update_helper.cpp
+          grep -F 'installElevatedAndWait' packaging/windows/update_helper.cpp
+          grep -F 'verifySetup(request, lockedSetup)' packaging/windows/update_helper.cpp
+          grep -F 'waitParent(request)' packaging/windows/update_helper.cpp
+          grep -F 'm_deviceTransactionBusy' src/AppUpdateManager.cpp
+          grep -F 'setDeviceTransactionBusy' qml/Main.qml
+          grep -F -- '--update-health-check=' src/main.cpp
+          grep -F 'IsHelperUpdate' packaging/windows/installer.iss
+          grep -F 'runasoriginaluser' packaging/windows/installer.iss
+          grep -F 'SonKuPik-K500-Updater.exe' .github/workflows/windows-stable-release.yml
           grep -F 'QML_NAMED_ELEMENT(AppUpdater)' src/AppUpdateManager.h
           grep -F 'class AppUpdateManager : public QObject' src/AppUpdateManager.h
           if grep -Fq 'class AppUpdateManager final' src/AppUpdateManager.h; then
@@ -121,11 +132,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Activate MSVC 2022 for standalone helper
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Create minimal packaging fixture
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
           Set-Content -Path package/SonKuPik-K500.exe -Value 'CI installer fixture' -Encoding ascii
+          # Compile the actual standalone Win32 helper without a Qt dependency.
+          & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fe:package/SonKuPik-K500-Updater.exe packaging/windows/update_helper.cpp /link /SUBSYSTEM:WINDOWS shell32.lib bcrypt.lib
+          if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator compilation failed' }
+          & package/SonKuPik-K500-Updater.exe --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator self-test failed' }
           Copy-Item LICENSE package/LICENSE
           python -m pip install --disable-pip-version-check --quiet pillow
           python -m unittest discover -s tests -p test_installer_brand_assets.py
