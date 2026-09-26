@@ -147,6 +147,17 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator compilation failed' }
           $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
           if ($helperTest.ExitCode -ne 0) { throw "Native update coordinator self-test failed: $($helperTest.ExitCode)" }
+          # Exercise the production Windows BCrypt streaming verifier: accept a
+          # correct file/hash pair and reject a changed file without installing.
+          $fixture = (Join-Path (Resolve-Path 'package').Path 'updater-hash-fixture.bin')
+          [IO.File]::WriteAllBytes($fixture, [byte[]](0..255))
+          $hash = (Get-FileHash $fixture -Algorithm SHA256).Hash.ToLowerInvariant()
+          $good = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList @('--verify-self-test', ('"' + $fixture + '"'), $hash) -Wait -PassThru
+          if ($good.ExitCode -ne 0) { throw "Valid helper SHA-256 fixture failed: $($good.ExitCode)" }
+          [IO.File]::AppendAllText($fixture, 'tamper')
+          $bad = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList @('--verify-self-test', ('"' + $fixture + '"'), $hash) -Wait -PassThru
+          if ($bad.ExitCode -ne 41) { throw "Tampered helper SHA-256 fixture did not fail closed: $($bad.ExitCode)" }
+          Remove-Item $fixture -Force
           Copy-Item LICENSE package/LICENSE
           python -m pip install --disable-pip-version-check --quiet pillow
           python -m unittest discover -s tests -p test_installer_brand_assets.py
