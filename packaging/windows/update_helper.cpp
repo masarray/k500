@@ -254,11 +254,12 @@ bool startApplication(const std::wstring &exe)
     return true;
 }
 
-bool selfTest()
+int selfTest()
 {
-    return quote(L"C:\\Some Folder\\app.exe") == L"\"C:\\Some Folder\\app.exe\""
-        && quote(L"C:\\trailing\\") == L"\"C:\\trailing\\\\\""
-        && quote(L"has\"quote") == L"\"has\\\"quote\"";
+    if (quote(L"C:\\Some Folder\\app.exe") != L"\"C:\\Some Folder\\app.exe\"") return 31;
+    if (quote(L"C:\\trailing\\") != L"\"C:\\trailing\\\\\"") return 32;
+    if (quote(L"has\"quote") != L"\"has\\\"quote\"") return 33;
+    return 0;
 }
 } // namespace
 
@@ -269,9 +270,9 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     if (!argv)
         return 10;
     if (argc == 2 && std::wstring(argv[1]) == L"--self-test") {
-        const bool ok = selfTest();
+        const int result = selfTest();
         LocalFree(argv);
-        return ok ? 0 : 11;
+        return result;
     }
     Request request;
     const bool valid = parse(argc, argv, request);
