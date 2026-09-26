@@ -32,7 +32,7 @@ directory and checks the copy's SHA-256 against the installed helper.
    it invokes `SonKuPik-K500.exe --update-health-check=<version>` to verify
    the new version and embedded UI fonts **without device I/O**, then restarts
    the app in the original user's session.
-7. Errors are recorded in `updates/v<version>/update-handoff.log`. If UAC is
+7. Coordinator errors are recorded in `updates/v<version>/update-handoff.log`; Inno Setup writes separately to `update-handoff.log.inno.log`. If UAC is
    declined before installation, the helper reopens the existing application.
    If installation fails or times out, it reports the failure without
    terminating the installer, deleting user files, or claiming success.
