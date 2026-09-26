@@ -89,6 +89,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
+          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
+          $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
+          if ($helperTest.ExitCode -ne 0) { throw "Native updater coordinator self-test failed: $($helperTest.ExitCode)" }
           if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
           windeployqt --release --qmldir qml package/SonKuPik-K500.exe
 
@@ -107,7 +110,7 @@ jobs:
       - name: Validate deployed application self-tests
         shell: pwsh
         run: |
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=$env:DEVICE_VALIDATION_VERSION")) {
             $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
           }

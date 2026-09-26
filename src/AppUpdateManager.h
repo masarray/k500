@@ -43,6 +43,9 @@ public:
     Q_INVOKABLE void downloadAndInstall();
     Q_INVOKABLE void remindLater();
     Q_INVOKABLE void skipThisVersion();
+    // Hardware transaction authority is mirrored by Main.qml, not inferred
+    // from the UpdateDialog button state alone.
+    Q_INVOKABLE void setDeviceTransactionBusy(bool busy);
 
     // UPDATE_METADATA_SELF_TEST_V1 — hardware/network-free release-integrity
     // regression used by Windows CI and packaged-runtime qualification.
@@ -78,6 +81,7 @@ private:
     QString m_errorText;
     qreal m_progress = 0.0;
     bool m_updateAvailable = false;
+    bool m_deviceTransactionBusy = true; // Fail closed until QML supplies actual state.
     QString m_setupAssetName;
     QUrl m_setupAssetUrl;
     QUrl m_manifestUrl;
