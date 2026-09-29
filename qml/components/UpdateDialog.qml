@@ -12,6 +12,11 @@ Popup {
     readonly property bool migrationOnly: root.updateManager
                                           && root.updateManager.state === "migration-available"
                                           && !root.updateManager.updateAvailable
+    // Preserve the user's explicit per-user migration choice across download or
+    // verification errors. Retrying must never silently fall back to the
+    // machine-wide package and reintroduce an Administrator prompt.
+    readonly property bool migrationPathActive: root.migrationOnly
+                                                || (root.updateManager && root.updateManager.migrationMode)
     readonly property bool canMigrate: root.updateManager
                                         && root.updateManager.migrationAvailable
                                         && root.updateManager.installationScope === "machine"
@@ -298,7 +303,7 @@ Popup {
 
                 SoftButton {
                     Layout.preferredWidth: 160
-                    visible: root.canMigrate && !root.migrationOnly && !root.repairAvailable
+                    visible: root.canMigrate && !root.migrationPathActive && !root.repairAvailable
                     text: "Update tanpa Admin"
                     compact: true
                     enabled: root.updateManager && !root.updateManager.busy && !root.deviceTransactionBusy
@@ -306,10 +311,10 @@ Popup {
                 }
 
                 SoftButton {
-                    Layout.preferredWidth: root.migrationOnly ? 190 : 160
+                    Layout.preferredWidth: root.migrationPathActive ? 190 : 160
                     Layout.preferredHeight: 34
                     visible: root.repairAvailable
-                             || root.migrationOnly
+                             || root.migrationPathActive
                              || (root.updateManager && root.updateManager.updateAvailable)
                     text: root.updateManager && root.updateManager.busy
                           ? "Memproses…"
@@ -319,7 +324,7 @@ Popup {
                               ? "Perbaiki registrasi"
                               : (root.updateManager && root.updateManager.state === "error"
                                  ? "Coba lagi"
-                                 : (root.migrationOnly ? "Pindah tanpa Admin" : "Update sekarang"))
+                                 : (root.migrationPathActive ? "Pindah tanpa Admin" : "Update sekarang"))
                     compact: false
                     mixerSelect: true
                     primaryAction: true
@@ -328,7 +333,7 @@ Popup {
                     onClicked: {
                         if (root.repairAvailable)
                             root.updateManager.repairStaleRegistration()
-                        else if (root.migrationOnly)
+                        else if (root.migrationPathActive)
                             root.updateManager.migrateToPerUser()
                         else
                             root.updateManager.downloadAndInstall()
@@ -340,7 +345,7 @@ Popup {
                 Layout.fillWidth: true
                 text: root.repairAvailable
                       ? ("SonKuPik menemukan registrasi uninstall " + root.updateManager.staleRegistrationScope + " yang jalur aplikasinya sudah tidak memiliki EXE maupun uninstaller. Pembersihan hanya dilakukan setelah tombol ini ditekan; registrasi instalasi yang masih memiliki file tidak pernah dihapus otomatis.")
-                      : (root.updateManager && (root.updateManager.migrationMode || root.migrationOnly)
+                      : (root.migrationPathActive
                          ? "Migrasi ini eksplisit: SonKuPik memasang dan memverifikasi salinan per-user lebih dulu. Setelah lolos health-check, Windows meminta Administrator satu kali untuk menghapus instalasi Program Files. Preset, QSettings, dan cache pengguna tetap di profil Windows yang sama. Update berikutnya tidak memerlukan Administrator."
                          : (root.updateManager && root.updateManager.installationScope === "user"
                             ? "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, memasang pembaruan tanpa Administrator, lalu membuka aplikasi kembali. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan."
