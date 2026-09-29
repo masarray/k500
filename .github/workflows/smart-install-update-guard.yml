@@ -18,6 +18,7 @@ on:
       - 'packaging/windows/update_helper.cpp'
       - 'tests/windows/update_handoff_fixture.cpp'
       - 'tests/windows/update_failure_installer_fixture.cpp'
+      - 'tests/windows/update_migration_uninstaller_fixture.cpp'
       - '.github/workflows/smart-install-update-guard.yml'
   push:
     branches: [ main ]
@@ -31,6 +32,7 @@ on:
       - 'packaging/windows/update_helper.cpp'
       - 'tests/windows/update_handoff_fixture.cpp'
       - 'tests/windows/update_failure_installer_fixture.cpp'
+      - 'tests/windows/update_migration_uninstaller_fixture.cpp'
       - '.github/workflows/smart-install-update-guard.yml'
 
 jobs:
@@ -181,6 +183,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator compilation failed' }
           & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Febuild/packaging/P3-Fake-Installer.exe tests/windows/update_failure_installer_fixture.cpp /link /SUBSYSTEM:WINDOWS shell32.lib
           if ($LASTEXITCODE -ne 0) { throw 'P3 fake failure installer fixture failed to compile' }
+          & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Febuild/packaging/P3-Fake-Machine-Uninstaller.exe tests/windows/update_migration_uninstaller_fixture.cpp /link /SUBSYSTEM:WINDOWS advapi32.lib
+          if ($LASTEXITCODE -ne 0) { throw 'P3 fake machine uninstaller fixture failed to compile' }
           $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
           if ($helperTest.ExitCode -ne 0) { throw "Native update coordinator self-test failed: $($helperTest.ExitCode)" }
           # Exercise the production Windows BCrypt streaming verifier: accept a
@@ -383,10 +387,13 @@ jobs:
           if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
           $machineDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-P3-MACHINE'
           if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
-          $machineInstall = Start-Process -FilePath (Resolve-Path $setup).Path -ArgumentList @(
-            '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$machineDir"
-          ) -Wait -PassThru
-          if ($machineInstall.ExitCode -ne 0) { throw "Machine fixture install failed: $($machineInstall.ExitCode)" }
+          New-Item -ItemType Directory -Force -Path $machineDir | Out-Null
+          Copy-Item package/SonKuPik-K500.exe (Join-Path $machineDir 'SonKuPik-K500.exe')
+          Copy-Item build/packaging/P3-Fake-Machine-Uninstaller.exe (Join-Path $machineDir 'unins000.exe')
+          $machineReg = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          & reg.exe ADD $machineReg /v 'Inno Setup: App Path' /t REG_SZ /d $machineDir /f | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create machine migration registration fixture' }
+          & reg.exe ADD $machineReg /v DisplayVersion /t REG_SZ /d $version /f | Out-Null
 
           $presetMarker = Join-Path $env:USERPROFILE 'Documents\SonKuPik K500\Presets\P3-preserve.marker'
           $cacheMarker = Join-Path $env:LOCALAPPDATA 'MasArray\SonKuPik K500\official-presets\P3-preserve.marker'
@@ -434,6 +441,7 @@ jobs:
 
           $migrationCleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($migrationCleanup.ExitCode -ne 0) { throw 'Migrated per-user fixture cleanup failed' }
+          if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
           Remove-Item $presetMarker,$cacheMarker -Force -ErrorAction SilentlyContinue
           & reg.exe DELETE 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence /f *> $null
 
