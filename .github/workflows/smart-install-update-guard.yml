@@ -10,6 +10,8 @@ on:
       - 'qml/components/UpdateDialog.qml'
       - 'packaging/windows/installer.iss'
       - 'packaging/windows/update_helper.cpp'
+      - 'tests/windows/update_handoff_fixture.cpp'
+      - 'tests/windows/update_failure_installer_fixture.cpp'
       - '.github/workflows/smart-install-update-guard.yml'
   push:
     branches: [ main ]
@@ -20,6 +22,9 @@ on:
       - 'qml/Main.qml'
       - 'qml/components/UpdateDialog.qml'
       - 'packaging/windows/installer.iss'
+      - 'packaging/windows/update_helper.cpp'
+      - 'tests/windows/update_handoff_fixture.cpp'
+      - 'tests/windows/update_failure_installer_fixture.cpp'
       - '.github/workflows/smart-install-update-guard.yml'
 
 jobs:
@@ -47,6 +52,9 @@ jobs:
           # The standalone helper now owns installer launch arguments; keep the legacy Inno contract.
           grep -F '/AUToupdate=1' packaging/windows/update_helper.cpp
           grep -F '/HELPERUPDATE=1' packaging/windows/update_helper.cpp
+          grep -F '/MIGRATEFROMMACHINE=1' packaging/windows/update_helper.cpp
+          grep -F 'P3_EXPLICIT_SCOPE_MIGRATION_V1' packaging/windows/installer.iss
+          grep -F "{param:MIGRATEFROMMACHINE|0}" packaging/windows/installer.iss
           grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
           if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
             echo 'Stable installer must not default to LocalAppData' >&2
@@ -95,7 +103,15 @@ jobs:
           grep -F 'ShellExecuteExW' src/AppUpdateManager.cpp
           grep -F 'info.lpVerb = L"open"' src/AppUpdateManager.cpp
           grep -F 'info.lpVerb = L"runas"' packaging/windows/update_helper.cpp
-          grep -F 'installElevatedAndWait' packaging/windows/update_helper.cpp
+          grep -F 'runElevatedAndWait' packaging/windows/update_helper.cpp
+          grep -F 'rollbackAndRelaunch' packaging/windows/update_helper.cpp
+          grep -F 'copyTree' packaging/windows/update_helper.cpp
+          grep -F 'restoreTree' packaging/windows/update_helper.cpp
+          grep -F 'migrateMachineToUser' packaging/windows/update_helper.cpp
+          grep -F 'Range' src/AppUpdateManager.cpp
+          grep -F 'Content-Range' src/AppUpdateManager.cpp
+          grep -F 'partialInstallerPath' src/AppUpdateManager.cpp
+          grep -F 'migrateToPerUser' qml/components/UpdateDialog.qml
           grep -F 'verifySetup(request, lockedSetup)' packaging/windows/update_helper.cpp
           grep -F 'waitParent(request)' packaging/windows/update_helper.cpp
           grep -F 'm_deviceTransactionBusy' src/AppUpdateManager.cpp
