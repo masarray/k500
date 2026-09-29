@@ -27,6 +27,7 @@ on:
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/windows-stable-release.yml'
       - '.github/workflows/windows-updater-rc.yml'
+      - '.github/workflows/windows-updater-promote.yml'
       - '.github/workflows/p5-release-readiness.yml'
   pull_request:
     paths:
@@ -53,6 +54,7 @@ on:
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/windows-stable-release.yml'
       - '.github/workflows/windows-updater-rc.yml'
+      - '.github/workflows/windows-updater-promote.yml'
       - '.github/workflows/p5-release-readiness.yml'
 
 jobs:
@@ -83,6 +85,7 @@ jobs:
           $landing = Get-Content docs/index.html -Raw
           $stableWorkflow = Get-Content .github/workflows/windows-stable-release.yml -Raw
           $rcWorkflow = Get-Content .github/workflows/windows-updater-rc.yml -Raw
+          $promotionWorkflow = Get-Content .github/workflows/windows-updater-promote.yml -Raw
           $installer = Get-Content packaging/windows/installer.iss -Raw
           $updater = Get-Content src/AppUpdateManager.cpp -Raw
           $deviceHeader = Get-Content src/k500/K500DeviceManager.h -Raw
@@ -129,11 +132,32 @@ jobs:
           foreach ($token in @('Current public stable: **v1.0.3**','Current source candidate line: **v1.1.0**','Windows-Setup-PerUser.exe','Official Preset update channel','release-manifest.json','Do not republish a stable tag')) {
             if (-not $releases.Contains($token)) { throw "Release model missing '$token'" }
           }
-          foreach ($token in @('Target application version: `1.1.0`','Public stable remains **v1.0.3**')) {
+          foreach ($token in @('Target application version: `1.1.0`','Public stable remains **v1.0.3**','A rebuild is not an accepted promotion mechanism.')) {
             if (-not $updaterAcceptance.Contains($token)) { throw "Updater v1.1 acceptance record missing '$token'" }
           }
-          if ($updaterAcceptance -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=(pending|accepted)\s*$') {
-            throw 'Updater v1.1 acceptance record must contain a valid pending/accepted token.'
+          function Read-UpdaterAcceptanceToken([string]$name) {
+            $escaped = [regex]::Escape($name)
+            $matches = [regex]::Matches($updaterAcceptance, "(?m)^$escaped=(.*)$")
+            if ($matches.Count -ne 1) { throw "Updater acceptance token $name must appear exactly once." }
+            return $matches[0].Groups[1].Value.Trim()
+          }
+          $acceptanceState = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_ACCEPTANCE'
+          if ($acceptanceState -notin @('pending','accepted')) { throw 'Updater v1.1 acceptance state must be pending or accepted.' }
+          $acceptedTag = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_ACCEPTED_TAG'
+          $acceptedCommit = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_ACCEPTED_COMMIT'
+          $acceptedMachine = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_MACHINE_SHA256'
+          $acceptedUser = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_USER_SHA256'
+          $acceptedPortable = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_PORTABLE_SHA256'
+          if ($acceptanceState -eq 'pending') {
+            if (@($acceptedTag,$acceptedCommit,$acceptedMachine,$acceptedUser,$acceptedPortable) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
+              throw 'Pending updater acceptance must not pre-populate accepted RC provenance.'
+            }
+          } else {
+            if ($acceptedTag -notmatch '^v1\.1\.0-rc\.[1-9][0-9]*$') { throw 'Accepted updater RC tag is invalid.' }
+            if ($acceptedCommit -notmatch '^[0-9a-fA-F]{40}$') { throw 'Accepted updater RC commit must be a full SHA.' }
+            foreach ($hash in @($acceptedMachine,$acceptedUser,$acceptedPortable)) {
+              if ($hash -notmatch '^[0-9a-fA-F]{64}$') { throw 'Accepted updater artifact SHA-256 is invalid.' }
+            }
           }
 
           # Historical v1.0.0 hardware qualification remains immutable evidence;
@@ -189,10 +213,28 @@ jobs:
             'Run full preset and updater regression suite',
             'Validate portable ZIP end-to-end',
             'Validate Inno installer end-to-end',
-            'Require accepted updater lifecycle for v1.1+',
-            'UPDATER_V1_1_ACCEPTANCE=accepted'
+            'v1.1+ stable must promote exact accepted RC artifacts through windows-updater-promote.yml'
           )) {
-            if (-not $stableWorkflow.Contains($token)) { throw "Stable release pipeline contract missing '$token'" }
+            if (-not $stableWorkflow.Contains($token)) { throw "Legacy stable release pipeline contract missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'name: Windows Updater Stable Promotion',
+            'Promote exact accepted updater RC',
+            'UPDATER_V1_1_ACCEPTED_TAG',
+            'UPDATER_V1_1_ACCEPTED_COMMIT',
+            'UPDATER_V1_1_MACHINE_SHA256',
+            'UPDATER_V1_1_USER_SHA256',
+            'UPDATER_V1_1_PORTABLE_SHA256',
+            'Accepted RC tag commit differs from recorded accepted commit.',
+            'byte-identical-rc-artifact-promotion',
+            'Stable staging changed accepted bytes:',
+            'target_commitish: ${{ steps.accept.outputs.accepted_commit }}',
+            'prerelease: false',
+            'make_latest: true',
+            'overwrite_files: false'
+          )) {
+            if (-not $promotionWorkflow.Contains($token)) { throw "Updater stable promotion contract missing '$token'" }
           }
 
           foreach ($token in @(
@@ -202,6 +244,7 @@ jobs:
             'P4 updater RC requires source version 1.1.0',
             'Exact-head gate PASS:',
             'stableReleaseEligible = $false',
+            "installerTechnology = 'Inno Setup 6'",
             "installerScopes = @('machine','user')",
             "migration = 'explicit-machine-to-user'",
             'Windows-Setup-PerUser.exe',
@@ -226,7 +269,11 @@ jobs:
             'QCryptographicHash::Sha256',
             'ShellExecuteExW',
             'stableReleaseEligible',
-            'windows-x64'
+            'windows-x64',
+            'P4_RC_CANDIDATE_CHANNEL_V1',
+            '--update-candidate=',
+            'updater-rc-manifest.json',
+            'Candidate manifest does not match the requested updater RC.'
           )) {
             if (-not $updater.Contains($token)) { throw "Smart updater contract missing '$token'" }
           }
