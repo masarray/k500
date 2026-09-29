@@ -383,7 +383,9 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
     const int comparison = QVersionNumber::compare(latest, current);
     if (comparison <= 0) {
         emit updateChanged();
-        if (userInitiated && m_migrationAvailable) {
+        if (m_migrationAvailable) {
+            // The offer may appear after discovery, but migration itself never
+            // starts without the user's dedicated action.
             setState(QStringLiteral("migration-available"),
                      QStringLiteral("Move SonKuPik to a no-admin per-user installation"));
         } else {
@@ -419,9 +421,15 @@ void AppUpdateManager::remindLater()
     if (busy())
         return;
 
-    // REMIND_NEXT_LAUNCH_V1 — "Nanti" is intentionally literal: clear the
-    // successful-check throttle so the next application launch performs fresh
-    // discovery and can offer this release again. No installer is downloaded.
+    if (!m_updateAvailable && m_migrationAvailable) {
+        // A migration offer is advisory only. Keep the successful-check throttle
+        // so "Nanti" does not nag again until the normal six-hour discovery window.
+        setState(QStringLiteral("idle"));
+        return;
+    }
+
+    // REMIND_NEXT_LAUNCH_V1 — for a real newer version, clear the throttle so
+    // the next application launch can offer the update again.
     QSettings().remove(QStringLiteral("updates/lastSuccessfulCheckUtc"));
     setState(QStringLiteral("available"),
              QStringLiteral("Update postponed until the next launch"));
