@@ -10,6 +10,7 @@
 #include <QStringList>
 #include <QTimer>
 
+#include "AppUpdateManager.h"
 #include "StudioEngine.h"
 #include "k500/K500Controller.h"
 #include "k500/K500DeviceManager.h"
@@ -114,6 +115,20 @@ int main(int argc, char *argv[])
                 && QCoreApplication::applicationVersion() == expected;
             const bool fontOk = QFontDatabase::families().contains(kUiFontFamily);
             return versionOk && fontOk ? 0 : 12;
+        }
+    }
+
+    // P2_INSTALL_SCOPE_QUALIFICATION — reads Inno registration only. CI uses
+    // it against actual installed binaries; no QML load or K500 I/O occurs.
+    for (const QString &argument : app.arguments()) {
+        const QString prefix = QStringLiteral("--update-scope-check=");
+        if (argument.startsWith(prefix)) {
+            AppUpdateManager updater;
+            const QString expected = argument.mid(prefix.size());
+            const QString actual = updater.installationScope();
+            if (actual != expected)
+                qCritical().noquote() << "Installation scope mismatch:" << actual << "expected" << expected;
+            return actual == expected ? 0 : 13;
         }
     }
 
