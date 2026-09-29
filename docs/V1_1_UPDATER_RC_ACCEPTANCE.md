@@ -2,7 +2,7 @@
 
 > Public stable remains **v1.0.3** while this qualification is pending.
 >
-> `UPDATER_V1_1_ACCEPTANCE: pending`
+UPDATER_V1_1_ACCEPTANCE=pending
 
 This record is the fail-closed publication gate for the P1-P3 Windows updater lifecycle. It covers desktop installation/update behavior only; it does not broaden or replace the existing Windows x64 + USB HID K500 hardware support claim.
 
@@ -43,6 +43,6 @@ This record is the fail-closed publication gate for the P1-P3 Windows updater li
 
 Stable v1.1.0 publishing is blocked while the token above is `pending`. After the exact RC is accepted, change only this record and any final release notes in a separate reviewed PR so the token reads:
 
-`UPDATER_V1_1_ACCEPTANCE: accepted`
+the value `accepted`.
 
-The stable workflow must independently verify that accepted token before publishing any v1.1+ stable tag.
+The stable workflow must parse the machine-readable token as an exact anchored line before publishing any v1.1+ stable tag.
