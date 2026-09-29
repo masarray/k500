@@ -43,7 +43,7 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 >
 > **Release line:** v1.0.0 established the hardware-qualified baseline. v1.0.2 is a stable maintenance release that keeps that device scope while adding the Program Files installer layout, Documents preset library, and verified in-app updater.
 >
-> **Updater development status:** the current source tree adds a separately packaged per-user installer, explicit **Update tanpa Admin** migration from a registered Program Files install, recovery snapshots/rollback, resumable downloads, and explicit stale-registration repair. These P1–P3 lifecycle changes are **pre-release** until a separately accepted tagged release is published; GitHub Releases remains the authority for public stable behavior.
+> **Updater development status:** the current source candidate is **v1.1.0** and includes a separately packaged per-user installer, explicit **Update tanpa Admin** migration from a registered Program Files install, recovery snapshots/rollback, resumable downloads, and explicit stale-registration repair. Public stable remains **v1.0.3** until an exact v1.1.0 RC passes the repository acceptance gate and is separately promoted; GitHub Releases remains the authority for public stable behavior.
 
 ## See the real app
 
