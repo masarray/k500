@@ -30,6 +30,7 @@ struct Request {
     std::wstring version;
     std::wstring log;
     std::wstring sha256;
+    std::wstring scope;
 };
 
 std::wstring quote(const std::wstring &value)
@@ -55,12 +56,13 @@ std::wstring quote(const std::wstring &value)
 
 bool parse(int argc, wchar_t **argv, Request &request)
 {
-    if (argc != 13 || std::wstring(argv[1]) != L"--parent-pid"
+    if (argc != 15 || std::wstring(argv[1]) != L"--parent-pid"
         || std::wstring(argv[3]) != L"--setup"
         || std::wstring(argv[5]) != L"--app"
         || std::wstring(argv[7]) != L"--version"
         || std::wstring(argv[9]) != L"--log"
-        || std::wstring(argv[11]) != L"--sha256")
+        || std::wstring(argv[11]) != L"--sha256"
+        || std::wstring(argv[13]) != L"--scope")
         return false;
     wchar_t *end = nullptr;
     const unsigned long pid = std::wcstoul(argv[2], &end, 10);
@@ -72,9 +74,11 @@ bool parse(int argc, wchar_t **argv, Request &request)
     request.version = argv[8];
     request.log = argv[10];
     request.sha256 = argv[12];
+    request.scope = argv[14];
     if (request.setup.empty() || request.app.empty() || request.log.empty()
         || request.version.empty() || request.version.find_first_not_of(L"0123456789.") != std::wstring::npos
-        || request.sha256.size() != 64)
+        || request.sha256.size() != 64
+        || (request.scope != L"machine" && request.scope != L"user"))
         return false;
     for (const wchar_t ch : request.sha256) {
         if (!((ch >= L'0' && ch <= L'9') || (ch >= L'a' && ch <= L'f')))
@@ -308,7 +312,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     const std::wstring args = L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS "
                               L"/AUToupdate=1 /HELPERUPDATE=1 /LOG=" + quote(request.log + L".inno.log");
     DWORD installerExit = ~0UL;
-    const DWORD launchError = installElevatedAndWait(request, args, installerExit);
+    // Per-user Inno Setup has PrivilegesRequired=lowest. Create it at the
+    // original user's level; retain UAC only for the legacy machine package.
+    const DWORD launchError = request.scope == L"user"
+        ? runAndWait(request.setup, args, InstallTimeoutMs, installerExit)
+        : installElevatedAndWait(request, args, installerExit);
     CloseHandle(lockedSetup);
     if (launchError == ERROR_CANCELLED) {
         // UAC cancellation happened before installation. Restore the old app.
