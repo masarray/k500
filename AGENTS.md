@@ -225,6 +225,7 @@ Before merge:
 - do not weaken older guards to make new work pass;
 - physically revalidate destructive hardware behavior when the change affects it;
 - update README/docs/changelog/landing page when a public contract changes;
-- keep Bluetooth claims separate from USB acceptance until Bluetooth is independently tested.
+- keep Bluetooth claims separate from USB acceptance until Bluetooth is independently tested;
+- for v1.1+ updater releases, never rebuild after RC acceptance: promotion must verify and reuse the exact accepted RC binary hashes recorded in `docs/V1_1_UPDATER_RC_ACCEPTANCE.md`.
 
 A new AI thread should prefer repository evidence over remembered chat context. If a fact conflicts, the current stable code, golden vectors, exact donor files, and evidence-backed documentation are authoritative.
