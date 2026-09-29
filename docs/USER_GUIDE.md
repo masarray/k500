@@ -53,6 +53,20 @@ The primary update flow does not open a browser. A cancelled UAC request or fail
 
 When upgrading from the earlier per-user v1.0.1 layout, the v1.0.2 installer migrates the old LocalAppData application install before writing the new Program Files copy. Personal presets and application preferences are intentionally preserved.
 
+### Pre-release updater lifecycle in the current source
+
+The current source tree contains the next Windows updater lifecycle, but it is not a public stable contract until a new tagged release is accepted and published.
+
+- A registered Program Files installation can explicitly choose **Update tanpa Admin**. SonKuPik first installs and health-checks the per-user copy, then asks for Administrator permission one time only to remove the old Program Files installation.
+- Once installed per-user, later matching updates use the per-user Setup package and do not require Administrator permission.
+- Normal installed updates create a recovery snapshot before Setup. Installer failure or a failed post-install health check restores the previous executable tree and verifies it before relaunch.
+- Interrupted downloads keep a verified `.part` file and resume with HTTP Range when the server supports it; size and SHA-256 are still checked before execution.
+- An ambiguous installer timeout never triggers a racing cleanup/rollback while the installer may still be running. Recovery data is kept for deterministic repair.
+- A stale opposite-scope uninstall registration is removed only after an explicit repair action and only when its registered application and uninstaller are both absent.
+- Personal presets in Documents, QSettings preferences, and the official preset cache remain outside installer ownership and are preserved across update/migration.
+
+If a no-admin migration download fails after you selected it, **Coba lagi** preserves that selected per-user path; it does not silently switch back to the Administrator/machine-wide package.
+
 ## Connect to K500
 
 1. Close manufacturer software or other tools that may already own the K500 transport.
