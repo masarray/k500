@@ -590,8 +590,119 @@ void AppUpdateManager::migrateToPerUser()
 #endif
 }
 
+void AppUpdateManager::repairStaleRegistration()
+{
+#ifdef Q_OS_WIN
+    if (busy())
+        return;
+
+    const QString stale = staleRegistrationScope();
+    const InstallScope scope = stale == QStringLiteral("machine")
+        ? InstallScope::Machine
+        : stale == QStringLiteral("user") ? InstallScope::User : InstallScope::Unknown;
+    QString expectedPath;
+    if (scope == InstallScope::Unknown || !registrationIsStale(scope, &expectedPath)) {
+        setState(QStringLiteral("error"), QStringLiteral("Registration repair is no longer needed"),
+                 QStringLiteral("The stale registration changed before repair; nothing was removed."));
+        return;
+    }
+
+    if (scope == InstallScope::User) {
+        QSettings settings(QStringLiteral("HKEY_CURRENT_USER") + InnoUninstallKey,
+                           QSettings::NativeFormat);
+        settings.clear();
+        settings.sync();
+        if (registrationIsStale(scope)) {
+            setState(QStringLiteral("error"), QStringLiteral("Could not repair registration"),
+                     QStringLiteral("Windows did not remove the stale per-user uninstall key."));
+            return;
+        }
+        emit updateChanged();
+        setState(QStringLiteral("registration-repaired"),
+                 QStringLiteral("Verified stale per-user registration removed. Try the update again."));
+        return;
+    }
+
+    QString stageError;
+    const QString staged = stageUpdateHelper(&stageError);
+    if (staged.isEmpty()) {
+        setState(QStringLiteral("error"), QStringLiteral("Could not prepare registration repair"), stageError);
+        return;
+    }
+
+    const QString log = QDir::toNativeSeparators(
+        QDir(updateDirectory()).filePath(QStringLiteral("registration-repair.log")));
+    const QStringList args = {
+        QStringLiteral("--remove-stale-registration"), QStringLiteral("machine"),
+        QStringLiteral("--expected-path"), QDir::toNativeSeparators(expectedPath),
+        QStringLiteral("--log"), log
+    };
+    QStringList quoted;
+    for (const QString &arg : args)
+        quoted.append(quoteWindowsArgument(arg));
+    const std::wstring executable = QDir::toNativeSeparators(staged).toStdWString();
+    const std::wstring parameters = quoted.join(QLatin1Char(' ')).toStdWString();
+
+    SHELLEXECUTEINFOW info{};
+    info.cbSize = sizeof(info);
+    info.fMask = SEE_MASK_NOCLOSEPROCESS;
+    info.lpVerb = L"runas";
+    info.lpFile = executable.c_str();
+    info.lpParameters = parameters.c_str();
+    info.nShow = SW_SHOWNORMAL;
+    if (!ShellExecuteExW(&info)) {
+        const DWORD code = GetLastError();
+        setState(QStringLiteral("error"), QStringLiteral("Registration repair was not started"),
+                 code == ERROR_CANCELLED
+                     ? QStringLiteral("Administrator permission was cancelled; nothing was removed.")
+                     : QStringLiteral("Windows error %1.").arg(code));
+        return;
+    }
+    if (info.hProcess)
+        CloseHandle(info.hProcess);
+
+    setState(QStringLiteral("registration-repairing"),
+             QStringLiteral("Removing only the verified stale machine-wide registration…"));
+    auto *timer = new QTimer(this);
+    timer->setInterval(500);
+    timer->setProperty("attempts", 0);
+    connect(timer, &QTimer::timeout, this, [this, timer] {
+        const int attempts = timer->property("attempts").toInt() + 1;
+        timer->setProperty("attempts", attempts);
+        if (staleRegistrationScope().isEmpty()) {
+            timer->stop();
+            timer->deleteLater();
+            emit updateChanged();
+            setState(QStringLiteral("registration-repaired"),
+                     QStringLiteral("Verified stale machine-wide registration removed. Try the update again."));
+            return;
+        }
+        if (attempts >= 60) {
+            timer->stop();
+            timer->deleteLater();
+            setState(QStringLiteral("error"), QStringLiteral("Registration repair did not complete"),
+                     QStringLiteral("The stale machine registration was kept because Windows did not confirm safe removal."));
+        }
+    });
+    timer->start();
+#else
+    setState(QStringLiteral("error"), QStringLiteral("Registration repair is available on Windows only."));
+#endif
+}
+
 void AppUpdateManager::beginSelectedPackageInstall()
 {
+#ifdef Q_OS_WIN
+    const QString stale = staleRegistrationScope();
+    if (!stale.isEmpty()) {
+        setState(QStringLiteral("registration-repair"),
+                 QStringLiteral("Old Windows installation registration needs repair"),
+                 QStringLiteral("A stale %1-wide uninstall registration was found. Remove only that verified stale registration before continuing.")
+                     .arg(stale == QStringLiteral("machine") ? QStringLiteral("machine") : QStringLiteral("per-user")));
+        emit updateChanged();
+        return;
+    }
+#endif
     if (m_setupAssetName.isEmpty() || m_setupAssetUrl.isEmpty()
         || m_releaseSetupBytes < MinimumInstallerBytes
         || m_manifestUrl.isEmpty() || m_checksumsUrl.isEmpty()) {
@@ -969,6 +1080,38 @@ bool AppUpdateManager::verifyInstaller(QString *error) const
     return true;
 }
 
+QString AppUpdateManager::stageUpdateHelper(QString *error) const
+{
+#ifdef Q_OS_WIN
+    const QString source = QDir(QCoreApplication::applicationDirPath())
+        .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
+    const QString staged = QDir(updateDirectory())
+        .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
+    QFile original(source);
+    if (!original.open(QIODevice::ReadOnly)) {
+        if (error) *error = QStringLiteral("The installed update coordinator is missing.");
+        return {};
+    }
+    const QByteArray sourceHash = QCryptographicHash::hash(original.readAll(), QCryptographicHash::Sha256);
+    original.close();
+    QFile::remove(staged);
+    if (!QFile::copy(source, staged)) {
+        if (error) *error = QStringLiteral("Could not stage the update coordinator outside the installation directory.");
+        return {};
+    }
+    QFile stagedFile(staged);
+    if (!stagedFile.open(QIODevice::ReadOnly)
+        || QCryptographicHash::hash(stagedFile.readAll(), QCryptographicHash::Sha256) != sourceHash) {
+        if (error) *error = QStringLiteral("Staged update coordinator does not match the installed binary.");
+        return {};
+    }
+    return staged;
+#else
+    Q_UNUSED(error);
+    return {};
+#endif
+}
+
 bool AppUpdateManager::launchInstallerElevated(QString *error)
 {
 #ifdef Q_OS_WIN
@@ -995,31 +1138,12 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         return false;
     }
 
-    // The helper is part of the currently installed application and is copied
-    // into the per-user update cache before the application exits.
-    const QString source = QDir(QCoreApplication::applicationDirPath())
-        .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
-    const QString staged = QDir(updateDirectory())
-        .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
-    QFile original(source);
-    if (!original.open(QIODevice::ReadOnly)) {
-        if (error) *error = QStringLiteral("The installed update coordinator is missing. Please install the next official Setup once.");
+    QString stageError;
+    const QString staged = stageUpdateHelper(&stageError);
+    if (staged.isEmpty()) {
+        if (error) *error = stageError;
         return false;
     }
-    const QByteArray sourceHash = QCryptographicHash::hash(original.readAll(), QCryptographicHash::Sha256);
-    original.close();
-    QFile::remove(staged);
-    if (!QFile::copy(source, staged)) {
-        if (error) *error = QStringLiteral("Could not stage the update coordinator outside the installation directory.");
-        return false;
-    }
-    QFile stagedFile(staged);
-    if (!stagedFile.open(QIODevice::ReadOnly)
-        || QCryptographicHash::hash(stagedFile.readAll(), QCryptographicHash::Sha256) != sourceHash) {
-        if (error) *error = QStringLiteral("Staged update coordinator does not match the installed binary.");
-        return false;
-    }
-    stagedFile.close();
 
     const QString setup = QDir::toNativeSeparators(installerPath());
     const QString app = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
