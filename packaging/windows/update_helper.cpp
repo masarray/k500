@@ -384,6 +384,11 @@ std::wstring registrySnapshotPath(const std::wstring &backup)
     return (fs::path(backup) / L"uninstall-registry.bin").wstring();
 }
 
+std::wstring backupFilesPath(const std::wstring &backup)
+{
+    return (fs::path(backup) / L"files").wstring();
+}
+
 bool snapshotUninstallRegistry(const std::wstring &scope,
                                const std::wstring &backup,
                                std::wstring *error)
@@ -797,7 +802,11 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     // any migration work. The old installation remains authoritative until the
     // per-user target has passed health check and old uninstall begins.
     std::wstring backupError;
-    if (!copyTree(sourceDir, request.backup, &backupError)
+    {
+        std::error_code cleanup;
+        fs::remove_all(fs::path(request.backup), cleanup);
+    }
+    if (!copyTree(sourceDir, backupFilesPath(request.backup), &backupError)
         || !snapshotUninstallRegistry(L"machine", request.backup, &backupError)) {
         CloseHandle(lockedSetup);
         std::error_code cleanup;
@@ -1007,7 +1016,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         const std::wstring log = argv[8];
         LocalFree(argv);
         std::wstring error;
-        if (!restoreTree(backup, target, &error)
+        if (!restoreTree(backupFilesPath(backup), target, &error)
             || !restoreUninstallRegistry(scope, backup, &error)) {
             appendLog(log, L"Elevated restore failed: " + error);
             return 61;
@@ -1040,7 +1049,11 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     }
 
     std::wstring backupError;
-    if (!copyTree(installDir, request.backup, &backupError)) {
+    {
+        std::error_code cleanup;
+        fs::remove_all(fs::path(request.backup), cleanup);
+    }
+    if (!copyTree(installDir, backupFilesPath(request.backup), &backupError)) {
         CloseHandle(lockedSetup);
         return fail(request, 20,
             L"Could not create a recovery snapshot before installation: " + backupError);
