@@ -919,6 +919,11 @@ void AppUpdateManager::downloadInstaller()
 
         const qint64 requestedOffset = reply->property("sonkupikResumeOffset").toLongLong();
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        // GitHub release downloads redirect to release-assets.githubusercontent.com.
+        // Do not truncate a partial file on intermediate 3xx metadata; wait for
+        // the final response that actually owns the byte stream.
+        if (status == 0 || (status >= 300 && status < 400))
+            return false;
         bool append = requestedOffset > 0 && status == 206;
 
         if (append) {
