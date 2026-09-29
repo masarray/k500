@@ -7,7 +7,7 @@ manifest + SHA-256 verification, and Inno Setup with a machine-wide Program
 Files installation. A new source commit does **not** become a public update
 until a new version is assigned and a corresponding release is published.
 
-## P1: reliable external install handoff (this PR; not yet released)
+## P1: reliable external install handoff (merged; not yet in public v1.0.3)
 
 `SonKuPik-K500-Updater.exe` is a standalone **Win32, no-Qt-runtime** helper
 built from `packaging/windows/update_helper.cpp`, packaged alongside the
@@ -40,7 +40,7 @@ directory and checks the copy's SHA-256 against the installed helper.
 No preset protocol, official preset, local preset, or Windows security setting
 is changed by P1. The helper is not a privileged service or a UAC bypass.
 
-## P2: separate per-user installer (this stacked PR; not yet released)
+## P2: separate per-user installer (merged; not yet in public v1.0.3)
 
 The legacy `SonKuPik-K500-v<version>-Windows-Setup.exe` filename remains
 **machine-wide** for older installed v1.0.3 updaters. The new
@@ -65,17 +65,47 @@ Both packages and the portable ZIP have independent release SHA-256 entries
 and manifest artifact identities. Per-user installers must not be published
 before the full P2 asset-routing and per-user upgrade qualification pass.
 
+## P3: explicit migration, recovery, and resumable delivery
+
+P3 completes the application-owned lifecycle without silently moving users.
+
+- A machine-wide install may explicitly choose the per-user package. The helper
+  installs and health-checks the per-user copy **before** requesting one UAC
+  elevation to remove the old Program Files copy. If any pre-uninstall step
+  fails, the per-user copy is removed and the machine install is reopened.
+- Normal updates create a complete application-directory recovery snapshot
+  outside the install tree before Setup starts. Installer non-zero exit or a
+  failed new-app health check restores the previous files, checks the previous
+  version with the hardware-free health command, and reopens it. Program Files
+  restore elevates only the staged helper; per-user restore remains unelevated.
+- An installer timeout is intentionally not killed or raced by rollback because
+  it may still be writing files. The recovery snapshot is retained and its path
+  is reported instead of making an unsafe success/rollback claim.
+- Interrupted downloads keep a `.part` file. Retry sends an HTTP Range request;
+  resumed responses must be 206 with the exact Content-Range start. Servers
+  that return a normal 200 cause a safe restart from byte zero. Completion is
+  still gated by release byte count plus manifest/SHA256SUMS SHA-256 agreement.
+- An opposite-scope uninstall registration is removable only when its recorded
+  app **and** uninstaller are both absent and the user explicitly chooses the
+  repair action. Active duplicate installations fail closed and are never
+  silently deleted.
+- Documents presets, QSettings and the LocalAppData official-preset cache stay
+  outside installer ownership. Windows CI plants persistence sentinels across
+  an explicit machine-to-user migration and verifies they survive unchanged.
+
+The per-user installer accepts an existing HKLM registration only with the
+combined internal `/MIGRATEFROMMACHINE=1 /HELPERUPDATE=1 /AUToupdate=1`
+handoff. A direct per-user install still refuses an existing machine install.
+
 ## Deliberate scope boundaries and remaining work
 
-- **P1 qualification:** exact-head Windows CI, Inno compile, helper self-test,
-  deployed app health checks, and physical Windows upgrade test from an older
-  installed version. A build passing is not proof of a successful upgrade.
-- **P2:** introduce per-user `LocalAppData\\Programs` installer mode, without
-  UAC for routine updates; distinguish machine-wide and per-user installation
-  and never silently migrate the current Program Files installation.
-- **P3:** explicit one-time migration, improved failure recovery / rollback,
-  resumable downloads, distinct RC/stable build identity, and portable-update
-  handling. Do not promise rollback while it is not implemented.
+- **P1/P2:** merged with exact-head Windows qualification. Public v1.0.3 is
+  intentionally unchanged; merge does not equal a published release.
+- **P3:** exact-head CI must pass the real helper update, destructive rollback,
+  explicit migration, registration-repair, and persistence fixtures before
+  merge. A public next version still needs a separately accepted release build.
+- **Portable:** remains intentionally independent. It is never silently changed
+  into an installed copy; a future portable-update workflow must be explicit.
 - **Release management:** bump CMake version before publishing; do not overwrite
   existing public stable v1.0.3 from development builds or bypass hardware
   acceptance gates.
