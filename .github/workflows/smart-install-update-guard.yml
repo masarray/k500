@@ -319,6 +319,9 @@ jobs:
           ) -Wait -PassThru
           if ($seedRollback.ExitCode -ne 0) { throw 'Could not seed rollback fixture' }
           $originalAppHash = (Get-FileHash (Join-Path $rollbackDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash
+          $rollbackKey = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $originalRegistry = (& reg.exe QUERY $rollbackKey /v DisplayVersion | Out-String)
+          if ($originalRegistry -notmatch [regex]::Escape($version)) { throw 'Rollback fixture did not have expected original registry version' }
           $fakeSetup = (Resolve-Path 'build/packaging/P3-Fake-Installer.exe').Path
           $fakeHash = (Get-FileHash $fakeSetup -Algorithm SHA256).Hash.ToLowerInvariant()
           $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
@@ -353,6 +356,11 @@ jobs:
             }
             if ((Get-FileHash (Join-Path $rollbackDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $originalAppHash) {
               throw "$($case.Name) did not restore the original application bytes"
+            }
+            $restoredRegistry = (& reg.exe QUERY $rollbackKey /v DisplayVersion | Out-String)
+            if ($restoredRegistry -notmatch [regex]::Escape($version)
+                -or $restoredRegistry -match 'P3-BROKEN-REGISTRY') {
+              throw "$($case.Name) did not restore the original uninstall registry metadata"
             }
             if (Test-Path $caseBackup) { throw "$($case.Name) left recovery snapshot after successful rollback" }
             if (-not ((Get-Content $caseLog -Raw).Contains('Rollback health check passed'))) {
