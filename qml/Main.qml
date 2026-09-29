@@ -159,8 +159,8 @@ ApplicationWindow {
                 updateDialog.open()
         }
         function onStateChanged() {
-            // Migration at the SAME stable version is never auto-prompted.
-            // A user-initiated check may explicitly surface the one-time move.
+            // Discovery may surface a one-time migration offer, but the move
+            // itself remains explicit and never starts from this signal.
             if (AppUpdater.state === "migration-available" && !updateDialog.opened)
                 updateDialog.open()
         }
