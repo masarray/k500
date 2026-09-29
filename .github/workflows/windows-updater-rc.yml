@@ -278,6 +278,7 @@ jobs:
             stableReleaseEligible = $false
             updaterAcceptance = $acceptance
             codeSigning = 'unsigned-open-source'
+            installerTechnology = 'Inno Setup 6'
             installerScopes = @('machine','user')
             migration = 'explicit-machine-to-user'
             rollbackRecovery = $true
