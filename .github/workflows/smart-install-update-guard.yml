@@ -1,5 +1,11 @@
 name: Guard smart install and update
 
+# P3 development is intentionally test-heavy. Only the newest exact-head run
+# for a PR matters; cancel obsolete runs so they cannot monopolize Windows CI.
+concurrency:
+  group: smart-install-update-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     paths:
