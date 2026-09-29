@@ -44,16 +44,17 @@ bool corruptRegistry()
 
 bool corruptApp(const std::wstring &dir)
 {
-    const std::wstring path = dir + L"\\SonKuPik-K500.exe";
-    HANDLE file = CreateFileW(path.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-                              FILE_ATTRIBUTE_NORMAL, nullptr);
-    if (file == INVALID_HANDLE_VALUE)
+    // Replace the target with this valid PE rather than random bytes. When the
+    // updater runs --update-health-check on the replacement, this fixture has
+    // no /DIR argument and exits 72 immediately. This exercises deterministic
+    // failed-health rollback without relying on Windows bad-image UI behavior.
+    std::wstring target = dir + L"\\SonKuPik-K500.exe";
+    wchar_t self[MAX_PATH]{};
+    const DWORD length = GetModuleFileNameW(nullptr, self, MAX_PATH);
+    if (!length || length >= MAX_PATH)
         return false;
-    const char bytes[] = "P3 intentionally corrupted installer fixture";
-    DWORD written = 0;
-    const bool ok = WriteFile(file, bytes, sizeof(bytes), &written, nullptr) != FALSE;
-    CloseHandle(file);
-    return ok;
+    DeleteFileW(target.c_str());
+    return CopyFileW(self, target.c_str(), FALSE) != FALSE;
 }
 }
 
