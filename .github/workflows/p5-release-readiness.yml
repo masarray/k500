@@ -201,7 +201,7 @@ jobs:
             'Updater RC must be dispatched from main.',
             'P4 updater RC requires source version 1.1.0',
             'Exact-head gate PASS:',
-            "stableReleaseEligible = $false",
+            'stableReleaseEligible = $false',
             "installerScopes = @('machine','user')",
             "migration = 'explicit-machine-to-user'",
             'Windows-Setup-PerUser.exe',
