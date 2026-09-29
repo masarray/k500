@@ -234,7 +234,10 @@ Popup {
                 spacing: 6
                 visible: root.deviceTransactionBusy
                          || (root.updateManager
-                             && (root.updateManager.busy || root.updateManager.state === "error"))
+                             && (root.updateManager.busy
+                                 || root.updateManager.state === "error"
+                                 || root.updateManager.state === "registration-repair"
+                                 || root.updateManager.state === "registration-repaired"))
 
                 ProgressBar {
                     Layout.fillWidth: true
