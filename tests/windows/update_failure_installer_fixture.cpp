@@ -6,6 +6,8 @@
 #include <cwchar>
 #include <string>
 
+#pragma comment(lib, "advapi32.lib")
+
 namespace {
 std::wstring unquote(std::wstring value)
 {
@@ -22,6 +24,22 @@ std::wstring installDir(int argc, wchar_t **argv)
             return unquote(arg.substr(5));
     }
     return {};
+}
+
+bool corruptRegistry()
+{
+    constexpr wchar_t keyPath[] =
+        L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\"
+        L"{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1";
+    HKEY key = nullptr;
+    if (RegOpenKeyExW(HKEY_CURRENT_USER, keyPath, 0, KEY_SET_VALUE, &key) != ERROR_SUCCESS)
+        return false;
+    const wchar_t broken[] = L"P3-BROKEN-REGISTRY";
+    const LONG result = RegSetValueExW(
+        key, L"DisplayVersion", 0, REG_SZ,
+        reinterpret_cast<const BYTE *>(broken), sizeof(broken));
+    RegCloseKey(key);
+    return result == ERROR_SUCCESS;
 }
 
 bool corruptApp(const std::wstring &dir)
@@ -47,7 +65,7 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         return 71;
     const std::wstring dir = installDir(argc, argv);
     LocalFree(argv);
-    if (dir.empty() || !corruptApp(dir))
+    if (dir.empty() || !corruptApp(dir) || !corruptRegistry())
         return 72;
 
     wchar_t mode[32]{};
