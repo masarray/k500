@@ -15,6 +15,7 @@
 #include <QSaveFile>
 #include <QSettings>
 #include <QStandardPaths>
+#include <QTimer>
 #include <QVersionNumber>
 
 #ifdef Q_OS_WIN
@@ -72,6 +73,30 @@ QString expectedSetupName(const QString &version)
 {
     return QStringLiteral("SonKuPik-K500-v%1-Windows-Setup.exe").arg(version);
 }
+// Quote one Windows command-line argument using backslash/quote escaping.
+// Parameters are passed as one string to ShellExecuteExW.
+QString quoteWindowsArgument(const QString &value)
+{
+    QString result = QStringLiteral("\"");
+    int slashes = 0;
+    for (const QChar character : value) {
+        if (character == QLatin1Char('\\')) {
+            ++slashes;
+        } else if (character == QLatin1Char('"')) {
+            result += QString(slashes * 2 + 1, QLatin1Char('\\'));
+            result += character;
+            slashes = 0;
+        } else {
+            result += QString(slashes, QLatin1Char('\\'));
+            slashes = 0;
+            result += character;
+        }
+    }
+    result += QString(slashes * 2, QLatin1Char('\\'));
+    result += QLatin1Char('"');
+    return result;
+}
+
 }
 
 AppUpdateManager::AppUpdateManager(QObject *parent)
@@ -90,7 +115,8 @@ bool AppUpdateManager::busy() const
         || m_state == QStringLiteral("preparing")
         || m_state == QStringLiteral("downloading")
         || m_state == QStringLiteral("verifying")
-        || m_state == QStringLiteral("installing");
+        || m_state == QStringLiteral("installing")
+        || m_state == QStringLiteral("waiting-for-device");
 }
 
 void AppUpdateManager::setState(const QString &state, const QString &status, const QString &error)
@@ -282,6 +308,29 @@ void AppUpdateManager::remindLater()
              QStringLiteral("Update postponed until the next launch"));
 }
 
+void AppUpdateManager::setDeviceTransactionBusy(bool busy)
+{
+    m_deviceTransactionBusy = busy;
+    if (busy || m_state != QStringLiteral("waiting-for-device"))
+        return;
+
+    // Allow the preset coordinator to publish its final settled state before
+    // handing control to the external updater. Re-check at the final boundary.
+    QTimer::singleShot(250, this, [this] {
+        if (m_deviceTransactionBusy || m_state != QStringLiteral("waiting-for-device"))
+            return;
+        QString verifyError;
+        if (!verifyInstaller(&verifyError)) {
+            QFile::remove(installerPath());
+            setState(QStringLiteral("error"), QStringLiteral("Update verification failed"), verifyError);
+            return;
+        }
+        QString launchError;
+        if (!launchInstallerElevated(&launchError))
+            setState(QStringLiteral("error"), QStringLiteral("Could not start updater"), launchError);
+    });
+}
+
 void AppUpdateManager::skipThisVersion()
 {
     if (m_latestVersion.isEmpty() || busy())
@@ -313,6 +362,17 @@ void AppUpdateManager::downloadAndInstall()
 {
     if (!m_updateAvailable || busy())
         return;
+#ifdef Q_OS_WIN
+    // Portable ZIP must never be silently converted into a machine-wide install.
+    // A future dedicated portable updater must be an explicit separate workflow.
+    const QString uninstaller = QDir(QCoreApplication::applicationDirPath())
+        .filePath(QStringLiteral("unins000.exe"));
+    if (!QFileInfo::exists(uninstaller)) {
+        setState(QStringLiteral("error"), QStringLiteral("Installed application required"),
+                 QStringLiteral("This is a portable or unregistered copy. In-app Setup updates are disabled to avoid creating a second installation."));
+        return;
+    }
+#endif
     m_manifestSha256.clear();
     m_expectedSha256.clear();
     m_manifestSetupBytes = -1;
@@ -570,34 +630,76 @@ bool AppUpdateManager::verifyInstaller(QString *error) const
 bool AppUpdateManager::launchInstallerElevated(QString *error)
 {
 #ifdef Q_OS_WIN
+    // UPDATE_HANDOFF_P1 — the UI block alone is insufficient. A device Store,
+    // Upload, Recall, or Mass Upload may begin during a long package download.
+    if (m_deviceTransactionBusy) {
+        setState(QStringLiteral("waiting-for-device"),
+                 QStringLiteral("Waiting for the K500 hardware transaction to finish…"));
+        return true;
+    }
+
+    // The helper is the installed app's own native binary, not downloaded from
+    // a release asset. It runs unelevated; only Inno requests UAC after K500 exits.
+    const QString source = QDir(QCoreApplication::applicationDirPath())
+        .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
+    const QString staged = QDir(updateDirectory())
+        .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
+    QFile original(source);
+    if (!original.open(QIODevice::ReadOnly)) {
+        if (error) *error = QStringLiteral("The installed update coordinator is missing. Please install the next official Setup once.");
+        return false;
+    }
+    const QByteArray sourceHash = QCryptographicHash::hash(original.readAll(), QCryptographicHash::Sha256);
+    original.close();
+    QFile::remove(staged);
+    if (!QFile::copy(source, staged)) {
+        if (error) *error = QStringLiteral("Could not stage the update coordinator outside the installation directory.");
+        return false;
+    }
+    QFile stagedFile(staged);
+    if (!stagedFile.open(QIODevice::ReadOnly)
+        || QCryptographicHash::hash(stagedFile.readAll(), QCryptographicHash::Sha256) != sourceHash) {
+        if (error) *error = QStringLiteral("Staged update coordinator does not match the installed binary.");
+        return false;
+    }
+    stagedFile.close();
+
     const QString setup = QDir::toNativeSeparators(installerPath());
-    const QString params = QStringLiteral(
-        "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS /AUToupdate=1");
+    const QString app = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+    const QString log = QDir::toNativeSeparators(
+        QDir(updateDirectory()).filePath(QStringLiteral("update-handoff.log")));
+    const QStringList args = {
+        QStringLiteral("--parent-pid"), QString::number(GetCurrentProcessId()),
+        QStringLiteral("--setup"), setup,
+        QStringLiteral("--app"), app,
+        QStringLiteral("--version"), m_latestVersion,
+        QStringLiteral("--log"), log,
+        QStringLiteral("--sha256"), QString::fromLatin1(m_expectedSha256)
+    };
+    QStringList quoted;
+    for (const QString &arg : args)
+        quoted.append(quoteWindowsArgument(arg));
+    const std::wstring executable = QDir::toNativeSeparators(staged).toStdWString();
+    const std::wstring parameters = quoted.join(QLatin1Char(' ')).toStdWString();
 
     SHELLEXECUTEINFOW info{};
     info.cbSize = sizeof(info);
     info.fMask = SEE_MASK_NOCLOSEPROCESS;
-    info.lpVerb = L"runas";
-    const std::wstring setupW = setup.toStdWString();
-    const std::wstring paramsW = params.toStdWString();
-    info.lpFile = setupW.c_str();
-    info.lpParameters = paramsW.c_str();
+    info.lpVerb = L"open";
+    info.lpFile = executable.c_str();
+    info.lpParameters = parameters.c_str();
     info.nShow = SW_SHOWNORMAL;
-
     if (!ShellExecuteExW(&info)) {
         const DWORD code = GetLastError();
-        if (error) {
-            *error = code == ERROR_CANCELLED
-                ? QStringLiteral("Administrator permission was cancelled.")
-                : QStringLiteral("Windows could not launch the installer (error %1).").arg(code);
-        }
+        if (error)
+            *error = QStringLiteral("Windows could not start the update coordinator (error %1).").arg(code);
         return false;
     }
     if (info.hProcess)
         CloseHandle(info.hProcess);
 
     setState(QStringLiteral("installing"),
-             QStringLiteral("Installer started. SonKuPik K500 will restart automatically."));
+             QStringLiteral("K500 is closing safely. The updater will verify and restart the application."));
     QCoreApplication::quit();
     return true;
 #else

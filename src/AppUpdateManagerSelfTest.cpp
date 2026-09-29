@@ -17,6 +17,16 @@ bool AppUpdateManager::selfTest(QString *error)
     // installer execution, or K500 hardware. This protects the exact trust
     // boundary used by in-app stable updates.
     AppUpdateManager manager;
+    // Backend starts fail-closed, independently of the QML button state.
+    if (!manager.m_deviceTransactionBusy)
+        return fail(QStringLiteral("device transaction gate did not start closed"));
+    manager.setDeviceTransactionBusy(false);
+    if (manager.m_deviceTransactionBusy)
+        return fail(QStringLiteral("device transaction gate did not accept idle state"));
+    manager.setDeviceTransactionBusy(true);
+    if (!manager.m_deviceTransactionBusy)
+        return fail(QStringLiteral("device transaction gate did not return to busy state"));
+
     manager.m_latestVersion = QStringLiteral("9.9.9");
     manager.m_setupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup.exe");
     manager.m_releaseSetupBytes = 2 * 1024 * 1024;

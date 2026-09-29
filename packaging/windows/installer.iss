@@ -101,12 +101,20 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Check: not IsAutoUpdate
 ; In-app updates are already user-approved in SonKuPik. After verified silent
 ; replacement, reopen the newly installed Program Files binary automatically.
-Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Flags: nowait; Check: IsAutoUpdate
+; Legacy app versions still rely on Inno to relaunch after /AUToupdate=1.
+; The P1 coordinator uses /HELPERUPDATE=1 and performs its own health check
+; before relaunch. Never run both relaunch paths at the same time.
+Filename: "{app}\{#AppExeName}"; WorkingDir: "{app}"; Flags: nowait runasoriginaluser; Check: IsAutoUpdate and not IsHelperUpdate
 
 [Code]
 function IsAutoUpdate: Boolean;
 begin
   Result := ExpandConstant('{param:AUToupdate|0}') = '1';
+end;
+
+function IsHelperUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:HELPERUPDATE|0}') = '1';
 end;
 
 procedure MigrateLegacyPerUserInstall;

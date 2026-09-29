@@ -2,13 +2,10 @@ name: Windows Stable Release
 
 # Public stable publisher for the hardware-accepted Windows USB baseline.
 # Standard Inno Setup installer + ordinary portable ZIP; unsigned open-source build.
+# Explicit release only: ordinary merges must never replace the same-version
+# public installer or silently change the bytes trusted by existing updaters.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/windows-stable-release.yml'
 
 permissions:
   contents: write
@@ -41,6 +38,23 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=v$version" >> $env:GITHUB_OUTPUT
           Write-Host "Packaging SonKuPik K500 v$version PUBLIC STABLE"
+
+      - name: Refuse a previously published version
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Stable releases must be dispatched from main.' }
+          $tag = 'v${{ steps.meta.outputs.version }}'
+          $url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"
+          $response = Invoke-WebRequest -Uri $url -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-stable-release'
+            Accept = 'application/vnd.github+json'
+          } -SkipHttpErrorCheck -ErrorAction Stop
+          if ($response.StatusCode -eq 200) { throw "Release tag $tag already exists; bump CMake version before publishing." }
+          if ($response.StatusCode -ne 404) { throw "Could not verify unused release tag $tag (HTTP $($response.StatusCode))." }
+          Write-Host "Release identity available: $tag"
 
       - name: Guard stable release truth
         shell: pwsh
@@ -119,6 +133,9 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
           Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
+          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
+          $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
+          if ($helperTest.ExitCode -ne 0) { throw "Native updater coordinator self-test failed: $($helperTest.ExitCode)" }
           if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
           windeployqt --release --qmldir qml package/SonKuPik-K500.exe
 
@@ -138,7 +155,7 @@ jobs:
       - name: Validate direct deployed application
         shell: pwsh
         run: |
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=${{ steps.meta.outputs.version }}")) {
             $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "$arg failed with exit code $($p.ExitCode)" }
           }
@@ -341,4 +358,4 @@ jobs:
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true
-          overwrite_files: true
+          overwrite_files: false
