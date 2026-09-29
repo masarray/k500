@@ -245,11 +245,13 @@ QString AppUpdateManager::partialInstallerPath() const
     return installerPath() + QStringLiteral(".part");
 }
 
-QNetworkReply *AppUpdateManager::get(const QUrl &url)
+QNetworkReply *AppUpdateManager::get(const QUrl &url, qint64 rangeStart)
 {
     QNetworkRequest request(url);
     request.setRawHeader("User-Agent", QByteArray("SonKuPik-K500/") + currentVersion().toUtf8());
     request.setRawHeader("Accept", "application/vnd.github+json, application/octet-stream;q=0.9, */*;q=0.8");
+    if (rangeStart >= 0)
+        request.setRawHeader("Range", QByteArray("bytes=") + QByteArray::number(rangeStart) + '-');
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
     return m_network->get(request);
@@ -674,65 +676,170 @@ bool AppUpdateManager::parseExpectedChecksum(const QByteArray &payload)
 
 void AppUpdateManager::downloadInstaller()
 {
-    setState(QStringLiteral("downloading"),
-             QStringLiteral("Downloading SonKuPik K500 %1…").arg(m_latestVersion));
+    const QString finalPath = installerPath();
+    const QString partPath = partialInstallerPath();
 
-    QFile::remove(installerPath());
-    QNetworkReply *reply = get(m_setupAssetUrl);
-    auto *file = new QSaveFile(reply);
-    file->setFileName(installerPath());
-    if (!file->open(QIODevice::WriteOnly)) {
-        reply->abort();
-        reply->deleteLater();
-        setState(QStringLiteral("error"), QStringLiteral("Could not save the update"), installerPath());
-        return;
+    // Reuse a previously completed, already-verified package after a helper/UAC
+    // failure instead of downloading the same release again.
+    if (QFileInfo(finalPath).size() == m_manifestSetupBytes) {
+        QString cachedError;
+        if (verifyInstaller(&cachedError)) {
+            setProgress(1.0);
+            setState(QStringLiteral("verifying"), QStringLiteral("Verified cached installer…"));
+            QString launchError;
+            if (!launchInstallerElevated(&launchError))
+                setState(QStringLiteral("error"), QStringLiteral("Could not start the updater"), launchError);
+            return;
+        }
+        QFile::remove(finalPath);
+    } else {
+        QFile::remove(finalPath);
     }
 
-    connect(reply, &QNetworkReply::readyRead, this, [reply, file] {
+    qint64 resumeOffset = QFileInfo(partPath).size();
+    if (resumeOffset < 0 || resumeOffset > m_manifestSetupBytes) {
+        QFile::remove(partPath);
+        resumeOffset = 0;
+    }
+    if (resumeOffset == m_manifestSetupBytes && resumeOffset > 0) {
+        QFile::remove(finalPath);
+        if (QFile::rename(partPath, finalPath)) {
+            QString cachedError;
+            if (verifyInstaller(&cachedError)) {
+                setProgress(1.0);
+                QString launchError;
+                if (!launchInstallerElevated(&launchError))
+                    setState(QStringLiteral("error"), QStringLiteral("Could not start the updater"), launchError);
+                return;
+            }
+        }
+        QFile::remove(finalPath);
+        QFile::remove(partPath);
+        resumeOffset = 0;
+    }
+
+    setState(QStringLiteral("downloading"),
+             resumeOffset > 0
+                 ? QStringLiteral("Resuming SonKuPik K500 %1…").arg(m_latestVersion)
+                 : QStringLiteral("Downloading SonKuPik K500 %1…").arg(m_latestVersion));
+
+    QNetworkReply *reply = get(m_setupAssetUrl, resumeOffset > 0 ? resumeOffset : -1);
+    auto *file = new QFile(partPath, reply);
+    reply->setProperty("sonkupikResumeOffset", resumeOffset);
+    reply->setProperty("sonkupikBaseBytes", qint64(0));
+    reply->setProperty("sonkupikWriteFailed", false);
+    reply->setProperty("sonkupikRangeInvalid", false);
+
+    auto prepareFile = [reply, file]() -> bool {
+        if (file->isOpen())
+            return true;
+
+        const qint64 requestedOffset = reply->property("sonkupikResumeOffset").toLongLong();
+        const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        bool append = requestedOffset > 0 && status == 206;
+
+        if (append) {
+            const QByteArray expectedPrefix = QByteArray("bytes ")
+                + QByteArray::number(requestedOffset) + '-';
+            const QByteArray range = reply->rawHeader("Content-Range").trimmed();
+            if (!range.startsWith(expectedPrefix)) {
+                reply->setProperty("sonkupikRangeInvalid", true);
+                QFile::remove(file->fileName());
+                reply->abort();
+                return false;
+            }
+        } else if (requestedOffset > 0) {
+            // Server ignored Range and returned a full 200 response. Restart
+            // safely from byte zero rather than concatenating duplicate bytes.
+            QFile::remove(file->fileName());
+        }
+
+        const QIODevice::OpenMode mode = append
+            ? (QIODevice::WriteOnly | QIODevice::Append)
+            : (QIODevice::WriteOnly | QIODevice::Truncate);
+        if (!file->open(mode)) {
+            reply->setProperty("sonkupikWriteFailed", true);
+            reply->abort();
+            return false;
+        }
+        reply->setProperty("sonkupikBaseBytes", append ? requestedOffset : qint64(0));
+        return true;
+    };
+
+    connect(reply, &QNetworkReply::metaDataChanged, this, [prepareFile] {
+        prepareFile();
+    });
+    connect(reply, &QNetworkReply::readyRead, this, [reply, file, prepareFile] {
+        if (!prepareFile())
+            return;
         const QByteArray chunk = reply->readAll();
-        if (!chunk.isEmpty() && file->write(chunk) != chunk.size())
-            file->setProperty("sonkupikWriteFailed", true);
+        if (!chunk.isEmpty() && file->write(chunk) != chunk.size()) {
+            reply->setProperty("sonkupikWriteFailed", true);
+            reply->abort();
+        }
     });
     connect(reply, &QNetworkReply::downloadProgress, this,
-            [this](qint64 received, qint64 total) {
-        const qint64 expected = m_manifestSetupBytes > 0 ? m_manifestSetupBytes : total;
-        if (expected > 0)
-            setProgress(0.12 + qMin<qreal>(1.0, qreal(received) / qreal(expected)) * 0.78);
+            [this, reply](qint64 received, qint64) {
+        const qint64 base = reply->property("sonkupikBaseBytes").toLongLong();
+        if (m_manifestSetupBytes > 0) {
+            const qreal ratio = qMin<qreal>(
+                1.0, qreal(base + received) / qreal(m_manifestSetupBytes));
+            setProgress(0.12 + ratio * 0.78);
+        }
     });
-    connect(reply, &QNetworkReply::finished, this, [this, reply, file] {
-        const QByteArray remaining = reply->readAll();
-        if (!remaining.isEmpty() && file->write(remaining) != remaining.size())
-            file->setProperty("sonkupikWriteFailed", true);
+    connect(reply, &QNetworkReply::finished, this, [this, reply, file, prepareFile, partPath, finalPath] {
+        if (prepareFile()) {
+            const QByteArray remaining = reply->readAll();
+            if (!remaining.isEmpty() && file->write(remaining) != remaining.size())
+                reply->setProperty("sonkupikWriteFailed", true);
+        }
+        if (file->isOpen()) {
+            file->flush();
+            file->close();
+        }
 
-        const auto error = reply->error();
+        const auto networkError = reply->error();
         const QString errorString = reply->errorString();
         const QUrl finalUrl = reply->url();
-        const bool writeFailed = file->property("sonkupikWriteFailed").toBool();
+        const bool writeFailed = reply->property("sonkupikWriteFailed").toBool();
+        const bool rangeInvalid = reply->property("sonkupikRangeInvalid").toBool();
+        reply->deleteLater();
 
-        if (error != QNetworkReply::NoError || !trustedGitHubAsset(finalUrl) || writeFailed) {
-            file->cancelWriting();
-            reply->deleteLater();
-            const QString reason = error != QNetworkReply::NoError ? errorString
-                : !trustedGitHubAsset(finalUrl)
-                    ? QStringLiteral("Installer download redirected outside trusted GitHub asset hosts.")
-                    : QStringLiteral("Windows could not write the complete update package.");
+        if (!trustedGitHubAsset(finalUrl) || writeFailed || rangeInvalid) {
+            QFile::remove(partPath);
+            const QString reason = !trustedGitHubAsset(finalUrl)
+                ? QStringLiteral("Installer download redirected outside trusted GitHub asset hosts.")
+                : rangeInvalid
+                    ? QStringLiteral("The server returned an invalid HTTP byte range; partial data was discarded.")
+                    : QStringLiteral("Windows could not write the update package.");
             setState(QStringLiteral("error"), QStringLiteral("Download failed"), reason);
             return;
         }
 
-        if (!file->commit()) {
-            reply->deleteLater();
-            setState(QStringLiteral("error"), QStringLiteral("Could not save the update"), installerPath());
+        if (networkError != QNetworkReply::NoError) {
+            const qint64 saved = QFileInfo(partPath).size();
+            const QString resume = saved > 0 && saved < m_manifestSetupBytes
+                ? QStringLiteral(" %1 MB was kept; press Coba lagi to resume.")
+                    .arg(QString::number(double(saved) / (1024.0 * 1024.0), 'f', 1))
+                : QString();
+            setState(QStringLiteral("error"), QStringLiteral("Download interrupted"),
+                     errorString + resume);
             return;
         }
-        reply->deleteLater();
 
-        const qint64 downloadedBytes = QFileInfo(installerPath()).size();
+        const qint64 downloadedBytes = QFileInfo(partPath).size();
         if (m_manifestSetupBytes <= 0 || downloadedBytes != m_manifestSetupBytes
             || (m_releaseSetupBytes > 0 && downloadedBytes != m_releaseSetupBytes)) {
-            QFile::remove(installerPath());
-            setState(QStringLiteral("error"), QStringLiteral("Downloaded update failed verification"),
-                     QStringLiteral("Installer size does not match the release metadata."));
+            if (downloadedBytes > m_manifestSetupBytes)
+                QFile::remove(partPath);
+            setState(QStringLiteral("error"), QStringLiteral("Downloaded update is incomplete"),
+                     QStringLiteral("Installer size does not match release metadata. Press Coba lagi to retry/resume safely."));
+            return;
+        }
+
+        QFile::remove(finalPath);
+        if (!QFile::rename(partPath, finalPath)) {
+            setState(QStringLiteral("error"), QStringLiteral("Could not finalize the update"), finalPath);
             return;
         }
 
@@ -740,7 +847,8 @@ void AppUpdateManager::downloadInstaller()
         setState(QStringLiteral("verifying"), QStringLiteral("Verifying downloaded installer…"));
         QString verifyError;
         if (!verifyInstaller(&verifyError)) {
-            QFile::remove(installerPath());
+            QFile::remove(finalPath);
+            QFile::remove(partPath);
             setState(QStringLiteral("error"), QStringLiteral("Downloaded update failed verification"), verifyError);
             return;
         }
