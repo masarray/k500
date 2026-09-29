@@ -35,23 +35,13 @@ jobs:
           if ([version]$version -lt [version]'1.0.0') {
             throw "Stable publisher requires version >= 1.0.0; found $version"
           }
+          if ([version]$version -ge [version]'1.1.0') {
+            throw 'v1.1+ stable must promote exact accepted RC artifacts through windows-updater-promote.yml; rebuild publishing is forbidden.'
+          }
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=v$version" >> $env:GITHUB_OUTPUT
           Write-Host "Packaging SonKuPik K500 v$version PUBLIC STABLE"
 
-      - name: Require accepted updater lifecycle for v1.1+
-        shell: pwsh
-        run: |
-          $version = [version]'${{ steps.meta.outputs.version }}'
-          if ($version -ge [version]'1.1.0') {
-            $gatePath = 'docs/V1_1_UPDATER_RC_ACCEPTANCE.md'
-            if (-not (Test-Path $gatePath)) { throw 'v1.1+ stable publish requires updater acceptance record' }
-            $gate = Get-Content $gatePath -Raw
-            if ($gate -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=accepted\s*$') {
-              throw 'v1.1+ stable publish blocked: updater RC acceptance is not accepted.'
-            }
-            Write-Host 'Updater v1.1 acceptance gate PASS.'
-          }
 
       - name: Refuse a previously published version
         shell: pwsh
@@ -392,7 +382,7 @@ jobs:
           body: |
             Public stable release of SonKuPik K500.
 
-            v1.1.0 completes the Windows updater lifecycle with a separately packaged per-user installer, explicit **Update tanpa Admin** migration, recovery snapshots/rollback, resumable downloads, and explicit stale-registration repair. Public promotion is gated by the repository's accepted updater RC record.
+            This legacy builder is limited to the v1.0.x line. v1.1+ uses byte-identical promotion of an accepted updater RC and is intentionally rejected earlier in this workflow.
 
             Hardware-qualified v1.0 scope: Windows x64 + K500 over USB HID. Bluetooth SPP remains available but is experimental and is not part of the v1.0 hardware-qualified support claim.
 
