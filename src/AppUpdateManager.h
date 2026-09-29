@@ -92,6 +92,7 @@ private:
     bool launchInstallerElevated(QString *error = nullptr);
     QString updateDirectory() const;
     QString installerPath() const;
+    QUrl releaseDiscoveryUrl() const;
     QNetworkReply *get(const QUrl &url, qint64 rangeStart = -1);
 
     QNetworkAccessManager *m_network = nullptr;
@@ -121,4 +122,7 @@ private:
     QString m_userSetupAssetName;
     QUrl m_userSetupAssetUrl;
     qint64 m_userSetupBytes = -1;
+    // P4_RC_CANDIDATE_CHANNEL_V1 — process-local, explicit QA opt-in only.
+    // It is never persisted and normal users remain on /releases/latest.
+    QString m_candidateTag;
 };
