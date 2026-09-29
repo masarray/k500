@@ -26,6 +26,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/windows-stable-release.yml'
+      - '.github/workflows/windows-updater-rc.yml'
       - '.github/workflows/p5-release-readiness.yml'
   pull_request:
     paths:
@@ -51,6 +52,7 @@ on:
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/windows-stable-release.yml'
+      - '.github/workflows/windows-updater-rc.yml'
       - '.github/workflows/p5-release-readiness.yml'
 
 jobs:
@@ -80,6 +82,7 @@ jobs:
           $fileUi = Get-Content docs/P3_3_PRESET_FILE_UI.md -Raw
           $landing = Get-Content docs/index.html -Raw
           $stableWorkflow = Get-Content .github/workflows/windows-stable-release.yml -Raw
+          $rcWorkflow = Get-Content .github/workflows/windows-updater-rc.yml -Raw
           $installer = Get-Content packaging/windows/installer.iss -Raw
           $updater = Get-Content src/AppUpdateManager.cpp -Raw
           $deviceHeader = Get-Content src/k500/K500DeviceManager.h -Raw
@@ -129,8 +132,8 @@ jobs:
           foreach ($token in @('Target application version: `1.1.0`','Public stable remains **v1.0.3**')) {
             if (-not $updaterAcceptance.Contains($token)) { throw "Updater v1.1 acceptance record missing '$token'" }
           }
-          if ($updaterAcceptance -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=pending\s*$') {
-            throw 'Updater v1.1 source candidate must remain pending until a separate acceptance PR.'
+          if ($updaterAcceptance -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=(pending|accepted)\s*$') {
+            throw 'Updater v1.1 acceptance record must contain a valid pending/accepted token.'
           }
 
           # Historical v1.0.0 hardware qualification remains immutable evidence;
@@ -190,6 +193,23 @@ jobs:
             'UPDATER_V1_1_ACCEPTANCE=accepted'
           )) {
             if (-not $stableWorkflow.Contains($token)) { throw "Stable release pipeline contract missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'name: Windows Updater Release Candidate',
+            'workflow_dispatch:',
+            "if ($env:GITHUB_REF -ne 'refs/heads/main')",
+            "if ($version -ne '1.1.0')",
+            'Exact-head gate PASS:',
+            "stableReleaseEligible = $false",
+            "installerScopes = @('machine','user')",
+            "migration = 'explicit-machine-to-user'",
+            'Windows-Setup-PerUser.exe',
+            'prerelease: true',
+            'make_latest: false',
+            'overwrite_files: false'
+          )) {
+            if (-not $rcWorkflow.Contains($token)) { throw "Updater RC workflow contract missing '$token'" }
           }
 
           foreach ($token in @(
