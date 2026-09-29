@@ -501,7 +501,7 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         && QVersionNumber::compare(latest, current) >= 0;
 
     const int comparison = QVersionNumber::compare(latest, current);
-    if (comparison <= 0) {
+    if (comparison < 0 || (comparison == 0 && !candidateMode)) {
         emit updateChanged();
         if (m_migrationAvailable) {
             // The offer may appear after discovery, but migration itself never
@@ -515,11 +515,24 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
+    if (comparison == 0 && candidateMode && m_migrationAvailable) {
+        // RC qualification deliberately supports same-version machine -> user
+        // migration. The process-local candidate tag identifies the exact bytes.
+        emit updateChanged();
+        setState(QStringLiteral("migration-available"),
+                 QStringLiteral("Move this updater candidate to a no-admin per-user installation"));
+        return;
+    }
+
     selectPackageForScope(m_installScope);
     if (m_setupAssetName.isEmpty() || m_setupAssetUrl.isEmpty()
         || m_releaseSetupBytes < MinimumInstallerBytes || !commonMetadataReady) {
         setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
-                 userInitiated ? QStringLiteral("Stable update package is incomplete") : QString(),
+                 userInitiated
+                     ? (candidateMode
+                            ? QStringLiteral("Updater candidate package is incomplete")
+                            : QStringLiteral("Stable update package is incomplete"))
+                     : QString(),
                  userInitiated ? QStringLiteral("Required scope-matched setup/manifest/checksum assets were not found.") : QString());
         return;
     }
