@@ -224,12 +224,18 @@ jobs:
               [Parameter(Mandatory=$true)][string]$FilePath,
               [Parameter(Mandatory=$true)]$ArgumentList,
               [Parameter(Mandatory=$true)][string]$Label,
-              [int]$TimeoutSeconds = 120
+              [int]$TimeoutSeconds = 45
             )
             Write-Host "P3 qualification: $Label"
             $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -PassThru
             if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
               Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              Write-Host "P3 timeout diagnostics for $Label"
+              Get-ChildItem $env:TEMP -Filter 'SonKuPik-K500-P3-*.log' -File -ErrorAction SilentlyContinue |
+                ForEach-Object {
+                  Write-Host ("--- " + $_.FullName + " ---")
+                  Get-Content $_.FullName -ErrorAction SilentlyContinue
+                }
               throw "$Label exceeded $TimeoutSeconds seconds"
             }
             $process.Refresh()
