@@ -15,6 +15,8 @@ Popup {
     readonly property bool canMigrate: root.updateManager
                                         && root.updateManager.migrationAvailable
                                         && root.updateManager.installationScope === "machine"
+    readonly property bool repairAvailable: root.updateManager
+                                            && root.updateManager.registrationRepairAvailable
 
     parent: Overlay.overlay
     anchors.centerIn: parent
@@ -279,7 +281,7 @@ Popup {
 
                 SoftButton {
                     Layout.preferredWidth: 128
-                    visible: !root.canMigrate
+                    visible: !root.canMigrate && !root.repairAvailable
                     text: "Lewati versi"
                     compact: true
                     enabled: root.updateManager && !root.updateManager.busy
@@ -293,7 +295,7 @@ Popup {
 
                 SoftButton {
                     Layout.preferredWidth: 160
-                    visible: root.canMigrate && !root.migrationOnly
+                    visible: root.canMigrate && !root.migrationOnly && !root.repairAvailable
                     text: "Update tanpa Admin"
                     compact: true
                     enabled: root.updateManager && !root.updateManager.busy && !root.deviceTransactionBusy
@@ -308,16 +310,20 @@ Popup {
                           ? "Memproses…"
                           : root.deviceTransactionBusy
                             ? "Tunggu transaksi"
-                            : (root.updateManager && root.updateManager.state === "error"
-                               ? "Coba lagi"
-                               : (root.migrationOnly ? "Pindah tanpa Admin" : "Update sekarang"))
+                            : root.repairAvailable
+                              ? "Perbaiki registrasi"
+                              : (root.updateManager && root.updateManager.state === "error"
+                                 ? "Coba lagi"
+                                 : (root.migrationOnly ? "Pindah tanpa Admin" : "Update sekarang"))
                     compact: false
                     mixerSelect: true
                     primaryAction: true
                     checked: true
                     enabled: root.updateManager && !root.updateManager.busy && !root.deviceTransactionBusy
                     onClicked: {
-                        if (root.migrationOnly)
+                        if (root.repairAvailable)
+                            root.updateManager.repairStaleRegistration()
+                        else if (root.migrationOnly)
                             root.updateManager.migrateToPerUser()
                         else
                             root.updateManager.downloadAndInstall()
@@ -327,11 +333,13 @@ Popup {
 
             Text {
                 Layout.fillWidth: true
-                text: root.updateManager && (root.updateManager.migrationMode || root.migrationOnly)
-                      ? "Migrasi ini eksplisit: SonKuPik memasang dan memverifikasi salinan per-user lebih dulu. Setelah lolos health-check, Windows meminta Administrator satu kali untuk menghapus instalasi Program Files. Preset, QSettings, dan cache pengguna tetap di profil Windows yang sama. Update berikutnya tidak memerlukan Administrator."
-                      : (root.updateManager && root.updateManager.installationScope === "user"
-                         ? "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, memasang pembaruan tanpa Administrator, lalu membuka aplikasi kembali. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan."
-                         : "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, lalu meminta Administrator untuk instalasi Program Files. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan.")
+                text: root.repairAvailable
+                      ? ("SonKuPik menemukan registrasi uninstall " + root.updateManager.staleRegistrationScope + " yang jalur aplikasinya sudah tidak memiliki EXE maupun uninstaller. Pembersihan hanya dilakukan setelah tombol ini ditekan; registrasi instalasi yang masih memiliki file tidak pernah dihapus otomatis.")
+                      : (root.updateManager && (root.updateManager.migrationMode || root.migrationOnly)
+                         ? "Migrasi ini eksplisit: SonKuPik memasang dan memverifikasi salinan per-user lebih dulu. Setelah lolos health-check, Windows meminta Administrator satu kali untuk menghapus instalasi Program Files. Preset, QSettings, dan cache pengguna tetap di profil Windows yang sama. Update berikutnya tidak memerlukan Administrator."
+                         : (root.updateManager && root.updateManager.installationScope === "user"
+                            ? "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, memasang pembaruan tanpa Administrator, lalu membuka aplikasi kembali. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan."
+                            : "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, lalu meminta Administrator untuk instalasi Program Files. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan."))
                 color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.fontFamily
