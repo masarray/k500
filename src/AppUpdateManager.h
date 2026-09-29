@@ -25,6 +25,10 @@ class AppUpdateManager : public QObject
     Q_PROPERTY(QString errorText READ errorText NOTIFY stateChanged)
     Q_PROPERTY(qreal progress READ progress NOTIFY progressChanged)
     Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY updateChanged)
+    Q_PROPERTY(bool migrationAvailable READ migrationAvailable NOTIFY updateChanged)
+    Q_PROPERTY(bool migrationMode READ migrationMode NOTIFY updateChanged)
+    Q_PROPERTY(QString staleRegistrationScope READ staleRegistrationScope NOTIFY updateChanged)
+    Q_PROPERTY(bool registrationRepairAvailable READ registrationRepairAvailable NOTIFY updateChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY stateChanged)
 
 public:
@@ -39,10 +43,16 @@ public:
     QString errorText() const { return m_errorText; }
     qreal progress() const { return m_progress; }
     bool updateAvailable() const { return m_updateAvailable; }
+    bool migrationAvailable() const { return m_migrationAvailable; }
+    bool migrationMode() const { return m_migrationMode; }
+    QString staleRegistrationScope() const;
+    bool registrationRepairAvailable() const { return !staleRegistrationScope().isEmpty(); }
     bool busy() const;
 
     Q_INVOKABLE void checkForUpdates(bool userInitiated = false);
     Q_INVOKABLE void downloadAndInstall();
+    Q_INVOKABLE void migrateToPerUser();
+    Q_INVOKABLE void repairStaleRegistration();
     Q_INVOKABLE void remindLater();
     Q_INVOKABLE void skipThisVersion();
     // Hardware transaction authority is mirrored by Main.qml, not inferred
@@ -62,6 +72,9 @@ signals:
 private:
     enum class InstallScope { Unknown, Machine, User };
     InstallScope detectedInstallScope() const;
+    QString registeredInstallPath(InstallScope scope) const;
+    bool registrationIsStale(InstallScope scope, QString *registeredPath = nullptr) const;
+    QString stageUpdateHelper(QString *error = nullptr) const;
     void setState(const QString &state, const QString &status = {}, const QString &error = {});
     void setProgress(qreal value);
     void resetReleaseMetadata();
@@ -69,13 +82,17 @@ private:
     void downloadManifest();
     void downloadChecksums();
     void downloadInstaller();
+    void beginSelectedPackageInstall();
+    void selectPackageForScope(InstallScope scope);
+    QString perUserTargetApplication() const;
+    QString partialInstallerPath() const;
     bool validateManifest(const QByteArray &payload);
     bool parseExpectedChecksum(const QByteArray &payload);
     bool verifyInstaller(QString *error = nullptr) const;
     bool launchInstallerElevated(QString *error = nullptr);
     QString updateDirectory() const;
     QString installerPath() const;
-    QNetworkReply *get(const QUrl &url);
+    QNetworkReply *get(const QUrl &url, qint64 rangeStart = -1);
 
     QNetworkAccessManager *m_network = nullptr;
     QString m_latestVersion;
@@ -85,8 +102,11 @@ private:
     QString m_errorText;
     qreal m_progress = 0.0;
     bool m_updateAvailable = false;
+    bool m_migrationAvailable = false;
+    bool m_migrationMode = false;
     bool m_deviceTransactionBusy = true; // Fail closed until QML supplies actual state.
     InstallScope m_installScope = InstallScope::Unknown;
+    InstallScope m_targetScope = InstallScope::Unknown;
     QString m_setupAssetName;
     QUrl m_setupAssetUrl;
     QUrl m_manifestUrl;
@@ -95,4 +115,10 @@ private:
     QByteArray m_expectedSha256;
     qint64 m_manifestSetupBytes = -1;
     qint64 m_releaseSetupBytes = -1;
+    QString m_machineSetupAssetName;
+    QUrl m_machineSetupAssetUrl;
+    qint64 m_machineSetupBytes = -1;
+    QString m_userSetupAssetName;
+    QUrl m_userSetupAssetUrl;
+    qint64 m_userSetupBytes = -1;
 };

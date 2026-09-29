@@ -9,6 +9,19 @@ Popup {
     required property var deviceManager
     readonly property var presetManager: root.deviceManager ? root.deviceManager.presetManager : null
     readonly property bool deviceTransactionBusy: !!root.presetManager && !!root.presetManager.busy
+    readonly property bool migrationOnly: root.updateManager
+                                          && root.updateManager.state === "migration-available"
+                                          && !root.updateManager.updateAvailable
+    // Preserve the user's explicit per-user migration choice across download or
+    // verification errors. Retrying must never silently fall back to the
+    // machine-wide package and reintroduce an Administrator prompt.
+    readonly property bool migrationPathActive: root.migrationOnly
+                                                || (root.updateManager && root.updateManager.migrationMode)
+    readonly property bool canMigrate: root.updateManager
+                                        && root.updateManager.migrationAvailable
+                                        && root.updateManager.installationScope === "machine"
+    readonly property bool repairAvailable: root.updateManager
+                                            && root.updateManager.registrationRepairAvailable
 
     parent: Overlay.overlay
     anchors.centerIn: parent
@@ -86,9 +99,11 @@ Popup {
                     spacing: 2
                     Text {
                         Layout.fillWidth: true
-                        text: root.updateManager && root.updateManager.updateAvailable
-                              ? ("SonKuPik K500 " + root.updateManager.latestVersion + " tersedia")
-                              : "Software Update"
+                        text: root.migrationOnly
+                              ? "Update tanpa Administrator"
+                              : (root.updateManager && root.updateManager.updateAvailable
+                                 ? ("SonKuPik K500 " + root.updateManager.latestVersion + " tersedia")
+                                 : "Software Update")
                         color: Theme.text
                         renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
@@ -224,7 +239,10 @@ Popup {
                 spacing: 6
                 visible: root.deviceTransactionBusy
                          || (root.updateManager
-                             && (root.updateManager.busy || root.updateManager.state === "error"))
+                             && (root.updateManager.busy
+                                 || root.updateManager.state === "error"
+                                 || root.updateManager.state === "registration-repair"
+                                 || root.updateManager.state === "registration-repaired"))
 
                 ProgressBar {
                     Layout.fillWidth: true
@@ -271,6 +289,7 @@ Popup {
 
                 SoftButton {
                     Layout.preferredWidth: 128
+                    visible: !root.canMigrate && !root.repairAvailable
                     text: "Lewati versi"
                     compact: true
                     enabled: root.updateManager && !root.updateManager.busy
@@ -283,29 +302,54 @@ Popup {
                 Item { Layout.fillWidth: true }
 
                 SoftButton {
-                    Layout.preferredWidth: 174
+                    Layout.preferredWidth: 160
+                    visible: root.canMigrate && !root.migrationPathActive && !root.repairAvailable
+                    text: "Update tanpa Admin"
+                    compact: true
+                    enabled: root.updateManager && !root.updateManager.busy && !root.deviceTransactionBusy
+                    onClicked: root.updateManager.migrateToPerUser()
+                }
+
+                SoftButton {
+                    Layout.preferredWidth: root.migrationPathActive ? 190 : 160
                     Layout.preferredHeight: 34
+                    visible: root.repairAvailable
+                             || root.migrationPathActive
+                             || (root.updateManager && root.updateManager.updateAvailable)
                     text: root.updateManager && root.updateManager.busy
                           ? "Memproses…"
                           : root.deviceTransactionBusy
                             ? "Tunggu transaksi"
-                            : (root.updateManager && root.updateManager.state === "error"
-                               ? "Coba lagi"
-                               : "Update sekarang")
+                            : root.repairAvailable
+                              ? "Perbaiki registrasi"
+                              : (root.updateManager && root.updateManager.state === "error"
+                                 ? "Coba lagi"
+                                 : (root.migrationPathActive ? "Pindah tanpa Admin" : "Update sekarang"))
                     compact: false
                     mixerSelect: true
                     primaryAction: true
                     checked: true
                     enabled: root.updateManager && !root.updateManager.busy && !root.deviceTransactionBusy
-                    onClicked: root.updateManager.downloadAndInstall()
+                    onClicked: {
+                        if (root.repairAvailable)
+                            root.updateManager.repairStaleRegistration()
+                        else if (root.migrationPathActive)
+                            root.updateManager.migrateToPerUser()
+                        else
+                            root.updateManager.downloadAndInstall()
+                    }
                 }
             }
 
             Text {
                 Layout.fillWidth: true
-                text: root.updateManager && root.updateManager.installationScope === "user"
-                      ? "SonKuPik akan mengunduh Setup resmi, memverifikasi manifest + SHA-256, memasang pembaruan pada akun pengguna tanpa Administrator, lalu membuka aplikasi kembali."
-                      : "SonKuPik akan mengunduh Setup resmi, memverifikasi manifest + SHA-256, meminta izin Administrator untuk instalasi Program Files, lalu membuka aplikasi kembali."
+                text: root.repairAvailable
+                      ? ("SonKuPik menemukan registrasi uninstall " + root.updateManager.staleRegistrationScope + " yang jalur aplikasinya sudah tidak memiliki EXE maupun uninstaller. Pembersihan hanya dilakukan setelah tombol ini ditekan; registrasi instalasi yang masih memiliki file tidak pernah dihapus otomatis.")
+                      : (root.migrationPathActive
+                         ? "Migrasi ini eksplisit: SonKuPik memasang dan memverifikasi salinan per-user lebih dulu. Setelah lolos health-check, Windows meminta Administrator satu kali untuk menghapus instalasi Program Files. Preset, QSettings, dan cache pengguna tetap di profil Windows yang sama. Update berikutnya tidak memerlukan Administrator."
+                         : (root.updateManager && root.updateManager.installationScope === "user"
+                            ? "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, memasang pembaruan tanpa Administrator, lalu membuka aplikasi kembali. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan."
+                            : "SonKuPik mengunduh Setup resmi, memverifikasi manifest + SHA-256, membuat recovery snapshot, lalu meminta Administrator untuk instalasi Program Files. Jika instalasi/health-check gagal, versi sebelumnya dipulihkan."))
                 color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.fontFamily

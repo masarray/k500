@@ -158,6 +158,14 @@ ApplicationWindow {
             if (AppUpdater.updateAvailable && !updateDialog.opened)
                 updateDialog.open()
         }
+        function onStateChanged() {
+            // Discovery may surface a one-time migration offer, but the move
+            // itself remains explicit and never starts from this signal.
+            if ((AppUpdater.state === "migration-available"
+                 || AppUpdater.state === "registration-repair")
+                && !updateDialog.opened)
+                updateDialog.open()
+        }
     }
 
     // UPDATE_DEVICE_TRANSACTION_BARRIER_P1 — pass the authoritative coordinator
