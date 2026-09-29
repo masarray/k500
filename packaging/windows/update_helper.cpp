@@ -754,6 +754,36 @@ bool cleanupPerUserMigration(const Request &request)
     return error == ERROR_SUCCESS && exitCode == 0;
 }
 
+bool restoreMachineMigrationSource(const Request &request, std::wstring *error)
+{
+    const std::wstring sourceDir = parentDirectory(request.app);
+    const std::wstring helper = currentExecutable();
+    if (sourceDir.empty() || helper.empty()) {
+        if (error) *error = L"Machine migration recovery path is unavailable.";
+        return false;
+    }
+
+    const std::wstring params = L"--restore-backup " + quote(request.backup)
+        + L" --target " + quote(sourceDir)
+        + L" --scope " + quote(L"machine")
+        + L" --log " + quote(request.log);
+    DWORD exitCode = ~0UL;
+    const DWORD launch = runElevatedAndWait(helper, params, InstallTimeoutMs, exitCode);
+    if (launch != ERROR_SUCCESS || exitCode != 0) {
+        if (error) {
+            *error = L"Machine migration recovery failed (Windows error "
+                + std::to_wstring(launch) + L", exit code "
+                + std::to_wstring(exitCode) + L").";
+        }
+        return false;
+    }
+    if (!healthCheck(request.app, request.previousVersion)) {
+        if (error) *error = L"Restored machine installation failed its previous-version health check.";
+        return false;
+    }
+    return true;
+}
+
 int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 {
     const std::wstring sourceDir = parentDirectory(request.app);
@@ -762,6 +792,25 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
         CloseHandle(lockedSetup);
         return fail(request, 30, L"Migration source/target installation paths are invalid.");
     }
+
+    // Snapshot the machine installation AND its uninstall registration before
+    // any migration work. The old installation remains authoritative until the
+    // per-user target has passed health check and old uninstall begins.
+    std::wstring backupError;
+    if (!copyTree(sourceDir, request.backup, &backupError)
+        || !snapshotUninstallRegistry(L"machine", request.backup, &backupError)) {
+        CloseHandle(lockedSetup);
+        std::error_code cleanup;
+        fs::remove_all(fs::path(request.backup), cleanup);
+        return fail(request, 30,
+            L"Could not create the machine migration recovery snapshot: " + backupError);
+    }
+    logLine(request, L"Machine migration recovery snapshot created at " + request.backup);
+
+    const auto discardBackup = [&request] {
+        std::error_code ec;
+        fs::remove_all(fs::path(request.backup), ec);
+    };
 
     const std::wstring args =
         L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS "
@@ -773,8 +822,18 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     const DWORD launchError = runAndWait(request.setup, args, InstallTimeoutMs, installerExit);
     CloseHandle(lockedSetup);
 
+    if (launchError == ERROR_TIMEOUT) {
+        // The per-user installer may still be active. Never race it with cleanup
+        // or old-install recovery; preserve both old machine install and snapshot.
+        return fail(request, 31,
+            L"Per-user migration installer exceeded the safety timeout. The old "
+            L"Program Files installation was not removed. Recovery snapshot was kept at:\n"
+            + request.backup);
+    }
+
     if (launchError != ERROR_SUCCESS || installerExit != 0) {
         cleanupPerUserMigration(request);
+        discardBackup();
         if (startApplication(request.app))
             logLine(request, L"Migration failed before machine uninstall; original app reopened.");
         return fail(request, 31,
@@ -784,6 +843,7 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 
     if (!healthCheck(request.targetApp, request.version)) {
         cleanupPerUserMigration(request);
+        discardBackup();
         if (startApplication(request.app))
             logLine(request, L"Migration target health check failed; original app reopened.");
         return fail(request, 32,
@@ -794,6 +854,7 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     const std::wstring oldUninstaller = sourceDir + L"\\" + UninstallerName;
     if (!pathExists(oldUninstaller)) {
         cleanupPerUserMigration(request);
+        discardBackup();
         startApplication(request.app);
         return fail(request, 33,
             L"The Program Files uninstaller is missing. Migration was rolled back "
@@ -808,15 +869,26 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     if (uninstallError != ERROR_SUCCESS || uninstallExit != 0
         || pathExists(request.app)) {
         const bool cleaned = cleanupPerUserMigration(request);
-        startApplication(request.app);
+        std::wstring restoreError;
+        const bool restored = restoreMachineMigrationSource(request, &restoreError);
+        if (restored) {
+            discardBackup();
+            startApplication(request.app);
+            return fail(request, 34,
+                L"Windows could not complete removal of the old Program Files installation. "
+                L"The machine installation and uninstall registration were restored and reopened."
+                + std::wstring(cleaned
+                    ? L" The temporary per-user installation was removed."
+                    : L" The temporary per-user cleanup also failed; inspect the update log."));
+        }
         return fail(request, 34,
-            L"Windows could not remove the old Program Files installation. "
-            + std::wstring(cleaned
-                ? L"The temporary per-user installation was removed and the old app reopened."
-                : L"The old app was reopened, but per-user cleanup also failed; inspect the update log."));
+            L"Windows could not complete removal of the old Program Files installation. "
+            L"Automatic recovery also failed: " + restoreError
+            + L"\nRecovery snapshot was kept at:\n" + request.backup);
     }
 
-    logLine(request, L"Machine->user migration verified; old installation removed.");
+    discardBackup();
+    logLine(request, L"Machine->user migration verified; old installation removed and recovery snapshot released.");
     if (!startApplication(request.targetApp))
         return fail(request, 35,
             L"Migration completed and the new installation passed validation, "
