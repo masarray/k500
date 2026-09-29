@@ -169,6 +169,8 @@ jobs:
           # Compile the actual standalone Win32 helper without a Qt dependency.
           & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fepackage/SonKuPik-K500-Updater.exe packaging/windows/update_helper.cpp /link /SUBSYSTEM:WINDOWS shell32.lib bcrypt.lib user32.lib
           if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator compilation failed' }
+          & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Febuild/packaging/P3-Fake-Installer.exe tests/windows/update_failure_installer_fixture.cpp /link /SUBSYSTEM:WINDOWS shell32.lib
+          if ($LASTEXITCODE -ne 0) { throw 'P3 fake failure installer fixture failed to compile' }
           $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
           if ($helperTest.ExitCode -ne 0) { throw "Native update coordinator self-test failed: $($helperTest.ExitCode)" }
           # Exercise the production Windows BCrypt streaming verifier: accept a
@@ -240,7 +242,8 @@ jobs:
             & reg.exe DELETE $machineKey /f | Out-Null
           }
 
-          $testDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-P2-CI'
+          # Fresh per-user package install/uninstall.
+          $testDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-P3-CI'
           if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
           $install = Start-Process -FilePath (Resolve-Path $perUserSetup).Path -ArgumentList @(
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$testDir"
@@ -253,43 +256,161 @@ jobs:
             '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
           ) -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Per-user uninstall failed: $($uninstall.ExitCode)" }
-          if (Test-Path (Join-Path $testDir 'SonKuPik-K500.exe')) { throw 'Per-user uninstall left application EXE behind' }
-          # Exercise the actual helper -> wait-for-parent -> SHA-256 -> non-UAC
-          # per-user Inno -> health check -> relaunch sequence with dummy EXE.
-          # Never use production app/device or publish this fixture installer.
+
+          # P3 real helper update: installed user copy -> verified Setup -> backup
+          # -> install -> health check -> relaunch -> recovery snapshot cleanup.
           $defaultDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik K500'
-          if (Test-Path $defaultDir) { throw 'CI fixture must start with no pre-existing default installation' }
+          if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
+          $seed = Start-Process -FilePath (Resolve-Path $perUserSetup).Path -ArgumentList @(
+            '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'
+          ) -Wait -PassThru
+          if ($seed.ExitCode -ne 0) { throw "Could not seed per-user update fixture: $($seed.ExitCode)" }
+
           $healthMarker = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-health.marker'
           $restartMarker = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-relaunch.marker'
           Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
           $setupAbs = (Resolve-Path $perUserSetup).Path
           $setupHash = (Get-FileHash $setupAbs -Algorithm SHA256).Hash.ToLowerInvariant()
           $log = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-handoff.log'
+          $backup = Join-Path $env:TEMP 'SonKuPik-K500-CI-recovery'
           Remove-Item $log,("$log.inno.log") -Force -ErrorAction SilentlyContinue
-          $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 4') -PassThru
+          if (Test-Path $backup) { Remove-Item $backup -Recurse -Force }
+          $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 2') -PassThru
           $helperArgs = @(
             '--parent-pid', "$($parent.Id)",
             '--setup', ('"' + $setupAbs + '"'),
             '--app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+            '--target-app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
             '--version', $version,
+            '--previous-version', $version,
             '--log', ('"' + $log + '"'),
             '--sha256', $setupHash,
-            '--scope', 'user'
+            '--scope', 'user',
+            '--mode', 'update',
+            '--backup', ('"' + $backup + '"')
           )
           $handoff = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $helperArgs -Wait -PassThru
           if ($handoff.ExitCode -ne 0) { throw "Non-admin update handoff failed: $($handoff.ExitCode); log: $log" }
           $ready = $false
           foreach ($attempt in 1..30) {
             if ((Test-Path $healthMarker) -and (Test-Path $restartMarker)) { $ready = $true; break }
-            Start-Sleep -Milliseconds 500
+            Start-Sleep -Milliseconds 250
           }
           if (-not $ready) { throw 'Updater did not health-check AND relaunch installed application' }
-          if (-not ((Get-Content $log -Raw).Contains('Installer and app health check passed'))) {
-            throw 'Updater log did not report successful verified installation'
+          if (-not ((Get-Content $log -Raw).Contains('recovery snapshot released'))) {
+            throw 'Updater log did not report successful recovery-snapshot release'
           }
-          if (-not (Test-Path (Join-Path $defaultDir 'unins000.exe'))) { throw 'Per-user update did not install the correct package' }
+          if (Test-Path $backup) { throw 'Successful update left stale recovery snapshot' }
           $cleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($cleanup.ExitCode -ne 0) { throw "Per-user update fixture cleanup failed: $($cleanup.ExitCode)" }
+
+          # P3 executable rollback qualification. The fake installer corrupts
+          # the app before failing; the helper must restore and health-check old.
+          $rollbackDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-P3-ROLLBACK'
+          if (Test-Path $rollbackDir) { Remove-Item $rollbackDir -Recurse -Force }
+          $seedRollback = Start-Process -FilePath (Resolve-Path $perUserSetup).Path -ArgumentList @(
+            '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$rollbackDir"
+          ) -Wait -PassThru
+          if ($seedRollback.ExitCode -ne 0) { throw 'Could not seed rollback fixture' }
+          $originalAppHash = (Get-FileHash (Join-Path $rollbackDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash
+          $fakeSetup = (Resolve-Path 'build/packaging/P3-Fake-Installer.exe').Path
+          $fakeHash = (Get-FileHash $fakeSetup -Algorithm SHA256).Hash.ToLowerInvariant()
+          $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
+
+          foreach ($case in @(
+            @{ Mode='nonzero'; Expected=23; Name='installer-nonzero' },
+            @{ Mode='badhealth'; Expected=24; Name='failed-health-check' }
+          )) {
+            Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
+            $env:SONKUPIK_P3_FAKE_INSTALL_MODE = $case.Mode
+            $caseLog = Join-Path $env:TEMP ("SonKuPik-K500-P3-" + $case.Name + '.log')
+            $caseBackup = Join-Path $env:TEMP ("SonKuPik-K500-P3-" + $case.Name + '-recovery')
+            Remove-Item $caseLog -Force -ErrorAction SilentlyContinue
+            if (Test-Path $caseBackup) { Remove-Item $caseBackup -Recurse -Force }
+            $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
+            $args = @(
+              '--parent-pid', "$($parent.Id)",
+              '--setup', ('"' + $fakeSetup + '"'),
+              '--app', ('"' + (Join-Path $rollbackDir 'SonKuPik-K500.exe') + '"'),
+              '--target-app', ('"' + (Join-Path $rollbackDir 'SonKuPik-K500.exe') + '"'),
+              '--version', $version,
+              '--previous-version', $version,
+              '--log', ('"' + $caseLog + '"'),
+              '--sha256', $fakeHash,
+              '--scope', 'user',
+              '--mode', 'update',
+              '--backup', ('"' + $caseBackup + '"')
+            )
+            $result = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $args -Wait -PassThru
+            if ($result.ExitCode -ne $case.Expected) {
+              throw "$($case.Name) returned $($result.ExitCode), expected $($case.Expected)"
+            }
+            if ((Get-FileHash (Join-Path $rollbackDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $originalAppHash) {
+              throw "$($case.Name) did not restore the original application bytes"
+            }
+            if (Test-Path $caseBackup) { throw "$($case.Name) left recovery snapshot after successful rollback" }
+            if (-not ((Get-Content $caseLog -Raw).Contains('Rollback health check passed'))) {
+              throw "$($case.Name) did not prove rollback health check"
+            }
+          }
+          Remove-Item Env:SONKUPIK_P3_FAKE_INSTALL_MODE -ErrorAction SilentlyContinue
+          Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
+          $rollbackCleanup = Start-Process -FilePath (Join-Path $rollbackDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($rollbackCleanup.ExitCode -ne 0) { throw 'Rollback fixture uninstall failed' }
+
+          # P3 explicit Program Files -> per-user migration. Seed machine install,
+          # preserve user-owned data sentinels, then let helper validate user copy
+          # BEFORE elevated removal of the old machine installation.
+          if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
+          $machineDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-P3-MACHINE'
+          if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
+          $machineInstall = Start-Process -FilePath (Resolve-Path $setup).Path -ArgumentList @(
+            '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/DIR=$machineDir"
+          ) -Wait -PassThru
+          if ($machineInstall.ExitCode -ne 0) { throw "Machine fixture install failed: $($machineInstall.ExitCode)" }
+
+          $presetMarker = Join-Path $env:USERPROFILE 'Documents\SonKuPik K500\Presets\P3-preserve.marker'
+          $cacheMarker = Join-Path $env:LOCALAPPDATA 'MasArray\SonKuPik K500\official-presets\P3-preserve.marker'
+          New-Item -ItemType Directory -Force -Path (Split-Path $presetMarker),(Split-Path $cacheMarker) | Out-Null
+          Set-Content $presetMarker 'preset-user-data-must-survive' -Encoding ascii
+          Set-Content $cacheMarker 'official-cache-must-survive' -Encoding ascii
+          & reg.exe ADD 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence /t REG_SZ /d 'qsettings-must-survive' /f | Out-Null
+
+          Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
+          $migrationLog = Join-Path $env:TEMP 'SonKuPik-K500-P3-migration.log'
+          $migrationHash = (Get-FileHash $perUserSetup -Algorithm SHA256).Hash.ToLowerInvariant()
+          $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
+          $migrationArgs = @(
+            '--parent-pid', "$($parent.Id)",
+            '--setup', ('"' + (Resolve-Path $perUserSetup).Path + '"'),
+            '--app', ('"' + (Join-Path $machineDir 'SonKuPik-K500.exe') + '"'),
+            '--target-app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+            '--version', $version,
+            '--previous-version', $version,
+            '--log', ('"' + $migrationLog + '"'),
+            '--sha256', $migrationHash,
+            '--scope', 'user',
+            '--mode', 'migrate',
+            '--backup', ('"' + (Join-Path $env:TEMP 'unused-migration-backup') + '"')
+          )
+          $migration = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $migrationArgs -Wait -PassThru
+          if ($migration.ExitCode -ne 0) { throw "Explicit machine-to-user migration failed: $($migration.ExitCode)" }
+          if (Test-Path (Join-Path $machineDir 'SonKuPik-K500.exe')) { throw 'Migration left old machine application active' }
+          if (-not (Test-Path (Join-Path $defaultDir 'SonKuPik-K500.exe'))) { throw 'Migration did not create per-user application' }
+          & reg.exe QUERY 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1' *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Migration left machine-wide uninstall registration' }
+          & reg.exe QUERY 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1' *> $null
+          if ($LASTEXITCODE -ne 0) { throw 'Migration did not create per-user uninstall registration' }
+          if ((Get-Content $presetMarker -Raw).Trim() -ne 'preset-user-data-must-survive') { throw 'Migration changed user preset sentinel' }
+          if ((Get-Content $cacheMarker -Raw).Trim() -ne 'official-cache-must-survive') { throw 'Migration changed official cache sentinel' }
+          $qsetting = (& reg.exe QUERY 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence | Out-String)
+          if ($qsetting -notmatch 'qsettings-must-survive') { throw 'Migration changed QSettings sentinel' }
+          if (-not ((Get-Content $migrationLog -Raw).Contains('migration verified'))) { throw 'Migration helper did not log verified completion' }
+
+          $migrationCleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($migrationCleanup.ExitCode -ne 0) { throw 'Migrated per-user fixture cleanup failed' }
+          Remove-Item $presetMarker,$cacheMarker -Force -ErrorAction SilentlyContinue
+          & reg.exe DELETE 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence /f *> $null
 
       # This is an installer UI fixture, NOT a distributable application:
       # the package contains a placeholder SonKuPik-K500.exe for wizard review.
