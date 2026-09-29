@@ -12,6 +12,8 @@
 #include <cstdlib>
 #include <cwchar>
 #include <filesystem>
+#include <fstream>
+#include <cstdint>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -360,6 +362,207 @@ bool readRegisteredPath(HKEY root, std::wstring &path)
     return !path.empty();
 }
 
+struct RegistryValueSnapshot {
+    std::wstring name;
+    DWORD type = REG_NONE;
+    std::vector<BYTE> data;
+};
+
+HKEY rootForScope(const std::wstring &scope)
+{
+    return scope == L"machine" ? HKEY_LOCAL_MACHINE
+        : scope == L"user" ? HKEY_CURRENT_USER : nullptr;
+}
+
+REGSAM viewForRoot(HKEY root)
+{
+    return root == HKEY_LOCAL_MACHINE ? KEY_WOW64_64KEY : 0;
+}
+
+std::wstring registrySnapshotPath(const std::wstring &backup)
+{
+    return (fs::path(backup) / L"uninstall-registry.bin").wstring();
+}
+
+bool snapshotUninstallRegistry(const std::wstring &scope,
+                               const std::wstring &backup,
+                               std::wstring *error)
+{
+    const HKEY root = rootForScope(scope);
+    if (!root) {
+        if (error) *error = L"Unknown registry scope.";
+        return false;
+    }
+    HKEY key = nullptr;
+    if (RegOpenKeyExW(root, UninstallKey, 0, KEY_READ | viewForRoot(root), &key) != ERROR_SUCCESS) {
+        if (error) *error = L"Installed uninstall registration could not be opened.";
+        return false;
+    }
+
+    DWORD subKeys = 0, values = 0, maxName = 0, maxData = 0;
+    const LONG info = RegQueryInfoKeyW(key, nullptr, nullptr, nullptr, &subKeys, nullptr, nullptr,
+                                      &values, &maxName, &maxData, nullptr, nullptr);
+    if (info != ERROR_SUCCESS || subKeys != 0 || values > 512
+        || maxName > 32767 || maxData > 16 * 1024 * 1024) {
+        RegCloseKey(key);
+        if (error) *error = L"Uninstall registration shape is not safe to snapshot.";
+        return false;
+    }
+
+    std::vector<RegistryValueSnapshot> records;
+    records.reserve(values);
+    for (DWORD index = 0; index < values; ++index) {
+        std::vector<wchar_t> name(static_cast<size_t>(maxName) + 2, L'\0');
+        DWORD nameChars = static_cast<DWORD>(name.size());
+        std::vector<BYTE> data(static_cast<size_t>(maxData) + 2);
+        DWORD dataBytes = static_cast<DWORD>(data.size());
+        DWORD type = REG_NONE;
+        const LONG result = RegEnumValueW(key, index, name.data(), &nameChars, nullptr,
+                                          &type, data.data(), &dataBytes);
+        if (result != ERROR_SUCCESS) {
+            RegCloseKey(key);
+            if (error) *error = L"Could not enumerate uninstall registration.";
+            return false;
+        }
+        name.resize(nameChars);
+        data.resize(dataBytes);
+        records.push_back({std::wstring(name.begin(), name.end()), type, std::move(data)});
+    }
+    RegCloseKey(key);
+
+    std::ofstream out(fs::path(registrySnapshotPath(backup)),
+                      std::ios::binary | std::ios::trunc);
+    if (!out) {
+        if (error) *error = L"Could not create uninstall-registration recovery snapshot.";
+        return false;
+    }
+    const uint32_t magic = 0x3352474B; // "KGR3"
+    const uint32_t count = static_cast<uint32_t>(records.size());
+    out.write(reinterpret_cast<const char *>(&magic), sizeof(magic));
+    out.write(reinterpret_cast<const char *>(&count), sizeof(count));
+    for (const auto &record : records) {
+        const uint32_t type = record.type;
+        const uint32_t nameChars = static_cast<uint32_t>(record.name.size());
+        const uint32_t dataBytes = static_cast<uint32_t>(record.data.size());
+        out.write(reinterpret_cast<const char *>(&type), sizeof(type));
+        out.write(reinterpret_cast<const char *>(&nameChars), sizeof(nameChars));
+        out.write(reinterpret_cast<const char *>(&dataBytes), sizeof(dataBytes));
+        out.write(reinterpret_cast<const char *>(record.name.data()),
+                  static_cast<std::streamsize>(nameChars * sizeof(wchar_t)));
+        out.write(reinterpret_cast<const char *>(record.data.data()),
+                  static_cast<std::streamsize>(dataBytes));
+    }
+    if (!out.good()) {
+        if (error) *error = L"Could not finish uninstall-registration recovery snapshot.";
+        return false;
+    }
+    return true;
+}
+
+bool readRegistrySnapshot(const std::wstring &backup,
+                          std::vector<RegistryValueSnapshot> &records,
+                          std::wstring *error)
+{
+    std::ifstream in(fs::path(registrySnapshotPath(backup)), std::ios::binary);
+    if (!in) {
+        if (error) *error = L"Uninstall-registration recovery snapshot is missing.";
+        return false;
+    }
+    uint32_t magic = 0, count = 0;
+    in.read(reinterpret_cast<char *>(&magic), sizeof(magic));
+    in.read(reinterpret_cast<char *>(&count), sizeof(count));
+    if (!in || magic != 0x3352474B || count > 512) {
+        if (error) *error = L"Uninstall-registration recovery snapshot is invalid.";
+        return false;
+    }
+    records.clear();
+    records.reserve(count);
+    for (uint32_t i = 0; i < count; ++i) {
+        uint32_t type = 0, nameChars = 0, dataBytes = 0;
+        in.read(reinterpret_cast<char *>(&type), sizeof(type));
+        in.read(reinterpret_cast<char *>(&nameChars), sizeof(nameChars));
+        in.read(reinterpret_cast<char *>(&dataBytes), sizeof(dataBytes));
+        if (!in || nameChars > 32767 || dataBytes > 16 * 1024 * 1024) {
+            if (error) *error = L"Uninstall-registration recovery record is invalid.";
+            return false;
+        }
+        std::wstring name(nameChars, L'\0');
+        std::vector<BYTE> data(dataBytes);
+        if (nameChars)
+            in.read(reinterpret_cast<char *>(name.data()),
+                    static_cast<std::streamsize>(nameChars * sizeof(wchar_t)));
+        if (dataBytes)
+            in.read(reinterpret_cast<char *>(data.data()),
+                    static_cast<std::streamsize>(dataBytes));
+        if (!in) {
+            if (error) *error = L"Uninstall-registration recovery snapshot is truncated.";
+            return false;
+        }
+        records.push_back({std::move(name), static_cast<DWORD>(type), std::move(data)});
+    }
+    // Reject trailing garbage so a corrupted snapshot is never partially trusted.
+    char extra = 0;
+    if (in.read(&extra, 1)) {
+        if (error) *error = L"Uninstall-registration recovery snapshot has unexpected trailing data.";
+        return false;
+    }
+    return true;
+}
+
+bool restoreUninstallRegistry(const std::wstring &scope,
+                              const std::wstring &backup,
+                              std::wstring *error)
+{
+    std::vector<RegistryValueSnapshot> records;
+    if (!readRegistrySnapshot(backup, records, error))
+        return false;
+
+    const HKEY root = rootForScope(scope);
+    if (!root) {
+        if (error) *error = L"Unknown registry restore scope.";
+        return false;
+    }
+
+    const wchar_t *leaf = wcsrchr(UninstallKey, L'\\');
+    if (!leaf) {
+        if (error) *error = L"Uninstall registry key is invalid.";
+        return false;
+    }
+    const std::wstring parentPath(UninstallKey, static_cast<size_t>(leaf - UninstallKey));
+    HKEY parent = nullptr;
+    const LONG openParent = RegCreateKeyExW(
+        root, parentPath.c_str(), 0, nullptr, 0,
+        KEY_WRITE | viewForRoot(root), nullptr, &parent, nullptr);
+    if (openParent != ERROR_SUCCESS) {
+        if (error) *error = L"Could not open uninstall registry parent for recovery.";
+        return false;
+    }
+    RegDeleteTreeW(parent, leaf + 1);
+    RegCloseKey(parent);
+
+    HKEY key = nullptr;
+    const LONG create = RegCreateKeyExW(
+        root, UninstallKey, 0, nullptr, 0,
+        KEY_WRITE | viewForRoot(root), nullptr, &key, nullptr);
+    if (create != ERROR_SUCCESS) {
+        if (error) *error = L"Could not recreate uninstall registration.";
+        return false;
+    }
+    for (const auto &record : records) {
+        const LONG result = RegSetValueExW(
+            key, record.name.c_str(), 0, record.type,
+            record.data.empty() ? nullptr : record.data.data(),
+            static_cast<DWORD>(record.data.size()));
+        if (result != ERROR_SUCCESS) {
+            RegCloseKey(key);
+            if (error) *error = L"Could not restore an uninstall registration value.";
+            return false;
+        }
+    }
+    RegCloseKey(key);
+    return true;
+}
+
 bool removeStaleRegistration(HKEY root, const std::wstring &expectedPath,
                              const std::wstring &log)
 {
@@ -472,8 +675,11 @@ bool restoreForRequest(const Request &request, std::wstring *error)
         return false;
     }
 
-    if (request.scope == L"user")
-        return restoreTree(request.backup, targetDir, error);
+    if (request.scope == L"user") {
+        if (!restoreTree(request.backup, targetDir, error))
+            return false;
+        return restoreUninstallRegistry(request.scope, request.backup, error);
+    }
 
     const std::wstring helper = currentExecutable();
     if (helper.empty()) {
@@ -482,6 +688,7 @@ bool restoreForRequest(const Request &request, std::wstring *error)
     }
     const std::wstring params = L"--restore-backup " + quote(request.backup)
         + L" --target " + quote(targetDir)
+        + L" --scope " + quote(request.scope)
         + L" --log " + quote(request.log);
     DWORD exitCode = ~0UL;
     const DWORD launch = runElevatedAndWait(helper, params, InstallTimeoutMs, exitCode);
@@ -695,19 +902,22 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         return removeStaleRegistration(root, expected, log) ? 0 : 63;
     }
 
-    if (argc == 7 && std::wstring(argv[1]) == L"--restore-backup"
+    if (argc == 9 && std::wstring(argv[1]) == L"--restore-backup"
         && std::wstring(argv[3]) == L"--target"
-        && std::wstring(argv[5]) == L"--log") {
+        && std::wstring(argv[5]) == L"--scope"
+        && std::wstring(argv[7]) == L"--log") {
         const std::wstring backup = argv[2];
         const std::wstring target = argv[4];
-        const std::wstring log = argv[6];
+        const std::wstring scope = argv[6];
+        const std::wstring log = argv[8];
         LocalFree(argv);
         std::wstring error;
-        if (!restoreTree(backup, target, &error)) {
+        if (!restoreTree(backup, target, &error)
+            || !restoreUninstallRegistry(scope, backup, &error)) {
             appendLog(log, L"Elevated restore failed: " + error);
             return 61;
         }
-        appendLog(log, L"Elevated recovery snapshot restored.");
+        appendLog(log, L"Elevated application + uninstall-registration recovery snapshot restored.");
         return 0;
     }
 
@@ -740,7 +950,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         return fail(request, 20,
             L"Could not create a recovery snapshot before installation: " + backupError);
     }
-    logLine(request, L"Recovery snapshot created at " + request.backup);
+    if (!snapshotUninstallRegistry(request.scope, request.backup, &backupError)) {
+        CloseHandle(lockedSetup);
+        std::error_code cleanup;
+        fs::remove_all(fs::path(request.backup), cleanup);
+        return fail(request, 20,
+            L"Could not snapshot the uninstall registration before installation: " + backupError);
+    }
+    logLine(request, L"Application files and uninstall registration snapshot created at " + request.backup);
 
     const std::wstring args =
         L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS "
