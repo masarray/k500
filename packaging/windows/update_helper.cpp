@@ -295,6 +295,12 @@ DWORD runAndWait(const std::wstring &exe, const std::wstring &parameters,
 DWORD runElevatedAndWait(const std::wstring &exe, const std::wstring &parameters,
                          DWORD timeout, DWORD &exitCode)
 {
+#ifdef SONKUPIK_UPDATE_HELPER_CI
+    // Hosted CI has no interactive consent desktop. Only the test-only helper
+    // binary may execute this branch; production builds never define this macro.
+    if (testMode())
+        return runAndWait(exe, parameters, timeout, exitCode);
+#endif
     SHELLEXECUTEINFOW info{};
     info.cbSize = sizeof(info);
     info.fMask = SEE_MASK_NOCLOSEPROCESS;
