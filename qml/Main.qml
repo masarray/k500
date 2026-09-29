@@ -158,6 +158,12 @@ ApplicationWindow {
             if (AppUpdater.updateAvailable && !updateDialog.opened)
                 updateDialog.open()
         }
+        function onStateChanged() {
+            // Migration at the SAME stable version is never auto-prompted.
+            // A user-initiated check may explicitly surface the one-time move.
+            if (AppUpdater.state === "migration-available" && !updateDialog.opened)
+                updateDialog.open()
+        }
     }
 
     // UPDATE_DEVICE_TRANSACTION_BARRIER_P1 — pass the authoritative coordinator
