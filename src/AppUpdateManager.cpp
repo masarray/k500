@@ -380,7 +380,7 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
     // SMART_UPDATE_THROTTLE_V1 — automatic discovery is deliberately quiet and
     // bounded. Manual checks always bypass the throttle; failed checks are not
     // cached, so a transient outage can recover on the next launch.
-    if (!userInitiated) {
+    if (!userInitiated && m_candidateTag.isEmpty()) {
         const QDateTime lastCheck = QSettings().value(
             QStringLiteral("updates/lastSuccessfulCheckUtc")).toDateTime();
         if (lastCheck.isValid()
@@ -411,8 +411,10 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
             return;
         }
 
-        QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc"),
-                             QDateTime::currentDateTimeUtc());
+        if (m_candidateTag.isEmpty()) {
+            QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc"),
+                                 QDateTime::currentDateTimeUtc());
+        }
         handleLatestRelease(payload, userInitiated);
     });
 }
@@ -537,7 +539,9 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
-    const QString skipped = QSettings().value(QStringLiteral("updates/skippedVersion")).toString();
+    const QString skipped = m_candidateTag.isEmpty()
+        ? QSettings().value(QStringLiteral("updates/skippedVersion")).toString()
+        : QString();
     if (!userInitiated && skipped == version) {
         setState(QStringLiteral("idle"));
         return;
@@ -561,9 +565,10 @@ void AppUpdateManager::remindLater()
         return;
     }
 
-    // REMIND_NEXT_LAUNCH_V1 — for a real newer version, clear the throttle so
-    // the next application launch can offer the update again.
-    QSettings().remove(QStringLiteral("updates/lastSuccessfulCheckUtc"));
+    // REMIND_NEXT_LAUNCH_V1 — candidate QA must never mutate the stable update
+    // throttle. Normal stable updates clear it so the next launch can re-offer.
+    if (m_candidateTag.isEmpty())
+        QSettings().remove(QStringLiteral("updates/lastSuccessfulCheckUtc"));
     setState(QStringLiteral("available"),
              QStringLiteral("Update postponed until the next launch"));
 }
@@ -595,7 +600,8 @@ void AppUpdateManager::skipThisVersion()
 {
     if (m_latestVersion.isEmpty() || busy())
         return;
-    QSettings().setValue(QStringLiteral("updates/skippedVersion"), m_latestVersion);
+    if (m_candidateTag.isEmpty())
+        QSettings().setValue(QStringLiteral("updates/skippedVersion"), m_latestVersion);
     m_updateAvailable = false;
     emit updateChanged();
     setState(QStringLiteral("idle"));
@@ -606,8 +612,11 @@ QString AppUpdateManager::updateDirectory() const
     QString base = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
     if (base.isEmpty())
         base = QDir::tempPath() + QStringLiteral("/SonKuPik-K500");
-    const QString versionDir = m_latestVersion.isEmpty()
-        ? QStringLiteral("pending") : QStringLiteral("v%1").arg(m_latestVersion);
+    const QString versionDir = !m_candidateTag.isEmpty()
+        ? QStringLiteral("candidate-%1").arg(m_candidateTag)
+        : (m_latestVersion.isEmpty()
+               ? QStringLiteral("pending")
+               : QStringLiteral("v%1").arg(m_latestVersion));
     const QString path = QDir(base).filePath(QStringLiteral("updates/%1").arg(versionDir));
     QDir().mkpath(path);
     return QDir::cleanPath(path);
