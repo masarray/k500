@@ -161,7 +161,9 @@ ApplicationWindow {
         function onStateChanged() {
             // Discovery may surface a one-time migration offer, but the move
             // itself remains explicit and never starts from this signal.
-            if (AppUpdater.state === "migration-available" && !updateDialog.opened)
+            if ((AppUpdater.state === "migration-available"
+                 || AppUpdater.state === "registration-repair")
+                && !updateDialog.opened)
                 updateDialog.open()
         }
     }
