@@ -93,7 +93,15 @@ The stable workflow must pass before GitHub publishes a non-prerelease tag. Curr
 
 CI can verify software behavior; hardware-facing support claims still require real-device evidence appropriate to the changed path.
 
-For v1.1+, stable publishing also requires the repository-controlled updater acceptance token in `V1_1_UPDATER_RC_ACCEPTANCE.md`. Candidate source and a green CI matrix do not by themselves authorize a public stable release.
+For v1.1+, the release model changes from **build-and-publish** to **accept-and-promote**:
+
+- `v1.1.0-rc.N` is an immutable GitHub prerelease built from one exact `main` commit;
+- desktop acceptance records the RC tag, full source commit, and SHA-256 of machine Setup, per-user Setup, and portable ZIP in `V1_1_UPDATER_RC_ACCEPTANCE.md`;
+- public v1.0.3 is never pointed at prereleases; an installed v1.1 candidate uses the explicit process-local `--update-candidate=<tag>` QA channel;
+- stable v1.1 promotion downloads the accepted prerelease assets, verifies tag→commit→manifest→hash provenance, revalidates the packages, and republishes the **same binary bytes** under stable filenames with a stable v3 manifest;
+- rebuilding the application after RC acceptance is not a valid v1.1 promotion path.
+
+Candidate source and a green CI matrix do not by themselves authorize a public stable release.
 
 ## Official Preset update channel
 
