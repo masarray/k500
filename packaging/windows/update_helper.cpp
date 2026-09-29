@@ -28,6 +28,9 @@ constexpr DWORD InstallTimeoutMs = 20 * 60 * 1000;
 constexpr DWORD HealthTimeoutMs = 60000;
 constexpr wchar_t AppExeName[] = L"SonKuPik-K500.exe";
 constexpr wchar_t UninstallerName[] = L"unins000.exe";
+constexpr wchar_t UninstallKey[] =
+    L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\"
+    L"{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1";
 
 struct Request {
     DWORD parentPid = 0;
@@ -332,6 +335,63 @@ bool pathExists(const std::wstring &path)
     return GetFileAttributesW(path.c_str()) != INVALID_FILE_ATTRIBUTES;
 }
 
+bool samePath(const std::wstring &left, const std::wstring &right)
+{
+    return _wcsicmp(left.c_str(), right.c_str()) == 0;
+}
+
+bool readRegisteredPath(HKEY root, std::wstring &path)
+{
+    HKEY key = nullptr;
+    const REGSAM view = root == HKEY_LOCAL_MACHINE ? KEY_WOW64_64KEY : 0;
+    if (RegOpenKeyExW(root, UninstallKey, 0, KEY_READ | view, &key) != ERROR_SUCCESS)
+        return false;
+    wchar_t buffer[32768]{};
+    DWORD type = 0;
+    DWORD bytes = sizeof(buffer);
+    const LONG result = RegQueryValueExW(
+        key, L"Inno Setup: App Path", nullptr, &type,
+        reinterpret_cast<LPBYTE>(buffer), &bytes);
+    RegCloseKey(key);
+    if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ))
+        return false;
+    path.assign(buffer);
+    return !path.empty();
+}
+
+bool removeStaleRegistration(HKEY root, const std::wstring &expectedPath,
+                             const std::wstring &log)
+{
+    std::wstring registered;
+    if (!readRegisteredPath(root, registered) || !samePath(registered, expectedPath)) {
+        appendLog(log, L"Stale-registration cleanup refused: registry path changed.");
+        return false;
+    }
+    if (pathExists(registered + L"\\" + AppExeName)
+        || pathExists(registered + L"\\" + UninstallerName)) {
+        appendLog(log, L"Stale-registration cleanup refused: registered installation still has files.");
+        return false;
+    }
+
+    const REGSAM view = root == HKEY_LOCAL_MACHINE ? KEY_WOW64_64KEY : 0;
+    HKEY parent = nullptr;
+    const wchar_t *leaf = wcsrchr(UninstallKey, L'\\');
+    if (!leaf)
+        return false;
+    const std::wstring parentPath(UninstallKey, static_cast<size_t>(leaf - UninstallKey));
+    if (RegOpenKeyExW(root, parentPath.c_str(), 0, KEY_WRITE | view, &parent) != ERROR_SUCCESS)
+        return false;
+    const LONG result = RegDeleteTreeW(parent, leaf + 1);
+    RegCloseKey(parent);
+    if (result != ERROR_SUCCESS) {
+        appendLog(log, L"Stale-registration cleanup failed with registry error "
+            + std::to_wstring(result) + L".");
+        return false;
+    }
+    appendLog(log, L"Verified stale uninstall registration removed.");
+    return true;
+}
+
 bool copyTree(const std::wstring &source, const std::wstring &destination,
               std::wstring *error)
 {
@@ -618,6 +678,20 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         if (locked != INVALID_HANDLE_VALUE)
             CloseHandle(locked);
         return ok ? 0 : 41;
+    }
+
+    if (argc == 7 && std::wstring(argv[1]) == L"--remove-stale-registration"
+        && std::wstring(argv[3]) == L"--expected-path"
+        && std::wstring(argv[5]) == L"--log") {
+        const std::wstring scope = argv[2];
+        const std::wstring expected = argv[4];
+        const std::wstring log = argv[6];
+        LocalFree(argv);
+        const HKEY root = scope == L"machine" ? HKEY_LOCAL_MACHINE
+            : scope == L"user" ? HKEY_CURRENT_USER : nullptr;
+        if (!root)
+            return 62;
+        return removeStaleRegistration(root, expected, log) ? 0 : 63;
     }
 
     if (argc == 7 && std::wstring(argv[1]) == L"--restore-backup"
