@@ -308,7 +308,9 @@ Popup {
                 SoftButton {
                     Layout.preferredWidth: root.migrationOnly ? 190 : 160
                     Layout.preferredHeight: 34
-                    visible: root.migrationOnly || (root.updateManager && root.updateManager.updateAvailable)
+                    visible: root.repairAvailable
+                             || root.migrationOnly
+                             || (root.updateManager && root.updateManager.updateAvailable)
                     text: root.updateManager && root.updateManager.busy
                           ? "Memproses…"
                           : root.deviceTransactionBusy
