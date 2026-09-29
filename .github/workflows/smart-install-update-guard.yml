@@ -171,7 +171,7 @@ jobs:
           & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fepackage/SonKuPik-K500.exe tests/windows/update_handoff_fixture.cpp /link /SUBSYSTEM:WINDOWS shell32.lib
           if ($LASTEXITCODE -ne 0) { throw 'Installer test-only application fixture failed to compile' }
           # Compile the actual standalone Win32 helper without a Qt dependency.
-          & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fepackage/SonKuPik-K500-Updater.exe packaging/windows/update_helper.cpp /link /SUBSYSTEM:WINDOWS shell32.lib bcrypt.lib user32.lib
+          & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /DSONKUPIK_UPDATE_HELPER_CI=1 /Fepackage/SonKuPik-K500-Updater.exe packaging/windows/update_helper.cpp /link /SUBSYSTEM:WINDOWS shell32.lib bcrypt.lib user32.lib
           if ($LASTEXITCODE -ne 0) { throw 'Native update coordinator compilation failed' }
           & cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Febuild/packaging/P3-Fake-Installer.exe tests/windows/update_failure_installer_fixture.cpp /link /SUBSYSTEM:WINDOWS shell32.lib
           if ($LASTEXITCODE -ne 0) { throw 'P3 fake failure installer fixture failed to compile' }
