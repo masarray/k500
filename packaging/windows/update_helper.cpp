@@ -19,6 +19,7 @@
 #pragma comment(lib, "bcrypt.lib")
 #pragma comment(lib, "shell32.lib")
 #pragma comment(lib, "user32.lib")
+#pragma comment(lib, "advapi32.lib")
 
 namespace {
 namespace fs = std::filesystem;
