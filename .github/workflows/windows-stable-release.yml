@@ -47,7 +47,7 @@ jobs:
             $gatePath = 'docs/V1_1_UPDATER_RC_ACCEPTANCE.md'
             if (-not (Test-Path $gatePath)) { throw 'v1.1+ stable publish requires updater acceptance record' }
             $gate = Get-Content $gatePath -Raw
-            if (-not $gate.Contains('UPDATER_V1_1_ACCEPTANCE: accepted')) {
+            if ($gate -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=accepted\s*$') {
               throw 'v1.1+ stable publish blocked: updater RC acceptance is not accepted.'
             }
             Write-Host 'Updater v1.1 acceptance gate PASS.'
