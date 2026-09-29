@@ -62,6 +62,11 @@ jobs:
           grep -F '/HELPERUPDATE=1' packaging/windows/update_helper.cpp
           grep -F '/MIGRATEFROMMACHINE=1' packaging/windows/update_helper.cpp
           grep -F 'P3_EXPLICIT_SCOPE_MIGRATION_V1' packaging/windows/installer.iss
+          # Retry after a failed no-admin migration must preserve the user's
+          # explicit per-user path instead of silently selecting machine-wide Setup.
+          grep -F 'readonly property bool migrationPathActive' qml/components/UpdateDialog.qml
+          grep -F 'root.updateManager.migrationMode' qml/components/UpdateDialog.qml
+          grep -F 'else if (root.migrationPathActive)' qml/components/UpdateDialog.qml
           grep -F "{param:MIGRATEFROMMACHINE|0}" packaging/windows/installer.iss
           grep -F "{param:AUToupdate|0}" packaging/windows/installer.iss
           if grep -Fq 'DefaultDirName={localappdata}' packaging/windows/installer.iss; then
