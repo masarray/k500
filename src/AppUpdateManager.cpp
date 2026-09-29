@@ -183,6 +183,9 @@ void AppUpdateManager::resetReleaseMetadata()
     m_latestVersion.clear();
     m_releaseNotes.clear();
     m_updateAvailable = false;
+    m_migrationAvailable = false;
+    m_migrationMode = false;
+    m_targetScope = InstallScope::Unknown;
     m_setupAssetName.clear();
     m_setupAssetUrl = {};
     m_manifestUrl = {};
@@ -191,8 +194,55 @@ void AppUpdateManager::resetReleaseMetadata()
     m_expectedSha256.clear();
     m_manifestSetupBytes = -1;
     m_releaseSetupBytes = -1;
+    m_machineSetupAssetName.clear();
+    m_machineSetupAssetUrl = {};
+    m_machineSetupBytes = -1;
+    m_userSetupAssetName.clear();
+    m_userSetupAssetUrl = {};
+    m_userSetupBytes = -1;
     setProgress(0.0);
     emit updateChanged();
+}
+
+void AppUpdateManager::selectPackageForScope(InstallScope scope)
+{
+    m_targetScope = scope;
+    if (scope == InstallScope::User) {
+        m_setupAssetName = m_userSetupAssetName;
+        m_setupAssetUrl = m_userSetupAssetUrl;
+        m_releaseSetupBytes = m_userSetupBytes;
+    } else if (scope == InstallScope::Machine) {
+        m_setupAssetName = m_machineSetupAssetName;
+        m_setupAssetUrl = m_machineSetupAssetUrl;
+        m_releaseSetupBytes = m_machineSetupBytes;
+    } else {
+        m_setupAssetName.clear();
+        m_setupAssetUrl = {};
+        m_releaseSetupBytes = -1;
+    }
+    m_manifestSha256.clear();
+    m_expectedSha256.clear();
+    m_manifestSetupBytes = -1;
+}
+
+QString AppUpdateManager::perUserTargetApplication() const
+{
+#ifdef Q_OS_WIN
+    QString local = qEnvironmentVariable("LOCALAPPDATA");
+    if (local.isEmpty())
+        local = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    if (local.isEmpty())
+        return {};
+    return QDir::toNativeSeparators(QDir(local).filePath(
+        QStringLiteral("Programs/SonKuPik K500/SonKuPik-K500.exe")));
+#else
+    return {};
+#endif
+}
+
+QString AppUpdateManager::partialInstallerPath() const
+{
+    return installerPath() + QStringLiteral(".part");
 }
 
 QNetworkReply *AppUpdateManager::get(const QUrl &url)
@@ -288,19 +338,8 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
-    if (QVersionNumber::compare(latest, current) <= 0) {
-        m_latestVersion = version;
-        emit updateChanged();
-        setState(userInitiated ? QStringLiteral("up-to-date") : QStringLiteral("idle"),
-                 userInitiated ? QStringLiteral("You already have the latest version") : QString());
-        return;
-    }
-
-    const QString requiredSetupName = expectedSetupName(
-        version, m_installScope == InstallScope::User);
-    QString setupName;
-    QUrl setupUrl;
-    qint64 setupBytes = -1;
+    const QString machineName = expectedSetupName(version, false);
+    const QString userName = expectedSetupName(version, true);
     QUrl manifestUrl;
     QUrl sumsUrl;
     const QJsonArray assets = release.value(QStringLiteral("assets")).toArray();
@@ -310,10 +349,15 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         const QUrl url(asset.value(QStringLiteral("browser_download_url")).toString());
         if (!trustedGitHubAsset(url))
             continue;
-        if (name == requiredSetupName) {
-            setupName = name;
-            setupUrl = url;
-            setupBytes = qint64(asset.value(QStringLiteral("size")).toDouble(-1));
+        const qint64 bytes = qint64(asset.value(QStringLiteral("size")).toDouble(-1));
+        if (name == machineName) {
+            m_machineSetupAssetName = name;
+            m_machineSetupAssetUrl = url;
+            m_machineSetupBytes = bytes;
+        } else if (name == userName) {
+            m_userSetupAssetName = name;
+            m_userSetupAssetUrl = url;
+            m_userSetupBytes = bytes;
         } else if (name == QStringLiteral("release-manifest.json")) {
             manifestUrl = url;
         } else if (name == QStringLiteral("SHA256SUMS.txt")) {
@@ -321,11 +365,38 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         }
     }
 
-    if (setupName.isEmpty() || setupUrl.isEmpty() || setupBytes < MinimumInstallerBytes
-        || manifestUrl.isEmpty() || sumsUrl.isEmpty()) {
+    m_latestVersion = version;
+    m_releaseNotes = release.value(QStringLiteral("body")).toString().trimmed();
+    m_manifestUrl = manifestUrl;
+    m_checksumsUrl = sumsUrl;
+
+    const bool commonMetadataReady = !manifestUrl.isEmpty() && !sumsUrl.isEmpty();
+    m_migrationAvailable = m_installScope == InstallScope::Machine
+        && commonMetadataReady
+        && !m_userSetupAssetName.isEmpty()
+        && !m_userSetupAssetUrl.isEmpty()
+        && m_userSetupBytes >= MinimumInstallerBytes
+        && QVersionNumber::compare(latest, current) >= 0;
+
+    const int comparison = QVersionNumber::compare(latest, current);
+    if (comparison <= 0) {
+        emit updateChanged();
+        if (userInitiated && m_migrationAvailable) {
+            setState(QStringLiteral("migration-available"),
+                     QStringLiteral("Move SonKuPik to a no-admin per-user installation"));
+        } else {
+            setState(userInitiated ? QStringLiteral("up-to-date") : QStringLiteral("idle"),
+                     userInitiated ? QStringLiteral("You already have the latest version") : QString());
+        }
+        return;
+    }
+
+    selectPackageForScope(m_installScope);
+    if (m_setupAssetName.isEmpty() || m_setupAssetUrl.isEmpty()
+        || m_releaseSetupBytes < MinimumInstallerBytes || !commonMetadataReady) {
         setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
                  userInitiated ? QStringLiteral("Stable update package is incomplete") : QString(),
-                 userInitiated ? QStringLiteral("Required setup/manifest/checksum assets were not found.") : QString());
+                 userInitiated ? QStringLiteral("Required scope-matched setup/manifest/checksum assets were not found.") : QString());
         return;
     }
 
@@ -335,13 +406,6 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
-    m_latestVersion = version;
-    m_releaseNotes = release.value(QStringLiteral("body")).toString().trimmed();
-    m_setupAssetName = setupName;
-    m_setupAssetUrl = setupUrl;
-    m_releaseSetupBytes = setupBytes;
-    m_manifestUrl = manifestUrl;
-    m_checksumsUrl = sumsUrl;
     m_updateAvailable = true;
     emit updateChanged();
     setState(QStringLiteral("available"),
