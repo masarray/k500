@@ -608,22 +608,6 @@ void AppUpdateManager::repairStaleRegistration()
         return;
     }
 
-    if (scope == InstallScope::User) {
-        QSettings settings(QStringLiteral("HKEY_CURRENT_USER") + InnoUninstallKey,
-                           QSettings::NativeFormat);
-        settings.clear();
-        settings.sync();
-        if (registrationIsStale(scope)) {
-            setState(QStringLiteral("error"), QStringLiteral("Could not repair registration"),
-                     QStringLiteral("Windows did not remove the stale per-user uninstall key."));
-            return;
-        }
-        emit updateChanged();
-        setState(QStringLiteral("registration-repaired"),
-                 QStringLiteral("Verified stale per-user registration removed. Try the update again."));
-        return;
-    }
-
     QString stageError;
     const QString staged = stageUpdateHelper(&stageError);
     if (staged.isEmpty()) {
@@ -634,7 +618,8 @@ void AppUpdateManager::repairStaleRegistration()
     const QString log = QDir::toNativeSeparators(
         QDir(updateDirectory()).filePath(QStringLiteral("registration-repair.log")));
     const QStringList args = {
-        QStringLiteral("--remove-stale-registration"), QStringLiteral("machine"),
+        QStringLiteral("--remove-stale-registration"),
+        scope == InstallScope::Machine ? QStringLiteral("machine") : QStringLiteral("user"),
         QStringLiteral("--expected-path"), QDir::toNativeSeparators(expectedPath),
         QStringLiteral("--log"), log
     };
@@ -644,10 +629,12 @@ void AppUpdateManager::repairStaleRegistration()
     const std::wstring executable = QDir::toNativeSeparators(staged).toStdWString();
     const std::wstring parameters = quoted.join(QLatin1Char(' ')).toStdWString();
 
+    // Re-validate path + missing files inside the helper immediately before
+    // RegDeleteTree. User-scope cleanup stays unelevated; only HKLM requires UAC.
     SHELLEXECUTEINFOW info{};
     info.cbSize = sizeof(info);
     info.fMask = SEE_MASK_NOCLOSEPROCESS;
-    info.lpVerb = L"runas";
+    info.lpVerb = scope == InstallScope::Machine ? L"runas" : L"open";
     info.lpFile = executable.c_str();
     info.lpParameters = parameters.c_str();
     info.nShow = SW_SHOWNORMAL;
@@ -663,7 +650,7 @@ void AppUpdateManager::repairStaleRegistration()
         CloseHandle(info.hProcess);
 
     setState(QStringLiteral("registration-repairing"),
-             QStringLiteral("Removing only the verified stale machine-wide registration…"));
+             QStringLiteral("Removing only the verified stale %1 registration…").arg(stale));
     auto *timer = new QTimer(this);
     timer->setInterval(500);
     timer->setProperty("attempts", 0);
@@ -675,14 +662,14 @@ void AppUpdateManager::repairStaleRegistration()
             timer->deleteLater();
             emit updateChanged();
             setState(QStringLiteral("registration-repaired"),
-                     QStringLiteral("Verified stale machine-wide registration removed. Try the update again."));
+                     QStringLiteral("Verified stale registration removed. Try the update again."));
             return;
         }
         if (attempts >= 60) {
             timer->stop();
             timer->deleteLater();
             setState(QStringLiteral("error"), QStringLiteral("Registration repair did not complete"),
-                     QStringLiteral("The stale machine registration was kept because Windows did not confirm safe removal."));
+                     QStringLiteral("The stale registration was kept because Windows did not confirm safe removal."));
         }
     });
     timer->start();
