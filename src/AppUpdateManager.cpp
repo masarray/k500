@@ -28,6 +28,9 @@ const QUrl LatestReleaseUrl(QStringLiteral(
     "https://api.github.com/repos/masarray/k500/releases/latest"));
 constexpr qint64 AutomaticCheckIntervalSecs = 6 * 60 * 60;
 constexpr qint64 MinimumInstallerBytes = 1024 * 1024;
+const QString InnoUninstallKey = QStringLiteral(
+    "/Software/Microsoft/Windows/CurrentVersion/Uninstall/"
+    "{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1");
 
 QByteArray normalizedTagVersion(const QString &tag)
 {
@@ -106,35 +109,94 @@ AppUpdateManager::AppUpdateManager(QObject *parent)
 {
 }
 
+QString AppUpdateManager::registeredInstallPath(InstallScope scope) const
+{
+#ifdef Q_OS_WIN
+    const QString root = scope == InstallScope::User
+        ? QStringLiteral("HKEY_CURRENT_USER")
+        : scope == InstallScope::Machine
+            ? QStringLiteral("HKEY_LOCAL_MACHINE") : QString();
+    if (root.isEmpty())
+        return {};
+    QSettings settings(root + InnoUninstallKey, QSettings::NativeFormat);
+    return QDir::cleanPath(settings.value(QStringLiteral("Inno Setup: App Path")).toString());
+#else
+    Q_UNUSED(scope);
+    return {};
+#endif
+}
+
+bool AppUpdateManager::registrationIsStale(InstallScope scope, QString *registeredPath) const
+{
+#ifdef Q_OS_WIN
+    const QString path = registeredInstallPath(scope);
+    if (registeredPath)
+        *registeredPath = path;
+    if (path.isEmpty())
+        return false;
+    const QDir dir(path);
+    return !QFileInfo::exists(dir.filePath(QStringLiteral("SonKuPik-K500.exe")))
+        && !QFileInfo::exists(dir.filePath(QStringLiteral("unins000.exe")));
+#else
+    Q_UNUSED(scope);
+    if (registeredPath) registeredPath->clear();
+    return false;
+#endif
+}
+
 AppUpdateManager::InstallScope AppUpdateManager::detectedInstallScope() const
 {
 #ifdef Q_OS_WIN
-    // Installation identity comes from Inno's uninstall registration, not a
-    // writable install-scope.ini file or a guessed directory prefix. The
-    // registry path must point to THIS executable's directory.
-    const QString key = QStringLiteral(
-        "/Software/Microsoft/Windows/CurrentVersion/Uninstall/"
-        "{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1");
-    const QString installed = QDir::toNativeSeparators(
-        QDir::cleanPath(QCoreApplication::applicationDirPath()));
-    const auto matches = [&installed, &key](const QString &root) {
-        QSettings settings(root + key, QSettings::NativeFormat);
-        const QString directory = settings.value(QStringLiteral("Inno Setup: App Path")).toString();
-        return !directory.isEmpty()
-            && QString::compare(
-                QDir::toNativeSeparators(QDir::cleanPath(directory)),
-                installed, Qt::CaseInsensitive) == 0;
+    const QString installed = QDir::cleanPath(QCoreApplication::applicationDirPath());
+    const QString userPath = registeredInstallPath(InstallScope::User);
+    const QString machinePath = registeredInstallPath(InstallScope::Machine);
+    const auto same = [&installed](const QString &path) {
+        return !path.isEmpty()
+            && QString::compare(QDir::toNativeSeparators(QDir::cleanPath(path)),
+                                QDir::toNativeSeparators(installed),
+                                Qt::CaseInsensitive) == 0;
     };
-    const bool user = matches(QStringLiteral("HKEY_CURRENT_USER"));
-    const bool machine = matches(QStringLiteral("HKEY_LOCAL_MACHINE"));
-    if (user == machine)
-        return InstallScope::Unknown; // absent OR ambiguous/duplicate registration
+    const auto active = [](const QString &path) {
+        if (path.isEmpty())
+            return false;
+        const QDir dir(path);
+        return QFileInfo::exists(dir.filePath(QStringLiteral("SonKuPik-K500.exe")))
+            || QFileInfo::exists(dir.filePath(QStringLiteral("unins000.exe")));
+    };
+
+    const bool userMatches = same(userPath);
+    const bool machineMatches = same(machinePath);
+    if (userMatches == machineMatches)
+        return InstallScope::Unknown;
+
+    if (userMatches) {
+        if (!QFileInfo::exists(QDir(installed).filePath(QStringLiteral("unins000.exe"))))
+            return InstallScope::Unknown;
+        if (active(machinePath) && !same(machinePath))
+            return InstallScope::Unknown; // two active installations: fail closed
+        return InstallScope::User;
+    }
+
     if (!QFileInfo::exists(QDir(installed).filePath(QStringLiteral("unins000.exe"))))
-        return InstallScope::Unknown; // a copied portable directory
-    return user ? InstallScope::User : InstallScope::Machine;
+        return InstallScope::Unknown;
+    if (active(userPath) && !same(userPath))
+        return InstallScope::Unknown; // two active installations: fail closed
+    return InstallScope::Machine;
 #else
     return InstallScope::Unknown;
 #endif
+}
+
+QString AppUpdateManager::staleRegistrationScope() const
+{
+#ifdef Q_OS_WIN
+    const InstallScope current = detectedInstallScope();
+    if (current == InstallScope::User && registrationIsStale(InstallScope::Machine))
+        return QStringLiteral("machine");
+    if (current == InstallScope::Machine && registrationIsStale(InstallScope::User))
+        return QStringLiteral("user");
+#endif
+    return {};
 }
 
 QString AppUpdateManager::installationScope() const
@@ -158,7 +220,8 @@ bool AppUpdateManager::busy() const
         || m_state == QStringLiteral("downloading")
         || m_state == QStringLiteral("verifying")
         || m_state == QStringLiteral("installing")
-        || m_state == QStringLiteral("waiting-for-device");
+        || m_state == QStringLiteral("waiting-for-device")
+        || m_state == QStringLiteral("registration-repairing");
 }
 
 void AppUpdateManager::setState(const QString &state, const QString &status, const QString &error)
