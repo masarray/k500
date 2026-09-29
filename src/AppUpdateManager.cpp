@@ -119,7 +119,8 @@ QString AppUpdateManager::registeredInstallPath(InstallScope scope) const
     if (root.isEmpty())
         return {};
     QSettings settings(root + InnoUninstallKey, QSettings::NativeFormat);
-    return QDir::cleanPath(settings.value(QStringLiteral("Inno Setup: App Path")).toString());
+    const QString raw = settings.value(QStringLiteral("Inno Setup: App Path")).toString().trimmed();
+    return raw.isEmpty() ? QString() : QDir::cleanPath(raw);
 #else
     Q_UNUSED(scope);
     return {};
