@@ -391,6 +391,8 @@ jobs:
 
           Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
           $migrationLog = Join-Path $env:TEMP 'SonKuPik-K500-P3-migration.log'
+          $migrationBackup = Join-Path $env:TEMP 'SonKuPik-K500-P3-migration-recovery'
+          if (Test-Path $migrationBackup) { Remove-Item $migrationBackup -Recurse -Force }
           # Suppress interactive helper error dialogs in CI only; any migration
           # failure must surface as an exit code/log instead of hanging a runner.
           $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
@@ -407,7 +409,7 @@ jobs:
             '--sha256', $migrationHash,
             '--scope', 'user',
             '--mode', 'migrate',
-            '--backup', ('"' + (Join-Path $env:TEMP 'unused-migration-backup') + '"')
+            '--backup', ('"' + $migrationBackup + '"')
           )
           $migration = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $migrationArgs -Wait -PassThru
           if ($migration.ExitCode -ne 0) { throw "Explicit machine-to-user migration failed: $($migration.ExitCode)" }
@@ -417,6 +419,7 @@ jobs:
           if ($LASTEXITCODE -eq 0) { throw 'Migration left machine-wide uninstall registration' }
           & reg.exe QUERY 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1' *> $null
           if ($LASTEXITCODE -ne 0) { throw 'Migration did not create per-user uninstall registration' }
+          if (Test-Path $migrationBackup) { throw 'Successful migration left stale machine recovery snapshot' }
           if ((Get-Content $presetMarker -Raw).Trim() -ne 'preset-user-data-must-survive') { throw 'Migration changed user preset sentinel' }
           if ((Get-Content $cacheMarker -Raw).Trim() -ne 'official-cache-must-survive') { throw 'Migration changed official cache sentinel' }
           $qsetting = (& reg.exe QUERY 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence | Out-String)
