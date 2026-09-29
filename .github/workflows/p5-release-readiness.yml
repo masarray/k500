@@ -198,8 +198,8 @@ jobs:
           foreach ($token in @(
             'name: Windows Updater Release Candidate',
             'workflow_dispatch:',
-            "if ($env:GITHUB_REF -ne 'refs/heads/main')",
-            "if ($version -ne '1.1.0')",
+            'Updater RC must be dispatched from main.',
+            'P4 updater RC requires source version 1.1.0',
             'Exact-head gate PASS:',
             "stableReleaseEligible = $false",
             "installerScopes = @('machine','user')",
