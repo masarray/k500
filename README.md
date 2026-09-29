@@ -41,7 +41,7 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
 >
-> **Release line:** v1.0.0 established the hardware-qualified baseline. v1.0.2 is a stable maintenance release that keeps that device scope while adding the Program Files installer layout, Documents preset library, and verified in-app updater.
+> **Release line:** v1.0.0 established the hardware-qualified baseline. Public stable is **v1.0.3**; it keeps the same Windows x64 + USB HID scope while carrying the mature v1.0 installer/updater baseline.
 >
 > **Updater development status:** the current source candidate is **v1.1.0** and includes a separately packaged per-user installer, explicit **Update tanpa Admin** migration from a registered Program Files install, recovery snapshots/rollback, resumable downloads, and explicit stale-registration repair. Public stable remains **v1.0.3** until an exact v1.1.0 RC passes the repository acceptance gate and is separately promoted; GitHub Releases remains the authority for public stable behavior.
 
