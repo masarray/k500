@@ -358,8 +358,8 @@ jobs:
               throw "$($case.Name) did not restore the original application bytes"
             }
             $restoredRegistry = (& reg.exe QUERY $rollbackKey /v DisplayVersion | Out-String)
-            if ($restoredRegistry -notmatch [regex]::Escape($version)
-                -or $restoredRegistry -match 'P3-BROKEN-REGISTRY') {
+            if (($restoredRegistry -notmatch [regex]::Escape($version)) -or
+                ($restoredRegistry -match 'P3-BROKEN-REGISTRY')) {
               throw "$($case.Name) did not restore the original uninstall registry metadata"
             }
             if (Test-Path $caseBackup) { throw "$($case.Name) left recovery snapshot after successful rollback" }
