@@ -480,10 +480,6 @@ void AppUpdateManager::downloadAndInstall()
     if (!m_updateAvailable || busy())
         return;
 #ifdef Q_OS_WIN
-    // Portable ZIP must never be silently converted into a machine-wide install.
-    // A future dedicated portable updater must be an explicit separate workflow.
-    // Re-check at the download/install boundary. A copied portable directory
-    // or a changed registry registration must never change the package scope.
     if (m_installScope == InstallScope::Unknown
         || detectedInstallScope() != m_installScope) {
         setState(QStringLiteral("error"), QStringLiteral("Installed application required"),
@@ -491,11 +487,54 @@ void AppUpdateManager::downloadAndInstall()
         return;
     }
 #endif
+    m_migrationMode = false;
+    selectPackageForScope(m_installScope);
+    beginSelectedPackageInstall();
+}
+
+void AppUpdateManager::migrateToPerUser()
+{
+#ifdef Q_OS_WIN
+    if (!m_migrationAvailable || busy()
+        || m_installScope != InstallScope::Machine
+        || detectedInstallScope() != InstallScope::Machine) {
+        setState(QStringLiteral("error"), QStringLiteral("Migration is not available"),
+                 QStringLiteral("Only a registered machine-wide installation can be explicitly moved to the current user."));
+        return;
+    }
+    if (perUserTargetApplication().isEmpty()) {
+        setState(QStringLiteral("error"), QStringLiteral("Migration path is unavailable"),
+                 QStringLiteral("Windows LocalAppData could not be resolved."));
+        return;
+    }
+
+    m_migrationMode = true;
+    selectPackageForScope(InstallScope::User);
+    emit updateChanged();
+    beginSelectedPackageInstall();
+#else
+    setState(QStringLiteral("error"), QStringLiteral("Migration is available on Windows only."));
+#endif
+}
+
+void AppUpdateManager::beginSelectedPackageInstall()
+{
+    if (m_setupAssetName.isEmpty() || m_setupAssetUrl.isEmpty()
+        || m_releaseSetupBytes < MinimumInstallerBytes
+        || m_manifestUrl.isEmpty() || m_checksumsUrl.isEmpty()) {
+        setState(QStringLiteral("error"), QStringLiteral("Update package is incomplete"),
+                 QStringLiteral("The selected install-scope package is missing from the stable release."));
+        return;
+    }
+
     m_manifestSha256.clear();
     m_expectedSha256.clear();
     m_manifestSetupBytes = -1;
     setProgress(0.0);
-    setState(QStringLiteral("preparing"), QStringLiteral("Validating release metadata…"));
+    setState(QStringLiteral("preparing"),
+             m_migrationMode
+                 ? QStringLiteral("Preparing explicit no-admin migration…")
+                 : QStringLiteral("Validating release metadata…"));
     downloadManifest();
 }
 
@@ -545,7 +584,7 @@ bool AppUpdateManager::validateManifest(const QByteArray &payload)
     }
 
     const QString requiredName = expectedSetupName(
-        m_latestVersion, m_installScope == InstallScope::User);
+        m_latestVersion, m_targetScope == InstallScope::User);
     if (m_setupAssetName != requiredName) {
         m_errorText = QStringLiteral("Setup filename does not match the requested application version.");
         return false;
@@ -749,8 +788,8 @@ bool AppUpdateManager::verifyInstaller(QString *error) const
 bool AppUpdateManager::launchInstallerElevated(QString *error)
 {
 #ifdef Q_OS_WIN
-    // UPDATE_HANDOFF_P1 — the UI block alone is insufficient. A device Store,
-    // Upload, Recall, or Mass Upload may begin during a long package download.
+    // UPDATE_HANDOFF_P3 — check authoritative K500 transaction state again at
+    // the final process boundary, after any long/resumed package download.
     if (m_deviceTransactionBusy) {
         setState(QStringLiteral("waiting-for-device"),
                  QStringLiteral("Waiting for the K500 hardware transaction to finish…"));
@@ -762,9 +801,18 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         if (error) *error = QStringLiteral("Installation registration changed; the updater will not switch install scope.");
         return false;
     }
+    if (m_targetScope == InstallScope::Unknown) {
+        if (error) *error = QStringLiteral("Update target installation scope is unknown.");
+        return false;
+    }
+    if (m_migrationMode
+        && (m_installScope != InstallScope::Machine || m_targetScope != InstallScope::User)) {
+        if (error) *error = QStringLiteral("Invalid migration direction; only machine-to-user is supported.");
+        return false;
+    }
 
-    // The helper is the installed app's own native binary, not downloaded from
-    // a release asset. It runs unelevated; only Inno requests UAC after K500 exits.
+    // The helper is part of the currently installed application and is copied
+    // into the per-user update cache before the application exits.
     const QString source = QDir(QCoreApplication::applicationDirPath())
         .filePath(QStringLiteral("SonKuPik-K500-Updater.exe"));
     const QString staged = QDir(updateDirectory())
@@ -791,17 +839,31 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
 
     const QString setup = QDir::toNativeSeparators(installerPath());
     const QString app = QDir::toNativeSeparators(QCoreApplication::applicationFilePath());
+    const QString targetApp = m_migrationMode
+        ? perUserTargetApplication()
+        : app;
+    if (targetApp.isEmpty()) {
+        if (error) *error = QStringLiteral("Target application path could not be resolved.");
+        return false;
+    }
     const QString log = QDir::toNativeSeparators(
         QDir(updateDirectory()).filePath(QStringLiteral("update-handoff.log")));
+    const QString backup = QDir::toNativeSeparators(
+        QDir(updateDirectory()).filePath(QStringLiteral("recovery-previous")));
     const QStringList args = {
         QStringLiteral("--parent-pid"), QString::number(GetCurrentProcessId()),
         QStringLiteral("--setup"), setup,
         QStringLiteral("--app"), app,
+        QStringLiteral("--target-app"), QDir::toNativeSeparators(targetApp),
         QStringLiteral("--version"), m_latestVersion,
+        QStringLiteral("--previous-version"), currentVersion(),
         QStringLiteral("--log"), log,
         QStringLiteral("--sha256"), QString::fromLatin1(m_expectedSha256),
-        QStringLiteral("--scope"), m_installScope == InstallScope::User
-            ? QStringLiteral("user") : QStringLiteral("machine")
+        QStringLiteral("--scope"), m_targetScope == InstallScope::User
+            ? QStringLiteral("user") : QStringLiteral("machine"),
+        QStringLiteral("--mode"), m_migrationMode
+            ? QStringLiteral("migrate") : QStringLiteral("update"),
+        QStringLiteral("--backup"), backup
     };
     QStringList quoted;
     for (const QString &arg : args)
@@ -826,7 +888,9 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         CloseHandle(info.hProcess);
 
     setState(QStringLiteral("installing"),
-             QStringLiteral("K500 is closing safely. The updater will verify and restart the application."));
+             m_migrationMode
+                 ? QStringLiteral("K500 is closing safely. The updater will move this installation to your Windows account, verify it, then remove the old Program Files copy.")
+                 : QStringLiteral("K500 is closing safely. The updater will install, verify, recover on failure, and restart the application."));
     QCoreApplication::quit();
     return true;
 #else
