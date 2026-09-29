@@ -67,6 +67,8 @@ The current source tree contains the next Windows updater lifecycle, but it is n
 
 If a no-admin migration download fails after you selected it, **Coba lagi** preserves that selected per-user path; it does not silently switch back to the Administrator/machine-wide package.
 
+For release-candidate acceptance only, an installed v1.1 candidate can be started with `--update-candidate=v1.1.0-rc.N`. This explicit QA flag is process-local: it requests exactly that GitHub prerelease tag and does not change the normal stable update channel or stable skip/throttle preferences. Public v1.0.3 itself intentionally cannot discover prereleases; RC testing starts by manually applying the exact RC machine installer over a real v1.0.3 installation. Accepted RC binaries are later promoted byte-for-byte to stable rather than rebuilt.
+
 ## Connect to K500
 
 1. Close manufacturer software or other tools that may already own the K500 transport.
