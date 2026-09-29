@@ -153,6 +153,7 @@ jobs:
   inno-compile:
     name: Compile smart Inno installer
     runs-on: windows-2022
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -206,6 +207,8 @@ jobs:
       - name: Compile installer script
         shell: pwsh
         run: |
+          # Headless CI must never block on updater MessageBox diagnostics.
+          $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
           $cmake = Get-Content CMakeLists.txt -Raw
           if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') { throw 'Version not found' }
           $version = $Matches[1]
@@ -357,7 +360,6 @@ jobs:
             }
           }
           Remove-Item Env:SONKUPIK_P3_FAKE_INSTALL_MODE -ErrorAction SilentlyContinue
-          Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
           $rollbackCleanup = Start-Process -FilePath (Join-Path $rollbackDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($rollbackCleanup.ExitCode -ne 0) { throw 'Rollback fixture uninstall failed' }
 
@@ -415,7 +417,6 @@ jobs:
 
           $migrationCleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($migrationCleanup.ExitCode -ne 0) { throw 'Migrated per-user fixture cleanup failed' }
-          Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
           Remove-Item $presetMarker,$cacheMarker -Force -ErrorAction SilentlyContinue
           & reg.exe DELETE 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence /f *> $null
 
