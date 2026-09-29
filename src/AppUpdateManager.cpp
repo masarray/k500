@@ -788,17 +788,22 @@ void AppUpdateManager::downloadInstaller()
         }
     });
     connect(reply, &QNetworkReply::finished, this, [this, reply, file, prepareFile, partPath, finalPath] {
-        if (prepareFile()) {
-            const QByteArray remaining = reply->readAll();
-            if (!remaining.isEmpty() && file->write(remaining) != remaining.size())
-                reply->setProperty("sonkupikWriteFailed", true);
+        const auto networkError = reply->error();
+        // A connection failure before HTTP metadata must NOT truncate an
+        // existing partial file. Only prepare/open after metadata succeeded,
+        // or finish writing a stream that was already opened by readyRead.
+        if (file->isOpen() || networkError == QNetworkReply::NoError) {
+            if (prepareFile()) {
+                const QByteArray remaining = reply->readAll();
+                if (!remaining.isEmpty() && file->write(remaining) != remaining.size())
+                    reply->setProperty("sonkupikWriteFailed", true);
+            }
         }
         if (file->isOpen()) {
             file->flush();
             file->close();
         }
 
-        const auto networkError = reply->error();
         const QString errorString = reply->errorString();
         const QUrl finalUrl = reply->url();
         const bool writeFailed = reply->property("sonkupikWriteFailed").toBool();
