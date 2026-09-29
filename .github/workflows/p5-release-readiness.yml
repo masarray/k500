@@ -126,8 +126,11 @@ jobs:
           foreach ($token in @('Current public stable: **v1.0.3**','Current source candidate line: **v1.1.0**','Windows-Setup-PerUser.exe','Official Preset update channel','release-manifest.json','Do not republish a stable tag')) {
             if (-not $releases.Contains($token)) { throw "Release model missing '$token'" }
           }
-          foreach ($token in @('UPDATER_V1_1_ACCEPTANCE: pending','Target application version: `1.1.0`','Public stable remains **v1.0.3**')) {
+          foreach ($token in @('Target application version: `1.1.0`','Public stable remains **v1.0.3**')) {
             if (-not $updaterAcceptance.Contains($token)) { throw "Updater v1.1 acceptance record missing '$token'" }
+          }
+          if ($updaterAcceptance -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=pending\s*$') {
+            throw 'Updater v1.1 source candidate must remain pending until a separate acceptance PR.'
           }
 
           # Historical v1.0.0 hardware qualification remains immutable evidence;
@@ -184,7 +187,7 @@ jobs:
             'Validate portable ZIP end-to-end',
             'Validate Inno installer end-to-end',
             'Require accepted updater lifecycle for v1.1+',
-            'UPDATER_V1_1_ACCEPTANCE: accepted'
+            'UPDATER_V1_1_ACCEPTANCE=accepted'
           )) {
             if (-not $stableWorkflow.Contains($token)) { throw "Stable release pipeline contract missing '$token'" }
           }
