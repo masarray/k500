@@ -681,7 +681,7 @@ bool restoreForRequest(const Request &request, std::wstring *error)
     }
 
     if (request.scope == L"user") {
-        if (!restoreTree(request.backup, targetDir, error))
+        if (!restoreTree(backupFilesPath(request.backup), targetDir, error))
             return false;
         return restoreUninstallRegistry(request.scope, request.backup, error);
     }
