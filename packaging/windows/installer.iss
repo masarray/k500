@@ -135,21 +135,35 @@ begin
 end;
 
 #if PerUser
-// A per-user install must never coexist silently with a registered machine-wide
-// installation. Require an explicit migration outside this installer instead.
+// P3_EXPLICIT_SCOPE_MIGRATION_V1
+// Per-user Setup normally refuses an existing machine-wide registration.
+// Only the app-owned helper may bypass that collision guard, and only when all
+// internal handoff markers are present. The helper validates the new install
+// before it elevates the OLD uninstaller, so migration is reversible until then.
+function IsExplicitMachineMigration: Boolean;
+begin
+  Result := (ExpandConstant('{param:MIGRATEFROMMACHINE|0}') = '1') and
+            (ExpandConstant('{param:HELPERUPDATE|0}') = '1') and
+            (ExpandConstant('{param:AUToupdate|0}') = '1');
+end;
+
 function InitializeSetup(): Boolean;
 var
   MachineKey: String;
+  MachineExists: Boolean;
 begin
   MachineKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
-  Result := not (RegKeyExists(HKLM64, MachineKey) or RegKeyExists(HKLM32, MachineKey));
-  if not Result then
+  MachineExists := RegKeyExists(HKLM64, MachineKey) or RegKeyExists(HKLM32, MachineKey);
+  Result := (not MachineExists) or IsExplicitMachineMigration;
+  if MachineExists and IsExplicitMachineMigration then
+    Log('Explicit app-owned machine-to-user migration accepted; old machine install remains until helper health-check succeeds.')
+  else if not Result then
   begin
     Log('Per-user install refused: existing machine-wide SonKuPik registration.');
     if not WizardSilent then
       MsgBox('An all-users SonKuPik K500 installation already exists. ' +
              'This per-user installer will not create a second copy. ' +
-             'Use the existing application or perform a separately confirmed migration.', mbError, MB_OK);
+             'Use SonKuPik''s explicit migration action instead.', mbError, MB_OK);
   end;
 end;
 #else
