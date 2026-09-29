@@ -203,6 +203,27 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Per-user Inno Setup script failed to compile' }
           $perUserSetup = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
           if (-not (Test-Path $perUserSetup)) { throw 'Expected per-user Setup EXE was not produced' }
+
+          # A registered machine-wide copy must make the per-user package fail
+          # closed. This protects users from two shortcuts/uninstall entries.
+          $machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          & reg.exe ADD $machineKey /v DisplayName /t REG_SZ /d 'SonKuPik K500 CI machine fixture' /f | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw 'Could not create machine-wide collision fixture' }
+          try {
+            $blockedDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-P2-BLOCKED'
+            if (Test-Path $blockedDir) { Remove-Item $blockedDir -Recurse -Force }
+            $blocked = Start-Process -FilePath (Resolve-Path $perUserSetup).Path -ArgumentList @(
+              '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=$blockedDir"
+            ) -Wait -PassThru
+            if ($blocked.ExitCode -eq 0) { throw 'Per-user installer accepted an existing machine-wide registration' }
+            if (Test-Path (Join-Path $blockedDir 'SonKuPik-K500.exe')) {
+              throw 'Blocked per-user installer wrote application files despite machine-wide collision'
+            }
+          }
+          finally {
+            & reg.exe DELETE $machineKey /f | Out-Null
+          }
+
           $testDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-P2-CI'
           if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
           $install = Start-Process -FilePath (Resolve-Path $perUserSetup).Path -ArgumentList @(
