@@ -866,6 +866,29 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
         L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
         InstallTimeoutMs, uninstallExit);
 
+    if (uninstallError == ERROR_CANCELLED) {
+        // UAC was declined before the old uninstaller started. The machine
+        // installation is still authoritative, so remove only the new user copy.
+        const bool cleaned = cleanupPerUserMigration(request);
+        discardBackup();
+        startApplication(request.app);
+        return fail(request, 34,
+            L"Administrator permission to remove the old Program Files installation "
+            L"was cancelled. The old application was kept and reopened."
+            + std::wstring(cleaned
+                ? L" The temporary per-user installation was removed."
+                : L" The temporary per-user cleanup failed; inspect the update log."));
+    }
+
+    if (uninstallError == ERROR_TIMEOUT) {
+        // Never race a possibly-running elevated uninstaller. Keep the healthy
+        // per-user copy and recovery snapshot untouched for deterministic repair.
+        return fail(request, 34,
+            L"The old Program Files uninstaller exceeded the safety timeout. It may "
+            L"still be running, so SonKuPik did not restore or delete either installation. "
+            L"Recovery snapshot was kept at:\n" + request.backup);
+    }
+
     if (uninstallError != ERROR_SUCCESS || uninstallExit != 0
         || pathExists(request.app)) {
         const bool cleaned = cleanupPerUserMigration(request);
