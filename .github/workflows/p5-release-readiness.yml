@@ -74,6 +74,7 @@ jobs:
           $releases = Get-Content docs/RELEASES.md -Raw
           $readiness = Get-Content docs/P5_RELEASE_READINESS.md -Raw
           $hardware = Get-Content docs/HARDWARE_ACCEPTANCE_CHECKLIST.md -Raw
+          $updaterAcceptance = Get-Content docs/V1_1_UPDATER_RC_ACCEPTANCE.md -Raw
           $matrix = Get-Content docs/PORTING_PARITY_MATRIX.md -Raw
           $codec = Get-Content docs/P3_K500_CODEC.md -Raw
           $fileUi = Get-Content docs/P3_3_PRESET_FILE_UI.md -Raw
@@ -122,8 +123,11 @@ jobs:
           foreach ($token in @('State authority model','Official preset synchronization','Mass Upload','Crash-resistant QML section architecture','Failure model')) {
             if (-not $architecture.Contains($token)) { throw "Architecture reference missing '$token'" }
           }
-          foreach ($token in @('Current stable line: **v1.0.x**','Official Preset update channel','release-manifest.json','Do not republish a stable tag')) {
+          foreach ($token in @('Current public stable: **v1.0.3**','Current source candidate line: **v1.1.0**','Windows-Setup-PerUser.exe','Official Preset update channel','release-manifest.json','Do not republish a stable tag')) {
             if (-not $releases.Contains($token)) { throw "Release model missing '$token'" }
+          }
+          foreach ($token in @('UPDATER_V1_1_ACCEPTANCE: pending','Target application version: `1.1.0`','Public stable remains **v1.0.3**')) {
+            if (-not $updaterAcceptance.Contains($token)) { throw "Updater v1.1 acceptance record missing '$token'" }
           }
 
           # Historical v1.0.0 hardware qualification remains immutable evidence;
@@ -161,10 +165,13 @@ jobs:
             throw 'Stable semantic version metadata is missing.'
           }
           $version = [version]$Matches[1]
-          if ($version -lt [version]'1.0.0' -or $version.Major -ne 1 -or $version.Minor -ne 0) {
-            throw "Stable v1.0.x readiness guard does not accept version $version"
+          if ($version -lt [version]'1.0.0' -or $version.Major -ne 1) {
+            throw "v1 release readiness guard does not accept version $version"
           }
-          Write-Host "Validating SonKuPik K500 v$version stable maintenance candidate"
+          if ($version -ge [version]'1.1.0' -and -not $readme.Contains('current source candidate is **v1.1.0**')) {
+            throw 'README must distinguish the v1.1.0 source candidate from public stable.'
+          }
+          Write-Host "Validating SonKuPik K500 v$version source/release readiness"
 
           foreach ($token in @(
             'HARDWARE_ACCEPTANCE: accepted-windows-usb',
@@ -175,7 +182,9 @@ jobs:
             "mode01NativeSha256 = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'",
             'Run full preset and updater regression suite',
             'Validate portable ZIP end-to-end',
-            'Validate Inno installer end-to-end'
+            'Validate Inno installer end-to-end',
+            'Require accepted updater lifecycle for v1.1+',
+            'UPDATER_V1_1_ACCEPTANCE: accepted'
           )) {
             if (-not $stableWorkflow.Contains($token)) { throw "Stable release pipeline contract missing '$token'" }
           }
@@ -218,7 +227,7 @@ jobs:
             if (-not $topbar.Contains($token)) { throw "Support UI regression: missing '$token'" }
           }
 
-          Write-Host 'v1.0.x public documentation, provenance, install/update lifecycle and stable release contracts PASS'
+          Write-Host 'v1 public documentation, provenance, install/update lifecycle and stable release contracts PASS'
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
