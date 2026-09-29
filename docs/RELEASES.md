@@ -8,7 +8,9 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current stable line: **v1.0.x**.
+Current public stable: **v1.0.3**.
+
+Current source candidate line: **v1.1.0** (updater lifecycle qualification; not public stable until accepted and published).
 
 Current qualified scope: **Windows 10/11 x64 + USB HID**.
 
@@ -48,6 +50,7 @@ A stable release publishes:
 
 ```text
 SonKuPik-K500-v<version>-Windows-Setup.exe
+SonKuPik-K500-v<version>-Windows-Setup-PerUser.exe
 SonKuPik-K500-v<version>-Windows-Portable.zip
 SHA256SUMS.txt
 release-manifest.json
@@ -89,6 +92,8 @@ The stable workflow must pass before GitHub publishes a non-prerelease tag. Curr
 - manifest and artifact hash validation.
 
 CI can verify software behavior; hardware-facing support claims still require real-device evidence appropriate to the changed path.
+
+For v1.1+, stable publishing also requires the repository-controlled updater acceptance token in `V1_1_UPDATER_RC_ACCEPTANCE.md`. Candidate source and a green CI matrix do not by themselves authorize a public stable release.
 
 ## Official Preset update channel
 
