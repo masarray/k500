@@ -16,7 +16,9 @@ The source version is 1.1.0 for release-candidate qualification. Public stable r
 - Explicit stale uninstall-registration repair that refuses to remove registrations while their application or uninstaller still exists.
 - Windows qualification fixtures for per-user update, destructive installer rollback, failed-health rollback, machine-to-user migration, and persistence of user presets/QSettings/cache.
 - Manual-only `v1.1.0-rc.N` packaging with exact-main CI gating, dual installers, portable ZIP, checksums, and candidate manifest.
-- A repository-controlled `UPDATER_V1_1_ACCEPTANCE` gate that blocks v1.1+ stable publishing until the exact candidate is accepted.
+- An explicit process-local `--update-candidate=v1.1.0-rc.N` QA channel that lets an installed candidate consume exactly one immutable prerelease without changing the normal stable channel.
+- A repository-controlled `UPDATER_V1_1_ACCEPTANCE` provenance gate that records accepted RC tag, source commit, and SHA-256 for machine installer, per-user installer, and portable ZIP.
+- Byte-identical v1.1 stable promotion: accepted RC binaries are revalidated and republished under stable names; they are not rebuilt after acceptance.
 
 ### Safety
 
