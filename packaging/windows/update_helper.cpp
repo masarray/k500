@@ -54,6 +54,14 @@ std::wstring quote(const std::wstring &value)
     return result + L"\"";
 }
 
+std::wstring parentDirectory(const std::wstring &path)
+{
+    const size_t separator = path.find_last_of(L"\\/");
+    if (separator == std::wstring::npos || separator == 0)
+        return {};
+    return path.substr(0, separator);
+}
+
 bool parse(int argc, wchar_t **argv, Request &request)
 {
     if (argc != 15 || std::wstring(argv[1]) != L"--parent-pid"
@@ -265,6 +273,9 @@ int selfTest()
     if (quote(L"C:\\Some Folder\\app.exe") != L"\"C:\\Some Folder\\app.exe\"") return 31;
     if (quote(L"C:\\trailing\\") != L"\"C:\\trailing\\\\\"") return 32;
     if (quote(L"has\"quote") != L"\"has\\\"quote\"") return 33;
+    if (parentDirectory(L"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe")
+        != L"C:\\Program Files\\SonKuPik K500") return 34;
+    if (!parentDirectory(L"SonKuPik-K500.exe").empty()) return 35;
     return 0;
 }
 } // namespace
@@ -307,10 +318,20 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     if (!verifySetup(request, lockedSetup))
         return fail(request, 14, L"Installer SHA-256 changed after download. Nothing was installed.");
 
+    // Preserve the exact registered installation directory. Normal packages
+    // use canonical Program Files/userpf paths, but a supported CLI /DIR install
+    // must never be silently moved during an automatic update.
+    const std::wstring installDir = parentDirectory(request.app);
+    if (installDir.empty()) {
+        CloseHandle(lockedSetup);
+        return fail(request, 19, L"Installed application path has no valid parent directory.");
+    }
+
     // /HELPERUPDATE=1 prevents Inno Setup from racing this coordinator to
     // restart the application. Legacy updaters still retain their old [Run] path.
     const std::wstring args = L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /CLOSEAPPLICATIONS "
-                              L"/AUToupdate=1 /HELPERUPDATE=1 /LOG=" + quote(request.log + L".inno.log");
+                              L"/AUToupdate=1 /HELPERUPDATE=1 /LOG=" + quote(request.log + L".inno.log")
+                              + L" /DIR=" + quote(installDir);
     DWORD installerExit = ~0UL;
     // Per-user Inno Setup has PrivilegesRequired=lowest. Create it at the
     // original user's level; retain UAC only for the legacy machine package.
