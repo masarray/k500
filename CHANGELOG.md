@@ -2,6 +2,28 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Windows updater lifecycle P1–P3
+
+These changes are implemented in source and remain pre-release until a separately accepted tagged build is published.
+
+### Added
+
+- Standalone Win32 update coordinator that waits for K500 to exit safely, re-verifies Setup SHA-256, checks installer exit status, performs a hardware-free post-install health check, and relaunches the application.
+- Separate machine-wide and per-user Setup packages with scope-matched update routing. Per-user updates run without UAC; machine-wide updates retain normal Windows elevation.
+- Explicit **Update tanpa Admin** migration from a registered Program Files installation to the current user's LocalAppData Programs directory.
+- Complete executable-tree + uninstall-registration recovery snapshots for installed updates, with rollback after installer failure or failed new-version health check.
+- Resumable `.part` downloads with strict HTTP Range/Content-Range validation, final byte-size checks, and SHA-256 verification.
+- Explicit stale uninstall-registration repair that refuses to remove registrations while their application or uninstaller still exists.
+- Windows qualification fixtures for per-user update, destructive installer rollback, failed-health rollback, machine-to-user migration, and persistence of user presets/QSettings/cache.
+
+### Safety
+
+- Migration installs and validates the per-user copy before requesting one UAC elevation to remove the old machine-wide installation.
+- Ambiguous installer/uninstaller timeouts are not raced with destructive cleanup; recovery data is preserved.
+- Retry after a failed no-admin migration preserves the user's per-user package choice instead of falling back to machine-wide Setup.
+- Portable ZIP remains independent and is never silently converted into an installed copy.
+- No code-signing requirement, UAC bypass, or Windows-security weakening is introduced.
+
 ## 1.0.2 — Smart Windows lifecycle
 
 Stable maintenance release preserving the existing v1.0 hardware-qualified scope while improving installation, local preset storage, update delivery, and update-integrity regression coverage.
