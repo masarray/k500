@@ -84,7 +84,7 @@ private:
     bool launchInstallerElevated(QString *error = nullptr);
     QString updateDirectory() const;
     QString installerPath() const;
-    QNetworkReply *get(const QUrl &url);
+    QNetworkReply *get(const QUrl &url, qint64 rangeStart = -1);
 
     QNetworkAccessManager *m_network = nullptr;
     QString m_latestVersion;
