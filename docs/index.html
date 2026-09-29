@@ -50,7 +50,7 @@
       <section class="section">
         <div class="section-head"><div><div class="kicker">One release source of truth</div><h2>Landing pages follow the release, not the other way around.</h2></div><p>GitHub Releases remains the artifact authority. The product-site routes resolve GitHub's canonical <code>releases/latest</code> stable tag and stream the matching versioned Setup or Portable package.</p></div>
         <div class="cards">
-          <article class="card"><small>SETUP</small><h3>Recommended install</h3><p>Normal Windows installation under Program Files, with personal presets kept in Documents and verified in-app updates for future releases.</p></article>
+          <article class="card"><small>SETUP</small><h3>Recommended install</h3><p>Public stable uses the normal Windows Program Files installation, with personal presets kept in Documents and verified in-app updates. The source tree is also qualifying an explicit per-user / no-admin migration path; it does not become public stable behavior until a tagged release is accepted.</p></article>
           <article class="card"><small>PORTABLE</small><h3>No-install package</h3><p>The same latest-stable contract, delivered as a normal ZIP for testing or portable use.</p></article>
           <article class="card"><small>FAIL-CLOSED</small><h3>No stale fallback</h3><p>If the latest stable release cannot be resolved or the matching artifact is unavailable, the download route fails instead of silently serving an older package.</p></article>
         </div>
