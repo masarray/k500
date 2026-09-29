@@ -381,6 +381,9 @@ jobs:
 
           Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
           $migrationLog = Join-Path $env:TEMP 'SonKuPik-K500-P3-migration.log'
+          # Suppress interactive helper error dialogs in CI only; any migration
+          # failure must surface as an exit code/log instead of hanging a runner.
+          $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
           $migrationHash = (Get-FileHash $perUserSetup -Algorithm SHA256).Hash.ToLowerInvariant()
           $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
           $migrationArgs = @(
@@ -412,6 +415,7 @@ jobs:
 
           $migrationCleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($migrationCleanup.ExitCode -ne 0) { throw 'Migrated per-user fixture cleanup failed' }
+          Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
           Remove-Item $presetMarker,$cacheMarker -Force -ErrorAction SilentlyContinue
           & reg.exe DELETE 'HKCU\Software\MasArray\SonKuPik K500' /v P3Persistence /f *> $null
 
