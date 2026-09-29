@@ -219,6 +219,22 @@ jobs:
         run: |
           # Headless CI must never block on updater MessageBox diagnostics.
           $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
+          function Start-P3BoundedProcess {
+            param(
+              [Parameter(Mandatory=$true)][string]$FilePath,
+              [Parameter(Mandatory=$true)]$ArgumentList,
+              [Parameter(Mandatory=$true)][string]$Label,
+              [int]$TimeoutSeconds = 120
+            )
+            Write-Host "P3 qualification: $Label"
+            $process = Start-Process -FilePath $FilePath -ArgumentList $ArgumentList -PassThru
+            if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+              Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+              throw "$Label exceeded $TimeoutSeconds seconds"
+            }
+            $process.Refresh()
+            return $process
+          }
           $cmake = Get-Content CMakeLists.txt -Raw
           if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') { throw 'Version not found' }
           $version = $Matches[1]
@@ -305,7 +321,7 @@ jobs:
             '--mode', 'update',
             '--backup', ('"' + $backup + '"')
           )
-          $handoff = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $helperArgs -Wait -PassThru
+          $handoff = Start-P3BoundedProcess -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $helperArgs -Label 'verified per-user helper update'
           if ($handoff.ExitCode -ne 0) { throw "Non-admin update handoff failed: $($handoff.ExitCode); log: $log" }
           $ready = $false
           foreach ($attempt in 1..30) {
@@ -360,7 +376,7 @@ jobs:
               '--mode', 'update',
               '--backup', ('"' + $caseBackup + '"')
             )
-            $result = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $args -Wait -PassThru
+            $result = Start-P3BoundedProcess -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $args -Label ("rollback " + $case.Name)
             if ($result.ExitCode -ne $case.Expected) {
               throw "$($case.Name) returned $($result.ExitCode), expected $($case.Expected)"
             }
@@ -424,7 +440,7 @@ jobs:
             '--mode', 'migrate',
             '--backup', ('"' + $migrationBackup + '"')
           )
-          $migration = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $migrationArgs -Wait -PassThru
+          $migration = Start-P3BoundedProcess -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList $migrationArgs -Label 'explicit machine-to-user migration'
           if ($migration.ExitCode -ne 0) { throw "Explicit machine-to-user migration failed: $($migration.ExitCode)" }
           if (Test-Path (Join-Path $machineDir 'SonKuPik-K500.exe')) { throw 'Migration left old machine application active' }
           if (-not (Test-Path (Join-Path $defaultDir 'SonKuPik-K500.exe'))) { throw 'Migration did not create per-user application' }
