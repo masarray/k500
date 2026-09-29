@@ -28,6 +28,8 @@ bool AppUpdateManager::selfTest(QString *error)
         return fail(QStringLiteral("device transaction gate did not return to busy state"));
 
     manager.m_latestVersion = QStringLiteral("9.9.9");
+    manager.m_installScope = InstallScope::Machine;
+    manager.m_targetScope = InstallScope::Machine;
     manager.m_setupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup.exe");
     manager.m_releaseSetupBytes = 2 * 1024 * 1024;
 
@@ -108,6 +110,7 @@ bool AppUpdateManager::selfTest(QString *error)
     dualScopeManifest.insert(QStringLiteral("artifacts"), dualScopeArtifacts);
     const QByteArray dualScopeBytes = QJsonDocument(dualScopeManifest).toJson(QJsonDocument::Compact);
     manager.m_installScope = InstallScope::User;
+    manager.m_targetScope = InstallScope::User;
     manager.m_setupAssetName = perUserName;
     manager.m_errorText.clear();
     if (!manager.validateManifest(dualScopeBytes))
@@ -127,6 +130,7 @@ bool AppUpdateManager::selfTest(QString *error)
         return fail(QStringLiteral("per-user updater accepted checksum for machine-wide installer"));
 
     manager.m_installScope = InstallScope::Machine;
+    manager.m_targetScope = InstallScope::Machine;
     manager.m_setupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup.exe");
     manager.m_errorText.clear();
     if (!manager.validateManifest(dualScopeBytes))
@@ -134,6 +138,32 @@ bool AppUpdateManager::selfTest(QString *error)
     manager.m_expectedSha256.clear();
     if (!manager.parseExpectedChecksum(validSums))
         return fail(QStringLiteral("machine-wide checksum rejected after dual-scope manifest test"));
+
+    // P3 migration intentionally keeps the authoritative CURRENT scope machine
+    // while selecting the USER package as the target. Manifest/checksum parsing
+    // must follow target scope, not source scope.
+    manager.m_installScope = InstallScope::Machine;
+    manager.m_targetScope = InstallScope::User;
+    manager.m_setupAssetName = perUserName;
+    manager.m_releaseSetupBytes = goodBytes;
+    manager.m_errorText.clear();
+    if (!manager.validateManifest(dualScopeBytes))
+        return fail(QStringLiteral("machine-to-user migration rejected the user package"));
+    manager.m_expectedSha256.clear();
+    if (!manager.parseExpectedChecksum(userSums))
+        return fail(QStringLiteral("migration checksum did not bind to per-user package"));
+
+    manager.m_machineSetupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup.exe");
+    manager.m_machineSetupAssetUrl = QUrl(QStringLiteral("https://github.com/masarray/k500/releases/download/v9.9.9/machine.exe"));
+    manager.m_machineSetupBytes = goodBytes;
+    manager.m_userSetupAssetName = perUserName;
+    manager.m_userSetupAssetUrl = QUrl(QStringLiteral("https://github.com/masarray/k500/releases/download/v9.9.9/user.exe"));
+    manager.m_userSetupBytes = goodBytes;
+    manager.selectPackageForScope(InstallScope::User);
+    if (manager.m_setupAssetName != perUserName
+        || manager.m_targetScope != InstallScope::User
+        || manager.m_releaseSetupBytes != goodBytes)
+        return fail(QStringLiteral("P3 scope selector did not choose the per-user release asset"));
 
     if (error)
         error->clear();
