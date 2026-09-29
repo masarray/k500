@@ -69,9 +69,11 @@ bool validSha256Hex(const QByteArray &value)
     return true;
 }
 
-QString expectedSetupName(const QString &version)
+QString expectedSetupName(const QString &version, bool perUser)
 {
-    return QStringLiteral("SonKuPik-K500-v%1-Windows-Setup.exe").arg(version);
+    return perUser
+        ? QStringLiteral("SonKuPik-K500-v%1-Windows-Setup-PerUser.exe").arg(version)
+        : QStringLiteral("SonKuPik-K500-v%1-Windows-Setup.exe").arg(version);
 }
 // Quote one Windows command-line argument using backslash/quote escaping.
 // Parameters are passed as one string to ShellExecuteExW.
@@ -102,6 +104,46 @@ QString quoteWindowsArgument(const QString &value)
 AppUpdateManager::AppUpdateManager(QObject *parent)
     : QObject(parent), m_network(new QNetworkAccessManager(this))
 {
+}
+
+AppUpdateManager::InstallScope AppUpdateManager::detectedInstallScope() const
+{
+#ifdef Q_OS_WIN
+    // Installation identity comes from Inno's uninstall registration, not a
+    // writable install-scope.ini file or a guessed directory prefix. The
+    // registry path must point to THIS executable's directory.
+    const QString key = QStringLiteral(
+        "/Software/Microsoft/Windows/CurrentVersion/Uninstall/"
+        "{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1");
+    const QString installed = QDir::toNativeSeparators(
+        QDir::cleanPath(QCoreApplication::applicationDirPath()));
+    const auto matches = [&installed, &key](const QString &root) {
+        QSettings settings(root + key, QSettings::NativeFormat);
+        const QString directory = settings.value(QStringLiteral("Inno Setup: App Path")).toString();
+        return !directory.isEmpty()
+            && QString::compare(
+                QDir::toNativeSeparators(QDir::cleanPath(directory)),
+                installed, Qt::CaseInsensitive) == 0;
+    };
+    const bool user = matches(QStringLiteral("HKEY_CURRENT_USER"));
+    const bool machine = matches(QStringLiteral("HKEY_LOCAL_MACHINE"));
+    if (user == machine)
+        return InstallScope::Unknown; // absent OR ambiguous/duplicate registration
+    if (!QFileInfo::exists(QDir(installed).filePath(QStringLiteral("unins000.exe"))))
+        return InstallScope::Unknown; // a copied portable directory
+    return user ? InstallScope::User : InstallScope::Machine;
+#else
+    return InstallScope::Unknown;
+#endif
+}
+
+QString AppUpdateManager::installationScope() const
+{
+    switch (detectedInstallScope()) {
+    case InstallScope::Machine: return QStringLiteral("machine");
+    case InstallScope::User: return QStringLiteral("user");
+    default: return QStringLiteral("unknown");
+    }
 }
 
 QString AppUpdateManager::currentVersion() const
@@ -167,6 +209,16 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
 {
     if (busy())
         return;
+
+#ifdef Q_OS_WIN
+    m_installScope = detectedInstallScope();
+    if (m_installScope == InstallScope::Unknown) {
+        setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
+                 userInitiated ? QStringLiteral("Installed copy required") : QString(),
+                 userInitiated ? QStringLiteral("This copy has no matching Inno uninstall registration, or its install scope is ambiguous. Use the installed application to update.") : QString());
+        return;
+    }
+#endif
 
     // SMART_UPDATE_THROTTLE_V1 — automatic discovery is deliberately quiet and
     // bounded. Manual checks always bypass the throttle; failed checks are not
@@ -244,7 +296,8 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
-    const QString requiredSetupName = expectedSetupName(version);
+    const QString requiredSetupName = expectedSetupName(
+        version, m_installScope == InstallScope::User);
     QString setupName;
     QUrl setupUrl;
     qint64 setupBytes = -1;
@@ -365,11 +418,12 @@ void AppUpdateManager::downloadAndInstall()
 #ifdef Q_OS_WIN
     // Portable ZIP must never be silently converted into a machine-wide install.
     // A future dedicated portable updater must be an explicit separate workflow.
-    const QString uninstaller = QDir(QCoreApplication::applicationDirPath())
-        .filePath(QStringLiteral("unins000.exe"));
-    if (!QFileInfo::exists(uninstaller)) {
+    // Re-check at the download/install boundary. A copied portable directory
+    // or a changed registry registration must never change the package scope.
+    if (m_installScope == InstallScope::Unknown
+        || detectedInstallScope() != m_installScope) {
         setState(QStringLiteral("error"), QStringLiteral("Installed application required"),
-                 QStringLiteral("This is a portable or unregistered copy. In-app Setup updates are disabled to avoid creating a second installation."));
+                 QStringLiteral("Installation scope changed or is not registered. Update was not started."));
         return;
     }
 #endif
@@ -426,7 +480,8 @@ bool AppUpdateManager::validateManifest(const QByteArray &payload)
         return false;
     }
 
-    const QString requiredName = expectedSetupName(m_latestVersion);
+    const QString requiredName = expectedSetupName(
+        m_latestVersion, m_installScope == InstallScope::User);
     if (m_setupAssetName != requiredName) {
         m_errorText = QStringLiteral("Setup filename does not match the requested application version.");
         return false;
@@ -638,6 +693,12 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         return true;
     }
 
+    if (m_installScope == InstallScope::Unknown
+        || detectedInstallScope() != m_installScope) {
+        if (error) *error = QStringLiteral("Installation registration changed; the updater will not switch install scope.");
+        return false;
+    }
+
     // The helper is the installed app's own native binary, not downloaded from
     // a release asset. It runs unelevated; only Inno requests UAC after K500 exits.
     const QString source = QDir(QCoreApplication::applicationDirPath())
@@ -674,7 +735,9 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         QStringLiteral("--app"), app,
         QStringLiteral("--version"), m_latestVersion,
         QStringLiteral("--log"), log,
-        QStringLiteral("--sha256"), QString::fromLatin1(m_expectedSha256)
+        QStringLiteral("--sha256"), QString::fromLatin1(m_expectedSha256),
+        QStringLiteral("--scope"), m_installScope == InstallScope::User
+            ? QStringLiteral("user") : QStringLiteral("machine")
     };
     QStringList quoted;
     for (const QString &arg : args)

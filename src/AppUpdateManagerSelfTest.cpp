@@ -96,6 +96,45 @@ bool AppUpdateManager::selfTest(QString *error)
     if (manager.validateManifest(QJsonDocument(wrongBytesManifest).toJson(QJsonDocument::Compact)))
         return fail(QStringLiteral("manifest/GitHub asset size mismatch was accepted"));
 
+    // P2: the same stable manifest may list BOTH installer scopes, but each
+    // installed app must accept only the asset selected by its registry scope.
+    const QString perUserName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup-PerUser.exe");
+    QJsonObject userArtifact = setupArtifact;
+    userArtifact.insert(QStringLiteral("file"), perUserName);
+    QJsonArray dualScopeArtifacts;
+    dualScopeArtifacts.append(setupArtifact);
+    dualScopeArtifacts.append(userArtifact);
+    QJsonObject dualScopeManifest = manifest;
+    dualScopeManifest.insert(QStringLiteral("artifacts"), dualScopeArtifacts);
+    const QByteArray dualScopeBytes = QJsonDocument(dualScopeManifest).toJson(QJsonDocument::Compact);
+    manager.m_installScope = InstallScope::User;
+    manager.m_setupAssetName = perUserName;
+    manager.m_errorText.clear();
+    if (!manager.validateManifest(dualScopeBytes))
+        return fail(QStringLiteral("valid per-user manifest rejected: %1").arg(manager.m_errorText));
+    manager.m_expectedSha256.clear();
+    const QByteArray userSums = goodHash + QByteArrayLiteral("  ")
+        + perUserName.toUtf8() + QByteArrayLiteral("\n");
+    if (!manager.parseExpectedChecksum(userSums))
+        return fail(QStringLiteral("per-user checksum was rejected"));
+
+    manager.m_setupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup.exe");
+    if (manager.validateManifest(dualScopeBytes))
+        return fail(QStringLiteral("per-user scope incorrectly accepted machine-wide installer"));
+    manager.m_setupAssetName = perUserName;
+    manager.m_expectedSha256.clear();
+    if (manager.parseExpectedChecksum(validSums))
+        return fail(QStringLiteral("per-user updater accepted checksum for machine-wide installer"));
+
+    manager.m_installScope = InstallScope::Machine;
+    manager.m_setupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-Windows-Setup.exe");
+    manager.m_errorText.clear();
+    if (!manager.validateManifest(dualScopeBytes))
+        return fail(QStringLiteral("machine-wide scope rejected its own package"));
+    manager.m_expectedSha256.clear();
+    if (!manager.parseExpectedChecksum(validSums))
+        return fail(QStringLiteral("machine-wide checksum rejected after dual-scope manifest test"));
+
     if (error)
         error->clear();
     return true;
