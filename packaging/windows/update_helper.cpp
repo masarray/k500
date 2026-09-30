@@ -325,15 +325,29 @@ DWORD runElevatedAndWait(const std::wstring &exe, const std::wstring &parameters
     return ERROR_SUCCESS;
 }
 
+std::wstring applicationLaunchCommand(const std::wstring &exe)
+{
+    return quote(exe) + L" --post-update-foreground";
+}
+
 bool startApplication(const std::wstring &exe)
 {
-    std::wstring command = quote(exe);
+    std::wstring command = applicationLaunchCommand(exe);
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESHOWWINDOW;
+    startup.wShowWindow = SW_SHOWNORMAL;
     PROCESS_INFORMATION process{};
     if (!CreateProcessW(exe.c_str(), command.data(), nullptr, nullptr, FALSE,
                         0, nullptr, nullptr, &startup, &process))
         return false;
+
+    // Ask Windows to let the freshly relaunched application activate itself.
+    // This is a one-shot foreground request after an explicit user update;
+    // it does not make the window TOPMOST and does not bypass focus-stealing rules.
+    AllowSetForegroundWindow(process.dwProcessId);
+    WaitForInputIdle(process.hProcess, 10000);
+
     CloseHandle(process.hThread);
     CloseHandle(process.hProcess);
     return true;
@@ -942,6 +956,9 @@ int selfTest()
     if (parentDirectory(L"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe")
         != L"C:\\Program Files\\SonKuPik K500") return 34;
     if (!parentDirectory(L"SonKuPik-K500.exe").empty()) return 35;
+    if (applicationLaunchCommand(L"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe")
+        != L"\"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe\" --post-update-foreground")
+        return 36;
 
     wchar_t tempPath[MAX_PATH]{};
     if (!GetTempPathW(MAX_PATH, tempPath)) return 36;
