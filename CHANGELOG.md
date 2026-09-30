@@ -31,6 +31,12 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - All refreshed files remain exact 1144-byte K500 containers with valid additive checksums and hardware-safe names.
 - Genre-specific Mic/Music/Main/Sub donor voicing is preserved; the refresh targets proven FX/timing surfaces rather than normalizing all modes to one curve.
 
+### Fixed
+
+- Official preset lists now display the embedded name from the exact validated bytes actually selected, so cache/catalog identity differences never masquerade under a static label; freshness direction is not claimed without provenance.
+- The final official catalog names/descriptions are synchronized with the device-visible identities for Slots 01–10.
+- v1.1 stable promotion derives the Mode 01 manifest SHA-256 from the exact accepted RC commit rather than a source-era hard-coded donor hash.
+
 ## 1.1.0 candidate — Windows updater lifecycle P1–P4
 
 The source version is 1.1.0 for release-candidate qualification. Public stable remains v1.0.3 until an exact RC is accepted and the fail-closed updater acceptance token is promoted in a separate reviewed change.
