@@ -46,6 +46,13 @@ jobs:
             if (-not $header.Contains($token)) { throw "Official library header regression: $token" }
           }
           foreach ($token in @(
+            'const QString selectedName = entry.value(QStringLiteral("presetName")).toString();',
+            'source == QStringLiteral("official-cache") && selectedName != expectedName',
+            'Official cached preset; sync to refresh'
+          )) {
+            if (-not $bridge.Contains($token)) { throw "Official cache/catalog truth regression: $token" }
+          }
+          foreach ($token in @(
             'api.github.com/repos/masarray/k500/contents/resources/presets?ref=main',
             'raw.githubusercontent.com',
             'validPresetBytes',
