@@ -80,6 +80,7 @@ QString expectedSetupName(const QString &version, bool perUser)
         : QStringLiteral("SonKuPik-K500-v%1-Windows-Setup.exe").arg(version);
 }
 
+// P4_RC_CANDIDATE_CHANNEL_V1 — explicit process-local QA opt-in only.
 QString candidateBaseVersion(const QString &tag)
 {
     static const QRegularExpression pattern(
