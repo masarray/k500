@@ -958,7 +958,7 @@ int selfTest()
     if (!parentDirectory(L"SonKuPik-K500.exe").empty()) return 35;
     if (applicationLaunchCommand(L"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe")
         != L"\"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe\" --post-update-foreground")
-        return 36;
+        return 58;
 
     wchar_t tempPath[MAX_PATH]{};
     if (!GetTempPathW(MAX_PATH, tempPath)) return 36;
