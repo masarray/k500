@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       rc_number:
-        description: 'Unused immutable RC sequence number (RC #1 already exists; next is 2)'
+        description: 'Unused immutable RC sequence number (check Releases; existing RC numbers cannot be reused)'
         required: true
         type: string
       publish_prerelease:
@@ -63,7 +63,7 @@ jobs:
             'User-Agent' = 'SonKuPik-K500-updater-rc'
             Accept = 'application/vnd.github+json'
           } -SkipHttpErrorCheck -ErrorAction Stop
-          if ($response.StatusCode -eq 200) { throw "RC tag $tag already exists and is immutable. Start a NEW workflow run with the next unused rc_number (for example 2); do not rerun or overwrite an existing RC." }
+          if ($response.StatusCode -eq 200) { throw "RC tag $tag already exists and is immutable. Start a NEW workflow run with an unused rc_number; do not rerun or overwrite an existing RC." }
           if ($response.StatusCode -ne 404) { throw "Could not verify unused RC tag $tag (HTTP $($response.StatusCode))." }
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
