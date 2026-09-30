@@ -104,7 +104,7 @@ jobs:
           }
           Write-Host 'Device slot fill-height + button baseline + MODE NAME read-only parity PASS'
 
-      - name: Guard Mode 01 native CONCERT HIFI V4 donor parity
+      - name: Guard current official Mode 01 preset parity
         shell: pwsh
         run: |
           $path = 'resources/presets/01_ALL_GENRE.k500'
@@ -116,24 +116,25 @@ jobs:
           if ($sum -ne 0) { throw "Mode 01 checksum regressed: additive sum is $sum" }
 
           if ($bytes[0x452] -ne 0x55 -or $bytes[0x453] -ne 0x00) {
-            throw 'Mode 01 native structural marker at 0x452/0x453 regressed'
+            throw 'Mode 01 structural marker at 0x452/0x453 regressed'
           }
 
           $nameBytes = $bytes[0x454..0x474]
           $name = [Text.Encoding]::ASCII.GetString($nameBytes).Split([char]0)[0].Trim()
-          if ($name -ne 'CONCERT HIFI V4') {
-            throw "Mode 01 native donor identity regressed: '$name'"
+          if ($name -ne 'KONSER NYANYI') {
+            throw "Mode 01 official identity regressed: '$name'"
           }
 
-          # Golden source is the user-provided native K500 preset captured from the
-          # official/native workflow. Do not reconstruct or normalize this blob.
+          # The current distributed official preset is donor-derived and listening-evolved.
+          # The exact native CONCERT HIFI V4 donor remains historical rollback/provenance
+          # evidence; this guard protects the current official library identity.
           $sha = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
-          $expected = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'
+          $expected = '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1'
           if ($sha -ne $expected) {
-            throw "Mode 01 native donor changed unexpectedly: $sha"
+            throw "Mode 01 official preset changed unexpectedly: $sha"
           }
 
-          Write-Host "Mode 01 native CONCERT HIFI V4 checksum/SHA256 PASS: $sha"
+          Write-Host "Mode 01 KONSER NYANYI checksum/SHA256 PASS: $sha"
 
       - name: Build and run existing P4.2 runtime regression
         shell: pwsh
