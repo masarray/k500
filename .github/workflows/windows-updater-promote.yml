@@ -253,6 +253,13 @@ jobs:
             "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
             $artifacts += [ordered]@{ file=$file.Name; sha256=$hash; bytes=$file.Length }
           }
+          $presetResponse = gh api "repos/$env:GITHUB_REPOSITORY/contents/resources/presets/01_ALL_GENRE.k500?ref=$acceptedCommit" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or -not $presetResponse.content) { throw 'Could not resolve Mode 01 from the accepted RC commit.' }
+          $presetBytes = [Convert]::FromBase64String(([string]$presetResponse.content -replace '\s',''))
+          $presetTemp = Join-Path $env:RUNNER_TEMP 'accepted-mode01.k500'
+          [IO.File]::WriteAllBytes($presetTemp, $presetBytes)
+          $mode01AcceptedHash = (Get-FileHash $presetTemp -Algorithm SHA256).Hash.ToLowerInvariant()
+
           $manifest = [ordered]@{
             schema = 'sonkupik-k500-release-manifest-v3'
             product = 'SonKuPik K500'
@@ -274,7 +281,7 @@ jobs:
             portableFormat = 'ZIP (non-self-extracting)'
             selfExtractingPortable = $false
             officialPresetSource = "github:masarray/k500/resources/presets@$acceptedCommit"
-            mode01NativeSha256 = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'
+            mode01NativeSha256 = $mode01AcceptedHash
             regressionSuite = @('accepted updater RC provenance','byte-identical machine installer','byte-identical per-user installer','byte-identical portable ZIP','promoted package runtime health checks')
             artifacts = $artifacts
           }
