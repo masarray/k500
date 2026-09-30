@@ -340,7 +340,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32 advapi32)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32 advapi32 user32)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing
