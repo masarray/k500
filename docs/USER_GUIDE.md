@@ -177,9 +177,9 @@ The entire selected batch is validated before the first device write. One invali
 
 ## Mode 01
 
-The stable official Mode 01 uses the exact native K500 `CONCERT HIFI V4` donor. This replaced an earlier reconstructed preset after physical hardware testing found that the old Mode 01 could leave the music path silent after Mass Upload.
+The current official Mode 01 is `KONSER NYANYI`, evolved from the exact native K500 `CONCERT HIFI V4` donor through hardware-listening iterations. It keeps the validated native-file lineage while using the newer concert/Air-Focus vocal formula.
 
-If you previously cached an older official Mode 01, use **Sync Official Presets** before uploading it.
+If you previously cached an older official Mode 01, use **Sync Official Presets** before uploading it. The sync path validates file size/checksum before replacing the last-known-good cached copy.
 
 ## If something goes wrong
 
