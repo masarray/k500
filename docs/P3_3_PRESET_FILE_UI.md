@@ -77,14 +77,16 @@ The visual ascending slot map and descending transmission order serve different 
 
 ## Official Mode 01 integrity
 
-The v1.0 official Mode 01 is the exact native `CONCERT HIFI V4` donor:
+The current official Mode 01 is `KONSER NYANYI`:
 
 ```text
 resources/presets/01_ALL_GENRE.k500
-SHA-256 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74
+SHA-256 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
 ```
 
-It replaced an earlier reconstructed file after physical hardware testing exposed a music-path failure during Mass Upload. The native donor identity is now guarded as part of the stable baseline.
+It was evolved surgically from the exact native `CONCERT HIFI V4` donor after hardware-listening iterations. The native donor still documents the pre-v1 Mass Upload recovery and remains rollback/provenance evidence; CI guards the current official distribution identity.
+
+The remaining official slots are also donor-based and retain their genre-specific Music/Mic/Sub foundations; preset Sync validates container integrity before cache promotion.
 
 ## Safety boundary
 

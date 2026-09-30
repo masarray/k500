@@ -14,15 +14,15 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 - Stable section navigation uses fixed EQ graph/model lifetimes; do not hot-swap incompatible 10/7/5-band models through one graph instance.
 - Official preset sync is validation-gated and isolated from Local user presets.
 
-The exact native Mode 01 donor is:
+The current official Mode 01 is:
 
 ```text
 resources/presets/01_ALL_GENRE.k500
-internal name: CONCERT HIFI V4
-SHA-256: 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74
+internal name: KONSER NYANYI
+SHA-256: 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
 ```
 
-Do not reconstruct, normalize, or replace Mode 01 casually. A change requires explicit evidence, a byte-diff audit, and an updated golden reference.
+It was evolved surgically from the exact native `CONCERT HIFI V4` donor. Preserve the native donor as rollback/provenance evidence; future official changes require listening evidence, a byte-diff audit, and an updated golden reference.
 
 ## Read order by task
 
@@ -139,7 +139,7 @@ The current **gold music reference** remains:
 
 ```text
 resources/presets/03_DANGDUT_SUPREME.k500
-internal/hardware name: DGT HIFI CORE V3
+internal/hardware name: KAR DANGDUT
 ```
 
 Its successful hardware-listening progression was:
@@ -158,9 +158,24 @@ Product-level rule:
 
 When the user reports that a region is already good, treat it as a **LOCK** for the next revision unless explicitly asked to revisit it.
 
-### Mode 01 exception / authority update
+### Current official preset authority
 
-Mode 01 is no longer a reconstructed Hi-Fi transplant. The repository now intentionally carries the exact native `CONCERT HIFI V4` donor that passed the physical K500 test. For Mode 01, **native donor identity wins over older modeled transplant assumptions** in historical sonic notes.
+Mode 01 is now `KONSER NYANYI`, evolved from the exact native `CONCERT HIFI V4` donor through iterative K500 listening. The native donor remains rollback/provenance authority; the current repository file is distribution authority.
+
+The finalized official library is intentionally differentiated by use case:
+
+- 01 `KONSER NYANYI` — fresh, large, forgiving concert karaoke;
+- 02 `BCAST HIFI V2` — dry/controlled broadcast utility; intentionally not Air-Focus styled;
+- 03 `KAR DANGDUT` — refreshed vocal FX over the proven Hi-Fi Core V3 Music/Sub foundation;
+- 04 `POP ROCK BALLAD` — pop/slow-rock with casual-user ambience plus stronger singer control;
+- 05 `POP KENANGAN V2` — warm romantic 70s/80s slow-pop;
+- 06 `SHOLAWAT SYAHDU` — fresh, soft, slow-tempo sholawat ambience;
+- 07 `JAZZ LOUNGE` — intimate/classy lounge vocal with restrained echo;
+- 08 `BLUES CLUB` — warm vintage blues with a single slap-style repeat;
+- 09 `ACOUSTIC NATURAL` — natural/organic vocal with unobtrusive ambience;
+- 10 `REGGAE DUB` — bass/groove-led preset with intentional rhythmic echo.
+
+Do not homogenize the library by transplanting one mode's full EQ/FX architecture into another. Preserve each donor's genre-specific Music/Mic/Sub foundation unless hardware evidence justifies a targeted change.
 
 ## Signal-flow model
 
