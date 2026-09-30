@@ -216,6 +216,11 @@ jobs:
           if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
           $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Machine installer failed: $($install.ExitCode)" }
+          $machineReg = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $machineQuery = (& reg.exe QUERY $machineReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $machineQuery -notmatch [regex]::Escape($installDir)) {
+            throw "Machine installer registration is missing or points elsewhere: $machineQuery"
+          }
           $app = Join-Path $installDir 'SonKuPik-K500.exe'
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=machine')) {
             $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
@@ -236,6 +241,11 @@ jobs:
           if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
           $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Per-user installer failed: $($install.ExitCode)" }
+          $userReg = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $userQuery = (& reg.exe QUERY $userReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $userQuery -notmatch [regex]::Escape($installDir)) {
+            throw "Per-user installer registration is missing or points elsewhere: $userQuery"
+          }
           $app = Join-Path $installDir 'SonKuPik-K500.exe'
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
             $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
