@@ -23,7 +23,7 @@ struct BuiltInPresetDefinition {
 
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     {"KONSER NYANYI",     "Fresh, large and forgiving concert karaoke",       "01_ALL_GENRE.k500",       ":/presets/01_ALL_GENRE.k500"},
-    {"BCAST HIFI V2",     "Dry and controlled broadcast utility",             "02_BROADCAST.k500",       ":/presets/02_BROADCAST.k500"},
+    {"MC HOST RADIO",     "Dry and controlled broadcast utility",             "02_BROADCAST.k500",       ":/presets/02_BROADCAST.k500"},
     {"KAR DANGDUT",       "Dangdut vocal FX with Hi-Fi Core V3 music",        "03_DANGDUT_SUPREME.k500", ":/presets/03_DANGDUT_SUPREME.k500"},
     {"POP ROCK BALLAD",   "Pop/slow-rock ambience with singer control",       "04_ROCK.k500",            ":/presets/04_ROCK.k500"},
     {"POP KENANGAN V2",   "Warm romantic 70s/80s slow-pop",                   "05_POP_KENANGAN.k500",    ":/presets/05_POP_KENANGAN.k500"},
