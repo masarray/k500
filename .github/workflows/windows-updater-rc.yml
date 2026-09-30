@@ -1,4 +1,5 @@
 name: Windows Updater Release Candidate
+run-name: Updater RC v1.1.0-rc.${{ inputs.rc_number }}
 
 # Manual-only P4 candidate publisher. A green candidate does not promote stable;
 # stable v1.1+ remains blocked by docs/V1_1_UPDATER_RC_ACCEPTANCE.md.
@@ -6,9 +7,8 @@ on:
   workflow_dispatch:
     inputs:
       rc_number:
-        description: 'Immutable RC sequence number (for example: 1)'
+        description: 'Unused immutable RC sequence number (check Releases; existing RC numbers cannot be reused)'
         required: true
-        default: '1'
         type: string
       publish_prerelease:
         description: 'Publish the candidate as a GitHub prerelease after qualification'
@@ -63,7 +63,7 @@ jobs:
             'User-Agent' = 'SonKuPik-K500-updater-rc'
             Accept = 'application/vnd.github+json'
           } -SkipHttpErrorCheck -ErrorAction Stop
-          if ($response.StatusCode -eq 200) { throw "RC tag $tag already exists; RC tags are immutable." }
+          if ($response.StatusCode -eq 200) { throw "RC tag $tag already exists and is immutable. Start a NEW workflow run with an unused rc_number; do not rerun or overwrite an existing RC." }
           if ($response.StatusCode -ne 404) { throw "Could not verify unused RC tag $tag (HTTP $($response.StatusCode))." }
           "version=$version" >> $env:GITHUB_OUTPUT
           "tag=$tag" >> $env:GITHUB_OUTPUT
