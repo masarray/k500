@@ -1,6 +1,6 @@
 # v1.1 Updater Release-Candidate Acceptance
 
-> Public stable remains **v1.0.3** while this qualification is pending.
+> Public stable remains **v1.0.3** while release-provenance qualification is pending. The auto-managed/self-update lifecycle itself has completed follow-up desktop testing successfully after PR #96.
 
 UPDATER_V1_1_ACCEPTANCE=pending
 UPDATER_V1_1_ACCEPTED_TAG=
@@ -10,6 +10,12 @@ UPDATER_V1_1_USER_SHA256=
 UPDATER_V1_1_PORTABLE_SHA256=
 
 This record is the fail-closed publication gate for the P1–P4 Windows updater lifecycle. It covers desktop installation/update behavior only; it does not broaden the existing Windows x64 + USB HID K500 hardware support claim.
+
+## Functional desktop status
+
+Follow-up operator testing after PR #96 confirms the auto-managed/self-update lifecycle is functionally working, including the no-admin per-user update path and post-update relaunch visibility. This closes the updater-runtime/UX acceptance concern.
+
+The machine-readable acceptance token intentionally remains `pending` until one immutable accepted RC tag, its exact source commit, and SHA-256 values for the machine installer, per-user installer, and portable ZIP are recorded below. That remaining work is release provenance/promotion bookkeeping, not an unresolved updater-runtime defect.
 
 ## Why RC testing is staged
 
