@@ -108,6 +108,8 @@ Rules:
 - remote official files must validate before cache promotion;
 - failed/invalid sync must preserve last-known-good official cache;
 - official sync must never overwrite Local user files;
+- visible official preset identity must come from the exact valid bytes actually selected (cache or bundled), never merely from a static catalog label;
+- a checksum-valid cache/catalog identity mismatch must surface the exact embedded name from the selected bytes; do not label either side stale or promise refresh unless provenance proves that direction;
 - transfer list remains max 10 device slots;
 - UI mapping is ascending Slot 01…10 while hardware execution is descending.
 
