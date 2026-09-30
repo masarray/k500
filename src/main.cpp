@@ -9,6 +9,13 @@
 #include <QQuickStyle>
 #include <QStringList>
 #include <QTimer>
+#include <QWindow>
+
+#ifdef Q_OS_WIN
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#endif
 
 #include "AppUpdateManager.h"
 #include "StudioEngine.h"
@@ -96,6 +103,8 @@ void putLiveEqBand(QByteArray &memory, int sectionOffset, int index,
 int main(int argc, char *argv[])
 {
     QGuiApplication app(argc, argv);
+    const bool postUpdateForeground =
+        app.arguments().contains(QStringLiteral("--post-update-foreground"));
     app.setApplicationName(QStringLiteral("SonKuPik K500"));
     app.setOrganizationName(QStringLiteral("MasArray"));
     app.setWindowIcon(QIcon(QStringLiteral(":/assets/SonKuPik-k500-logo.png")));
@@ -535,6 +544,39 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
     engine.loadFromModule(QStringLiteral("SonkupikStudio"), QStringLiteral("Main"));
+
+    // UPDATE_RELAUNCH_FOREGROUND_V1 — updater-triggered launches should be
+    // noticeable without making K500 an always-on-top window. Request focus
+    // once after the real QML window exists; if Windows declines foreground
+    // activation because the user changed apps, flash the taskbar instead.
+    if (postUpdateForeground && !engine.rootObjects().isEmpty()) {
+        QTimer::singleShot(180, &app, [&engine] {
+            auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+            if (!window)
+                return;
+
+            window->show();
+            window->raise();
+            window->requestActivate();
+
+#ifdef Q_OS_WIN
+            const HWND hwnd = reinterpret_cast<HWND>(window->winId());
+            if (!hwnd)
+                return;
+
+            ShowWindow(hwnd, SW_RESTORE);
+            if (!SetForegroundWindow(hwnd)) {
+                FLASHWINFO flash{};
+                flash.cbSize = sizeof(flash);
+                flash.hwnd = hwnd;
+                flash.dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG;
+                flash.uCount = 3;
+                flash.dwTimeout = 0;
+                FlashWindowEx(&flash);
+            }
+#endif
+        });
+    }
 
     // CRASH_SAFE_SECTION_SELF_TEST_V1
     // Existing --engine-self-test now also loads the real QML and repeatedly
