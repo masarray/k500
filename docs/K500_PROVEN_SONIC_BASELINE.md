@@ -24,7 +24,7 @@ The current hardware-approved **music tuning reference** remains:
 
 ```text
 resources/presets/03_DANGDUT_SUPREME.k500
-internal/hardware name: DGT HIFI CORE V3
+internal/hardware name: KAR DANGDUT
 ```
 
 The successful real-hardware progression was:
@@ -35,7 +35,7 @@ Core V2: small mid refinement -> mid became enjoyable
 Core V3: small very-bottom extension -> overall result became enjoyable
 ```
 
-Therefore Mode 03 Hi-Fi Core V3 remains the **GOLD MUSIC REFERENCE**. Do not casually rebuild its successful bass/mid architecture from a generic karaoke curve.
+The underlying Mode 03 Hi-Fi Core V3 music/sub architecture remains the **GOLD MUSIC REFERENCE** inside the current official `KAR DANGDUT` file. Do not casually rebuild its successful bass/mid architecture from a generic karaoke curve.
 
 ## 3. Proven Mode 03 tonal core
 
@@ -126,31 +126,33 @@ Effective route amplitude ~= route * 10^(output_dB / 20)
 
 This is a routing proxy, not an exact acoustic/DSP model.
 
-## 7. Critical Mode 01 authority update — v1.0
+## 7. Current Mode 01 authority
 
-Historical research documents treated Mode 01 as a modeled Hi-Fi transplant derived toward Mode 03. **That assumption is now superseded.**
-
-The authoritative v1.0 Mode 01 is the exact native preset that passed physical K500 testing:
+The exact native `CONCERT HIFI V4` donor remains the critical rollback/provenance reference that fixed the pre-v1 Mass Upload failure class. The current official distribution preset has evolved from that donor through controlled, donor-based edits and K500 listening:
 
 ```text
 resources/presets/01_ALL_GENRE.k500
-internal name: CONCERT HIFI V4
-SHA-256: 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74
+internal name: KONSER NYANYI
+SHA-256: 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
 ```
 
-The reconstructed predecessor was structurally/checksum valid but was not byte-identical to the native donor and could leave music silent after Mass Upload. Therefore:
+Current Mode 01 target: fresh/polished concert vocal, long but controllable ambience, and strong direct pitch cue for ordinary karaoke users.
 
-> **For Mode 01, exact native donor identity overrides older modeled transplant targets.**
+The native donor must not be forgotten or reconstructed. Future experiments should normally branch from the current official file, while rollback investigations may explicitly return to the archived native hash recorded in the v1.0 history.
 
-Do not reapply historical Mode 01 route/EQ targets onto the native file merely to make it numerically resemble Mode 03.
+## 8. Current official refreshed modes
 
-Any future Mode 01 sonic experiment must branch from the exact native donor and preserve a clear rollback path to that hash.
+| Slot | Repository file | Internal name | SHA-256 | Current identity |
+|---:|---|---|---|---|
+| 01 | `01_ALL_GENRE.k500` | `KONSER NYANYI` | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` | concert / Air-Focus universal karaoke |
+| 03 | `03_DANGDUT_SUPREME.k500` | `KAR DANGDUT` | `3c446e94ddf0db32490d69a182fdc675f0a289c7d9e6cc54512dc91cb4673e85` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub foundation |
+| 04 | `04_ROCK.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | finalized pop-rock / slow-rock Indo-Malaysia |
+| 05 | `05_POP_KENANGAN.k500` | `POP KENANGAN V2` | `80b793878642b97b401674c01def771ee2390bd7032f1b66a0d12d84ff41c3b8` | warm romantic 70s/80s nostalgia / slow tempo |
+| 06 | `06_QORI_SHOLAWAT.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | soft, fresh, slow-tempo sholawat |
 
-## 8. Other modes
+Slots 02 and 07–10 remain on their prior repository donor bytes.
 
-Modes 02–10 should be treated from their current repository donor bytes, not reconstructed from tables in historical notes. During the pre-v1 native audit, Modes 02–10 matched the supplied native K500 donor files byte-for-byte; preserve that provenance unless a deliberate new preset revision is being engineered.
-
-Mode 03 remains the gold **music listening reference**, but it is not permission to normalize every other preset into Mode 03.
+Mode 03 remains the gold **music listening reference** because its proven Music/Sub core was intentionally retained. The refreshed vocal/FX identities do not grant permission to normalize the remaining modes into one generic curve.
 
 ## 9. Locking policy
 
