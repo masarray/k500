@@ -212,12 +212,20 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
 
         QVariantMap entry = describePreset(
             bytes,
-            QString::fromLatin1(definition.displayName),
+            QString(),
             fileName,
             path,
             source,
             index++);
-        entry.insert(QStringLiteral("description"), QString::fromLatin1(definition.description));
+        const QString expectedName = QString::fromLatin1(definition.displayName);
+        const QString selectedName = entry.value(QStringLiteral("presetName")).toString();
+        const bool cacheIdentityDiffers =
+            source == QStringLiteral("official-cache") && selectedName != expectedName;
+        entry.insert(
+            QStringLiteral("description"),
+            cacheIdentityDiffers
+                ? QStringLiteral("Official cached preset; sync to refresh")
+                : QString::fromLatin1(definition.description));
         entry.insert(QStringLiteral("originLabel"), QStringLiteral("SONKUPIK"));
         next.append(entry);
     }
