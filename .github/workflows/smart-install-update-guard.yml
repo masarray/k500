@@ -61,6 +61,15 @@ jobs:
           grep -F '/AUToupdate=1' packaging/windows/update_helper.cpp
           grep -F '/HELPERUPDATE=1' packaging/windows/update_helper.cpp
           grep -F '/MIGRATEFROMMACHINE=1' packaging/windows/update_helper.cpp
+          # Post-update relaunch requests foreground once; never mark K500 TOPMOST.
+          grep -F -- '--post-update-foreground' packaging/windows/update_helper.cpp
+          grep -F 'UPDATE_RELAUNCH_FOREGROUND_V1' src/main.cpp
+          grep -F 'SetForegroundWindow' src/main.cpp
+          grep -F 'FlashWindowEx' src/main.cpp
+          if grep -Fq 'HWND_TOPMOST' src/main.cpp packaging/windows/update_helper.cpp; then
+            echo 'Updater relaunch must not make K500 always-on-top.'
+            exit 1
+          fi
           grep -F 'P3_EXPLICIT_SCOPE_MIGRATION_V1' packaging/windows/installer.iss
           # Retry after a failed no-admin migration must preserve the user's
           # explicit per-user path instead of silently selecting machine-wide Setup.
