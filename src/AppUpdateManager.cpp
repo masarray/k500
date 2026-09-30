@@ -29,9 +29,39 @@ const QUrl LatestReleaseUrl(QStringLiteral(
     "https://api.github.com/repos/masarray/k500/releases/latest"));
 constexpr qint64 AutomaticCheckIntervalSecs = 6 * 60 * 60;
 constexpr qint64 MinimumInstallerBytes = 1024 * 1024;
-const QString InnoUninstallKey = QStringLiteral(
-    "/Software/Microsoft/Windows/CurrentVersion/Uninstall/"
-    "{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1");
+#ifdef Q_OS_WIN
+constexpr wchar_t InnoUninstallKeyNative[] =
+    L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\"
+    L"{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1";
+
+QString readInnoRegisteredPath(HKEY root)
+{
+    HKEY key = nullptr;
+    // Inno runs the x64-compatible package in 64-bit install mode. Be explicit
+    // for HKLM so registry redirection can never make a real machine install
+    // appear "unknown" to the 64-bit application.
+    const REGSAM view = root == HKEY_LOCAL_MACHINE ? KEY_WOW64_64KEY : 0;
+    if (RegOpenKeyExW(root, InnoUninstallKeyNative, 0,
+                      KEY_QUERY_VALUE | view, &key) != ERROR_SUCCESS)
+        return {};
+
+    wchar_t buffer[32768]{};
+    DWORD type = REG_NONE;
+    DWORD bytes = sizeof(buffer);
+    const LONG result = RegQueryValueExW(
+        key, L"Inno Setup: App Path", nullptr, &type,
+        reinterpret_cast<LPBYTE>(buffer), &bytes);
+    RegCloseKey(key);
+
+    if (result != ERROR_SUCCESS || (type != REG_SZ && type != REG_EXPAND_SZ)
+        || bytes < sizeof(wchar_t))
+        return {};
+
+    buffer[(sizeof(buffer) / sizeof(buffer[0])) - 1] = L'\0';
+    const QString raw = QString::fromWCharArray(buffer).trimmed();
+    return raw.isEmpty() ? QString() : QDir::cleanPath(raw);
+}
+#endif
 
 QByteArray normalizedTagVersion(const QString &tag)
 {
@@ -143,15 +173,10 @@ AppUpdateManager::AppUpdateManager(QObject *parent)
 QString AppUpdateManager::registeredInstallPath(InstallScope scope) const
 {
 #ifdef Q_OS_WIN
-    const QString root = scope == InstallScope::User
-        ? QStringLiteral("HKEY_CURRENT_USER")
-        : scope == InstallScope::Machine
-            ? QStringLiteral("HKEY_LOCAL_MACHINE") : QString();
-    if (root.isEmpty())
-        return {};
-    QSettings settings(root + InnoUninstallKey, QSettings::NativeFormat);
-    const QString raw = settings.value(QStringLiteral("Inno Setup: App Path")).toString().trimmed();
-    return raw.isEmpty() ? QString() : QDir::cleanPath(raw);
+    const HKEY root = scope == InstallScope::User
+        ? HKEY_CURRENT_USER
+        : scope == InstallScope::Machine ? HKEY_LOCAL_MACHINE : nullptr;
+    return root ? readInnoRegisteredPath(root) : QString();
 #else
     Q_UNUSED(scope);
     return {};

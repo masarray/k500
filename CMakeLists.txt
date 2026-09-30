@@ -225,7 +225,7 @@ add_executable(k500_update_selftest
 target_include_directories(k500_update_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 target_link_libraries(k500_update_selftest PRIVATE Qt6::Core Qt6::Network Qt6::Qml)
 if(WIN32)
-    target_link_libraries(k500_update_selftest PRIVATE shell32)
+    target_link_libraries(k500_update_selftest PRIVATE shell32 advapi32)
 endif()
 add_custom_command(TARGET k500_update_selftest POST_BUILD
     COMMAND $<TARGET_FILE:k500_update_selftest>
@@ -340,7 +340,7 @@ target_link_libraries(sonkupik_studio_native
 )
 
 if(WIN32)
-    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32)
+    target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32 advapi32)
 endif()
 
 # Keep the internal executable name stable for regression harnesses; user-facing
