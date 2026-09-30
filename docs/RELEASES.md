@@ -70,7 +70,7 @@ The installer is standard Inno Setup. The portable package is an ordinary ZIP. S
 - signing status;
 - packaging technology;
 - Official Preset source;
-- native Mode 01 golden SHA;
+- current official Mode 01 preset SHA (stored in the legacy-compatible `mode01NativeSha256` manifest field);
 - artifact hashes;
 - regression-suite summary.
 
