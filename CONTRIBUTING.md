@@ -47,11 +47,11 @@ A pull request changing an official preset should include:
 - changed-byte audit;
 - hardware listening/behavior evidence when the change is claimed as hardware-approved.
 
-Mode 01 is currently pinned to the exact native `CONCERT HIFI V4` donor with SHA-256:
+Mode 01 is currently pinned to the official `KONSER NYANYI` file with SHA-256:
 
-`9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`
+`4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
 
-Do not reconstruct or normalize that file without new evidence and an explicit review.
+It was evolved surgically from the exact native `CONCERT HIFI V4` donor. Preserve that donor as rollback/provenance evidence; do not reconstruct or normalize either lineage without new evidence and an explicit review.
 
 ## Pull requests
 
