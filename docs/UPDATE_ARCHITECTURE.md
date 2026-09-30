@@ -97,18 +97,28 @@ The per-user installer accepts an existing HKLM registration only with the
 combined internal `/MIGRATEFROMMACHINE=1 /HELPERUPDATE=1 /AUToupdate=1`
 handoff. A direct per-user install still refuses an existing machine install.
 
+## P4: v1.1.0 release-candidate qualification
+
+P1-P3 are merged on `main` with exact-head Windows qualification. The source version is now `1.1.0`, but **public stable remains v1.0.3** until an exact release candidate is separately accepted.
+
+P4 owns the release boundary rather than weakening the stable channel:
+
+- publish only immutable manual `v1.1.0-rc.N` GitHub prereleases built from one exact `main` commit;
+- keep normal application launches on `/releases/latest`; public v1.0.3 therefore never sees prereleases;
+- an installed v1.1 candidate may be launched explicitly with `--update-candidate=v1.1.0-rc.N`. This process-local QA channel fetches only that tag, requires a prerelease + `updater-rc` manifest, and does not write candidate skip/throttle state into stable QSettings;
+- public v1.0.3 → RC compatibility is tested by manually applying the exact RC machine installer over a real v1.0.3 machine install, then using the candidate channel for same-version migration/re-apply tests;
+- acceptance records the immutable RC tag, exact source commit, and SHA-256 of machine installer, per-user installer, and portable ZIP;
+- v1.1 stable promotion **does not rebuild**. It downloads those accepted prerelease assets, resolves the tag back to the accepted commit, verifies RC manifest + three hashes, revalidates package health/scope, and republishes the same bytes under stable filenames with a stable v3 manifest;
+- the legacy `windows-stable-release.yml` builder is fail-closed for v1.1+; `windows-updater-promote.yml` is the only v1.1 stable path;
+- never overwrite public v1.0.3, an RC tag, or a stable tag.
+
 ## Deliberate scope boundaries and remaining work
 
-- **P1/P2:** merged with exact-head Windows qualification. Public v1.0.3 is
-  intentionally unchanged; merge does not equal a published release.
-- **P3:** exact-head CI must pass the real helper update, destructive rollback,
-  explicit migration, registration-repair, and persistence fixtures before
-  merge. A public next version still needs a separately accepted release build.
-- **Portable:** remains intentionally independent. It is never silently changed
-  into an installed copy; a future portable-update workflow must be explicit.
-- **Release management:** bump CMake version before publishing; do not overwrite
-  existing public stable v1.0.3 from development builds or bypass hardware
-  acceptance gates.
+- **P1/P2/P3:** merged and source-qualified; merge does not equal a published release.
+- **P4:** release-candidate packaging and desktop acceptance are required before v1.1.0 stable promotion.
+- **Portable:** remains intentionally independent. It is never silently changed into an installed copy; a future portable-update workflow must be explicit.
+- **Device support:** updater work does not broaden the existing Windows x64 + USB HID hardware-qualified scope or Bluetooth qualification.
+- **Release management:** stable v1.1+ publication must refuse `pending` or incomplete RC provenance, must promote byte-identical accepted artifacts, and must never overwrite an existing tag.
 
 Official Windows binaries remain unsigned open-source releases. SHA-256 plus
 release metadata detect inconsistent downloads but do not alone authenticate

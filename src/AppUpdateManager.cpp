@@ -12,6 +12,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QSaveFile>
 #include <QSettings>
 #include <QStandardPaths>
@@ -78,6 +79,34 @@ QString expectedSetupName(const QString &version, bool perUser)
         ? QStringLiteral("SonKuPik-K500-v%1-Windows-Setup-PerUser.exe").arg(version)
         : QStringLiteral("SonKuPik-K500-v%1-Windows-Setup.exe").arg(version);
 }
+
+// P4_RC_CANDIDATE_CHANNEL_V1 — explicit process-local QA opt-in only.
+QString candidateBaseVersion(const QString &tag)
+{
+    static const QRegularExpression pattern(
+        QStringLiteral("^v([0-9]+\\.[0-9]+\\.[0-9]+)-rc\\.([1-9][0-9]*)$"));
+    const QRegularExpressionMatch match = pattern.match(tag.trimmed());
+    return match.hasMatch() ? match.captured(1) : QString();
+}
+
+QString candidateTagFromArguments()
+{
+    const QString prefix = QStringLiteral("--update-candidate=");
+    for (const QString &argument : QCoreApplication::arguments()) {
+        if (!argument.startsWith(prefix))
+            continue;
+        const QString tag = argument.mid(prefix.size()).trimmed();
+        return candidateBaseVersion(tag).isEmpty() ? QString() : tag;
+    }
+    return {};
+}
+
+QString candidateSetupName(const QString &tag, bool perUser)
+{
+    return perUser
+        ? QStringLiteral("SonKuPik-K500-%1-Windows-Setup-PerUser.exe").arg(tag)
+        : QStringLiteral("SonKuPik-K500-%1-Windows-Setup.exe").arg(tag);
+}
 // Quote one Windows command-line argument using backslash/quote escaping.
 // Parameters are passed as one string to ShellExecuteExW.
 QString quoteWindowsArgument(const QString &value)
@@ -105,7 +134,9 @@ QString quoteWindowsArgument(const QString &value)
 }
 
 AppUpdateManager::AppUpdateManager(QObject *parent)
-    : QObject(parent), m_network(new QNetworkAccessManager(this))
+    : QObject(parent),
+      m_network(new QNetworkAccessManager(this)),
+      m_candidateTag(candidateTagFromArguments())
 {
 }
 
@@ -309,6 +340,17 @@ QString AppUpdateManager::partialInstallerPath() const
     return installerPath() + QStringLiteral(".part");
 }
 
+QUrl AppUpdateManager::releaseDiscoveryUrl() const
+{
+    if (m_candidateTag.isEmpty())
+        return LatestReleaseUrl;
+
+    // Candidate tags are accepted only after strict local syntax validation.
+    // This keeps the opt-in QA channel on the fixed GitHub repository/API host.
+    return QUrl(QStringLiteral(
+        "https://api.github.com/repos/masarray/k500/releases/tags/%1").arg(m_candidateTag));
+}
+
 QNetworkReply *AppUpdateManager::get(const QUrl &url, qint64 rangeStart)
 {
     QNetworkRequest request(url);
@@ -339,7 +381,7 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
     // SMART_UPDATE_THROTTLE_V1 — automatic discovery is deliberately quiet and
     // bounded. Manual checks always bypass the throttle; failed checks are not
     // cached, so a transient outage can recover on the next launch.
-    if (!userInitiated) {
+    if (!userInitiated && m_candidateTag.isEmpty()) {
         const QDateTime lastCheck = QSettings().value(
             QStringLiteral("updates/lastSuccessfulCheckUtc")).toDateTime();
         if (lastCheck.isValid()
@@ -353,7 +395,7 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
     resetReleaseMetadata();
     setState(QStringLiteral("checking"), QStringLiteral("Checking for updates…"));
 
-    QNetworkReply *reply = get(LatestReleaseUrl);
+    QNetworkReply *reply = get(releaseDiscoveryUrl());
     connect(reply, &QNetworkReply::finished, this, [this, reply, userInitiated] {
         const QByteArray payload = reply->readAll();
         const auto error = reply->error();
@@ -370,8 +412,10 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
             return;
         }
 
-        QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc"),
-                             QDateTime::currentDateTimeUtc());
+        if (m_candidateTag.isEmpty()) {
+            QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc"),
+                                 QDateTime::currentDateTimeUtc());
+        }
         handleLatestRelease(payload, userInitiated);
     });
 }
@@ -388,14 +432,23 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
     }
 
     const QJsonObject release = document.object();
+    const bool candidateMode = !m_candidateTag.isEmpty();
+    const bool prerelease = release.value(QStringLiteral("prerelease")).toBool();
+    const QString releaseTag = release.value(QStringLiteral("tag_name")).toString().trimmed();
     if (release.value(QStringLiteral("draft")).toBool()
-        || release.value(QStringLiteral("prerelease")).toBool()) {
-        setState(QStringLiteral("idle"));
+        || (!candidateMode && prerelease)
+        || (candidateMode && (!prerelease || releaseTag != m_candidateTag))) {
+        setState(candidateMode && userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
+                 candidateMode && userInitiated ? QStringLiteral("Candidate release mismatch") : QString(),
+                 candidateMode && userInitiated
+                     ? QStringLiteral("The requested updater RC tag is unavailable or is not a prerelease.")
+                     : QString());
         return;
     }
 
-    const QString version = QString::fromLatin1(
-        normalizedTagVersion(release.value(QStringLiteral("tag_name")).toString()));
+    const QString version = candidateMode
+        ? candidateBaseVersion(releaseTag)
+        : QString::fromLatin1(normalizedTagVersion(releaseTag));
     const QVersionNumber latest = QVersionNumber::fromString(version);
     const QVersionNumber current = QVersionNumber::fromString(currentVersion());
     if (latest.isNull() || current.isNull()) {
@@ -404,8 +457,12 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
-    const QString machineName = expectedSetupName(version, false);
-    const QString userName = expectedSetupName(version, true);
+    const QString machineName = candidateMode
+        ? candidateSetupName(m_candidateTag, false)
+        : expectedSetupName(version, false);
+    const QString userName = candidateMode
+        ? candidateSetupName(m_candidateTag, true)
+        : expectedSetupName(version, true);
     QUrl manifestUrl;
     QUrl sumsUrl;
     const QJsonArray assets = release.value(QStringLiteral("assets")).toArray();
@@ -424,7 +481,9 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
             m_userSetupAssetName = name;
             m_userSetupAssetUrl = url;
             m_userSetupBytes = bytes;
-        } else if (name == QStringLiteral("release-manifest.json")) {
+        } else if (name == (candidateMode
+                               ? QStringLiteral("updater-rc-manifest.json")
+                               : QStringLiteral("release-manifest.json"))) {
             manifestUrl = url;
         } else if (name == QStringLiteral("SHA256SUMS.txt")) {
             sumsUrl = url;
@@ -445,7 +504,7 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         && QVersionNumber::compare(latest, current) >= 0;
 
     const int comparison = QVersionNumber::compare(latest, current);
-    if (comparison <= 0) {
+    if (comparison < 0 || (comparison == 0 && !candidateMode)) {
         emit updateChanged();
         if (m_migrationAvailable) {
             // The offer may appear after discovery, but migration itself never
@@ -459,16 +518,31 @@ void AppUpdateManager::handleLatestRelease(const QByteArray &payload, bool userI
         return;
     }
 
+    if (comparison == 0 && candidateMode && m_migrationAvailable) {
+        // RC qualification deliberately supports same-version machine -> user
+        // migration. The process-local candidate tag identifies the exact bytes.
+        emit updateChanged();
+        setState(QStringLiteral("migration-available"),
+                 QStringLiteral("Move this updater candidate to a no-admin per-user installation"));
+        return;
+    }
+
     selectPackageForScope(m_installScope);
     if (m_setupAssetName.isEmpty() || m_setupAssetUrl.isEmpty()
         || m_releaseSetupBytes < MinimumInstallerBytes || !commonMetadataReady) {
         setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
-                 userInitiated ? QStringLiteral("Stable update package is incomplete") : QString(),
+                 userInitiated
+                     ? (candidateMode
+                            ? QStringLiteral("Updater candidate package is incomplete")
+                            : QStringLiteral("Stable update package is incomplete"))
+                     : QString(),
                  userInitiated ? QStringLiteral("Required scope-matched setup/manifest/checksum assets were not found.") : QString());
         return;
     }
 
-    const QString skipped = QSettings().value(QStringLiteral("updates/skippedVersion")).toString();
+    const QString skipped = m_candidateTag.isEmpty()
+        ? QSettings().value(QStringLiteral("updates/skippedVersion")).toString()
+        : QString();
     if (!userInitiated && skipped == version) {
         setState(QStringLiteral("idle"));
         return;
@@ -492,9 +566,10 @@ void AppUpdateManager::remindLater()
         return;
     }
 
-    // REMIND_NEXT_LAUNCH_V1 — for a real newer version, clear the throttle so
-    // the next application launch can offer the update again.
-    QSettings().remove(QStringLiteral("updates/lastSuccessfulCheckUtc"));
+    // REMIND_NEXT_LAUNCH_V1 — candidate QA must never mutate the stable update
+    // throttle. Normal stable updates clear it so the next launch can re-offer.
+    if (m_candidateTag.isEmpty())
+        QSettings().remove(QStringLiteral("updates/lastSuccessfulCheckUtc"));
     setState(QStringLiteral("available"),
              QStringLiteral("Update postponed until the next launch"));
 }
@@ -526,7 +601,8 @@ void AppUpdateManager::skipThisVersion()
 {
     if (m_latestVersion.isEmpty() || busy())
         return;
-    QSettings().setValue(QStringLiteral("updates/skippedVersion"), m_latestVersion);
+    if (m_candidateTag.isEmpty())
+        QSettings().setValue(QStringLiteral("updates/skippedVersion"), m_latestVersion);
     m_updateAvailable = false;
     emit updateChanged();
     setState(QStringLiteral("idle"));
@@ -537,8 +613,11 @@ QString AppUpdateManager::updateDirectory() const
     QString base = QStandardPaths::writableLocation(QStandardPaths::AppLocalDataLocation);
     if (base.isEmpty())
         base = QDir::tempPath() + QStringLiteral("/SonKuPik-K500");
-    const QString versionDir = m_latestVersion.isEmpty()
-        ? QStringLiteral("pending") : QStringLiteral("v%1").arg(m_latestVersion);
+    const QString versionDir = !m_candidateTag.isEmpty()
+        ? QStringLiteral("candidate-%1").arg(m_candidateTag)
+        : (m_latestVersion.isEmpty()
+               ? QStringLiteral("pending")
+               : QStringLiteral("v%1").arg(m_latestVersion));
     const QString path = QDir(base).filePath(QStringLiteral("updates/%1").arg(versionDir));
     QDir().mkpath(path);
     return QDir::cleanPath(path);
@@ -743,20 +822,32 @@ bool AppUpdateManager::validateManifest(const QByteArray &payload)
     }
 
     const QJsonObject manifest = document.object();
-    if (manifest.value(QStringLiteral("schema")).toString()
-            != QStringLiteral("sonkupik-k500-release-manifest-v3")
-        || manifest.value(QStringLiteral("product")).toString() != QStringLiteral("SonKuPik K500")
-        || manifest.value(QStringLiteral("channel")).toString() != QStringLiteral("stable")
-        || manifest.value(QStringLiteral("version")).toString() != m_latestVersion
-        || !manifest.value(QStringLiteral("stableReleaseEligible")).toBool()
-        || manifest.value(QStringLiteral("target")).toString() != QStringLiteral("windows-x64")
-        || manifest.value(QStringLiteral("installerTechnology")).toString() != QStringLiteral("Inno Setup 6")) {
-        m_errorText = QStringLiteral("Release manifest does not match this stable Windows update.");
+    const bool candidateMode = !m_candidateTag.isEmpty();
+    const bool commonMetadata =
+        manifest.value(QStringLiteral("product")).toString() == QStringLiteral("SonKuPik K500")
+        && manifest.value(QStringLiteral("version")).toString() == m_latestVersion
+        && manifest.value(QStringLiteral("target")).toString() == QStringLiteral("windows-x64")
+        && manifest.value(QStringLiteral("installerTechnology")).toString() == QStringLiteral("Inno Setup 6");
+    const bool channelMetadata = candidateMode
+        ? manifest.value(QStringLiteral("schema")).toString()
+                == QStringLiteral("sonkupik-k500-updater-rc-v1")
+            && manifest.value(QStringLiteral("channel")).toString() == QStringLiteral("updater-rc")
+            && manifest.value(QStringLiteral("releaseTag")).toString() == m_candidateTag
+            && !manifest.value(QStringLiteral("stableReleaseEligible")).toBool()
+        : manifest.value(QStringLiteral("schema")).toString()
+                == QStringLiteral("sonkupik-k500-release-manifest-v3")
+            && manifest.value(QStringLiteral("channel")).toString() == QStringLiteral("stable")
+            && manifest.value(QStringLiteral("stableReleaseEligible")).toBool();
+    if (!commonMetadata || !channelMetadata) {
+        m_errorText = candidateMode
+            ? QStringLiteral("Candidate manifest does not match the requested updater RC.")
+            : QStringLiteral("Release manifest does not match this stable Windows update.");
         return false;
     }
 
-    const QString requiredName = expectedSetupName(
-        m_latestVersion, m_targetScope == InstallScope::User);
+    const QString requiredName = candidateMode
+        ? candidateSetupName(m_candidateTag, m_targetScope == InstallScope::User)
+        : expectedSetupName(m_latestVersion, m_targetScope == InstallScope::User);
     if (m_setupAssetName != requiredName) {
         m_errorText = QStringLiteral("Setup filename does not match the requested application version.");
         return false;

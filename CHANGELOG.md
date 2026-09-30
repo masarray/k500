@@ -2,9 +2,9 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
-## Unreleased — Windows updater lifecycle P1–P3
+## 1.1.0 candidate — Windows updater lifecycle P1–P4
 
-These changes are implemented in source and remain pre-release until a separately accepted tagged build is published.
+The source version is 1.1.0 for release-candidate qualification. Public stable remains v1.0.3 until an exact RC is accepted and the fail-closed updater acceptance token is promoted in a separate reviewed change.
 
 ### Added
 
@@ -15,6 +15,10 @@ These changes are implemented in source and remain pre-release until a separatel
 - Resumable `.part` downloads with strict HTTP Range/Content-Range validation, final byte-size checks, and SHA-256 verification.
 - Explicit stale uninstall-registration repair that refuses to remove registrations while their application or uninstaller still exists.
 - Windows qualification fixtures for per-user update, destructive installer rollback, failed-health rollback, machine-to-user migration, and persistence of user presets/QSettings/cache.
+- Manual-only `v1.1.0-rc.N` packaging with exact-main CI gating, dual installers, portable ZIP, checksums, and candidate manifest.
+- An explicit process-local `--update-candidate=v1.1.0-rc.N` QA channel that lets an installed candidate consume exactly one immutable prerelease without changing the normal stable channel.
+- A repository-controlled `UPDATER_V1_1_ACCEPTANCE` provenance gate that records accepted RC tag, source commit, and SHA-256 for machine installer, per-user installer, and portable ZIP.
+- Byte-identical v1.1 stable promotion: accepted RC binaries are revalidated and republished under stable names; they are not rebuilt after acceptance.
 
 ### Safety
 

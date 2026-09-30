@@ -165,6 +165,47 @@ bool AppUpdateManager::selfTest(QString *error)
         || manager.m_releaseSetupBytes != goodBytes)
         return fail(QStringLiteral("P3 scope selector did not choose the per-user release asset"));
 
+    // P4 RC candidate channel: an installed candidate may explicitly opt in to
+    // one immutable GitHub prerelease tag. It must accept RC metadata while the
+    // normal stable parser remains fail-closed to stable-only semantics.
+    manager.m_candidateTag = QStringLiteral("v9.9.9-rc.7");
+    manager.m_latestVersion = QStringLiteral("9.9.9");
+    manager.m_installScope = InstallScope::User;
+    manager.m_targetScope = InstallScope::User;
+    manager.m_setupAssetName = QStringLiteral("SonKuPik-K500-v9.9.9-rc.7-Windows-Setup-PerUser.exe");
+    manager.m_releaseSetupBytes = goodBytes;
+    manager.m_errorText.clear();
+
+    QJsonObject rcArtifact = setupArtifact;
+    rcArtifact.insert(QStringLiteral("file"), manager.m_setupAssetName);
+    QJsonArray rcArtifacts;
+    rcArtifacts.append(rcArtifact);
+    QJsonObject rcManifest;
+    rcManifest.insert(QStringLiteral("schema"), QStringLiteral("sonkupik-k500-updater-rc-v1"));
+    rcManifest.insert(QStringLiteral("product"), QStringLiteral("SonKuPik K500"));
+    rcManifest.insert(QStringLiteral("channel"), QStringLiteral("updater-rc"));
+    rcManifest.insert(QStringLiteral("releaseTag"), manager.m_candidateTag);
+    rcManifest.insert(QStringLiteral("version"), manager.m_latestVersion);
+    rcManifest.insert(QStringLiteral("target"), QStringLiteral("windows-x64"));
+    rcManifest.insert(QStringLiteral("stableReleaseEligible"), false);
+    rcManifest.insert(QStringLiteral("installerTechnology"), QStringLiteral("Inno Setup 6"));
+    rcManifest.insert(QStringLiteral("artifacts"), rcArtifacts);
+    const QByteArray rcManifestBytes = QJsonDocument(rcManifest).toJson(QJsonDocument::Compact);
+    if (!manager.validateManifest(rcManifestBytes))
+        return fail(QStringLiteral("valid updater RC manifest rejected: %1").arg(manager.m_errorText));
+
+    QJsonObject rcClaimingStable = rcManifest;
+    rcClaimingStable.insert(QStringLiteral("stableReleaseEligible"), true);
+    manager.m_errorText.clear();
+    if (manager.validateManifest(QJsonDocument(rcClaimingStable).toJson(QJsonDocument::Compact)))
+        return fail(QStringLiteral("RC manifest claiming stable eligibility was accepted"));
+
+    QJsonObject wrongRcTag = rcManifest;
+    wrongRcTag.insert(QStringLiteral("releaseTag"), QStringLiteral("v9.9.9-rc.8"));
+    manager.m_errorText.clear();
+    if (manager.validateManifest(QJsonDocument(wrongRcTag).toJson(QJsonDocument::Compact)))
+        return fail(QStringLiteral("candidate parser accepted metadata for a different RC tag"));
+
     if (error)
         error->clear();
     return true;

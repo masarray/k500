@@ -4,12 +4,9 @@ name: Windows Device Validation Release
 # on physical hardware before promoting the same line to public stable.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/windows-device-validation-release.yml'
-      - 'CMakeLists.txt'
+
+# Historical v1.0.3 device-validation publisher. Manual-only after v1.0.3
+# reached stable; updater lifecycle RCs use windows-updater-rc.yml instead.
 
 permissions:
   contents: write

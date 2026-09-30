@@ -8,6 +8,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 
 - [User Guide](USER_GUIDE.md) — install, connect, edit, Preview, Save As, Upload, Mass Upload, preset Sync, diagnostics.
 - [Release Model](RELEASES.md) — stable/prerelease policy, package verification, official preset updates.
+- [v1.1 Updater RC Acceptance](V1_1_UPDATER_RC_ACCEPTANCE.md) — fail-closed desktop updater qualification and stable-promotion gate.
 - [Windows Distribution Security](WINDOWS_DISTRIBUTION_SECURITY.md) — unsigned binaries, hashes, antivirus/reputation guidance.
 
 ### Contributors
@@ -33,7 +34,8 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Contract | Current truth |
 |---|---|
 | Hardware-qualified baseline | `v1.0.0` |
-| Public stable | [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Public stable | `v1.0.3` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Current source candidate | `v1.1.0` updater RC line; not public stable |
 | Product download router | [Setup](https://sonkupik-k500.pages.dev/download/windows) · [Portable](https://sonkupik-k500.pages.dev/download/portable) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
