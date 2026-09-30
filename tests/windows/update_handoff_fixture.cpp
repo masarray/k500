@@ -31,15 +31,17 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     if (argc == 2) {
         const std::wstring argument(argv[1]);
         LocalFree(argv);
-        if (argument.rfind(L"--update-health-check=", 0) != 0
-            || argument.size() <= std::wcslen(L"--update-health-check="))
-            return 52;
-        marker(L"SonKuPik-K500-CI-update-health.marker");
-        return 0;
+        if (argument.rfind(L"--update-health-check=", 0) == 0
+            && argument.size() > std::wcslen(L"--update-health-check=")) {
+            marker(L"SonKuPik-K500-CI-update-health.marker");
+            return 0;
+        }
+        if (argument == L"--post-update-foreground") {
+            marker(L"SonKuPik-K500-CI-update-relaunch.marker");
+            return 0;
+        }
+        return 52;
     }
     LocalFree(argv);
-    if (argc != 1)
-        return 53;
-    marker(L"SonKuPik-K500-CI-update-relaunch.marker");
-    return 0;
+    return argc == 1 ? 0 : 53;
 }
