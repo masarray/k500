@@ -84,8 +84,8 @@ jobs:
           foreach ($b in $bytes) { $sum = ($sum + [int]$b) -band 0xff }
           if ($sum -ne 0) { throw "Mode 01 additive checksum invalid: $sum" }
           $mode01 = (Get-FileHash $preset -Algorithm SHA256).Hash.ToLowerInvariant()
-          $golden = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'
-          if ($mode01 -ne $golden) { throw "Mode 01 native donor regressed: $mode01" }
+          $golden = '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1'
+          if ($mode01 -ne $golden) { throw "Mode 01 official preset regressed: $mode01" }
 
           $installer = Get-Content 'packaging/windows/installer.iss' -Raw
           foreach ($token in @(
@@ -96,7 +96,7 @@ jobs:
             if (-not $installer.Contains($token)) { throw "Installer branding contract missing '$token'" }
           }
 
-          Write-Host "Stable truth PASS; native Mode 01 SHA256 $mode01"
+          Write-Host "Stable truth PASS; official Mode 01 SHA256 $mode01"
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -333,7 +333,7 @@ jobs:
             portableFormat = 'ZIP (non-self-extracting)'
             selfExtractingPortable = $false
             officialPresetSource = 'github:masarray/k500/resources/presets@main'
-            mode01NativeSha256 = '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74'
+            mode01NativeSha256 = '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1'
             regressionSuite = @('P0/P1 architecture','updater metadata integrity','P2 preset protocol','P3 codec','P3.2 donor corpus','P3.4 edit persistence','P4.2 donor batch','runtime navigation self-tests','portable ZIP test','Inno installed-app test')
             artifacts = $artifacts
           }
@@ -355,7 +355,7 @@ jobs:
           if ($manifest.stableReleaseEligible -ne $true) { throw 'Stable release eligibility must be true' }
           if ($manifest.codeSigning -ne 'unsigned-open-source') { throw 'Unsigned OSS distribution status must be explicit' }
           if ($manifest.selfExtractingPortable -ne $false) { throw 'Portable distribution must not be self-extracting' }
-          if ($manifest.mode01NativeSha256 -ne '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74') { throw 'Native Mode 01 manifest identity mismatch' }
+          if ($manifest.mode01NativeSha256 -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') { throw 'Official Mode 01 manifest identity mismatch' }
           if ($manifest.artifacts.Count -ne 3) { throw 'Manifest must describe both installers and portable ZIP' }
 
       - name: Upload stable Windows artifact
@@ -386,7 +386,7 @@ jobs:
 
             Hardware-qualified v1.0 scope: Windows x64 + K500 over USB HID. Bluetooth SPP remains available but is experimental and is not part of the v1.0 hardware-qualified support claim.
 
-            Mode 01 uses the exact native `CONCERT HIFI V4` donor accepted on physical hardware. Official presets can continue to receive validated updates through the application's preset Sync feature.
+            Mode 01 uses the official `KONSER NYANYI` preset, evolved surgically from the exact native `CONCERT HIFI V4` donor through hardware-listening iterations. Official presets can continue to receive validated updates through the application's preset Sync feature.
 
             This is free/open-source software and the Windows binaries are currently unsigned. The installer uses standard Inno Setup 6 and the portable build is a normal ZIP.
           files: |

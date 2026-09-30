@@ -76,11 +76,13 @@ The Windows stable-release pipeline reruns the preset regression suite before pa
 
 The v1.0 official library is bundled into the application and may also receive validated GitHub-backed updates. Remote files must pass the same `.k500` validation before they can replace a last-known-good official cache entry.
 
-Mode 01 is intentionally pinned to the exact native `CONCERT HIFI V4` donor:
+Mode 01 distribution is intentionally pinned to the official `KONSER NYANYI` file:
 
-`SHA-256 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`
+`SHA-256 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
 
-A checksum-valid file is not automatically native-equivalent. The Mode 01 recovery before v1.0 is the reason donor identity is now treated as a first-class regression concern.
+The exact native `CONCERT HIFI V4` donor remains rollback/provenance evidence for the pre-v1 recovery. The current official preset was created by surgical donor-based edits rather than a reconstructed/normalized serialization.
+
+A checksum-valid file is not automatically donor-equivalent. Official preset evolution must preserve donor bytes outside the proven edit surface and update the appropriate golden/diff evidence.
 
 ## Change policy
 

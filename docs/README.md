@@ -43,8 +43,9 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Active-memory truth | 939 bytes / `0x03AB` |
 | `.k500` file | 1144 bytes / `0x0478` |
 | Native slot image | 656 bytes / `0x0290` |
-| Official Mode 01 | Native `CONCERT HIFI V4` |
-| Mode 01 SHA-256 | `9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74` |
+| Official Mode 01 | `KONSER NYANYI` (native-donor lineage) |
+| Mode 01 SHA-256 | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` |
+| Final genre library | Slots 01–10 differentiated; Mode 02 intentionally dry Broadcast |
 | Windows distribution | Inno Setup + normal portable ZIP |
 | Code signing | unsigned open-source |
 

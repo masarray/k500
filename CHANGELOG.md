@@ -2,6 +2,28 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+
+## Unreleased — Final official preset library refresh
+
+### Changed
+
+- Finalized the official donor-based preset library across Slots 01 and 03–10; Slot 02 remains intentionally dry/controlled for Broadcast use.
+- Mode 01: `KONSER NYANYI` — concert/Air-Focus universal karaoke.
+- Mode 03: `KAR DANGDUT` — refreshed vocal FX while preserving the proven Hi-Fi Core V3 Music/Sub foundation.
+- Mode 04: `POP ROCK BALLAD` — finalized pop-rock/slow-rock balance with stronger singer control.
+- Mode 05: `POP KENANGAN V2` — warm romantic 70s/80s slow-pop.
+- Mode 06: `SHOLAWAT SYAHDU` — fresh, soft, slow-tempo sholawat ambience.
+- Mode 07: `JAZZ LOUNGE` — intimate lounge vocal with restrained echo.
+- Mode 08: `BLUES CLUB` — warm vintage blues with a single slap-style repeat.
+- Mode 09: `ACOUSTIC NATURAL` — natural/organic vocal with unobtrusive ambience.
+- Mode 10: `REGGAE DUB` — bass/groove-led voicing with intentional rhythmic echo.
+- Updated the current Mode 01 release/golden guards to `KONSER NYANYI` while retaining the native `CONCERT HIFI V4` donor as rollback/provenance evidence.
+
+### Validation
+
+- All refreshed files remain exact 1144-byte K500 containers with valid additive checksums and hardware-safe names.
+- Genre-specific Mic/Music/Main/Sub donor voicing is preserved; the refresh targets proven FX/timing surfaces rather than normalizing all modes to one curve.
+
 ## 1.1.0 candidate — Windows updater lifecycle P1–P4
 
 The source version is 1.1.0 for release-candidate qualification. Public stable remains v1.0.3 until an exact RC is accepted and the fail-closed updater acceptance token is promoted in a separate reviewed change.
