@@ -3,6 +3,13 @@
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
 
+## Unreleased — Preset 02 display rename
+
+### Changed
+
+- Renamed official Slot 02 internal preset name from `BCAST HIFI V2` to `MC HOST RADIO`.
+- Audio parameters, EQ, dynamics, Reverb/Echo, routing, and donor sonic behavior are unchanged; only the visible/internal name field and additive checksum changed.
+
 ## Unreleased — Final official preset library refresh
 
 ### Changed
