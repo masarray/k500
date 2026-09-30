@@ -2,6 +2,23 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Official preset refresh
+
+### Changed
+
+- Refreshed official Slots 01, 03, 04, 05 and 06 with the donor-based vocal presets developed through the current K500 listening cycle.
+- Mode 01 is now `KONSER NYANYI` (SHA-256 `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`), evolved from the exact native `CONCERT HIFI V4` rollback/provenance donor.
+- Mode 03 is now `KAR DANGDUT`, preserving the proven Hi-Fi Core V3 Music/Sub foundation while refreshing vocal FX.
+- Mode 04 is now `POP ROCK BALLAD`, balancing casual-user ambience with stronger singer control.
+- Mode 05 is now `POP KENANGAN V2`, tuned for warm romantic 70s/80s slow-pop.
+- Mode 06 is now `SHOLAWAT SYAHDU`, retaining the sholawat identity with a fresher, softer slow-tempo ambience.
+- Current-preset guards now protect the distributed Mode 01 identity while the historical v1.0 native donor remains frozen as rollback provenance.
+
+### Validation
+
+- All five refreshed files remain exact 1144-byte K500 containers with valid additive checksums and hardware-safe visible names.
+- Slots 02 and 07–10 are unchanged.
+
 ## 1.1.0 candidate — Windows updater lifecycle P1–P4
 
 The source version is 1.1.0 for release-candidate qualification. Public stable remains v1.0.3 until an exact RC is accepted and the fail-closed updater acceptance token is promoted in a separate reviewed change.
