@@ -34,6 +34,7 @@ jobs:
         shell: pwsh
         run: |
           $header = Get-Content 'src/k500/K500PresetFileBridge.h' -Raw
+          $bridge = Get-Content 'src/k500/K500PresetFileBridge.cpp' -Raw
           $sync = Get-Content 'src/k500/K500OfficialPresetSync.cpp' -Raw
           $batch = Get-Content 'src/k500/K500PresetBatchBridge.cpp' -Raw
           $mass = Get-Content 'qml/components/MassUploadTransferWindow.qml' -Raw
@@ -88,5 +89,7 @@ jobs:
             if ($name.Length -gt 16) { throw "$($entry.path) visible name exceeds 16 characters: '$name'" }
             $sha = (Get-FileHash $entry.path -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($sha -ne $entry.sha) { throw "$($entry.path) SHA-256 regression: $sha" }
+            $catalogToken = '{"' + $entry.name + '"'
+            if (-not $bridge.Contains($catalogToken)) { throw "$($entry.path) built-in catalog identity is stale: $($entry.name)" }
           }
-          Write-Host 'Official preset library structure + refreshed identities PASS'
+          Write-Host 'Official preset library structure + refreshed identities + catalog parity PASS'
