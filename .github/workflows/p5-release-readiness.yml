@@ -280,8 +280,8 @@ jobs:
 
           $mode01Path = 'resources/presets/01_ALL_GENRE.k500'
           $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($mode01Hash -ne '9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74') {
-            throw "Native Mode 01 donor changed: $mode01Hash"
+          if ($mode01Hash -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') {
+            throw "Current official Mode 01 changed: $mode01Hash"
           }
 
           foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
