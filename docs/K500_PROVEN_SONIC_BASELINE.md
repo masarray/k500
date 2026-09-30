@@ -143,7 +143,7 @@ Future experiments normally branch from the current official bytes; rollback inv
 | Slot | Repository file | Internal name | SHA-256 / status | Sonic role |
 |---:|---|---|---|---|
 | 01 | `01_ALL_GENRE.k500` | `KONSER NYANYI` | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` | concert / Air-Focus universal karaoke |
-| 02 | `02_BROADCAST.k500` | `BCAST HIFI V2` | unchanged donor | dry/controlled broadcast utility |
+| 02 | `02_BROADCAST.k500` | `MC HOST RADIO` | rename-only from the same donor audio | dry/controlled broadcast utility |
 | 03 | `03_DANGDUT_SUPREME.k500` | `KAR DANGDUT` | `3c446e94ddf0db32490d69a182fdc675f0a289c7d9e6cc54512dc91cb4673e85` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub |
 | 04 | `04_ROCK.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | finalized pop-rock / slow-rock |
 | 05 | `05_POP_KENANGAN.k500` | `POP KENANGAN V2` | `80b793878642b97b401674c01def771ee2390bd7032f1b66a0d12d84ff41c3b8` | warm romantic 70s/80s slow-pop |

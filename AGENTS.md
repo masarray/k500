@@ -165,7 +165,7 @@ Mode 01 is now `KONSER NYANYI`, evolved from the exact native `CONCERT HIFI V4` 
 The finalized official library is intentionally differentiated by use case:
 
 - 01 `KONSER NYANYI` — fresh, large, forgiving concert karaoke;
-- 02 `BCAST HIFI V2` — dry/controlled broadcast utility; intentionally not Air-Focus styled;
+- 02 `MC HOST RADIO` — dry/controlled broadcast utility; intentionally not Air-Focus styled;
 - 03 `KAR DANGDUT` — refreshed vocal FX over the proven Hi-Fi Core V3 Music/Sub foundation;
 - 04 `POP ROCK BALLAD` — pop/slow-rock with casual-user ambience plus stronger singer control;
 - 05 `POP KENANGAN V2` — warm romantic 70s/80s slow-pop;
