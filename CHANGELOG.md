@@ -63,6 +63,23 @@ The source version is 1.1.0 for release-candidate qualification. Public stable r
 - Portable ZIP remains independent and is never silently converted into an installed copy.
 - No code-signing requirement, UAC bypass, or Windows-security weakening is introduced.
 
+## 1.0.3 — Device-truth and validation maintenance
+
+Public maintenance release retaining the established Windows 10/11 x64 + USB HID support scope.
+
+### Changed
+
+- Integrated capture-backed K500 truth for Use Init Volume, Play/Pause, Mute, Reverb native ranges, Music Noise Gate/Bass write paths, Mic FBX 0..4, and Music HP/LP filter-type readback.
+- Corrected shared EQ-enable/bypass polarity and preserved unrelated bits during read-modify-write.
+- Added the native Music Max 0..84 ceiling contract, including authoritative clamping of Master Music and readback reconciliation.
+- Kept ordinary settled LIVE edits non-disruptive instead of forcing a full 939-byte resync after every edit.
+- Fixed the Inno Setup wizard header artwork clipping while preserving the existing package/runtime contract.
+
+### Release integrity
+
+- v1.0.3 remains the current public stable release while v1.1.0 follows the separate immutable-RC acceptance/promotion model.
+- The v1.0 Windows/USB support boundary remains unchanged; Bluetooth SPP remains experimental.
+
 ## 1.0.2 — Smart Windows lifecycle
 
 Stable maintenance release preserving the existing v1.0 hardware-qualified scope while improving installation, local preset storage, update delivery, and update-integrity regression coverage.
