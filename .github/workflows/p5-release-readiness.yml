@@ -175,7 +175,7 @@ jobs:
           foreach ($token in @('Stable v1.0 is already published','Unified Official + Local preset library','Section-navigation crash regression','Mode 01 golden donor','Failure / recovery injection')) {
             if (-not $hardware.Contains($token)) { throw "Hardware runbook missing '$token'" }
           }
-          foreach ($token in @('STABLE USB ✅','EXPERIMENTAL 🧪','Unified SONKUPIK + LOCAL preset library','Persistent LCD/Equipment Mode rename','P5 — Packaging / release qualification — COMPLETE')) {
+          foreach ($token in @('STABLE USB ✅','EXPERIMENTAL 🧪','Unified SONKUPIK + LOCAL preset library','Persistent LCD/Equipment Mode rename','P5 — Packaging / release qualification — COMPLETE FOR v1.0; v1.1 PROMOTION GATED')) {
             if (-not $matrix.Contains($token)) { throw "Parity matrix missing '$token'" }
           }
           foreach ($token in @('LOCKED ✅','v1.0 stable baseline','Mode 01','buildDeviceSlotImage')) {
@@ -228,10 +228,10 @@ jobs:
             'UPDATER_V1_1_PORTABLE_SHA256',
             'Accepted RC tag commit differs from recorded accepted commit.',
             'byte-identical-rc-artifact-promotion',
+            'Stable staging changed accepted bytes:',
             'contents/resources/presets/01_ALL_GENRE.k500?ref=$acceptedCommit',
             'Could not resolve Mode 01 from the accepted RC commit.',
             'mode01NativeSha256 = $mode01AcceptedHash',
-            'Stable staging changed accepted bytes:',
             'prerelease: false',
             'make_latest: true',
             'overwrite_files: false'
@@ -239,224 +239,13 @@ jobs:
             if (-not $promotionWorkflow.Contains($token)) { throw "Updater stable promotion contract missing '$token'" }
           }
 
-          # Build GitHub expression literals at runtime so Actions does not
-          # substitute secrets/step outputs inside this guard script itself.
-          $githubTokenExpression = '
-            'workflow_dispatch:',
-            'Updater RC must be dispatched from main.',
-            'P4 updater RC requires source version 1.1.0',
-            'Exact-head gate PASS:',
-            'stableReleaseEligible = $false',
-            "installerTechnology = 'Inno Setup 6'",
-            "installerScopes = @('machine','user')",
-            "migration = 'explicit-machine-to-user'",
-            'Windows-Setup-PerUser.exe',
-            'prerelease: true',
-            'make_latest: false',
-            'overwrite_files: false'
-          )) {
-            if (-not $rcWorkflow.Contains($token)) { throw "Updater RC workflow contract missing '$token'" }
-          }
-
-          foreach ($token in @(
-            'DefaultDirName={autopf}\{#AppName}',
-            'PrivilegesRequired=admin',
-            'UsePreviousAppDir=no',
-            'MIGRATE_LOCALAPPDATA_INSTALL_V1'
-          )) {
-            if (-not $installer.Contains($token)) { throw "Stable installer lifecycle contract missing '$token'" }
-          }
-          foreach ($token in @(
-            'release-manifest.json',
-            'SHA256SUMS.txt',
-            'QCryptographicHash::Sha256',
-            'ShellExecuteExW',
-            'stableReleaseEligible',
-            'windows-x64',
-            'P4_RC_CANDIDATE_CHANNEL_V1',
-            '--update-candidate=',
-            'updater-rc-manifest.json',
-            'Candidate manifest does not match the requested updater RC.'
-          )) {
-            if (-not $updater.Contains($token)) { throw "Smart updater contract missing '$token'" }
-          }
-
-          $mode01Path = 'resources/presets/01_ALL_GENRE.k500'
-          $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($mode01Hash -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') {
-            throw "Official Mode 01 changed: $mode01Hash"
-          }
-
-          foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
-            if (-not $deviceHeader.Contains($token)) { throw "Diagnostics API missing '$token'" }
-          }
-          foreach ($token in @('DiagnosticLogLimit = 240','activeMemoryIncluded','presetBytesIncluded','presetPathsIncluded','QSaveFile','protocolLog','P5_SUPPORT_REPORT_REDACTION_V1','[REDACTED ACTIVE MEMORY]','[REDACTED PRESET PAYLOAD]')) {
-            if (-not $device.Contains($token)) { throw "Diagnostics privacy/schema regression: missing '$token'" }
-          }
-          if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
-            throw 'Support report must not export raw lastTx/lastRx.'
-          }
-          foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
-            if (-not $topbar.Contains($token)) { throw "Support UI regression: missing '$token'" }
-          }
-
-          Write-Host 'v1 public documentation, provenance, install/update lifecycle and stable release contracts PASS'
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.10.2'
-          arch: 'win64_msvc2022_64'
-          cache: true
-
-      - name: Activate MSVC 2022
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Configure and build
-        shell: pwsh
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
-          cmake --build build --config Release
-
-      - name: Run stable preset regression suite
-        shell: pwsh
-        run: |
-          & build/k500_p2_selftest.exe
-          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
-          & build/k500_p3_selftest.exe
-          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
-          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
-          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
-          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
-          if ($LASTEXITCODE -ne 0) { throw 'P3.4 donor persistence failed' }
-          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
-          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
-
-      - name: Deploy and run runtime smoke tests
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
-          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
-          $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
-          if ($helperTest.ExitCode -ne 0) { throw "Native updater coordinator self-test failed: $($helperTest.ExitCode)" }
-          Copy-Item LICENSE package/
-          windeployqt --release --qmldir qml package/SonKuPik-K500.exe
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
-            $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "Runtime $arg failed with exit code $($p.ExitCode)" }
-          }
- + '{{ github.token }}'
-          $acceptedCommitExpression = '
-            'workflow_dispatch:',
-            'Updater RC must be dispatched from main.',
-            'P4 updater RC requires source version 1.1.0',
-            'Exact-head gate PASS:',
-            'stableReleaseEligible = $false',
-            "installerTechnology = 'Inno Setup 6'",
-            "installerScopes = @('machine','user')",
-            "migration = 'explicit-machine-to-user'",
-            'Windows-Setup-PerUser.exe',
-            'prerelease: true',
-            'make_latest: false',
-            'overwrite_files: false'
-          )) {
-            if (-not $rcWorkflow.Contains($token)) { throw "Updater RC workflow contract missing '$token'" }
-          }
-
-          foreach ($token in @(
-            'DefaultDirName={autopf}\{#AppName}',
-            'PrivilegesRequired=admin',
-            'UsePreviousAppDir=no',
-            'MIGRATE_LOCALAPPDATA_INSTALL_V1'
-          )) {
-            if (-not $installer.Contains($token)) { throw "Stable installer lifecycle contract missing '$token'" }
-          }
-          foreach ($token in @(
-            'release-manifest.json',
-            'SHA256SUMS.txt',
-            'QCryptographicHash::Sha256',
-            'ShellExecuteExW',
-            'stableReleaseEligible',
-            'windows-x64',
-            'P4_RC_CANDIDATE_CHANNEL_V1',
-            '--update-candidate=',
-            'updater-rc-manifest.json',
-            'Candidate manifest does not match the requested updater RC.'
-          )) {
-            if (-not $updater.Contains($token)) { throw "Smart updater contract missing '$token'" }
-          }
-
-          $mode01Path = 'resources/presets/01_ALL_GENRE.k500'
-          $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($mode01Hash -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') {
-            throw "Official Mode 01 changed: $mode01Hash"
-          }
-
-          foreach ($token in @('P5_SUPPORT_DIAGNOSTICS_V1','supportReportJson','saveSupportReport','m_lastRxDiagnostic','m_lastTxDiagnostic')) {
-            if (-not $deviceHeader.Contains($token)) { throw "Diagnostics API missing '$token'" }
-          }
-          foreach ($token in @('DiagnosticLogLimit = 240','activeMemoryIncluded','presetBytesIncluded','presetPathsIncluded','QSaveFile','protocolLog','P5_SUPPORT_REPORT_REDACTION_V1','[REDACTED ACTIVE MEMORY]','[REDACTED PRESET PAYLOAD]')) {
-            if (-not $device.Contains($token)) { throw "Diagnostics privacy/schema regression: missing '$token'" }
-          }
-          if ($device.Contains('device.insert(QStringLiteral("lastTx"), m_lastTx);') -or $device.Contains('device.insert(QStringLiteral("lastRx"), m_lastRx);')) {
-            throw 'Support report must not export raw lastTx/lastRx.'
-          }
-          foreach ($token in @('Save K500 support report','saveSupportReport(selectedFile)','Export bounded K500 diagnostics')) {
-            if (-not $topbar.Contains($token)) { throw "Support UI regression: missing '$token'" }
-          }
-
-          Write-Host 'v1 public documentation, provenance, install/update lifecycle and stable release contracts PASS'
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v4
-        with:
-          version: '6.10.2'
-          arch: 'win64_msvc2022_64'
-          cache: true
-
-      - name: Activate MSVC 2022
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Configure and build
-        shell: pwsh
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
-          cmake --build build --config Release
-
-      - name: Run stable preset regression suite
-        shell: pwsh
-        run: |
-          & build/k500_p2_selftest.exe
-          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
-          & build/k500_p3_selftest.exe
-          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
-          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
-          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
-          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
-          if ($LASTEXITCODE -ne 0) { throw 'P3.4 donor persistence failed' }
-          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
-          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
-
-      - name: Deploy and run runtime smoke tests
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path package | Out-Null
-          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
-          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
-          $helperTest = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
-          if ($helperTest.ExitCode -ne 0) { throw "Native updater coordinator self-test failed: $($helperTest.ExitCode)" }
-          Copy-Item LICENSE package/
-          windeployqt --release --qmldir qml package/SonKuPik-K500.exe
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test')) {
-            $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "Runtime $arg failed with exit code $($p.ExitCode)" }
-          }
- + '{{ steps.accept.outputs.accepted_commit }}'
+          # P5_GITHUB_EXPRESSION_LITERAL_GUARD_V1
+          # Build target GitHub-expression text at PowerShell runtime so this
+          # workflow never expands its own comparison string.
+          $openExpr = '$' + [char]123 + [char]123
+          $closeExpr = [char]125 + [char]125
+          $githubTokenExpression = $openExpr + ' github.token ' + $closeExpr
+          $acceptedCommitExpression = $openExpr + ' steps.accept.outputs.accepted_commit ' + $closeExpr
           if (-not $promotionWorkflow.Contains("GH_TOKEN: $githubTokenExpression")) {
             throw 'Updater stable promotion must authenticate GitHub CLI through github.token.'
           }
