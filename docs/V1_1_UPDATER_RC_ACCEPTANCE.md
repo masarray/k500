@@ -11,6 +11,23 @@ UPDATER_V1_1_PORTABLE_SHA256=
 
 This record is the fail-closed publication gate for the P1–P4 Windows updater lifecycle. It covers desktop installation/update behavior only; it does not broaden the existing Windows x64 + USB HID K500 hardware support claim.
 
+## Current immutable candidate under acceptance
+
+The final source-aligned candidate is now published as GitHub prerelease `v1.1.0-rc.3` from exact commit `b5ff360bcebe8afc18a01ac7e303c0fde67cb76b`.
+
+Recorded candidate artifacts:
+
+- machine Setup SHA-256: `71388686a644f8a5e051d1ad01d9f691b0a3f799c5fe4c46f78fb34801d3b2e8`;
+- per-user Setup SHA-256: `6863b6cde993cbb605795caf1f8a9fb5314e5902f219cdb9bbc5822a0cecd568`;
+- portable ZIP SHA-256: `4f7da0f9bb15d4b5c00f155711995062b8c97bdd74fb955535fab9b68a1e62b3`;
+- qualification workflow run: `36847039459`.
+
+The RC workflow completed successfully on the exact candidate commit, including exact-main prerequisite gates, build/regression tests, direct-app health checks, portable validation, machine-wide installer validation, per-user installer validation, provenance generation, artifact upload, and immutable prerelease publication. The release asset digests, generated `SHA256SUMS.txt`, RC manifest artifact records, and independently recomputed SHA-256 values agree.
+
+No updater runtime, update-helper, or installer implementation file changed between the functionally accepted `v1.1.0-rc.2` updater baseline and this RC3 candidate. RC3 aligns the final preset library/catalog truth and release guards with current source. RC2 functional desktop evidence therefore remains relevant regression evidence, but it does not by itself change the exact-candidate publication token below to `accepted`.
+
+The machine-readable acceptance fields intentionally remain pending until exact RC3 desktop acceptance is explicitly recorded.
+
 ## Functional desktop status
 
 Follow-up operator testing after PR #96 confirms the auto-managed/self-update lifecycle is functionally working, including the no-admin per-user update path and post-update relaunch visibility. This closes the updater-runtime/UX acceptance concern.
