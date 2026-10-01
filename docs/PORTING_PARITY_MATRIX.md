@@ -1,6 +1,6 @@
 # SonKuPik K500 — Capability & Protocol Parity Matrix
 
-> **Stable regression contract.** `main` represents the public stable baseline. New work may expand capability, but it must not weaken device-truth, byte-preservation, fail-closed, or runtime-stability invariants that already protect v1.0.
+> **Stable regression contract.** Public stable remains v1.0.3 while `main` may advance through the v1.1 candidate line. New work must preserve the device-truth, byte-preservation, fail-closed, and runtime-stability invariants established by the v1 USB baseline.
 
 ## Support boundary
 
@@ -75,7 +75,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Multi-file batch validation | LOCKED SW ✅ | whole-batch fail-closed P4.2 regression |
 | Unified SONKUPIK + LOCAL preset library | LOCKED SW ✅ | source provenance separated; both use same validator |
 | Official GitHub preset sync/cache | LOCKED SW ✅ | validation before cache promotion; offline fallback |
-| Native Mode 01 `CONCERT HIFI V4` | LOCKED SW ✅ | exact donor SHA-256 guard + physical hardware acceptance |
+| Official Mode 01 `KONSER NYANYI` | LOCKED SW ✅ | current official file SHA-256 `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`; evolved from the physically proven native `CONCERT HIFI V4` donor lineage |
 | Support Report diagnostics | LOCKED SW ✅ | bounded schema + payload/path redaction guard |
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
 | Portable ZIP | LOCKED SW ✅ | extraction + runtime self-tests |
@@ -141,11 +141,11 @@ The left Mass Upload collection is unified but provenance remains explicit:
 
 Remote official files do not bypass the codec/validator and never overwrite Local user presets.
 
-Mode 01 is the exact native donor:
+Current official Mode 01 is `KONSER NYANYI`:
 
-`9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`
+`4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
 
-Checksum validity alone is not treated as proof that a preset is native-equivalent.
+Its rollback/provenance lineage retains the physically proven native `CONCERT HIFI V4` donor (`9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`). The current official file and the historical donor must not be conflated. Checksum validity alone is not proof of native-equivalent behavior.
 
 ## Release phases
 
@@ -169,9 +169,9 @@ Parser, donor corpus, file bridge, explicit Preview, controlled persistence, ato
 
 Single Upload and multi-file transfer-list Mass Upload use the proven permanent Store path and hardware-truth resync.
 
-### P5 — Packaging / release qualification — COMPLETE
+### P5 — Packaging / release qualification — COMPLETE FOR v1.0; v1.1 PROMOTION GATED
 
-Public stable packaging is Inno Setup + ordinary portable ZIP, with runtime package tests, SHA-256 hashes, release manifest, stable release workflow, and explicit USB-vs-Bluetooth support scope.
+Public stable packaging is Inno Setup + ordinary portable ZIP, with runtime package tests, SHA-256 hashes, release manifest, stable release workflow, and explicit USB-vs-Bluetooth support scope. The v1.1 updater lifecycle is functionally accepted, but public v1.1 promotion remains fail-closed until one exact immutable RC built from current release truth has its tag, commit, and three artifact SHA-256 values recorded in `V1_1_UPDATER_RC_ACCEPTANCE.md`.
 
 ## Merge rule
 
