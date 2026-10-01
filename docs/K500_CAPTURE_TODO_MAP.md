@@ -1,7 +1,9 @@
 # K500 Capture Coverage & TODO Map
 
-Status date: 2026-09-20
-Baseline: `main` @ `29442f4be8a8845256563e922282b988f8f13018`; Music HP/LP type follow-up branch `fix/music-hp-lp-type-readback`
+Status date: 2026-10-01
+Baseline: `main` @ `07f298af6bfdb85574c9810b32a22ca2c6c856e3` (v1.1 candidate truth freeze before RC3)
+
+The capture-backed fixes from PRs #79–#84 are integrated in this baseline. Historical capture references remain valid evidence, but new mapping work must start from this current main and must not revive superseded branches.
 
 This document is the capture-planning source of truth. It separates:
 - device READ mapping (connect/readback/runtime state),
