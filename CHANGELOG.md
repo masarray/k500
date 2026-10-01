@@ -63,6 +63,21 @@ The source version is 1.1.0 for release-candidate qualification. Public stable r
 - Portable ZIP remains independent and is never silently converted into an installed copy.
 - No code-signing requirement, UAC bypass, or Windows-security weakening is introduced.
 
+## 1.0.3 — Device-validation closure and installer polish
+
+Public stable release from commit `7d6ded580e15b652db97edf0700283e3fa931996`, preserving the Windows 10/11 x64 + USB HID support scope.
+
+### Changed
+
+- Integrated capture-backed runtime/device-truth work from the v1.0.3 validation line: Use Init Volume and mute/playback truth, non-disruptive live edits, Mic FBX 0..4, Music HP/LP filter-type readback, corrected EQ-bypass polarity, and the native Music Max ceiling/clamp behavior.
+- Kept unproven mappings evidence-gated/read-only rather than guessing protocol bytes.
+- Fixed the Inno Setup wizard header logo clipping and centralized installer brand-asset generation.
+
+### Validation
+
+- The v1.0.3 device-validation line advanced through RC1/RC2 with exact-build CI and physical-capture-backed fixes before the final public stable package.
+- Public v1.0.3 remains the current latest non-prerelease release while v1.1 updater promotion is qualified separately.
+
 ## 1.0.2 — Smart Windows lifecycle
 
 Stable maintenance release preserving the existing v1.0 hardware-qualified scope while improving installation, local preset storage, update delivery, and update-integrity regression coverage.
