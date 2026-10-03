@@ -141,6 +141,11 @@ constexpr double MusicBassMaxDb = 12.0;
 
 constexpr int MicFbxMinLevel = 0;
 constexpr int MicFbxMaxLevel = 4;
+
+constexpr int StartupLevelMin = 0;
+constexpr int StartupLevelMax = TopVolumeMax;
+constexpr int UsbRecordVolMin = 1;
+constexpr int UsbRecordVolMax = 6;
 } // namespace NativeRange
 
 QByteArray heartbeat();
@@ -159,6 +164,8 @@ QByteArray musicBass(double bassDb);
 quint8 musicNoiseGateRaw(double gateDb);
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars);
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
+QByteArray effectInitLevel(int initLevel, int topEffectVol);
+QByteArray usbRecordVolume(int levelOneBased);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
 QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);
 bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled);
