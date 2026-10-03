@@ -71,22 +71,47 @@ jobs:
             if (-not $test.Contains($token)) { throw "Offline edit runtime regression coverage missing '$token'" }
           }
 
-      - name: Guard Device Mode layout and read-only MODE NAME parity
+      - name: Guard Device Mode layout and capture-backed MODE NAME transaction
         shell: pwsh
         run: |
           $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
+          $preset = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
+          $protocol = Get-Content 'src/k500/K500PresetProtocol.cpp' -Raw
+
           foreach ($token in @(
+            'MODE_NAME_STORE_CAPTURED_V1',
             'readonly property string selectedDeviceModeName',
+            'property string modeNameDraft',
+            'readonly property bool deviceModeRenameReady',
+            'root.selectedDeviceSlot === root.activeDeviceSlot',
             'id: deviceSlotColumn',
             'height:Math.max(27, (deviceSlotColumn.height - (9 * deviceSlotColumn.spacing)) / 10)',
             'text:"MODE NAME"',
-            'text:root.selectedDeviceModeName',
-            'readOnly:true',
+            'id: modeNameInput',
             'maximumLength:16',
-            'text:"READ ONLY"',
+            'root.presetManager.renameActiveMode(root.normalizedModeNameDraft())',
             'text:"Connect K500 to read"'
           )) {
-            if (-not $system.Contains($token)) { throw "Device Mode acceptance layout regressed: missing '$token'" }
+            if (-not $system.Contains($token)) { throw "Device Mode acceptance layout/mapping regressed: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'void K500PresetManager::renameActiveMode',
+            'ReadbackPurpose::RenamePrepare',
+            'K500PresetProtocol::withModeName',
+            'beginStoreSlot(false)',
+            'K500PresetProtocol::recallMode(renamedSlot)'
+          )) {
+            if (-not $preset.Contains($token)) { throw "Device Mode rename transaction regressed: missing '$token'" }
+          }
+
+          foreach ($token in @(
+            'DeviceSlotModeNameOffset = 0x0280',
+            'DeviceSlotModeNameLength = 0x0010',
+            'Device mode name must contain 1..16 printable ASCII characters.',
+            'mode rename changed bytes outside 0x0280..0x028F'
+          )) {
+            if (-not $protocol.Contains($token)) { throw "Device Mode rename protocol guard regressed: missing '$token'" }
           }
 
           if ($system.Contains('Layout.maximumHeight:311')) {
@@ -102,7 +127,10 @@ jobs:
           if ($devicePanel.Contains('Item{Layout.fillHeight:true}')) {
             throw 'Device action panel regressed: trailing fill-height spacer would push buttons above the PC button baseline.'
           }
-          Write-Host 'Device slot fill-height + button baseline + MODE NAME read-only parity PASS'
+          if ($devicePanel.Contains('readOnly:true') -or $devicePanel.Contains('text:"READ ONLY"')) {
+            throw 'Captured active-slot Mode Name rename regressed back to a blanket read-only affordance.'
+          }
+          Write-Host 'Device slot layout + active-slot capture-backed MODE NAME transaction PASS'
 
       - name: Guard current official Mode 01 preset parity
         shell: pwsh
