@@ -2,10 +2,10 @@ cmake_minimum_required(VERSION 3.21)
 
 project(SonkupikStudioNative VERSION 1.1.0 LANGUAGES CXX)
 
-# V1_1_EXACT_MAIN_QUALIFICATION_ANCHOR
+# V1_1_RC4_SMART_INSTALLER_QUALIFICATION_ANCHOR
 # Non-semantic release marker: CMakeLists.txt is watched by every workflow
-# required by the v1.1 RC publisher, ensuring one exact-main SHA receives the
-# complete updater/build/QML/runtime qualification matrix before packaging.
+# required by the v1.1 RC publisher. RC4 freezes the synchronized preset
+# filenames plus the installer-only public distribution contract on one SHA.
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
