@@ -639,12 +639,9 @@ Item {
                                 border.color:active?Theme.accentSoft:(known?"#60676C":Theme.amber)
                                 Text{anchors.centerIn:parent;visible:adjMannerVrCheck.active;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
                                 Text{anchors.centerIn:parent;visible:!adjMannerVrCheck.known;text:"?";color:Theme.amber;font.pixelSize:9;font.weight:Font.Bold}
-                                MouseArea{
-                                    anchors.fill:parent
-                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-                                    onClicked:root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
-                                }
+                                // Readback is not captured, so this square is a
+                                // status indicator only. OFF/ON below are explicit
+                                // commands; never infer a toggle direction from "?".
                             }
                             Text{text:"Adj Manner VR OFF";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
                             Text{
@@ -656,11 +653,19 @@ Item {
                                 font.family:Theme.monoFamily;font.pixelSize:7
                             }
                             Item{Layout.fillWidth:true}
-                            Text{
-                                text:"CMD 07 / ACK F8"
-                                color:Theme.textFaint
-                                font.family:Theme.monoFamily
-                                font.pixelSize:7
+                            SoftButton{
+                                Layout.preferredWidth:40
+                                text:"OFF"
+                                compact:true
+                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
+                                onClicked:root.presetManager.setAdjMannerVrOff(false)
+                            }
+                            SoftButton{
+                                Layout.preferredWidth:40
+                                text:"ON"
+                                compact:true
+                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
+                                onClicked:root.presetManager.setAdjMannerVrOff(true)
                             }
                         }
 
@@ -889,7 +894,7 @@ Item {
                                             required property var modelData
                                             property real localValue: Number(modelData.value)
                                             readonly property bool channelEditable:Boolean(modelData.editable)
-                                            onModelDataChanged:if(!recFader.dragging)localValue=Number(modelData.value)
+                                            onModelDataChanged:if(!recFader||!recFader.dragging)localValue=Number(modelData.value)
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textDim;style:recFader.highlighted?Text.Outline:Text.Normal;styleColor:recFader.highlighted?Qt.rgba(recFader.accentColor.r,recFader.accentColor.g,recFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:recFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
                                             StudioFader{
