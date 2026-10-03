@@ -34,8 +34,10 @@ Read:
 2. `docs/ARCHITECTURE.md`
 3. `docs/PORTING_PARITY_MATRIX.md`
 4. `docs/PROTOCOL_GOLDEN_VECTORS.md`
-5. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
-6. `CONTRIBUTING.md`
+5. `docs/K500_CAPTURE_TODO_MAP.md`
+6. `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`
+7. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
+8. `CONTRIBUTING.md`
 
 ### `.k500` preset analysis, sonic tuning, simulation, graphs, or new presets
 
