@@ -6,6 +6,8 @@ on:
     paths:
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'src/k500/K500PresetManager.*'
+      - 'src/k500/K500PresetProtocol.*'
       - 'src/k500/P42BatchTestMain.cpp'
       - 'qml/components/SystemWorkspace.qml'
       - 'qml/components/SystemWorkspaceImpl.qml'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'src/k500/K500PresetFileBridge.*'
       - 'src/k500/K500PresetFileBridgeAccess.cpp'
+      - 'src/k500/K500PresetManager.*'
+      - 'src/k500/K500PresetProtocol.*'
       - 'src/k500/P42BatchTestMain.cpp'
       - 'qml/components/SystemWorkspace.qml'
       - 'qml/components/SystemWorkspaceImpl.qml'
