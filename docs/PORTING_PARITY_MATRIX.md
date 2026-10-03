@@ -78,7 +78,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Official Mode 01 `KONSER NYANYI` | LOCKED SW ✅ | current official file SHA-256 `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`; evolved from the physically proven native `CONCERT HIFI V4` donor lineage |
 | Support Report diagnostics | LOCKED SW ✅ | bounded schema + payload/path redaction guard |
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
-| Portable ZIP | LOCKED SW ✅ | extraction + runtime self-tests |
+| Smart Installer distribution | LOCKED SW ✅ | machine/per-user installer runtime self-tests; portable retired from v1.1 public distribution |
 | Persistent LCD/Equipment Mode rename | READ ONLY 🟦 | table readback exists; write transaction not donor-verified |
 
 ## State model parity
@@ -171,7 +171,7 @@ Single Upload and multi-file transfer-list Mass Upload use the proven permanent 
 
 ### P5 — Packaging / release qualification — COMPLETE FOR v1.0; v1.1 PROMOTION GATED
 
-Public stable packaging is Inno Setup + ordinary portable ZIP, with runtime package tests, SHA-256 hashes, release manifest, stable release workflow, and explicit USB-vs-Bluetooth support scope. The v1.1 updater lifecycle is functionally accepted, but public v1.1 promotion remains fail-closed until one exact immutable RC built from current release truth has its tag, commit, and three artifact SHA-256 values recorded in `V1_1_UPDATER_RC_ACCEPTANCE.md`.
+Public v1.1 packaging uses the Smart Installer plus the scope-matched per-user updater package, with runtime package tests, SHA-256 hashes, release manifest, stable promotion workflow, and explicit USB-vs-Bluetooth support scope. Portable is retired from the v1.1 public distribution. The updater lifecycle is functionally accepted, but public v1.1 promotion remains fail-closed until one exact immutable RC built from current release truth has its tag, commit, and two installer SHA-256 values recorded in `V1_1_UPDATER_RC_ACCEPTANCE.md`.
 
 ## Merge rule
 
