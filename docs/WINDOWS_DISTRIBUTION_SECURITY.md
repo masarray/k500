@@ -7,9 +7,7 @@ SonKuPik K500 is a GPL-3.0-or-later open-source application. The official Window
 The v1 stable line ships two Windows x64 packages:
 
 - **Installer:** standard Inno Setup 6 executable.
-- **Portable:** ordinary ZIP archive containing the deployed Qt application.
-
-The project intentionally does **not** ship a custom self-extracting portable executable. An earlier RC used a temporary extraction/launcher wrapper; although legitimate, that behavior resembles patterns used by droppers and can attract additional heuristic scrutiny. It is retired from the stable distribution model.
+The v1.1 public distribution intentionally uses the standard Inno Setup Smart Installer only. A scope-matched per-user Setup remains available to the updater for no-admin delivery. Historical portable packages and the retired custom self-extracting wrapper are not part of the v1.1 public distribution model.
 
 The normal installer uses the canonical machine location `C:\Program Files\SonKuPik K500`. Personal `.k500` files live separately under `Documents\SonKuPik K500\Presets` by default and are not owned by the uninstaller.
 
@@ -30,7 +28,7 @@ The project does not require users to disable security software or add broad exc
 Every public stable release includes:
 
 - exact Git commit SHA in `release-manifest.json`;
-- SHA-256 for Setup and Portable packages;
+- SHA-256 for the machine and per-user Setup packages;
 - exact artifact byte sizes;
 - target architecture and Qt runtime version;
 - hardware-qualified support scope;
@@ -73,14 +71,13 @@ Example PowerShell:
 
 ```powershell
 Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Setup.exe -Algorithm SHA256
-Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Portable.zip -Algorithm SHA256
 ```
 
 ## Qt runtime policy
 
 The release pipeline validates a current supported Qt runtime rather than remaining indefinitely on the original development kit. The v1 stable line is packaged and runtime-tested against the release pipeline's pinned Qt version (currently **Qt 6.10.2**).
 
-A future Qt upgrade must still pass the same protocol, preset, direct-deployment, portable, installed-app, and section-navigation regression gates before release.
+A future Qt upgrade must still pass the same protocol, preset, direct-deployment, machine/per-user installed-app, and section-navigation regression gates before release.
 
 ## Antivirus false-positive handling
 
