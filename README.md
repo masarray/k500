@@ -43,7 +43,7 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 >
 > **Release line:** v1.0.0 established the hardware-qualified baseline. Public stable is **v1.0.3**; it keeps the same Windows x64 + USB HID scope while carrying the mature v1.0 installer/updater baseline.
 >
-> **Updater development status:** the current source candidate is **v1.1.0** and includes a separately packaged per-user installer, explicit **Update tanpa Admin** migration from a registered Program Files install, recovery snapshots/rollback, resumable downloads, and explicit stale-registration repair. Public stable remains **v1.0.3** until an exact v1.1.0 RC passes the repository acceptance gate. Stable promotion then reuses the accepted RC installer/portable bytes byte-for-byte rather than rebuilding them; GitHub Releases remains the authority for public stable behavior.
+> **Updater development status:** the current source candidate is **v1.1.0** and includes a separately packaged per-user installer, explicit **Update tanpa Admin** migration from a registered Program Files install, recovery snapshots/rollback, resumable downloads, and explicit stale-registration repair. Public stable remains **v1.0.3** until an exact v1.1.0 RC passes the repository acceptance gate. Stable promotion then reuses the accepted RC machine/per-user installer bytes byte-for-byte rather than rebuilding them. The recommended public download is the Smart Installer; the per-user package exists for scope-matched updater/no-admin delivery, and v1.1 does not publish a Portable ZIP. GitHub Releases remains the authority for public stable behavior.
 
 ## See the real app
 
@@ -91,8 +91,7 @@ More screenshots are available in [`assets/k500 screenshot`](assets/k500%20scree
 
 | Package | Best for | Download |
 |---|---|---|
-| **Windows Setup** | Recommended for most users. Installs to `Program Files\SonKuPik K500`, keeps personal presets in Documents, and supports verified in-app updates. | [Download Setup](https://sonkupik-k500.pages.dev/download/windows) |
-| **Portable ZIP** | No installation. Extract the ZIP and run the application. | [Download Portable](https://sonkupik-k500.pages.dev/download/portable) |
+| **Smart Installer** | Recommended public package. Installs to `Program Files\SonKuPik K500`, keeps personal presets in Documents, and enables verified scope-aware in-app updates including the no-admin per-user path. | [Download Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
 | **Latest release** | Release notes, SHA-256 checksums, manifest, and current packages. | [Open latest release](https://github.com/masarray/k500/releases/latest) |
 
 Official Windows binaries are currently unsigned open-source builds. Windows SmartScreen or antivirus reputation systems may therefore warn when opening a new download. Release packages include SHA-256 verification metadata. See [Windows distribution & security](docs/WINDOWS_DISTRIBUTION_SECURITY.md).
@@ -153,7 +152,7 @@ Official downloads must pass K500 file validation before replacing the last-know
 - Default personal preset home under `Documents\SonKuPik K500\Presets`, separate from application binaries.
 - Verified in-app stable updater with manifest/SHA-256 checks and normal Windows UAC elevation.
 - Support Report JSON with sensitive preset payload/path information excluded.
-- Branded Windows installer and portable ZIP.
+- Branded Smart Installer plus the scope-matched per-user updater package.
 
 **Intentionally unsupported:** persistent LCD / Equipment Mode rename remains disabled until a donor-verified native rename transaction is captured.
 
@@ -269,7 +268,7 @@ Clean rebuild:
 build-windows.cmd -Clean
 ```
 
-The stable release pipeline validates protocol, codec, preset persistence, batch upload, updater metadata integrity, runtime navigation, portable-package, and installed-package regressions.
+The stable release pipeline validates protocol, codec, preset persistence, batch upload, updater metadata integrity, runtime navigation, and both machine/per-user installed-package regressions.
 
 ## Contributing
 
