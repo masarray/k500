@@ -8,12 +8,11 @@ This guide covers the public stable Windows workflow for SonKuPik K500.
 
 Bluetooth SPP is available in the application but remains experimental until independently qualified. For permanent Save/Upload/Mass Upload, use the supported USB workflow.
 
-## Install or run portable
+## Install SonKuPik K500
 
 Download the current stable build from the official SonKuPik K500 download page or GitHub Release page:
 
 - `SonKuPik-K500-vX.Y.Z-Windows-Setup.exe` — recommended normal installation;
-- `SonKuPik-K500-vX.Y.Z-Windows-Portable.zip` — extract and run `SonKuPik-K500.exe` without installing.
 
 The normal installer uses the standard Windows application layout:
 
@@ -234,7 +233,6 @@ PowerShell example:
 
 ```powershell
 Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Setup.exe -Algorithm SHA256
-Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Portable.zip -Algorithm SHA256
 ```
 
 Compare the output with `SHA256SUMS.txt` from the same GitHub release tag.
