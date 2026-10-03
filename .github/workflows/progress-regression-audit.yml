@@ -9,7 +9,7 @@ on:
       - 'src/k500/P42BatchTestMain.cpp'
       - 'qml/components/SystemWorkspace.qml'
       - 'qml/components/SystemWorkspaceImpl.qml'
-      - 'resources/presets/01_ALL_GENRE.k500'
+      - 'resources/presets/01_KONSER_NYANYI.k500'
       - '.github/workflows/progress-regression-audit.yml'
   pull_request:
     paths:
@@ -18,7 +18,7 @@ on:
       - 'src/k500/P42BatchTestMain.cpp'
       - 'qml/components/SystemWorkspace.qml'
       - 'qml/components/SystemWorkspaceImpl.qml'
-      - 'resources/presets/01_ALL_GENRE.k500'
+      - 'resources/presets/01_KONSER_NYANYI.k500'
       - '.github/workflows/progress-regression-audit.yml'
 
 jobs:
@@ -107,7 +107,7 @@ jobs:
       - name: Guard current official Mode 01 preset parity
         shell: pwsh
         run: |
-          $path = 'resources/presets/01_ALL_GENRE.k500'
+          $path = 'resources/presets/01_KONSER_NYANYI.k500'
           $bytes = [IO.File]::ReadAllBytes($path)
           if ($bytes.Length -ne 0x0478) { throw "Mode 01 length regressed: $($bytes.Length), expected 1144" }
 

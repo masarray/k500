@@ -17,7 +17,7 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 The current official Mode 01 is:
 
 ```text
-resources/presets/01_ALL_GENRE.k500
+resources/presets/01_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
 SHA-256: 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
 ```
@@ -140,7 +140,7 @@ Any navigation refactor must keep the runtime section stress test green. Never r
 The current **gold music reference** remains:
 
 ```text
-resources/presets/03_DANGDUT_SUPREME.k500
+resources/presets/03_KAR_DANGDUT.k500
 internal/hardware name: KAR DANGDUT
 ```
 

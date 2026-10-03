@@ -255,7 +255,7 @@ jobs:
             "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
             $artifacts += [ordered]@{ file=$file.Name; sha256=$hash; bytes=$file.Length }
           }
-          $presetResponse = gh api "repos/$env:GITHUB_REPOSITORY/contents/resources/presets/01_ALL_GENRE.k500?ref=$acceptedCommit" | ConvertFrom-Json
+          $presetResponse = gh api "repos/$env:GITHUB_REPOSITORY/contents/resources/presets/01_KONSER_NYANYI.k500?ref=$acceptedCommit" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0 -or -not $presetResponse.content) { throw 'Could not resolve Mode 01 from the accepted RC commit.' }
           $presetBytes = [Convert]::FromBase64String(([string]$presetResponse.content -replace '\s',''))
           $presetTemp = Join-Path $env:RUNNER_TEMP 'accepted-mode01.k500'

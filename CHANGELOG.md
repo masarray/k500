@@ -3,6 +3,16 @@
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
 
+## Unreleased — Synchronize official preset filenames
+
+### Changed
+
+- Renamed all ten official `.k500` repository files so the physical filename matches the finalized internal preset name, using the stable `NN_PRESET_NAME.k500` convention.
+- Updated packaging, preset-file bridge, CI/release guards, updater references, and current-state documentation to use the synchronized filenames.
+- Binary preset contents are unchanged by this path-only rename; blob identities remain the same.
+
+
+
 ## Unreleased — Preset 02 display rename
 
 ### Changed

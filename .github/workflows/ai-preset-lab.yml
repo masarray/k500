@@ -54,13 +54,13 @@ jobs:
       - name: Decode proven K500 fields
         run: |
           mkdir -p artifacts
-          python tools/k500_preset_lab.py inspect resources/presets/03_DANGDUT_SUPREME.k500 --json artifacts/dangdut.json > /dev/null
+          python tools/k500_preset_lab.py inspect resources/presets/03_KAR_DANGDUT.k500 --json artifacts/dangdut.json > /dev/null
           test -s artifacts/dangdut.json
 
       - name: Prove donor-based surgical patch path
         run: |
           python tools/k500_preset_lab.py patch \
-            resources/presets/01_ALL_GENRE.k500 \
+            resources/presets/01_KONSER_NYANYI.k500 \
             tools/k500_patch_example.json \
             artifacts/lab-example.k500
           python tools/k500_preset_lab.py validate artifacts/lab-example.k500
@@ -68,8 +68,8 @@ jobs:
 
       - name: Generate graphical response research artifacts
         run: |
-          python tools/k500_preset_lab.py plot resources/presets/03_DANGDUT_SUPREME.k500 --out-dir artifacts/plot > /dev/null
-          python tools/k500_preset_lab.py compare resources/presets/01_ALL_GENRE.k500 artifacts/lab-example.k500 --out-dir artifacts/compare > /dev/null
+          python tools/k500_preset_lab.py plot resources/presets/03_KAR_DANGDUT.k500 --out-dir artifacts/plot > /dev/null
+          python tools/k500_preset_lab.py compare resources/presets/01_KONSER_NYANYI.k500 artifacts/lab-example.k500 --out-dir artifacts/compare > /dev/null
           test -s artifacts/plot/03_DANGDUT_SUPREME_inputs.png
           test -s artifacts/plot/03_DANGDUT_SUPREME_vocal_fx.png
           test -s artifacts/plot/03_DANGDUT_SUPREME_outputs.png

@@ -317,16 +317,16 @@ qt_add_resources(sonkupik_studio_native embedded_fonts
 # Bundled official presets are the offline fallback. Runtime GitHub sync may
 # replace/add validated files in the user cache, never mutate these resources.
 set(SONKUPIK_PRESET_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ALL_GENRE.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BROADCAST.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_SUPREME.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_ROCK.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANGAN.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_QORI_SHOLAWAT.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_BLUES.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ACOUSTIC.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_REGGAE.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_KONSER_NYANYI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_MC_HOST_RADIO.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_KAR_DANGDUT.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_POP_ROCK_BALLAD.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANGAN_V2.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_SHOLAWAT_SYAHDU.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ_LOUNGE.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_BLUES_CLUB.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ACOUSTIC_NATURAL.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_REGGAE_DUB.k500"
 )
 foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
     get_filename_component(PRESET_NAME "${PRESET_FILE}" NAME)

@@ -77,7 +77,7 @@ jobs:
             if (-not $readiness.Contains($token)) { throw "Stable readiness contract missing '$token'" }
           }
 
-          $preset = 'resources/presets/01_ALL_GENRE.k500'
+          $preset = 'resources/presets/01_KONSER_NYANYI.k500'
           $bytes = [IO.File]::ReadAllBytes($preset)
           if ($bytes.Length -ne 0x0478) { throw "Mode 01 length invalid: $($bytes.Length)" }
           $sum = 0

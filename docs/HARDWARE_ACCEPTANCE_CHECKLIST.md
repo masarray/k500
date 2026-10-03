@@ -144,7 +144,7 @@ Use a known `.k500` and record SHA-256.
 Before any stable release or official Mode 01 change, verify:
 
 ```text
-resources/presets/01_ALL_GENRE.k500
+resources/presets/01_KONSER_NYANYI.k500
 internal name: CONCERT HIFI V4
 SHA-256: 9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74
 ```

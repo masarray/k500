@@ -22,7 +22,7 @@ on:
       - 'qml/components/UpdateDialog.qml'
       - 'packaging/windows/installer.iss'
       - 'CMakeLists.txt'
-      - 'resources/presets/01_ALL_GENRE.k500'
+      - 'resources/presets/01_KONSER_NYANYI.k500'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/windows-stable-release.yml'
@@ -49,7 +49,7 @@ on:
       - 'qml/components/UpdateDialog.qml'
       - 'packaging/windows/installer.iss'
       - 'CMakeLists.txt'
-      - 'resources/presets/01_ALL_GENRE.k500'
+      - 'resources/presets/01_KONSER_NYANYI.k500'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
       - '.github/workflows/windows-stable-release.yml'
@@ -229,7 +229,7 @@ jobs:
             'Accepted RC tag commit differs from recorded accepted commit.',
             'byte-identical-rc-artifact-promotion',
             'Stable staging changed accepted bytes:',
-            'contents/resources/presets/01_ALL_GENRE.k500?ref=$acceptedCommit',
+            'contents/resources/presets/01_KONSER_NYANYI.k500?ref=$acceptedCommit',
             'Could not resolve Mode 01 from the accepted RC commit.',
             'mode01NativeSha256 = $mode01AcceptedHash',
             'prerelease: false',
@@ -294,7 +294,7 @@ jobs:
             if (-not $updater.Contains($token)) { throw "Smart updater contract missing '$token'" }
           }
 
-          $mode01Path = 'resources/presets/01_ALL_GENRE.k500'
+          $mode01Path = 'resources/presets/01_KONSER_NYANYI.k500'
           $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($mode01Hash -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') {
             throw "Official Mode 01 changed: $mode01Hash"
