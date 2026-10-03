@@ -247,12 +247,11 @@ void K500PresetManager::sendRecallHandshake()
 
 void K500PresetManager::setUseInitVolume(bool enabled)
 {
-    // USE_INIT_DEVICE_TRUTH_V1
-    // Never treat a host-side preference as the K500's actual state. Physical
-    // capture proves only the setter/ACK pair:
+    // USE_INIT_DEVICE_TRUTH_V2
+    // Never treat a host-side preference as K500 truth. C0 data[7] bit 0x04
+    // hydrates the connect/Recall state; the setter/ACK pair remains:
     // OFF AA 03 00 12 00 03 E8, ON AA 03 00 12 01 03 E7, ACK RSP 0xED.
-    // Until a dedicated connect OFF-vs-ON capture identifies the readback bit,
-    // the value is unknown after connect and becomes known only after device ACK.
+    // A local edit becomes current-session truth only after that valid ACK.
     if (!connected()) {
         const QString error = QStringLiteral("Use Init Volume memerlukan K500 connected; device state tidak boleh dipalsukan dari preference PC.");
         if (m_manager) m_manager->setError(error);
