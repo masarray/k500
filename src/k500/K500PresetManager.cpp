@@ -247,7 +247,7 @@ void K500PresetManager::sendRecallHandshake()
 
 void K500PresetManager::setUseInitVolume(bool enabled)
 {
-    // USE_INIT_DEVICE_TRUTH_V2
+    // USE_INIT_DEVICE_TRUTH_V1 + USE_INIT_DEVICE_TRUTH_V2
     // Never treat a host-side preference as K500 truth. C0 data[7] bit 0x04
     // hydrates the connect/Recall state; the setter/ACK pair remains:
     // OFF AA 03 00 12 00 03 E8, ON AA 03 00 12 01 03 E7, ACK RSP 0xED.
