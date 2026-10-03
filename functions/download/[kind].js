@@ -6,11 +6,6 @@ const ARTIFACTS = {
     filename: 'SonKuPik-K500-Windows-Setup.exe',
     versioned: (tag) => `SonKuPik-K500-${tag}-Windows-Setup.exe`,
     contentType: 'application/vnd.microsoft.portable-executable'
-  },
-  portable: {
-    filename: 'SonKuPik-K500-Windows-Portable.zip',
-    versioned: (tag) => `SonKuPik-K500-${tag}-Windows-Portable.zip`,
-    contentType: 'application/zip'
   }
 };
 
