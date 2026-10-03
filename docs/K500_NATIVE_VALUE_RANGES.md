@@ -82,6 +82,26 @@ with the same raw integer level `0..4`; the following command byte is fixed
 Lowering Music Max below the current Top Music value clamps Top Music in the
 same native `CMD 0x02` block. Raising Music Max does not raise Top Music.
 
+## System startup / recording — native capture observed
+
+The focused 2026-10-04 USB captures close these manufacturer UI domains:
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Music Init | 0 | 84 | scalar | Native packet capture, CMD 0x02 |
+| Mic Init | 0 | 84 | scalar | Native packet capture, CMD 0x05 |
+| Effect Init | 0 | 84 | scalar | Native packet capture, CMD 0x0A |
+| USB Record Volume | 1 | 6 | UI step | Native packet capture, CMD 0x3E selector 0x03 |
+
+USB Record stores `raw = UI - 1`, therefore raw `0..5` represents UI `1..6`.
+
+Mic Max and UDisk Record are deliberately omitted: their READ representation is
+known, but their WRITE domains/selector semantics have not been independently
+captured. Do not infer them from adjacent fields.
+
+Adj Manner / VR OFF is a boolean setter (`CMD 0x07`) rather than a numeric
+range. Its reconnect/readback location remains unproven.
+
 ## Common PEQ
 
 | Parameter | Minimum | Maximum | Unit | Evidence |
