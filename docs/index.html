@@ -38,8 +38,7 @@
           <h1>Native control.<br><em>Hardware truth.</em></h1>
           <p class="lead">SonKuPik K500 is a native Qt 6 Windows control and preset-engineering application for the K500 karaoke processor. Download buttons on this page resolve the newest non-prerelease stable build instead of being tied to a hard-coded version.</p>
           <div class="actions">
-            <a class="btn primary" href="https://sonkupik-k500.pages.dev/download/windows">Download Windows Setup</a>
-            <a class="btn" href="https://sonkupik-k500.pages.dev/download/portable">Portable ZIP</a>
+            <a class="btn primary" href="https://sonkupik-k500.pages.dev/download/windows">Download Smart Installer</a>
             <a class="btn" href="https://github.com/masarray/k500/releases/latest">Release notes</a>
           </div>
           <div class="supportline"><span><b>Qualified baseline</b> Windows 10/11 x64 + USB HID</span><span><b>Experimental</b> Bluetooth SPP</span><span><b>License</b> GPL-3.0-or-later</span></div>
@@ -48,10 +47,10 @@
       </section>
 
       <section class="section">
-        <div class="section-head"><div><div class="kicker">One release source of truth</div><h2>Landing pages follow the release, not the other way around.</h2></div><p>GitHub Releases remains the artifact authority. The product-site routes resolve GitHub's canonical <code>releases/latest</code> stable tag and stream the matching versioned Setup or Portable package.</p></div>
+        <div class="section-head"><div><div class="kicker">One release source of truth</div><h2>Landing pages follow the release, not the other way around.</h2></div><p>GitHub Releases remains the artifact authority. The product-site route resolves GitHub's canonical <code>releases/latest</code> stable tag and streams the matching versioned Smart Installer.</p></div>
         <div class="cards">
           <article class="card"><small>SETUP</small><h3>Recommended install</h3><p>Public stable uses the normal Windows Program Files installation, with personal presets kept in Documents and verified in-app updates. The source tree is also qualifying an explicit per-user / no-admin migration path; it does not become public stable behavior until a tagged release is accepted.</p></article>
-          <article class="card"><small>PORTABLE</small><h3>No-install package</h3><p>The same latest-stable contract, delivered as a normal ZIP for testing or portable use.</p></article>
+          <article class="card"><small>SMART INSTALLER</small><h3>One recommended download</h3><p>The public package uses standard Windows Setup while the app keeps a scope-matched per-user backend for no-admin updates.</p></article>
           <article class="card"><small>FAIL-CLOSED</small><h3>No stale fallback</h3><p>If the latest stable release cannot be resolved or the matching artifact is unavailable, the download route fails instead of silently serving an older package.</p></article>
         </div>
         <div class="supportline"><span><b>Official + Local library</b> keeps bundled and user-owned presets separate.</span><span><b>Validated preset sync</b> preserves last-known-good official data on failure.</span></div>
@@ -60,8 +59,8 @@
       <section class="section">
         <div class="section-head"><div><div class="kicker">Release integrity</div><h2>Public stable with explicit provenance.</h2></div><p>v1.0.0 established the hardware-qualified baseline. Maintenance releases preserve that device scope while release metadata, checksums and manifests remain attached to the current GitHub stable release.</p></div>
         <div class="integrity">
-          <article class="card"><small>VERIFY</small><h3>Published release metadata</h3><p>Every stable Windows publication includes <code>SHA256SUMS.txt</code> and <code>release-manifest.json</code> alongside Setup and Portable packages.</p><p><a href="https://github.com/masarray/k500/releases/latest">Open the current stable release →</a></p></article>
-          <article class="card"><small>DOWNLOAD CONTRACT</small><h3>Future maintenance releases auto-sync</h3><p><code>/download/windows</code> and <code>/download/portable</code> resolve the newest stable tag server-side, so landing-page CTA links do not need a version-specific edit for every release.</p><p><a href="https://sonkupik-k500.pages.dev/">Open the canonical product website →</a></p></article>
+          <article class="card"><small>VERIFY</small><h3>Published release metadata</h3><p>Every v1.1+ stable Windows publication includes <code>SHA256SUMS.txt</code> and <code>release-manifest.json</code> alongside the machine and per-user installer packages.</p><p><a href="https://github.com/masarray/k500/releases/latest">Open the current stable release →</a></p></article>
+          <article class="card"><small>DOWNLOAD CONTRACT</small><h3>Future maintenance releases auto-sync</h3><p><code>/download/windows</code> resolves the newest stable Smart Installer server-side, so landing-page CTA links do not need a version-specific edit for every release.</p><p><a href="https://sonkupik-k500.pages.dev/">Open the canonical product website →</a></p></article>
         </div>
       </section>
     </main>
