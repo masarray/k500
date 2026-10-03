@@ -70,11 +70,11 @@ jobs:
         run: |
           python tools/k500_preset_lab.py plot resources/presets/03_KAR_DANGDUT.k500 --out-dir artifacts/plot > /dev/null
           python tools/k500_preset_lab.py compare resources/presets/01_KONSER_NYANYI.k500 artifacts/lab-example.k500 --out-dir artifacts/compare > /dev/null
-          test -s artifacts/plot/03_DANGDUT_SUPREME_inputs.png
-          test -s artifacts/plot/03_DANGDUT_SUPREME_vocal_fx.png
-          test -s artifacts/plot/03_DANGDUT_SUPREME_outputs.png
-          test -s artifacts/plot/03_DANGDUT_SUPREME_curves.csv
-          test -s artifacts/plot/03_DANGDUT_SUPREME_report.json
+          test -s artifacts/plot/03_KAR_DANGDUT_inputs.png
+          test -s artifacts/plot/03_KAR_DANGDUT_vocal_fx.png
+          test -s artifacts/plot/03_KAR_DANGDUT_outputs.png
+          test -s artifacts/plot/03_KAR_DANGDUT_curves.csv
+          test -s artifacts/plot/03_KAR_DANGDUT_report.json
           test -s artifacts/compare/comparison_delta.png
           test -s artifacts/compare/comparison_report.json
 
