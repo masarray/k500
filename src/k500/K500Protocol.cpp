@@ -345,14 +345,15 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
 
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars)
 {
-    // P1_TOP_EFFECT_VERIFIED_V1 — exact donor CMD 0x09 layout.
-    quint8 init = K500Frame::clampByte(state.effectInitLevel);
-    if (deviceScalars.size() > 0x15)
-        init = byteFromChar(deviceScalars.at(0x15));
+    Q_UNUSED(deviceScalars);
+    // EFFECT_INIT_STATEFUL_CMD09_V1 — after the CMD 0x0A sweep proved Effect
+    // Init writable, CMD 0x09 must preserve the current hydrated/edited state.
+    // Replaying pre-edit scalar cache here would silently undo a prior init edit.
     return K500Frame::build(bytes({
         0x03, 0x09,
         K500Frame::clampByte(qBound(0, state.topEffectVol, TopVolumeMax)),
-        init,
+        K500Frame::clampByte(qBound(NativeRange::StartupLevelMin,
+                                     state.effectInitLevel, NativeRange::StartupLevelMax)),
     }));
 }
 
@@ -733,7 +734,11 @@ bool selfTest(QString *error)
 
     K500EffectBlockState effect;
     effect.topEffectVol = 49;
-    if (!expect(topEffectBlock(effect, {}), {0xAA, 0x03, 0x09, 0x31, 0x19, 0xAA}, QStringLiteral("top effect"))) return false;
+    QByteArray staleEffectScalars(0x40, char(0));
+    staleEffectScalars[0x15] = char(0x7F);
+    if (!expect(topEffectBlock(effect, staleEffectScalars),
+                {0xAA, 0x03, 0x09, 0x31, 0x19, 0xAA},
+                QStringLiteral("top effect preserves captured init state, not stale scalar"))) return false;
 
     if (!expect(K500Frame::toUsbFrame(effectInitLevel(26, 35)),
                 {0xAA,0x03,0x00,0x0A,0x1A,0x23,0xB6},
