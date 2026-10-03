@@ -126,9 +126,20 @@ Music uses current scalar `0x1B` as the final state byte. Verified non-Music cro
 ## Top Music device-seed safety
 
 `CMD 0x02` is a block write. Unmapped fields are seeded from device scalar cache,
-never stale UI defaults. Music Noise Gate is now a capture-verified writable field;
-until the user edits it in the current session, its byte is still preserved from
-device scalar truth. Regression tests verify both preservation and captured gate writes.
+never stale UI defaults. Music Noise Gate is capture-verified writable; until the
+user edits it, its byte remains device-seeded.
+
+Music Init is also now capture-verified writable and is carried by hydrated
+`K500MusicBlockState.musicInitVol`, not by replaying a stale scalar cache.
+
+Representative USB capture:
+
+```text
+Music Init 84  AA 0D 00 02 19 54 54 02 09 09 09 08 08 07 15 00 E7
+```
+
+Regression tests deliberately poison the old donor scalar to prove the serialized
+Music Init byte comes from current hydrated/edited state.
 
 ### System Music Max — native hard ceiling
 
@@ -181,9 +192,18 @@ AA 0E 05 23 19 54 0B 00 00 60 60 26 03 0A 02 00 5D
 Body layout after command byte:
 
 ```text
-[topMicVol] [micInit mirrored] [micMax mirrored] [gate mirrored]
+[topMicVol] [micInit state] [micMax mirrored] [gate mirrored]
 [FBX 0..4] [00 fixed] [micA] [micB] [TH+50] [ratio] [attack] [release*10] [00]
 ```
+
+The 2026-10-04 Mic Init sweep proves the second scalar writable. Representative USB vector:
+
+```text
+Mic Init 26  AA 0E 00 05 1E 1A 54 0B 04 00 64 64 32 02 01 0C 00 49
+```
+
+Like Music Init, Mic Init is hydrated into block state and survives later Top Mic
+writes without falling back to a stale pre-edit scalar.
 
 Exact native FBX write vectors from the paired 2026-09-20 captures:
 
@@ -197,7 +217,7 @@ FBX 4  AA 0E 05 19 19 54 0B 04 00 60 60 27 03 0A 02 00 62
 
 FBX READ truth is direct live `activeMemory[0x001B]`; do not pass that through the file-offset helper. The byte immediately following FBX in CMD `0x05` is captured as fixed `0x00`, not active-memory neighbour `0x001C`. The final `00` is explicitly **not** EQ Link.
 
-## P1 Top Effect CMD 0x09
+## P1 Top Effect CMD 0x09 + Effect Init CMD 0x0A
 
 Reference master effect 49, init 25:
 
@@ -205,7 +225,17 @@ Reference master effect 49, init 25:
 AA 03 09 31 19 AA
 ```
 
-The init byte is mirrored from current device scalar `0x15`.
+The 2026-10-04 capture proves Effect Init itself uses dedicated `CMD 0x0A`:
+
+```text
+Init 26  AA 03 00 0A 1A 23 B6
+Init 84  AA 03 00 0A 54 23 7C
+```
+
+The second `CMD 0x0A` scalar is current Top Effect; device ACK is `RSP 0xF5`.
+After Effect Init becomes writable, later Top Effect `CMD 0x09` writes carry the
+current hydrated/edited Effect Init state. They must not replay stale scalar
+cache and undo a preceding `CMD 0x0A` edit.
 
 ## P1 Mic EQ Link
 
@@ -253,6 +283,28 @@ AA 25 0E 05 5D 00 00 00 46 00 5A 00 3C 00 32 00 28 08 04 03 00 00 00 00 00 00 00
 
 The regression self-test seeds unknown bytes with sentinel values and verifies untouched positions survive a block edit. This is a destructive-write safety guard.
 
+## System USB Record / Adj Manner VR OFF
+
+USB Record Volume uses `CMD 0x3E`, selector `0x03`, fixed tail `0x54`.
+UI `1..6` maps to raw `0..5`; ACK is `RSP 0xC1`.
+
+```text
+USB Record 4  AA 04 00 3E 03 03 54 64
+USB Record 6  AA 04 00 3E 03 05 54 62
+USB Record 1  AA 04 00 3E 03 00 54 67
+```
+
+UDisk Record remains read-only because its selector was not captured.
+
+Adj Manner / VR OFF uses `CMD 0x07`; ACK is `RSP 0xF8`.
+
+```text
+Unticked / OFF  AA 03 00 07 00 00 F6
+Ticked   / ON   AA 03 00 07 01 00 F5
+```
+
+No reconnect/readback bit is proven, so ACK establishes only current-session truth.
+
 ## Recall / Use Init Volume
 
 The route byte is a **device destination mask**, not the current physical PC cable. Donor/native captures use `0x03` for Recall and Use Init.
@@ -280,6 +332,22 @@ CMD 0x01 -> settle 80 ms -> CMD 0x3F -> require RSP 0xC0
 ```
 
 Use Init Volume requires `RSP 0xED`.
+
+Paired 2026-10-04 Mode 01 Recall captures also prove the device-owned behavior:
+
+```text
+Use Init ON:
+Top Music  = Music Init  = 40
+Top Mic    = Mic Init    = 35
+Top Effect = Effect Init = 30
+
+Use Init OFF:
+the paired active masters remain 25
+```
+
+The reconstructed 939-byte snapshots differ at active master offsets
+`0x0000..0x0002`. SonKuPik must not emulate this copy locally; Recall still
+finishes with a full device readback and hydrates the K500's result.
 
 ## Permanent Store
 
@@ -310,6 +378,25 @@ AA 41 42 58 02 38 00 [56x00] 00 00 00 00 EB
 Commit slot 1, zero image
 AA 07 43 00 00 38 00 00 00 7E
 ```
+
+### Persistent Equipment Mode rename
+
+The 2026-10-04 `KONSER NYANYI -> KONSER SOLO` capture proves rename is not a
+separate command. It patches the active slot image and uses the same native Store
+transaction.
+
+The name field is exactly:
+
+```text
+slot-image 0x0280..0x028F
+16 printable ASCII bytes, space padded
+"KONSER SOLO     "
+```
+
+The implementation performs fresh readback, modifies only those 16 bytes, runs
+single-slot Store, then recalls the same slot and performs a full 939-byte resync.
+Golden tests reject >16-character/non-ASCII names and assert every byte outside
+the name field is unchanged.
 
 Mass-upload chain vector with final slot-image bytes `12 34` and chain input `12 34 56`:
 
@@ -348,8 +435,10 @@ This file/preset integration is part of the v1 stable baseline; P3/P4 are no lon
 No verified live/persistent write is invented for:
 
 - Mic gate detail where donor/native command semantics remain unproven;
-- detailed Reverb/Echo timing/level fields without a verified command;
-- persistent LCD/Equipment Mode Name rename.
+- Mic Max Volume, whose READ scalar is known but WRITE is not captured;
+- UDisk Record Volume, whose READ scalar is known but WRITE selector is not captured;
+- Adj Manner / VR OFF reconnect/readback truth; only setter + ACK are proven;
+- detailed fields whose command semantics remain unproven.
 
 Such fields remain read-only/unsupported until packet evidence exists.
 
