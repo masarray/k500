@@ -678,7 +678,8 @@ StudioPanel {
                         Layout.minimumWidth: 48
                         Layout.fillHeight: true
                         property real localValue: Number(modelData.value)
-                        // STARTUP_LIMIT_DEVICE_SYNC_V1 — every captured startup
+                        // MUSIC_MAX_FADER_DEVICE_SYNC_V2 + STARTUP_LIMIT_DEVICE_SYNC_V1 —
+                        // every captured startup
                         // control is hydrated from K500 truth after connect/recall.
                         // Do not overwrite an in-progress drag, but otherwise let
                         // authoritative readback replace the local presentation.
