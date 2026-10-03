@@ -36,7 +36,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Hardware-qualified baseline | `v1.0.0` |
 | Public stable | `v1.0.3` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
 | Current source candidate | `v1.1.0` updater RC line; not public stable |
-| Product download router | [Setup](https://sonkupik-k500.pages.dev/download/windows) · [Portable](https://sonkupik-k500.pages.dev/download/portable) |
+| Product download router | [Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
 | Bluetooth SPP | Implemented, experimental |
@@ -46,7 +46,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Official Mode 01 | `KONSER NYANYI` (native-donor lineage) |
 | Mode 01 SHA-256 | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` |
 | Final genre library | Slots 01–10 differentiated; Mode 02 intentionally dry Broadcast |
-| Windows distribution | Inno Setup + normal portable ZIP |
+| Windows distribution | Smart Installer + scope-matched per-user updater package |
 | Code signing | unsigned open-source |
 
 The public download routes intentionally do not contain a release number. They resolve GitHub's canonical latest non-prerelease release and the matching versioned Windows artifact, so future maintenance releases do not require manual CTA rewrites.
