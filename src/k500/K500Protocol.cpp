@@ -285,7 +285,11 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     const int safeMusicMax = qBound(0, state.musicMaxVol, TopVolumeMax);
     const int safeTopMusic = qBound(0, qMin(state.topMusicVol, safeMusicMax), TopVolumeMax);
     body.append(char(K500Frame::clampByte(safeTopMusic)));
-    body.append(char(mirrored(0x03, state.musicInitVol)));
+    // MUSIC_INIT_CMD02_CAPTURED_V1 — physical slider capture proves this byte
+    // is writable state, not a permanently mirrored neighbour. State is seeded
+    // from Retrieve All before LIVE so unrelated writes still preserve hardware truth.
+    body.append(char(K500Frame::clampByte(qBound(
+        NativeRange::StartupLevelMin, state.musicInitVol, NativeRange::StartupLevelMax))));
     body.append(char(K500Frame::clampByte(safeMusicMax)));
     // MUSIC_SOURCE_SIX_WAY_V1 — INPUT1, INPUT2, BT, UDISK, OPTIC, UAUDIO.
     body.append(char(K500Frame::clampByte(qBound(0, state.sourceRaw, 5))));
@@ -319,7 +323,11 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
     body.append(char(0x0E));
     body.append(char(0x05));
     body.append(char(K500Frame::clampByte(qBound(0, state.topMicVol, TopVolumeMax))));
-    body.append(char(mirrored(0x0A, state.micInitVol)));
+    // MIC_INIT_CMD05_CAPTURED_V1 — physical slider capture proves the second
+    // scalar in CMD 0x05 is writable Mic Init state. Hydration preserves it for
+    // unrelated writes until the user explicitly edits this field.
+    body.append(char(K500Frame::clampByte(qBound(
+        NativeRange::StartupLevelMin, state.micInitVol, NativeRange::StartupLevelMax))));
     body.append(char(mirrored(0x0B, TopVolumeMax)));
     body.append(char(mirrored(0x0E, 0x0B)));
     body.append(char(K500Frame::clampByte(
@@ -337,15 +345,47 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
 
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars)
 {
-    // P1_TOP_EFFECT_VERIFIED_V1 — exact donor CMD 0x09 layout.
-    quint8 init = K500Frame::clampByte(state.effectInitLevel);
-    if (deviceScalars.size() > 0x15)
-        init = byteFromChar(deviceScalars.at(0x15));
+    Q_UNUSED(deviceScalars);
+    // P1_TOP_EFFECT_VERIFIED_V1 + EFFECT_INIT_STATEFUL_CMD09_V1 —
+    // after the CMD 0x0A sweep proved Effect
+    // Init writable, CMD 0x09 must preserve the current hydrated/edited state.
+    // Replaying pre-edit scalar cache here would silently undo a prior init edit.
     return K500Frame::build(bytes({
         0x03, 0x09,
         K500Frame::clampByte(qBound(0, state.topEffectVol, TopVolumeMax)),
-        init,
+        K500Frame::clampByte(qBound(NativeRange::StartupLevelMin,
+                                     state.effectInitLevel, NativeRange::StartupLevelMax)),
     }));
+}
+
+QByteArray effectInitLevel(int initLevel, int topEffectVol)
+{
+    // EFFECT_INIT_CMD0A_CAPTURED_V1 — supplied USB sweep:
+    // AA 03 00 0A <init 0..84> <current top-effect> <checksum>.
+    // The captured neighbour stayed 0x23 (=35), matching Top Effect. Seed it
+    // from hydrated state rather than hard-coding the observed value.
+    return K500Frame::build(bytes({
+        0x03, 0x0A,
+        K500Frame::clampByte(qBound(NativeRange::StartupLevelMin,
+                                     initLevel, NativeRange::StartupLevelMax)),
+        K500Frame::clampByte(qBound(0, topEffectVol, TopVolumeMax)),
+    }));
+}
+
+QByteArray usbRecordVolume(int levelOneBased)
+{
+    // USB_RECORD_VOL_CMD3E_CAPTURED_V1 — UI 1..6 maps to raw 0..5.
+    // Selector 0x03 and tail 0x54 are capture-backed. UDisk remains unproven.
+    const int safe = qBound(NativeRange::UsbRecordVolMin, levelOneBased,
+                            NativeRange::UsbRecordVolMax);
+    return K500Frame::build(bytes({0x04, 0x3E, 0x03, safe - 1, 0x54}));
+}
+
+QByteArray adjMannerVrOff(bool enabled)
+{
+    // ADJ_MANNER_VR_OFF_CMD07_CAPTURED_V1 — exact supplied toggle sequence:
+    // OFF AA 03 00 07 00 00 F6, ON AA 03 00 07 01 00 F5, device ACK RSP 0xF8.
+    return K500Frame::build(bytes({0x03, 0x07, enabled ? 0x01 : 0x00, 0x00}));
 }
 
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData)
@@ -637,20 +677,35 @@ bool selfTest(QString *error)
     if (!expect(musicBass(9.0), {0xAA,0x06,0x0C,0x02,0x00,0xD2,0x00,0x09,0x11},
                 QStringLiteral("Music Bass +9 capture"))) return false;
     QByteArray scalars(0x40, char(0));
-    scalars[0x03] = char(0x31); scalars[0x04] = char(0x52); scalars[0x1B] = char(0x0B); scalars[0x07] = char(0x06);
-    music.topMusicVol = 70; music.musicMaxVol = 82; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
-    if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music mirrored scalar"))) return false;
+    // Poison the old mirrored offset: captured Music Init now comes from
+    // hydrated/editable state while the still-unproven neighbours stay seeded.
+    scalars[0x03] = char(0x7F); scalars[0x04] = char(0x52); scalars[0x1B] = char(0x0B); scalars[0x07] = char(0x06);
+    music.topMusicVol = 70; music.musicInitVol = 49; music.musicMaxVol = 82; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
+    if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music captured init scalar"))) return false;
+
+    K500MusicBlockState musicInitCapture;
+    musicInitCapture.topMusicVol = 25; musicInitCapture.musicInitVol = 84; musicInitCapture.musicMaxVol = 84;
+    musicInitCapture.sourceRaw = 2; musicInitCapture.input1GainDb = -3; musicInitCapture.input2GainDb = -3;
+    musicInitCapture.bluetoothGainDb = -3; musicInitCapture.uDiskGainDb = -4; musicInitCapture.digitalGainDb = -4;
+    musicInitCapture.key = 0; musicInitCapture.noiseGateRaw = 21;
+    QByteArray musicInitScalars(0x40, char(0));
+    musicInitScalars[0x03] = char(0x19);
+    musicInitScalars[0x07] = char(0x00);
+    if (!expect(K500Frame::toUsbFrame(topMusicBlock(musicInitCapture, musicInitScalars)),
+                {0xAA,0x0D,0x00,0x02,0x19,0x54,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0xE7},
+                QStringLiteral("Music Init 84 USB capture"))) return false;
 
     K500MicBlockState mic;
     if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x00, 0x00, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x5D}, QStringLiteral("top mic default"))) return false;
 
     QByteArray micScalars(0x40, char(0));
-    micScalars[0x0A] = char(0x19); micScalars[0x0B] = char(0x54); micScalars[0x0E] = char(0x0B);
-    // Deliberately poison neighbour 0x1C: captured FBX write must never replay it.
+    micScalars[0x0A] = char(0x7F); micScalars[0x0B] = char(0x54); micScalars[0x0E] = char(0x0B);
+    // Poison old init donor and neighbour 0x1C: captured writable fields must
+    // never replay either stale byte.
     micScalars[0x1B] = char(0x03); micScalars[0x1C] = char(0x7F);
-    mic.topMicVol = 30; mic.fbxLevel = 19; mic.micAVol = 100; mic.micBVol = 100;
+    mic.topMicVol = 30; mic.micInitVol = 26; mic.fbxLevel = 19; mic.micAVol = 100; mic.micBVol = 100;
     mic.compThresholdDb = 0; mic.compRatio = 2; mic.attackMs = 1; mic.releaseSec = 1.2;
-    if (!expect(topMicBlock(mic, micScalars), {0xAA, 0x0E, 0x05, 0x1E, 0x19, 0x54, 0x0B, 0x04, 0x00, 0x64, 0x64, 0x32, 0x02, 0x01, 0x0C, 0x00, 0x4A}, QStringLiteral("top mic FBX clamps to captured level 4"))) return false;
+    if (!expect(topMicBlock(mic, micScalars), {0xAA, 0x0E, 0x05, 0x1E, 0x1A, 0x54, 0x0B, 0x04, 0x00, 0x64, 0x64, 0x32, 0x02, 0x01, 0x0C, 0x00, 0x49}, QStringLiteral("top mic captured init + FBX clamp"))) return false;
 
     K500MicBlockState fbxCapture;
     fbxCapture.topMicVol = 25;
@@ -680,7 +735,35 @@ bool selfTest(QString *error)
 
     K500EffectBlockState effect;
     effect.topEffectVol = 49;
-    if (!expect(topEffectBlock(effect, {}), {0xAA, 0x03, 0x09, 0x31, 0x19, 0xAA}, QStringLiteral("top effect"))) return false;
+    QByteArray staleEffectScalars(0x40, char(0));
+    staleEffectScalars[0x15] = char(0x7F);
+    if (!expect(topEffectBlock(effect, staleEffectScalars),
+                {0xAA, 0x03, 0x09, 0x31, 0x19, 0xAA},
+                QStringLiteral("top effect preserves captured init state, not stale scalar"))) return false;
+
+    if (!expect(K500Frame::toUsbFrame(effectInitLevel(26, 35)),
+                {0xAA,0x03,0x00,0x0A,0x1A,0x23,0xB6},
+                QStringLiteral("Effect Init 26 USB capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(effectInitLevel(84, 35)),
+                {0xAA,0x03,0x00,0x0A,0x54,0x23,0x7C},
+                QStringLiteral("Effect Init 84 USB capture"))) return false;
+
+    if (!expect(K500Frame::toUsbFrame(usbRecordVolume(4)),
+                {0xAA,0x04,0x00,0x3E,0x03,0x03,0x54,0x64},
+                QStringLiteral("USB Record Vol 4 capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(usbRecordVolume(6)),
+                {0xAA,0x04,0x00,0x3E,0x03,0x05,0x54,0x62},
+                QStringLiteral("USB Record Vol 6 capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(usbRecordVolume(1)),
+                {0xAA,0x04,0x00,0x3E,0x03,0x00,0x54,0x67},
+                QStringLiteral("USB Record Vol 1 capture"))) return false;
+
+    if (!expect(K500Frame::toUsbFrame(adjMannerVrOff(false)),
+                {0xAA,0x03,0x00,0x07,0x00,0x00,0xF6},
+                QStringLiteral("Adj Manner VR OFF unticked capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(adjMannerVrOff(true)),
+                {0xAA,0x03,0x00,0x07,0x01,0x00,0xF5},
+                QStringLiteral("Adj Manner VR OFF ticked capture"))) return false;
 
     QByteArray reverbSeed = bytes({0x5F,0x01,0x64,0x32,0x32,0x55,0xDC,0x00,0xB8,0x3D,0x90,0x06,0x2A,0x00,0x00});
     K500ReverbBlockState reverb;

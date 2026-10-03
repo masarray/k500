@@ -20,6 +20,8 @@ class K500PresetManager final : public QObject
     Q_PROPERTY(bool storeBusy READ storeBusy NOTIFY busyChanged)
     Q_PROPERTY(bool useInitVolume READ useInitVolume NOTIFY useInitVolumeChanged)
     Q_PROPERTY(bool useInitVolumeKnown READ useInitVolumeKnown NOTIFY useInitVolumeChanged)
+    Q_PROPERTY(bool adjMannerVrOff READ adjMannerVrOff NOTIFY adjMannerVrOffChanged)
+    Q_PROPERTY(bool adjMannerVrOffKnown READ adjMannerVrOffKnown NOTIFY adjMannerVrOffChanged)
     Q_PROPERTY(bool usbStoreAvailable READ usbStoreAvailable NOTIFY connectedChanged)
     Q_PROPERTY(int activeSlot READ activeSlot NOTIFY activeSlotChanged)
     Q_PROPERTY(QString progress READ progress NOTIFY progressChanged)
@@ -30,16 +32,20 @@ public:
     bool connected() const;
     bool busy() const { return m_operation != Operation::None; }
     bool recallBusy() const { return m_operation == Operation::Recall; }
-    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
+    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Rename || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
     bool useInitVolume() const { return m_useInitVolume; }
     bool useInitVolumeKnown() const { return m_useInitVolumeKnown; }
+    bool adjMannerVrOff() const { return m_adjMannerVrOff; }
+    bool adjMannerVrOffKnown() const { return m_adjMannerVrOffKnown; }
     bool usbStoreAvailable() const;
     int activeSlot() const { return m_activeSlot; }
     QString progress() const { return m_progress; }
 
     Q_INVOKABLE void recallMode(int slotOneBased);
     Q_INVOKABLE void setUseInitVolume(bool enabled);
+    Q_INVOKABLE void setAdjMannerVrOff(bool enabled);
     Q_INVOKABLE void saveCurrentToSlot(int slotOneBased);
+    Q_INVOKABLE void renameActiveMode(const QString &name);
 
     // P4_PC_PRESET_UPLOAD_V1 — a validated 0x0290 image produced by the P3
     // codec can be stored directly without replacing it with fresh device
@@ -55,6 +61,7 @@ signals:
     void connectedChanged();
     void busyChanged();
     void useInitVolumeChanged();
+    void adjMannerVrOffChanged();
     void activeSlotChanged();
     void progressChanged();
     void activeMemoryReady(const QByteArray &memory);
@@ -62,7 +69,7 @@ signals:
     void operationFailed(const QString &kind, const QString &message);
 
 private:
-    enum class Operation { None, Recall, UseInit, Save, Upload, MassUpload };
+    enum class Operation { None, Recall, UseInit, AdjManner, Save, Rename, Upload, MassUpload };
     enum class Step {
         Idle,
         RecallDelay,
@@ -73,8 +80,9 @@ private:
         AwaitChunkAck,
         AwaitCommitAck,
         AwaitUseInitAck,
+        AwaitAdjMannerAck,
     };
-    enum class ReadbackPurpose { None, Recall, SavePrepare };
+    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare };
 
     struct MassEntry {
         int slot = 1;
@@ -117,7 +125,12 @@ private:
     bool m_useInitVolumeKnown = false;
     bool m_previousUseInitVolume = false;
     bool m_previousUseInitVolumeKnown = false;
+    bool m_adjMannerVrOff = false;
+    bool m_adjMannerVrOffKnown = false;
+    bool m_previousAdjMannerVrOff = false;
+    bool m_previousAdjMannerVrOffKnown = false;
     int m_requestedSlot = 1;
+    QString m_requestedModeName;
     int m_activeSlot = 0;
     QString m_progress;
 

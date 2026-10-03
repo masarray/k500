@@ -50,7 +50,11 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
 | Music HP/LP filter type readback | CAPTURE-MAPPED 🟧 | READ activeMemory[0x0007]/[0x0008] + existing CMD 0x11 write enum |
 | Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored unrelated scalars + captured FBX 0..4 direct byte |
-| Top Effect `CMD 0x09` | STABLE USB ✅ | mirrored init preservation |
+| Top Effect `CMD 0x09` | STABLE USB ✅ | current hydrated Effect Init preservation |
+| Music Init / Mic Init live write | CAPTURE-MAPPED 🟧 | CMD 0x02 / 0x05 writable second scalar; 0..84 |
+| Effect Init live write | CAPTURE-MAPPED 🟧 | dedicated CMD 0x0A + RSP 0xF5; 0..84 |
+| USB Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E selector 0x03; UI 1..6 -> raw 0..5 |
+| Adj Manner / VR OFF setter | CAPTURE-MAPPED 🟧 | CMD 0x07 + RSP 0xF8; reconnect state remains unknown |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
 | Surround output block + L/R delay | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
@@ -79,7 +83,9 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Support Report diagnostics | LOCKED SW ✅ | bounded schema + payload/path redaction guard |
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
 | Smart Installer distribution | LOCKED SW ✅ | machine/per-user installer runtime self-tests; portable retired from v1.1 public distribution |
-| Persistent LCD/Equipment Mode rename | READ ONLY 🟦 | table readback exists; write transaction not donor-verified |
+| Persistent LCD/Equipment Mode rename | CAPTURE-MAPPED 🟧 | active-slot name at slot-image 0x0280..0x028F + native Store + Recall/readback |
+| Mic Max Volume | READ ONLY 🟦 | read scalar exists; write delta not captured |
+| UDisk Record Volume | READ ONLY 🟦 | read scalar exists; write selector not captured |
 
 ## State model parity
 
@@ -159,7 +165,7 @@ Verified command families are available in the stable USB workflow. Commands wit
 
 ### P2 — Device preset transactions — COMPLETE FOR v1 USB SCOPE
 
-Recall, Use Init, current-device Save, Store chain, and Mass Upload transaction behavior are integrated in the stable baseline.
+Recall, Use Init, current-device Save, Store chain, and Mass Upload transaction behavior are integrated in the stable baseline. The 2026-10-04 capture set additionally maps active-slot persistent Mode Name rename through that same Store coordinator without introducing a second destructive transaction path.
 
 ### P3 / P3.2 / P3.3 / P3.4 — Bit-perfect preset engine and file UI — COMPLETE
 

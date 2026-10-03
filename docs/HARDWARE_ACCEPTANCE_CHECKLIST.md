@@ -100,6 +100,32 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Failure/timeout does not leave UI claiming an unverified state.
 - [ ] Reconnect confirms expected device behavior.
 
+## Capture-mapped System controls — 2026-10-04
+
+- [ ] Music Init 0/25/84 writes change only the intended CMD 0x02 scalar and later Top Music edits do not roll it back.
+- [ ] Mic Init 0/25/84 writes change only the intended CMD 0x05 scalar and later Top Mic edits do not roll it back.
+- [ ] Effect Init 0/25/84 uses CMD 0x0A / RSP 0xF5 and later Top Effect edits preserve the new Init value.
+- [ ] USB Record 1/4/6 uses CMD 0x3E selector 0x03 and reconnect readback returns the same UI value.
+- [ ] UDisk Record and Mic Max remain visibly read-only and generate no guessed frame.
+- [ ] Adj Manner VR OFF ON/OFF receives RSP 0xF8.
+- [ ] After reconnect, Adj Manner VR OFF returns to DEVICE STATE UNKNOWN rather than claiming a stale local value.
+- [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
+- [ ] With Use Init OFF, Recall does not locally synthesize those master values; the UI follows the 939-byte K500 readback.
+
+## Persistent Equipment Mode rename
+
+Use a sacrificial active slot and a <=16-character printable-ASCII test name.
+
+- [ ] Rename is enabled only for the ACTIVE slot and only on USB Store transport.
+- [ ] A fresh 939-byte readback occurs before the Store transaction.
+- [ ] Only slot-image bytes 0x0280..0x028F differ before Store.
+- [ ] CMD 0x41 -> eleven CMD 0x42 chunks -> CMD 0x43 completes with expected ACKs.
+- [ ] The same slot is recalled and a full 939-byte readback completes before LIVE resumes.
+- [ ] Device slot table displays the renamed value from hardware readback.
+- [ ] Reconnect and power-cycle confirm persistence.
+- [ ] DSP/audio settings in the renamed slot remain unchanged.
+- [ ] Non-target slots remain unchanged.
+
 ## Current-device permanent Save
 
 - [ ] USB HID is used; destructive Store remains gated appropriately.

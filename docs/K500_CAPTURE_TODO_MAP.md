@@ -1,9 +1,12 @@
 # K500 Capture Coverage & TODO Map
 
-Status date: 2026-10-01
-Baseline: `main` @ `07f298af6bfdb85574c9810b32a22ca2c6c856e3` (v1.1 candidate truth freeze before RC3)
+Status date: 2026-10-04
+Baseline: `main` @ `3fa49b3627ffd0631e9e3915413775db65725852` (post-RC4/Smart Installer truth)
 
-The capture-backed fixes from PRs #79–#84 are integrated in this baseline. Historical capture references remain valid evidence, but new mapping work must start from this current main and must not revive superseded branches.
+The focused 2026-10-04 System captures are documented in
+`docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`. Historical capture references
+remain valid evidence, but new mapping work must start from current main and
+must not revive superseded branches.
 
 This document is the capture-planning source of truth. It separates:
 - device READ mapping (connect/readback/runtime state),
@@ -120,22 +123,22 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 | Control | READ | WRITE | Status | Capture needed |
 | --- | --- | --- | --- | --- |
-| Mode names 1..10 | ✅ active memory | ❌ persistent rename not mapped | partial | **YES — rename one sacrificial slot** |
+| Mode names 1..10 | ✅ active memory | ✅ active-slot image 0x0280..0x028F + Store 0x41/42/43 | capture-mapped | no |
 | Active Mode name/slot | ✅ | ✅ Recall | complete | no |
-| Use Init Volume | ✅ | ✅ | complete | no |
+| Use Init Volume | ✅ C0 bit | ✅ CMD 0x12 + ED ACK; Recall semantics proven | complete | no |
 | Save current slot | ✅ transaction | ✅ Store 0x41/42/43 | complete | no |
 | Mass Upload | n/a | ✅ | complete | no |
 | Reset All Settings | ❌ | ❌ disabled | missing | **YES — destructive, last priority** |
-| Music Init Vol | ✅ 0x000B | ❌ preserved-only | partial | **YES** |
+| Music Init Vol | ✅ 0x000B | ✅ Top Music CMD 0x02 second scalar | capture-mapped | no |
 | Music Max Vol | ✅ 0x000C | ✅ Top Music CMD 0x02 + hard ceiling clamp | complete | no |
-| Mic Init Vol | ✅ 0x0012 | ❌ preserved-only | partial | **YES** |
+| Mic Init Vol | ✅ 0x0012 | ✅ Top Mic CMD 0x05 second scalar | capture-mapped | no |
 | Mic Max Vol | ✅ 0x0013 | ❌ preserved-only | partial | **YES** |
-| Effect Init Level | ✅ 0x001D | ❌ current write path is effectively mirrored/preserved | partial | **YES** |
-| UDisk Record Vol | ✅ 0x0095 + 1 | ❌ UI local-only | partial | **YES** |
-| USB Record Vol | ✅ 0x0096 + 1 | ❌ UI local-only | partial | **YES** |
+| Effect Init Level | ✅ 0x001D | ✅ dedicated CMD 0x0A + F5 ACK | capture-mapped | no |
+| UDisk Record Vol | ✅ 0x0095 + 1 | ❌ selector unproven; UI read-only | partial | **YES** |
+| USB Record Vol | ✅ 0x0096 + 1 | ✅ CMD 0x3E selector 0x03, raw=UI-1 | capture-mapped | no |
 | Dance/Mic Trigger Threshold | ❌ UI currently hardcoded | ❌ | missing | **YES** |
 | Dance/Mic Trigger Hold Time | ❌ UI currently hardcoded | ❌ | missing | **YES** |
-| Adj Manner / VR OFF | ❌ not represented | ❌ | missing | **YES if feature desired** |
+| Adj Manner / VR OFF | ❌ reconnect/readback unknown | ✅ CMD 0x07 + F8 ACK | partial | **YES — readback only if persistent status desired** |
 
 ## Identity / security
 
@@ -155,17 +158,17 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
 2. **Mic Noise Gate write**.
-3. **System Startup Limits remaining** — Music Init, Mic Init, Mic Max, Effect Init. Music Max is complete.
-4. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
+3. **System Startup Limits remaining** — Mic Max only. Music Init, Music Max, Mic Init and Effect Init are mapped.
+4. **Recording + Mic Trigger** — UDisk Rec, Threshold, Hold Time. USB Record is mapped.
 5. **Remaining non-Music crossover filter-type readback** — Mic/Main/Surround/Center/Sub still need their own connect-state mapping.
 6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
 
 ### P1 — useful next
 
 7. Main L/R delay, Center delay, Sub delay.
-8. Equipment Mode Name rename.
+8. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
 9. BT Name and BLE Name rename/reset.
-10. Adj Manner / VR OFF.
+10. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
 
 ### P2 — last / potentially destructive
 
