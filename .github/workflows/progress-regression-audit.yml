@@ -81,6 +81,7 @@ jobs:
           $system = Get-Content 'qml/components/SystemWorkspaceImpl.qml' -Raw
           $preset = Get-Content 'src/k500/K500PresetManager.cpp' -Raw
           $protocol = Get-Content 'src/k500/K500PresetProtocol.cpp' -Raw
+          $protocolHeader = Get-Content 'src/k500/K500PresetProtocol.h' -Raw
 
           foreach ($token in @(
             'MODE_NAME_STORE_CAPTURED_V1',
@@ -111,7 +112,11 @@ jobs:
 
           foreach ($token in @(
             'DeviceSlotModeNameOffset = 0x0280',
-            'DeviceSlotModeNameLength = 0x0010',
+            'DeviceSlotModeNameLength = 0x0010'
+          )) {
+            if (-not $protocolHeader.Contains($token)) { throw "Device Mode rename protocol header regressed: missing '$token'" }
+          }
+          foreach ($token in @(
             'Device mode name must contain 1..16 printable ASCII characters.',
             'mode rename changed bytes outside 0x0280..0x028F'
           )) {
