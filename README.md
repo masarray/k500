@@ -179,7 +179,7 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 
 ## Preset integrity reference
 
-The current official Mode 01 file at `resources/presets/01_ALL_GENRE.k500` is `KONSER NYANYI`, evolved surgically from the exact native `CONCERT HIFI V4` donor through K500 hardware-listening iterations.
+The current official Mode 01 file at `resources/presets/01_KONSER_NYANYI.k500` is `KONSER NYANYI`, evolved surgically from the exact native `CONCERT HIFI V4` donor through K500 hardware-listening iterations.
 
 ```text
 Current official SHA-256

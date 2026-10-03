@@ -3,6 +3,16 @@
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
 
+## Unreleased — Synchronize official preset filenames
+
+### Changed
+
+- Renamed all ten official `.k500` repository files so the physical filename matches the finalized internal preset name, using the stable `NN_PRESET_NAME.k500` convention.
+- Updated packaging, preset-file bridge, CI/release guards, updater references, and current-state documentation to use the synchronized filenames.
+- Binary preset contents are unchanged by this path-only rename; blob identities remain the same.
+
+
+
 ## Unreleased — Preset 02 display rename
 
 ### Changed
@@ -122,7 +132,7 @@ First public stable release. Hardware-qualified support scope: **Windows 10/11 x
 
 ### Changed
 
-- Mode 01 `resources/presets/01_ALL_GENRE.k500` now uses the exact physical-K500 native `CONCERT HIFI V4` donor instead of the earlier reconstructed file.
+- Historical v1.0 Mode 01 donor recovery used the exact physical-K500 native `CONCERT HIFI V4` donor instead of the earlier reconstructed file; the current file is `resources/presets/01_KONSER_NYANYI.k500`.
 - Mode 01 golden SHA-256 is now `9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`.
 - Mass Upload source selection now resolves both official cached/bundled files and user-local files into the same validated transfer list.
 - Reverb/Mic/Main section navigation now keeps fixed EQ-page/model lifetimes rather than hot-swapping different band-count models through one graph instance.

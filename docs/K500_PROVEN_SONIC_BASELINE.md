@@ -23,7 +23,7 @@ Enhancement does **not** mean maximum loudness or boosting every EQ band. It com
 The current hardware-approved **music tuning reference** remains:
 
 ```text
-resources/presets/03_DANGDUT_SUPREME.k500
+resources/presets/03_KAR_DANGDUT.k500
 internal/hardware name: KAR DANGDUT
 ```
 
@@ -131,7 +131,7 @@ This is a routing proxy, not an exact acoustic/DSP model.
 The exact native `CONCERT HIFI V4` donor remains the rollback/provenance reference that fixed the pre-v1 Mass Upload failure class. The current official distribution preset is donor-derived and hardware-listening-evolved:
 
 ```text
-resources/presets/01_ALL_GENRE.k500
+resources/presets/01_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
 SHA-256: 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
 ```
@@ -142,16 +142,16 @@ Future experiments normally branch from the current official bytes; rollback inv
 
 | Slot | Repository file | Internal name | SHA-256 / status | Sonic role |
 |---:|---|---|---|---|
-| 01 | `01_ALL_GENRE.k500` | `KONSER NYANYI` | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` | concert / Air-Focus universal karaoke |
-| 02 | `02_BROADCAST.k500` | `MC HOST RADIO` | rename-only from the same donor audio | dry/controlled broadcast utility |
-| 03 | `03_DANGDUT_SUPREME.k500` | `KAR DANGDUT` | `3c446e94ddf0db32490d69a182fdc675f0a289c7d9e6cc54512dc91cb4673e85` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub |
-| 04 | `04_ROCK.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | finalized pop-rock / slow-rock |
-| 05 | `05_POP_KENANGAN.k500` | `POP KENANGAN V2` | `80b793878642b97b401674c01def771ee2390bd7032f1b66a0d12d84ff41c3b8` | warm romantic 70s/80s slow-pop |
-| 06 | `06_QORI_SHOLAWAT.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | soft/fresh sholawat |
-| 07 | `07_JAZZ.k500` | `JAZZ LOUNGE` | `934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7` | intimate/classy lounge |
-| 08 | `08_BLUES.k500` | `BLUES CLUB` | `741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146` | warm vintage/slap character |
-| 09 | `09_ACOUSTIC.k500` | `ACOUSTIC NATURAL` | `8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c` | natural/organic acoustic vocal |
-| 10 | `10_REGGAE.k500` | `REGGAE DUB` | `1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90` | bass/groove + rhythmic echo |
+| 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` | concert / Air-Focus universal karaoke |
+| 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | rename-only from the same donor audio | dry/controlled broadcast utility |
+| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `3c446e94ddf0db32490d69a182fdc675f0a289c7d9e6cc54512dc91cb4673e85` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub |
+| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | finalized pop-rock / slow-rock |
+| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `80b793878642b97b401674c01def771ee2390bd7032f1b66a0d12d84ff41c3b8` | warm romantic 70s/80s slow-pop |
+| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | soft/fresh sholawat |
+| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7` | intimate/classy lounge |
+| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146` | warm vintage/slap character |
+| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c` | natural/organic acoustic vocal |
+| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90` | bass/groove + rhythmic echo |
 
 The library is intentionally heterogeneous. Air Focus is a quality reference, not a parameter template. Genre-specific Music/Mic/Sub voicing remains donor-based and should not be normalized without new hardware evidence.
 

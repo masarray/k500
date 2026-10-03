@@ -120,7 +120,7 @@ jobs:
             if ($name.Length -gt 16) { throw "$($preset.Name) internal preset name exceeds K500 16-character loader limit: '$name'" }
           }
 
-          foreach ($token in @('built_in_presets','resources/presets/01_ALL_GENRE.k500','QT_RESOURCE_ALIAS "presets/${PRESET_NAME}"','qml/components/MassUploadTransferWindow.qml')) {
+          foreach ($token in @('built_in_presets','resources/presets/01_KONSER_NYANYI.k500','QT_RESOURCE_ALIAS "presets/${PRESET_NAME}"','qml/components/MassUploadTransferWindow.qml')) {
             if (-not $cmake.Contains($token)) { throw "P6/CMake UI-resource regression: missing '$token'" }
           }
           if (-not $cmake.Contains('K500PresetFileBridgeAccess.cpp')) {

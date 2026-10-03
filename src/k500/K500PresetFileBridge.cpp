@@ -22,16 +22,16 @@ struct BuiltInPresetDefinition {
 };
 
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
-    {"KONSER NYANYI",     "Fresh, large and forgiving concert karaoke",       "01_ALL_GENRE.k500",       ":/presets/01_ALL_GENRE.k500"},
-    {"MC HOST RADIO",     "Dry and controlled broadcast utility",             "02_BROADCAST.k500",       ":/presets/02_BROADCAST.k500"},
-    {"KAR DANGDUT",       "Dangdut vocal FX with Hi-Fi Core V3 music",        "03_DANGDUT_SUPREME.k500", ":/presets/03_DANGDUT_SUPREME.k500"},
-    {"POP ROCK BALLAD",   "Pop/slow-rock ambience with singer control",       "04_ROCK.k500",            ":/presets/04_ROCK.k500"},
-    {"POP KENANGAN V2",   "Warm romantic 70s/80s slow-pop",                   "05_POP_KENANGAN.k500",    ":/presets/05_POP_KENANGAN.k500"},
-    {"SHOLAWAT SYAHDU",   "Fresh soft slow-tempo sholawat ambience",          "06_QORI_SHOLAWAT.k500",   ":/presets/06_QORI_SHOLAWAT.k500"},
-    {"JAZZ LOUNGE",       "Intimate classy lounge vocal with restrained echo","07_JAZZ.k500",            ":/presets/07_JAZZ.k500"},
-    {"BLUES CLUB",        "Warm vintage blues with a single slap repeat",     "08_BLUES.k500",           ":/presets/08_BLUES.k500"},
-    {"ACOUSTIC NATURAL",  "Natural organic vocal with subtle ambience",       "09_ACOUSTIC.k500",        ":/presets/09_ACOUSTIC.k500"},
-    {"REGGAE DUB",        "Bass/groove-led voicing with rhythmic echo",       "10_REGGAE.k500",          ":/presets/10_REGGAE.k500"},
+    {"KONSER NYANYI",     "Fresh, large and forgiving concert karaoke",       "01_KONSER_NYANYI.k500",       ":/presets/01_KONSER_NYANYI.k500"},
+    {"MC HOST RADIO",     "Dry and controlled broadcast utility",             "02_MC_HOST_RADIO.k500",       ":/presets/02_MC_HOST_RADIO.k500"},
+    {"KAR DANGDUT",       "Dangdut vocal FX with Hi-Fi Core V3 music",        "03_KAR_DANGDUT.k500", ":/presets/03_KAR_DANGDUT.k500"},
+    {"POP ROCK BALLAD",   "Pop/slow-rock ambience with singer control",       "04_POP_ROCK_BALLAD.k500",            ":/presets/04_POP_ROCK_BALLAD.k500"},
+    {"POP KENANGAN V2",   "Warm romantic 70s/80s slow-pop",                   "05_POP_KENANGAN_V2.k500",    ":/presets/05_POP_KENANGAN_V2.k500"},
+    {"SHOLAWAT SYAHDU",   "Fresh soft slow-tempo sholawat ambience",          "06_SHOLAWAT_SYAHDU.k500",   ":/presets/06_SHOLAWAT_SYAHDU.k500"},
+    {"JAZZ LOUNGE",       "Intimate classy lounge vocal with restrained echo","07_JAZZ_LOUNGE.k500",            ":/presets/07_JAZZ_LOUNGE.k500"},
+    {"BLUES CLUB",        "Warm vintage blues with a single slap repeat",     "08_BLUES_CLUB.k500",           ":/presets/08_BLUES_CLUB.k500"},
+    {"ACOUSTIC NATURAL",  "Natural organic vocal with subtle ambience",       "09_ACOUSTIC_NATURAL.k500",        ":/presets/09_ACOUSTIC_NATURAL.k500"},
+    {"REGGAE DUB",        "Bass/groove-led voicing with rhythmic echo",       "10_REGGAE_DUB.k500",          ":/presets/10_REGGAE_DUB.k500"},
 };
 
 bool readValidPreset(const QString &path, QByteArray *bytes)
