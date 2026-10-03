@@ -364,8 +364,17 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     QVariant normalizedValue = value;
     if (path == QStringLiteral("system.topMusicVol"))
         normalizedValue = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);
-    else if (path == QStringLiteral("system.musicMaxVol"))
-        normalizedValue = qBound(0, qRound(value.toDouble()), K500Protocol::TopVolumeMax);
+    else if (path == QStringLiteral("system.musicMaxVol")
+             || path == QStringLiteral("system.musicInitVol")
+             || path == QStringLiteral("system.micInitVol")
+             || path == QStringLiteral("system.effectInitLevel"))
+        normalizedValue = qBound(K500Protocol::NativeRange::StartupLevelMin,
+                                 qRound(value.toDouble()),
+                                 K500Protocol::NativeRange::StartupLevelMax);
+    else if (path == QStringLiteral("system.usbRecordVol"))
+        normalizedValue = qBound(K500Protocol::NativeRange::UsbRecordVolMin,
+                                 qRound(value.toDouble()),
+                                 K500Protocol::NativeRange::UsbRecordVolMax);
     QString canonicalReason;
     if (!m_canonicalState.stageDesired(path, normalizedValue, nullptr, &canonicalReason)) {
         deferWrite(path, canonicalReason);
@@ -497,6 +506,8 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     bool isTopMusicPath = true;
     if (path == QStringLiteral("system.topMusicVol")) {
         m_music.topMusicVol = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);
+    } else if (path == QStringLiteral("system.musicInitVol")) {
+        m_music.musicInitVol = normalizedValue.toInt();
     } else if (path == QStringLiteral("system.musicMaxVol")) {
         // MUSIC_MAX_CANONICAL_CEILING_V2 — native CMD 0x02 changes Music Max and
         // clamps Top Music in the SAME full-block write. Replace any superseded
@@ -532,6 +543,7 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
 
     bool isTopMicPath = true;
     if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = qRound(value.toDouble());
+    else if (path == QStringLiteral("system.micInitVol")) m_mic.micInitVol = normalizedValue.toInt();
     else if (path == QStringLiteral("mic.micAVol")) m_mic.micAVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micBVol")) m_mic.micBVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.fbxLevel"))
@@ -551,8 +563,17 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         return;
     }
     if (path == QStringLiteral("system.effectInitLevel")) {
-        m_effect.effectInitLevel = qRound(value.toDouble());
-        queueTopEffect(path);
+        m_effect.effectInitLevel = normalizedValue.toInt();
+        queueBlockFrame(QStringLiteral("system:effect-init"), path,
+                        K500Protocol::effectInitLevel(m_effect.effectInitLevel,
+                                                      m_effect.topEffectVol),
+                        QStringLiteral("Effect Init · %1").arg(m_effect.effectInitLevel));
+        return;
+    }
+    if (path == QStringLiteral("system.usbRecordVol")) {
+        queueBlockFrame(QStringLiteral("system:usb-record"), path,
+                        K500Protocol::usbRecordVolume(normalizedValue.toInt()),
+                        QStringLiteral("USB Record Vol · %1").arg(normalizedValue.toInt()));
         return;
     }
 
@@ -792,10 +813,14 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
     };
 
     captured(QStringLiteral("system.topMusicVol"), m_music.topMusicVol);
+    captured(QStringLiteral("system.musicInitVol"), m_music.musicInitVol);
     captured(QStringLiteral("system.musicMaxVol"), m_music.musicMaxVol);
     captured(QStringLiteral("system.topMicVol"), m_mic.topMicVol);
+    captured(QStringLiteral("system.micInitVol"), m_mic.micInitVol);
     captured(QStringLiteral("system.topEffectVol"), m_effect.topEffectVol);
     captured(QStringLiteral("system.effectInitLevel"), m_effect.effectInitLevel);
+    captured(QStringLiteral("system.usbRecordVol"),
+             static_cast<int>(fileU8(memory, 0x0096)) + 1);
     captured(QStringLiteral("music.sourceRaw"), m_music.sourceRaw);
     derived(QStringLiteral("music.key"), m_music.key);
     derived(QStringLiteral("music.input1GainDb"), m_music.input1GainDb);
