@@ -346,7 +346,8 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars)
 {
     Q_UNUSED(deviceScalars);
-    // EFFECT_INIT_STATEFUL_CMD09_V1 — after the CMD 0x0A sweep proved Effect
+    // P1_TOP_EFFECT_VERIFIED_V1 + EFFECT_INIT_STATEFUL_CMD09_V1 —
+    // after the CMD 0x0A sweep proved Effect
     // Init writable, CMD 0x09 must preserve the current hydrated/edited state.
     // Replaying pre-edit scalar cache here would silently undo a prior init edit.
     return K500Frame::build(bytes({
