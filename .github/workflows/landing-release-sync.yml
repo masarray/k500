@@ -34,19 +34,28 @@ jobs:
           # Canonical Cloudflare landing CTAs must remain version-agnostic.
           grep -Fq 'href="/download/windows"' site/index.html
           grep -Fq 'href="/download/windows"' site/download/index.html
-          grep -Fq 'href="/download/portable"' site/download/index.html
+          if grep -Fq 'href="/download/portable"' site/download/index.html; then
+            echo 'Portable CTA must not exist in the v1.1 public download surface.' >&2
+            exit 1
+          fi
 
           # Metadata and download functions must resolve GitHub's latest stable tag.
           grep -Fq 'releases/latest' functions/api/release.js
           grep -Fq 'releases/latest' 'functions/download/[kind].js'
           grep -Fq 'SonKuPik-K500-${tag}-Windows-Setup.exe' 'functions/download/[kind].js'
-          grep -Fq 'SonKuPik-K500-${tag}-Windows-Portable.zip' 'functions/download/[kind].js'
+          if grep -Fq 'Windows-Portable.zip' 'functions/download/[kind].js'; then
+            echo 'Portable artifact resolver must not exist in the v1.1 public download route.' >&2
+            exit 1
+          fi
           grep -Fq 'filename: assetName' 'functions/download/[kind].js'
 
           # Every public documentation/README surface delegates to the same canonical routes.
           for page in README.md docs/index.html docs/README.md; do
             grep -Fq 'https://sonkupik-k500.pages.dev/download/windows' "$page"
-            grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' "$page"
+            if grep -Fq 'https://sonkupik-k500.pages.dev/download/portable' "$page"; then
+              echo "Portable public route leaked into $page" >&2
+              exit 1
+            fi
           done
 
           # Public landing pages must never pin a versioned GitHub release asset URL.
