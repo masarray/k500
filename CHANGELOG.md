@@ -3,6 +3,21 @@
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
 
+## Unreleased — Smart Installer public distribution
+
+### Changed
+
+- Removed Portable ZIP from the v1.1 RC/stable publication contract instead of adding another single-file portable wrapper.
+- The machine-wide Setup is the recommended public **Smart Installer**.
+- The per-user Setup remains a scope-matched updater backend so **Update tanpa Admin** continues to work without elevation after migration.
+- RC/stable manifests and acceptance provenance now require exactly the machine and per-user installer identities/hashes.
+- Historical v1.0.x portable assets remain immutable release history.
+
+### Validation
+
+- Stable manifest parsing already accepts the two-installer artifact model and regression coverage explicitly exercises both machine and per-user scope selection.
+- RC3 operator testing confirmed correct preset presentation, Program Files migration/UAC behavior, no-admin LocalAppData update, and foreground relaunch; automated migration sentinels cover Documents presets, QSettings, official cache, and uninstall-registration cleanup.
+
 ## Unreleased — Synchronize official preset filenames
 
 ### Changed
@@ -60,9 +75,9 @@ The source version is 1.1.0 for release-candidate qualification. Public stable r
 - Resumable `.part` downloads with strict HTTP Range/Content-Range validation, final byte-size checks, and SHA-256 verification.
 - Explicit stale uninstall-registration repair that refuses to remove registrations while their application or uninstaller still exists.
 - Windows qualification fixtures for per-user update, destructive installer rollback, failed-health rollback, machine-to-user migration, and persistence of user presets/QSettings/cache.
-- Manual-only `v1.1.0-rc.N` packaging with exact-main CI gating, dual installers, portable ZIP, checksums, and candidate manifest.
+- Manual-only `v1.1.0-rc.N` packaging with exact-main CI gating, dual scope-matched installers, checksums, and candidate manifest.
 - An explicit process-local `--update-candidate=v1.1.0-rc.N` QA channel that lets an installed candidate consume exactly one immutable prerelease without changing the normal stable channel.
-- A repository-controlled `UPDATER_V1_1_ACCEPTANCE` provenance gate that records accepted RC tag, source commit, and SHA-256 for machine installer, per-user installer, and portable ZIP.
+- A repository-controlled `UPDATER_V1_1_ACCEPTANCE` provenance gate that records accepted RC tag, source commit, and SHA-256 for the machine and per-user installers.
 - Byte-identical v1.1 stable promotion: accepted RC binaries are revalidated and republished under stable names; they are not rebuilt after acceptance.
 
 ### Safety
@@ -70,7 +85,6 @@ The source version is 1.1.0 for release-candidate qualification. Public stable r
 - Migration installs and validates the per-user copy before requesting one UAC elevation to remove the old machine-wide installation.
 - Ambiguous installer/uninstaller timeouts are not raced with destructive cleanup; recovery data is preserved.
 - Retry after a failed no-admin migration preserves the user's per-user package choice instead of falling back to machine-wide Setup.
-- Portable ZIP remains independent and is never silently converted into an installed copy.
 - No code-signing requirement, UAC bypass, or Windows-security weakening is introduced.
 
 ## 1.0.3 — Device-validation closure and installer polish

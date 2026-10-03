@@ -163,7 +163,7 @@ jobs:
           if (-not $iscc -or -not (Test-Path $iscc)) { throw 'Inno Setup ISCC.exe not found.' }
           "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
 
-      - name: Build machine, per-user and portable candidates
+      - name: Build machine and per-user candidates
         shell: pwsh
         run: |
           $version = '${{ steps.meta.outputs.version }}'
@@ -188,23 +188,6 @@ jobs:
           if (-not (Test-Path $userStable)) { throw 'Per-user Setup output missing' }
           Move-Item $userStable $userRc -Force
 
-          $portable = "dist/SonKuPik-K500-$tag-Windows-Portable.zip"
-          Compress-Archive -Path 'package/*' -DestinationPath $portable -CompressionLevel Optimal -Force
-          if (-not (Test-Path $portable)) { throw 'Portable candidate missing' }
-
-      - name: Validate portable candidate
-        shell: pwsh
-        run: |
-          $tag = '${{ steps.meta.outputs.tag }}'
-          $version = '${{ steps.meta.outputs.version }}'
-          $portable = "dist/SonKuPik-K500-$tag-Windows-Portable.zip"
-          $testDir = Join-Path $env:RUNNER_TEMP 'sonkupik-v11-rc-portable'
-          if (Test-Path $testDir) { Remove-Item $testDir -Recurse -Force }
-          Expand-Archive -Path $portable -DestinationPath $testDir -Force
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=$version")) {
-            $p = Start-Process -FilePath (Join-Path $testDir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "Portable $arg failed: $($p.ExitCode)" }
-          }
 
       - name: Validate machine-wide candidate
         shell: pwsh
@@ -264,7 +247,6 @@ jobs:
           $files = @(
             Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
             Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
-            Get-Item "dist/SonKuPik-K500-$tag-Windows-Portable.zip"
           )
           $artifacts = @()
           foreach ($file in ($files | Sort-Object Name)) {
@@ -299,7 +281,7 @@ jobs:
           $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/updater-rc-manifest.json
           $check = Get-Content dist/updater-rc-manifest.json -Raw | ConvertFrom-Json
           if ($check.stableReleaseEligible -ne $false) { throw 'RC must never be stable-release eligible' }
-          if ($check.artifacts.Count -ne 3) { throw 'RC manifest must describe two installers and portable ZIP' }
+          if ($check.artifacts.Count -ne 2) { throw 'RC manifest must describe exactly the machine and per-user installers' }
           if ($check.commit -ne $env:GITHUB_SHA) { throw 'RC manifest commit mismatch' }
 
       - name: Upload exact RC artifact
@@ -309,7 +291,6 @@ jobs:
           path: |
             dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
             dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
-            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Portable.zip
             dist/SHA256SUMS.txt
             dist/updater-rc-manifest.json
           if-no-files-found: error
@@ -335,7 +316,6 @@ jobs:
           files: |
             dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
             dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
-            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Portable.zip
             dist/SHA256SUMS.txt
             dist/updater-rc-manifest.json
           fail_on_unmatched_files: true

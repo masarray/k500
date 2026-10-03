@@ -51,11 +51,10 @@ jobs:
           $commit = (Read-GateToken 'UPDATER_V1_1_ACCEPTED_COMMIT').ToLowerInvariant()
           $machineHash = (Read-GateToken 'UPDATER_V1_1_MACHINE_SHA256').ToLowerInvariant()
           $userHash = (Read-GateToken 'UPDATER_V1_1_USER_SHA256').ToLowerInvariant()
-          $portableHash = (Read-GateToken 'UPDATER_V1_1_PORTABLE_SHA256').ToLowerInvariant()
           if ($state -ne 'accepted') { throw 'Stable updater promotion is blocked until acceptance is exactly accepted.' }
           if ($tag -notmatch '^v1\.1\.0-rc\.[1-9][0-9]*$') { throw "Invalid accepted RC tag: $tag" }
           if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Accepted RC commit must be a full 40-character SHA.' }
-          foreach ($pair in @{ machine=$machineHash; user=$userHash; portable=$portableHash }.GetEnumerator()) {
+          foreach ($pair in @{ machine=$machineHash; user=$userHash }.GetEnumerator()) {
             if ($pair.Value -notmatch '^[0-9a-f]{64}$') { throw "Accepted $($pair.Key) SHA-256 is invalid." }
           }
 
@@ -96,7 +95,6 @@ jobs:
           "accepted_commit=$commit" >> $env:GITHUB_OUTPUT
           "machine_sha256=$machineHash" >> $env:GITHUB_OUTPUT
           "user_sha256=$userHash" >> $env:GITHUB_OUTPUT
-          "portable_sha256=$portableHash" >> $env:GITHUB_OUTPUT
           Write-Host "Promotion locked to $tag @ $commit"
 
       - name: Download exact accepted prerelease assets
@@ -109,7 +107,6 @@ jobs:
           foreach ($pattern in @(
             "SonKuPik-K500-$tag-Windows-Setup.exe",
             "SonKuPik-K500-$tag-Windows-Setup-PerUser.exe",
-            "SonKuPik-K500-$tag-Windows-Portable.zip",
             'SHA256SUMS.txt',
             'updater-rc-manifest.json'
           )) {
@@ -125,16 +122,14 @@ jobs:
           $acceptedCommit = '${{ steps.accept.outputs.accepted_commit }}'
           $machineRc = "rc/SonKuPik-K500-$tag-Windows-Setup.exe"
           $userRc = "rc/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
-          $portableRc = "rc/SonKuPik-K500-$tag-Windows-Portable.zip"
-          foreach ($path in @($machineRc,$userRc,$portableRc,'rc/SHA256SUMS.txt','rc/updater-rc-manifest.json')) {
+          foreach ($path in @($machineRc,$userRc,'rc/SHA256SUMS.txt','rc/updater-rc-manifest.json')) {
             if (-not (Test-Path $path)) { throw "Accepted RC is missing $path" }
           }
           $expected = @{
             $machineRc = '${{ steps.accept.outputs.machine_sha256 }}'
             $userRc = '${{ steps.accept.outputs.user_sha256 }}'
-            $portableRc = '${{ steps.accept.outputs.portable_sha256 }}'
           }
-          foreach ($path in @($machineRc,$userRc,$portableRc)) {
+          foreach ($path in @($machineRc,$userRc)) {
             $actual = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($actual -ne $expected[$path]) { throw "Accepted hash mismatch for $path" }
           }
@@ -149,10 +144,10 @@ jobs:
               $manifest.target -ne 'windows-x64' -or
               $manifest.installerTechnology -ne 'Inno Setup 6' -or
               $manifest.stableReleaseEligible -ne $false -or
-              $manifest.artifacts.Count -ne 3) {
+              $manifest.artifacts.Count -ne 2) {
             throw 'Accepted RC manifest provenance is invalid.'
           }
-          foreach ($path in @($machineRc,$userRc,$portableRc)) {
+          foreach ($path in @($machineRc,$userRc)) {
             $name = Split-Path $path -Leaf
             $entry = @($manifest.artifacts | Where-Object { $_.file -eq $name })
             if ($entry.Count -ne 1) { throw "RC manifest does not uniquely identify $name" }
@@ -167,36 +162,15 @@ jobs:
 
           $machineStable = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
           $userStable = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
-          $portableStable = "dist/SonKuPik-K500-v$version-Windows-Portable.zip"
           Copy-Item $machineRc $machineStable
           Copy-Item $userRc $userStable
-          Copy-Item $portableRc $portableStable
           foreach ($pair in @(
             @($machineStable,'${{ steps.accept.outputs.machine_sha256 }}'),
-            @($userStable,'${{ steps.accept.outputs.user_sha256 }}'),
-            @($portableStable,'${{ steps.accept.outputs.portable_sha256 }}')
+            @($userStable,'${{ steps.accept.outputs.user_sha256 }}')
           )) {
             $actual = (Get-FileHash $pair[0] -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($actual -ne $pair[1]) { throw "Stable staging changed accepted bytes: $($pair[0])" }
           }
-
-      - name: Validate exact accepted portable bytes
-        shell: pwsh
-        run: |
-          $version = '${{ steps.accept.outputs.version }}'
-          $zip = "dist/SonKuPik-K500-v$version-Windows-Portable.zip"
-          $dir = Join-Path $env:RUNNER_TEMP 'sonkupik-promoted-portable'
-          if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-          Expand-Archive -Path $zip -DestinationPath $dir -Force
-          foreach ($name in @('SonKuPik-K500.exe','SonKuPik-K500-Updater.exe')) {
-            if (-not (Test-Path (Join-Path $dir $name))) { throw "Portable promotion missing $name" }
-          }
-          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test',"--update-health-check=$version")) {
-            $p = Start-Process -FilePath (Join-Path $dir 'SonKuPik-K500.exe') -ArgumentList $arg -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "Promoted portable $arg failed: $($p.ExitCode)" }
-          }
-          $helper = Start-Process -FilePath (Join-Path $dir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
-          if ($helper.ExitCode -ne 0) { throw 'Promoted portable updater helper failed self-test.' }
 
       - name: Validate exact accepted machine installer bytes
         shell: pwsh
@@ -247,7 +221,6 @@ jobs:
           $releaseFiles = @(
             Get-Item "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
             Get-Item "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
-            Get-Item "dist/SonKuPik-K500-v$version-Windows-Portable.zip"
           )
           $artifacts = @()
           foreach ($file in ($releaseFiles | Sort-Object Name)) {
@@ -280,11 +253,12 @@ jobs:
             stableReleaseEligible = $true
             codeSigning = 'unsigned-open-source'
             installerTechnology = 'Inno Setup 6'
-            portableFormat = 'ZIP (non-self-extracting)'
-            selfExtractingPortable = $false
+            distributionModel = 'smart-installer'
+            primaryDownload = "SonKuPik-K500-v$version-Windows-Setup.exe"
+            perUserPackageRole = 'scope-matched-updater-backend'
             officialPresetSource = "github:masarray/k500/resources/presets@$acceptedCommit"
             mode01NativeSha256 = $mode01AcceptedHash
-            regressionSuite = @('accepted updater RC provenance','byte-identical machine installer','byte-identical per-user installer','byte-identical portable ZIP','promoted package runtime health checks')
+            regressionSuite = @('accepted updater RC provenance','byte-identical machine installer','byte-identical per-user installer','promoted package runtime health checks')
             artifacts = $artifacts
           }
           $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/release-manifest.json
@@ -292,9 +266,9 @@ jobs:
           $check = Get-Content dist/release-manifest.json -Raw | ConvertFrom-Json
           if ($check.channel -ne 'stable' -or $check.stableReleaseEligible -ne $true -or $check.commit -ne $acceptedCommit) { throw 'Stable promotion manifest identity failed.' }
           if ($check.acceptedRcTag -ne $acceptedTag -or $check.promotionModel -ne 'byte-identical-rc-artifact-promotion') { throw 'Stable manifest lost accepted RC provenance.' }
-          if ($check.artifacts.Count -ne 3) { throw 'Stable promotion manifest must contain exactly three binary artifacts.' }
+          if ($check.artifacts.Count -ne 2) { throw 'Stable promotion manifest must contain exactly two installer artifacts.' }
           $hashes = @($check.artifacts | ForEach-Object { [string]$_.sha256 })
-          foreach ($required in @('${{ steps.accept.outputs.machine_sha256 }}','${{ steps.accept.outputs.user_sha256 }}','${{ steps.accept.outputs.portable_sha256 }}')) {
+          foreach ($required in @('${{ steps.accept.outputs.machine_sha256 }}','${{ steps.accept.outputs.user_sha256 }}')) {
             if ($hashes -notcontains $required) { throw "Stable manifest is missing accepted RC hash $required" }
           }
 
@@ -305,7 +279,6 @@ jobs:
           path: |
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup-PerUser.exe
-            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Portable.zip
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           if-no-files-found: error
@@ -322,7 +295,7 @@ jobs:
           body: |
             Public stable SonKuPik K500 v1.1.0.
 
-            The machine installer, per-user installer, and portable ZIP are the exact binary bytes accepted from `${{ steps.accept.outputs.accepted_tag }}` at commit `${{ steps.accept.outputs.accepted_commit }}`. Stable promotion did not rebuild them.
+            The machine installer and scope-matched per-user updater package are the exact binary bytes accepted from `${{ steps.accept.outputs.accepted_tag }}` at commit `${{ steps.accept.outputs.accepted_commit }}`. Stable promotion did not rebuild them. The recommended public download is the Smart Installer; no portable package is published for v1.1.0.
 
             v1.1 completes the Windows updater lifecycle with explicit no-admin migration, recovery/rollback, resumable downloads, and scope-aware packages. Windows x64 + USB HID remains the hardware-qualified scope; Bluetooth SPP remains experimental.
 
@@ -330,7 +303,6 @@ jobs:
           files: |
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup-PerUser.exe
-            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Portable.zip
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true

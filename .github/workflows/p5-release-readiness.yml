@@ -147,15 +147,14 @@ jobs:
           $acceptedCommit = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_ACCEPTED_COMMIT'
           $acceptedMachine = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_MACHINE_SHA256'
           $acceptedUser = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_USER_SHA256'
-          $acceptedPortable = Read-UpdaterAcceptanceToken 'UPDATER_V1_1_PORTABLE_SHA256'
           if ($acceptanceState -eq 'pending') {
-            if (@($acceptedTag,$acceptedCommit,$acceptedMachine,$acceptedUser,$acceptedPortable) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
+            if (@($acceptedTag,$acceptedCommit,$acceptedMachine,$acceptedUser) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) {
               throw 'Pending updater acceptance must not pre-populate accepted RC provenance.'
             }
           } else {
             if ($acceptedTag -notmatch '^v1\.1\.0-rc\.[1-9][0-9]*$') { throw 'Accepted updater RC tag is invalid.' }
             if ($acceptedCommit -notmatch '^[0-9a-fA-F]{40}$') { throw 'Accepted updater RC commit must be a full SHA.' }
-            foreach ($hash in @($acceptedMachine,$acceptedUser,$acceptedPortable)) {
+            foreach ($hash in @($acceptedMachine,$acceptedUser)) {
               if ($hash -notmatch '^[0-9a-fA-F]{64}$') { throw 'Accepted updater artifact SHA-256 is invalid.' }
             }
           }
@@ -184,7 +183,7 @@ jobs:
           foreach ($token in @('SONKUPIK + LOCAL','Official Mode 01 integrity','Mass Upload transfer-list behavior','Preview')) {
             if (-not $fileUi.Contains($token)) { throw "Preset UI documentation missing '$token'" }
           }
-          foreach ($token in @('Native control.','Official + Local library','Validated preset sync','Release integrity','Portable ZIP')) {
+          foreach ($token in @('Native control.','Official + Local library','Validated preset sync','Release integrity','Smart Installer')) {
             if (-not $landing.Contains($token)) { throw "Landing-page stable contract missing '$token'" }
           }
           if ($landing.Contains('Physical K500 hardware acceptance remains required for release qualification.')) {
@@ -225,7 +224,6 @@ jobs:
             'UPDATER_V1_1_ACCEPTED_COMMIT',
             'UPDATER_V1_1_MACHINE_SHA256',
             'UPDATER_V1_1_USER_SHA256',
-            'UPDATER_V1_1_PORTABLE_SHA256',
             'Accepted RC tag commit differs from recorded accepted commit.',
             'byte-identical-rc-artifact-promotion',
             'Stable staging changed accepted bytes:',
@@ -237,6 +235,10 @@ jobs:
             'overwrite_files: false'
           )) {
             if (-not $promotionWorkflow.Contains($token)) { throw "Updater stable promotion contract missing '$token'" }
+          }
+
+          if ($rcWorkflow.Contains('Windows-Portable.zip') -or $promotionWorkflow.Contains('Windows-Portable.zip')) {
+            throw 'v1.1 RC/promotion workflows must remain installer-only; Portable ZIP is outside the public release contract.'
           }
 
           # P5_GITHUB_EXPRESSION_LITERAL_GUARD_V1
@@ -264,6 +266,7 @@ jobs:
             "installerScopes = @('machine','user')",
             "migration = 'explicit-machine-to-user'",
             'Windows-Setup-PerUser.exe',
+            'RC manifest must describe exactly the machine and per-user installers',
             'prerelease: true',
             'make_latest: false',
             'overwrite_files: false'

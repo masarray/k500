@@ -46,17 +46,16 @@ The GitHub release remains the canonical source for downloadable artifacts and m
 
 ## Windows artifacts
 
-A stable release publishes:
+For v1.1+, the stable release publishes:
 
 ```text
 SonKuPik-K500-v<version>-Windows-Setup.exe
 SonKuPik-K500-v<version>-Windows-Setup-PerUser.exe
-SonKuPik-K500-v<version>-Windows-Portable.zip
 SHA256SUMS.txt
 release-manifest.json
 ```
 
-The installer is standard Inno Setup. The portable package is an ordinary ZIP. Stable releases do not use the retired custom self-extracting portable wrapper.
+The machine Setup is the recommended **Smart Installer** for users. The per-user Setup is retained as a scope-matched updater backend so **Update tanpa Admin** can install/update in LocalAppData without elevation. v1.1+ does not publish a Portable ZIP. Historical v1.0.x releases retain their already-published portable artifacts unchanged.
 
 ## Release manifest
 
@@ -87,8 +86,8 @@ The stable workflow must pass before GitHub publishes a non-prerelease tag. Curr
 - direct deployed-app runtime tests;
 - section-navigation runtime stress tests;
 - branded Inno packaging;
-- portable ZIP runtime validation;
-- actual silent install + installed-app runtime validation;
+- machine-wide installer runtime validation;
+- per-user installer runtime validation;
 - manifest and artifact hash validation.
 
 CI can verify software behavior; hardware-facing support claims still require real-device evidence appropriate to the changed path.
@@ -96,9 +95,9 @@ CI can verify software behavior; hardware-facing support claims still require re
 For v1.1+, the release model changes from **build-and-publish** to **accept-and-promote**:
 
 - `v1.1.0-rc.N` is an immutable GitHub prerelease built from one exact `main` commit;
-- desktop acceptance records the RC tag, full source commit, and SHA-256 of machine Setup, per-user Setup, and portable ZIP in `V1_1_UPDATER_RC_ACCEPTANCE.md`;
+- desktop acceptance records the RC tag, full source commit, and SHA-256 of the machine and per-user Setup packages in `V1_1_UPDATER_RC_ACCEPTANCE.md`;
 - public v1.0.3 is never pointed at prereleases; an installed v1.1 candidate uses the explicit process-local `--update-candidate=<tag>` QA channel;
-- stable v1.1 promotion downloads the accepted prerelease assets, verifies tag→commit→manifest→hash provenance, revalidates the packages, and republishes the **same binary bytes** under stable filenames with a stable v3 manifest;
+- stable v1.1 promotion downloads the accepted machine/per-user prerelease assets, verifies tag→commit→manifest→hash provenance, revalidates both installers, and republishes the **same binary bytes** under stable filenames with a two-artifact stable v3 manifest;
 - rebuilding the application after RC acceptance is not a valid v1.1 promotion path.
 
 Candidate source and a green CI matrix do not by themselves authorize a public stable release.
