@@ -166,6 +166,7 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray effectInitLevel(int initLevel, int topEffectVol);
 QByteArray usbRecordVolume(int levelOneBased);
+QByteArray adjMannerVrOff(bool enabled);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
 QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);
 bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled);
