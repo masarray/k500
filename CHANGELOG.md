@@ -132,7 +132,7 @@ First public stable release. Hardware-qualified support scope: **Windows 10/11 x
 
 ### Changed
 
-- Mode 01 `resources/presets/01_ALL_GENRE.k500` now uses the exact physical-K500 native `CONCERT HIFI V4` donor instead of the earlier reconstructed file.
+- Historical v1.0 Mode 01 donor recovery used the exact physical-K500 native `CONCERT HIFI V4` donor instead of the earlier reconstructed file; the current file is `resources/presets/01_KONSER_NYANYI.k500`.
 - Mode 01 golden SHA-256 is now `9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`.
 - Mass Upload source selection now resolves both official cached/bundled files and user-local files into the same validated transfer list.
 - Reverb/Mic/Main section navigation now keeps fixed EQ-page/model lifetimes rather than hot-swapping different band-count models through one graph instance.
