@@ -98,6 +98,16 @@ Fields that remain read-only in the parity matrix are not acceptance failures; t
 - [ ] Main/Center/Sub delay UI is **not** hydrated from those type offsets.
 - [ ] Before restoring authoritative Main/Center/Sub delay readback, run a reconnect with six distinct non-zero delay values.
 
+## Echo timing endpoints + FX frequency-only UI — 2026-10-04
+
+- [ ] Echo Right Delay clamps to -50..+50% and serializes `data[7] = percent + 50`.
+- [ ] Echo Right Predelay clamps to -50..+50% and serializes `data[8] = percent + 50`.
+- [ ] Echo Left Predelay clamps to 0..100 ms and serializes `data[15..16]` uint16 LE.
+- [ ] Reconnect hydration exposes Echo Direct, Right Delay, Right Predelay, Left Delay and Left Predelay from hardware truth.
+- [ ] Reverb Tone panel shows HPF/LPF frequency only; no HP/LP Type dropdown is present.
+- [ ] Echo Tone panel shows HPF/LPF frequency only; no HP/LP Type dropdown is present.
+- [ ] Programmatic/offline Reverb/Echo HP/LP type edits fail closed rather than mutating unproven bytes.
+
 ## Section-navigation crash regression
 
 The v1 baseline uses fixed EQ graph/model lifetimes. If a change touches QML section/workspace lifecycle, run repeated transitions including:

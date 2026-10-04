@@ -31,22 +31,25 @@ Reverb page at both endpoints.
 The FX filter bounds also match the older filterRangeForEqKey() contract:
 HPF 20..1000 Hz, LPF 4000..16000 Hz.
 
-## Echo — retained captured/legacy contract
+## Echo — capture-mapped native contract
 
-The earlier K500 editor/reverse-engineering work used the same FX-filter domain
-for Echo and the Qt native bridge already carries captured CMD 0x0D mappings.
+The Qt native bridge uses the full `CMD 0x0D` image. The 2026-10-04 physical
+endpoint sweeps close the previously uncertain right-channel and predelay ranges.
 
 | Parameter | Minimum | Maximum | Unit | Evidence |
 | --- | ---: | ---: | --- | --- |
-| Echo Level | 0 | 100 | scalar/% | Captured/legacy contract |
-| Echo Repeat | 0 | 10 | scalar | Captured/legacy contract |
-| Echo Left Delay | 0 | 1000 | ms | Captured/legacy contract |
-| Echo Highpass | 20 | 1000 | Hz | Captured/legacy FX filter contract |
-| Echo Lowpass | 4000 | 16000 | Hz | Captured/legacy FX filter contract |
-| Echo Direct | 0 | 100 | scalar/% | Captured/legacy contract |
+| Echo Level | 0 | 100 | scalar/% | Captured contract |
+| Echo Repeat | 0 | 10 | scalar | Captured contract |
+| Echo Left Delay | 0 | 1000 | ms | Captured contract |
+| Echo Left Predelay | 0 | 100 | ms | **Native endpoint USB capture** |
+| Echo Right Delay | -50 | +50 | % | **Native endpoint USB capture; raw=UI+50** |
+| Echo Right Predelay | -50 | +50 | % | **Native endpoint USB capture; raw=UI+50** |
+| Echo Highpass | 20 | 1000 | Hz | Captured FX frequency contract |
+| Echo Lowpass | 4000 | 16000 | Hz | Captured FX frequency contract |
+| Echo Direct | 0 | 100 | scalar/% | Captured contract |
 
-Fields not listed here (for example hidden/right-channel timing metadata) remain
-device-owned/unverified unless a dedicated capture proves their user-facing range.
+Reverb and Echo expose HPF/LPF **frequency only** in the manufacturer UI. They
+do not have HP/LP filter-type selectors.
 
 ## Music Tone — native capture observed
 

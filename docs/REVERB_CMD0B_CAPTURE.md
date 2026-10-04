@@ -46,6 +46,12 @@ AA 10 00 0B 5F 01 5F 32 32 55 E1 00 80 3E 95 06 32 00 00 01
 
 The source capture filename for the final LPF transition contains `1600Hz`; the packet itself is unambiguous: `80 3E` little-endian is decimal `16000`, so the protocol evidence is recorded as 16000 Hz.
 
-## Evidence gate
+## Native UI boundary: no HP/LP filter type
 
-This capture verifies Level, Direct, HPF frequency, LPF frequency, Decay and Predelay. It does **not** verify Reverb HPF/LPF filter-type dropdown writes. Reverb filter-type edits therefore remain non-destructive/unsupported until a dedicated native delta capture proves their command bytes.
+This capture verifies Level, Direct, HPF frequency, LPF frequency, Decay and
+Predelay. The manufacturer Reverb page exposes only **Highpass frequency** and
+**Lowpass frequency**; there is no HP Type or LP Type dropdown.
+
+Therefore Reverb filter type is **not an unmapped control** and no dedicated
+type capture is required. Synthetic Reverb HP/LP type edits remain unsupported;
+frequency edits continue through the capture-backed full `CMD 0x0B` image.

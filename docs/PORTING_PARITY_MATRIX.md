@@ -70,8 +70,8 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Center Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
 | Sub output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
 | Subwoofer Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
-| Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
-| Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
+| Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native UI is frequency-only (no HP/LP Type) |
+| Echo detail level/repeat/direct/left delay/left predelay/right delay/right predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D; right timing -50..+50%, left predelay 0..100 ms; no HP/LP Type control |
 | Music Noise Gate / Bass READ+WRITE | CAPTURE-MAPPED 🟧 | Gate READ direct 0x0005 + CMD 0x02; Bass READ direct 0x00DF + CMD 0x0C; reconnect truth captured 2026-10-04 |
 | Mic FBX / anti-feedback level | CAPTURE-MAPPED 🟧 | READ activeMemory[0x001B], WRITE CMD 0x05 levels 0..4, RSP 0xFA |
 | Mic gate live write | READ ONLY 🟦 | no verified live command; do not guess |

@@ -83,8 +83,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | LPF frequency | ✅ | ✅ CMD 0x0B | ✅ 4000..16000 Hz | complete |
 | PEQ bands | ✅ | ✅ | ✅ | complete |
 | EQ bypass | ✅ 24-bit readback | ✅ CMD 0x0F | n/a | complete |
-| HPF filter type | ❌ | ❌ | ❌ | **YES** |
-| LPF filter type | ❌ | ❌ | ❌ | **YES** |
+| HPF filter type | N/A | N/A | manufacturer UI has HPF frequency only | no capture — no native control |
+| LPF filter type | N/A | N/A | manufacturer UI has LPF frequency only | no capture — no native control |
 
 ## Echo
 
@@ -101,9 +101,9 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | LPF frequency | ✅ | ✅ CMD 0x0D | complete |
 | PEQ bands | ✅ | ✅ | complete |
 | EQ bypass | ✅ | ✅ CMD 0x0F | complete |
-| HPF filter type | ❌ | ❌ | **YES** |
-| LPF filter type | ❌ | ❌ | **YES** |
-| Exact native min/max for Right Delay / Right Predelay / Left Predelay | 🟨 encoding known, UI endpoint not fully frozen | ✅ mapping exists | **YES, low risk range sweep** |
+| HPF filter type | N/A | N/A | no native control; HPF is frequency-only |
+| LPF filter type | N/A | N/A | no native control; LPF is frequency-only |
+| Right Delay / Right Predelay / Left Predelay native endpoints | ✅ -50..+50%, -50..+50%, 0..100 ms | ✅ CMD 0x0D exact encoding | complete — endpoint sweep closed 2026-10-04 |
 
 ## Outputs: Main / Surround / Center / Sub
 
@@ -162,7 +162,6 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 2. **Mic Noise Gate write**.
 3. **Main/Center/Sub output-delay reconnect truth** — State-A crossover capture proves the old low-offset delay READ assumptions collide with filter-type bytes. Use distinct non-zero delays to isolate the likely contiguous high delay block before changing runtime/preset readback.
 4. **Top-Music preservation tail only** — Mic `CMD 0x11` final state-byte donor is now closed as Music Input1 Gain raw / direct `activeMemory[0x0016]`. Top-Music `CMD 0x02` trailing-byte source still needs one focused capture.
-5. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas/readback evidence.
 
 ### P1 — useful next
 
