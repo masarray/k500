@@ -112,6 +112,51 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
 - [ ] With Use Init OFF, Recall does not locally synthesize those master values; the UI follows the 939-byte K500 readback.
 
+## Final daily-use operational controls — 2026-10-04
+
+### Mic Max
+
+- [ ] Mic Max 84, 50, 30 and 0 produce the captured Top Mic CMD 0x05 layout.
+- [ ] Lowering Mic Max below current Master Mic clamps Master Mic in the same device write.
+- [ ] Raising Mic Max does not raise Master Mic automatically.
+- [ ] Programmatic Master Mic edits above Mic Max are clamped before serialization and canonical DesiredState.
+- [ ] Reconnect/readback restores the same Mic Max and Master Mic values.
+
+### Recording volumes
+
+- [ ] UDisk Record UI 1/4/6 uses the captured CMD 0x3E `<raw> 00 00` form.
+- [ ] USB Record UI 1/4/6 keeps the distinct captured CMD 0x3E `03 <raw> 54` form.
+- [ ] Editing UDisk Record does not alter USB Record.
+- [ ] Editing USB Record does not alter UDisk Record.
+- [ ] Full reconnect/readback restores both hardware values.
+
+### Dance Mic trigger
+
+- [ ] Threshold -60/-50/0 dB serializes as raw 0/10/60 in CMD 0x22.
+- [ ] Hold Time 1/6/30 s serializes as raw seconds in CMD 0x22.
+- [ ] Editing Threshold preserves the current hardware Hold Time in the same pair frame.
+- [ ] Editing Hold Time preserves the current hardware Threshold in the same pair frame.
+- [ ] RSP 0xDD is observed for accepted native writes.
+- [ ] If the paired 0x0093/0x0094 seed does not decode inside captured ranges, both controls stay disabled and no guessed CMD 0x22 is sent.
+- [ ] Reconnect on normal hardware produces a valid paired seed and the UI matches the native application.
+
+### BT identity
+
+- [ ] BT Name `ARI` sends captured CMD 0x4E SET and receives RSP 0xB1.
+- [ ] BT Reset sends captured CMD 0x4E RESET and receives RSP 0xB1.
+- [ ] Rename accepts only 1..8 printable ASCII characters.
+- [ ] BT identity actions are available only on the USB transport qualified by the capture.
+- [ ] After ACK, a full 939-byte readback completes before normal LIVE operation resumes.
+- [ ] UI displays the BT Name returned by hardware readback, not an optimistic local string.
+- [ ] Reconnect confirms the BT Name/Reset result.
+- [ ] BLE Name remains unchanged and read-only.
+
+### Credential scope
+
+- [ ] Lock/password and Admin/User credential controls remain unavailable.
+- [ ] No credential command is guessed or emitted.
+- [ ] These device-managed controls are not release-blocking for the daily-use operational scope.
+
 ## Persistent Equipment Mode rename
 
 Use a sacrificial active slot and a <=16-character printable-ASCII test name.
