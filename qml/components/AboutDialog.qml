@@ -24,8 +24,8 @@ Popup {
     readonly property string applicationPurpose: "Control & Tuning Studio untuk KTV Pro K500 Karaoke Processor"
     readonly property string applicationVersion: Qt.application.version && Qt.application.version.length
                                                   ? Qt.application.version : "0.0.0"
-    readonly property string youtubeUrl: "https://www.youtube.com/@sonkupik"
-    readonly property string tokopediaUrl: "https://www.tokopedia.com/dr-sonkupik/recording-tech-ktv-pro-k500-karaoke-effect-processor-4-input-6-output-digital-mixer-dengan-equalizer-compressor-anti-feedback-crossover-ktv-pro-k500"
+    readonly property string youtubeUrl: SupportLinks.youtubeUrl
+    readonly property string tokopediaUrl: SupportLinks.tokopediaUrl
 
     Overlay.modal: Rectangle {
         color: "#B8060A0E"
