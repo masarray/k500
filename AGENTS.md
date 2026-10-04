@@ -36,8 +36,9 @@ Read:
 4. `docs/PROTOCOL_GOLDEN_VECTORS.md`
 5. `docs/K500_CAPTURE_TODO_MAP.md`
 6. `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`
-7. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
-8. `CONTRIBUTING.md`
+7. `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`
+8. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
+9. `CONTRIBUTING.md`
 
 ### `.k500` preset analysis, sonic tuning, simulation, graphs, or new presets
 
