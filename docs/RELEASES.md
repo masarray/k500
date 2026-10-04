@@ -8,11 +8,11 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.0.3**.
+Current public stable: **v1.1.0**.
 
-Current source candidate line: **v1.1.0** (updater lifecycle qualification; not public stable until accepted and published).
+Current stable source line: **v1.1.0**.
 
-Accepted immutable candidate: **v1.1.0-rc.5** from exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. RC4 predates the final protocol/readback and Adj Manner ownership closure and must not be promoted stable. RC5 is approved for byte-identical v1.1.0 promotion.
+Stable **v1.1.0** was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. RC4 predates the final protocol/readback and Adj Manner ownership closure and was not eligible for promotion.
 
 Current qualified scope: **Windows 10/11 x64 + USB HID**.
 

@@ -1,6 +1,6 @@
 # v1.1 Updater Release-Candidate Acceptance
 
-> RC5 acceptance is recorded below from the immutable v1.1.0-rc.5 artifacts built from exact main commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. Public stable remains **v1.0.3** only until the byte-identical promotion workflow publishes v1.1.0.
+> RC5 acceptance is recorded below from the immutable v1.1.0-rc.5 artifacts built from exact main commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. Public stable **v1.1.0** has now been published by byte-identical promotion of those accepted artifacts.
 
 UPDATER_V1_1_ACCEPTANCE=accepted
 UPDATER_V1_1_ACCEPTED_TAG=v1.1.0-rc.5
@@ -39,6 +39,19 @@ Accepted immutable artifacts:
 - Per-user installer SHA-256: `ba5952249d32ae808d295470f24424209a30428fe255223d202beca40a01ce30`
 
 The release owner explicitly authorized public release from this accepted RC5 line. Stable publication must be byte-identical promotion only.
+
+## Stable v1.1.0 promotion record
+
+Stable `v1.1.0` was published successfully on 2026-10-04 by workflow run `37212047160` using the byte-identical accepted RC5 installer assets. No application rebuild occurred during promotion.
+
+Published stable assets:
+
+- `SonKuPik-K500-v1.1.0-Windows-Setup.exe` — exact accepted machine bytes
+- `SonKuPik-K500-v1.1.0-Windows-Setup-PerUser.exe` — exact accepted per-user bytes
+- `SHA256SUMS.txt`
+- `release-manifest.json`
+
+GitHub `/releases/latest` now resolves to `v1.1.0`, so the landing-site `/download/windows` Smart Installer route automatically serves the new stable release without a landing-page code change.
 
 ## Functional desktop status
 
