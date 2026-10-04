@@ -82,7 +82,7 @@ Fields that remain read-only in the parity matrix are not acceptance failures; t
 - [ ] Reconnect Music Bass at -12/0/+12 dB hydrates -12/0/+12 from direct `activeMemory[0x00DF]=0/120/240`.
 - [ ] Reconnect Mic LP at Bypass/Bessel12/Butter12/Bessel18/Butter18/Butter24 hydrates enum 0/1/2/3/4/5 from direct `activeMemory[0x0014]`.
 - [ ] Mic A and Mic B LP presentation follow the shared Mic LP device field while hydration emits zero `stateEdited` events.
-- [ ] Mic HP presentation is not falsely promoted from a neighboring byte; it remains evidence-gated.
+- [ ] Mic HP reconnect hydrates Bessel12 from direct `activeMemory[0x0013]=1` in State A; Mic LP remains direct `0x0014`.
 - [ ] Mic LP type edits preserve current Music Input1 Gain raw in the final CMD `0x11` byte: -3 dB -> `0x09`, 0 dB -> `0x0C`.
 - [ ] Change Input2/BT gain while Input1 is unchanged and confirm the Mic CMD `0x11` tail does not follow those controls.
 - [ ] After a live Input1 edit, a later Mic HP/LP edit must not roll Input1 back to its connect-time value.
@@ -96,7 +96,8 @@ Fields that remain read-only in the parity matrix are not acceptance failures; t
 - [ ] Sub reconnect hydrates HP/LP type from direct activeMemory[0x0068]/[0x006A].
 - [ ] State A exactly reproduces Mic 1/2, Main 3/4, Surround 5/6, Center 7/1 and the actually captured Sub 7/2.
 - [ ] Main/Center/Sub delay UI is **not** hydrated from those type offsets.
-- [ ] Before restoring authoritative Main/Center/Sub delay readback, run a reconnect with six distinct non-zero delay values.
+- [ ] Distinct-delay reconnect 5/10/15/20/25/30 hydrates Main L/R, Surround L/R, Center and Sub from active `0x00CB/0x00CD/0x00CF/0x00D1/0x00D3/0x00D5`.
+- [ ] Preset persistence uses file scalars `0x00D4/0x00D6/0x00D8/0x00DA/0x00DC/0x00DE` and never the old low filter-type offsets.
 
 ## Echo timing endpoints + FX frequency-only UI — 2026-10-04
 
