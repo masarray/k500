@@ -14,6 +14,7 @@ constexpr int ActiveMemoryInterBlockMs = 35;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int RecallHandshakeTimeoutMs = 3000;
 constexpr int UseInitTimeoutMs = 2200;
+constexpr int BtIdentityTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
@@ -88,6 +89,7 @@ QString K500PresetManager::operationName(Operation operation)
     case Operation::Recall: return QStringLiteral("Recall");
     case Operation::UseInit: return QStringLiteral("Use Init Volume");
     case Operation::AdjManner: return QStringLiteral("Adj Manner VR OFF");
+    case Operation::BtName: return QStringLiteral("BT Name");
     case Operation::Save: return QStringLiteral("Save");
     case Operation::Rename: return QStringLiteral("Rename Mode");
     case Operation::Upload: return QStringLiteral("Upload");
@@ -318,6 +320,48 @@ void K500PresetManager::setAdjMannerVrOff(bool enabled)
                QStringLiteral("Timeout menunggu RSP 0xF8 untuk Adj Manner VR OFF."));
 }
 
+void K500PresetManager::setBtName(const QString &name)
+{
+    const QByteArray frame = K500Protocol::btNameSet(name);
+    if (frame.isEmpty()) {
+        const QString error = QStringLiteral("BT Name harus 1..8 karakter ASCII printable.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+
+    QString error;
+    if (!beginOperation(Operation::BtName, &error)) {
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+
+    m_step = Step::AwaitBtNameAck;
+    setProgress(QStringLiteral("BT Name · writing '%1'").arg(name.trimmed()));
+    if (!send(frame, QStringLiteral("BT Name SET · CMD 0x4E")))
+        return;
+    armTimeout(BtIdentityTimeoutMs, QStringLiteral("BT Name"),
+               QStringLiteral("Timeout menunggu RSP 0xB1 untuk BT Name."));
+}
+
+void K500PresetManager::resetBtName()
+{
+    QString error;
+    if (!beginOperation(Operation::BtName, &error)) {
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+
+    m_step = Step::AwaitBtNameAck;
+    setProgress(QStringLiteral("BT Name · reset"));
+    if (!send(K500Protocol::btNameReset(), QStringLiteral("BT Name RESET · CMD 0x4E")))
+        return;
+    armTimeout(BtIdentityTimeoutMs, QStringLiteral("BT Name"),
+               QStringLiteral("Timeout menunggu RSP 0xB1 untuk BT Name reset."));
+}
+
 void K500PresetManager::saveCurrentToSlot(int slotOneBased)
 {
     if (!usbStoreAvailable()) {
@@ -503,6 +547,13 @@ void K500PresetManager::onResponse(const K500Response &response)
         return;
     }
 
+    if (m_step == Step::AwaitBtNameAck && response.rsp == 0xB1) {
+        clearTimeout();
+        setProgress(QStringLiteral("BT Name · device acknowledged · refreshing identity"));
+        startReadback(ReadbackPurpose::BtIdentity);
+        return;
+    }
+
     if (m_step == Step::AwaitMassBeginAck && response.rsp == 0xBE) {
         clearTimeout();
         sendNextStoreChunk();
@@ -611,6 +662,12 @@ void K500PresetManager::finishReadback()
 
         setProgress(QStringLiteral("Recall slot %1 · 939-byte resync complete").arg(resolvedSlot));
         finishOperation(QStringLiteral("Recall"), resolvedSlot);
+        return;
+    }
+
+    if (m_readbackPurpose == ReadbackPurpose::BtIdentity) {
+        setProgress(QStringLiteral("BT Name · 939-byte identity refresh complete"));
+        finishOperation(QStringLiteral("BT Name"));
         return;
     }
 
