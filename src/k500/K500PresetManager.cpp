@@ -322,6 +322,12 @@ void K500PresetManager::setAdjMannerVrOff(bool enabled)
 
 void K500PresetManager::setBtName(const QString &name)
 {
+    if (!usbStoreAvailable()) {
+        const QString error = QStringLiteral("BT Name rename hanya dipromosikan untuk USB HID yang tercapture.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
     const QByteArray frame = K500Protocol::btNameSet(name);
     if (frame.isEmpty()) {
         const QString error = QStringLiteral("BT Name harus 1..8 karakter ASCII printable.");
@@ -347,6 +353,12 @@ void K500PresetManager::setBtName(const QString &name)
 
 void K500PresetManager::resetBtName()
 {
+    if (!usbStoreAvailable()) {
+        const QString error = QStringLiteral("BT Name reset hanya dipromosikan untuk USB HID yang tercapture.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
     QString error;
     if (!beginOperation(Operation::BtName, &error)) {
         if (m_manager) m_manager->setError(error);
