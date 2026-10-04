@@ -46,6 +46,18 @@ orchestration:
 - PR concurrency cancels obsolete heads automatically.
 - Installer smoke is path-aware and does not run for ordinary DSP/UI changes.
 
+## SHA semantics
+
+PR CI and release CI deliberately answer different questions:
+
+- **pull_request:** validate GitHub's generated integration/merge ref for the
+  proposed change against the current base. The runnable PR artifact is a QA
+  convenience and is not an immutable release candidate.
+- **main:** validate the exact post-merge repository commit. Only this SHA can
+  satisfy the RC workflow's exact-commit `K500 CI` gate.
+- **stable promotion:** reuse the accepted RC installer bytes; never rebuild
+  accepted application artifacts.
+
 ## Gate hierarchy
 
 ### L0 — Fast contracts
@@ -99,7 +111,9 @@ Stable promotion never rebuilds accepted application bytes.
 - Keep PR/main orchestration in `windows-build.yml`.
 - Heavy diagnostics are manual or narrowly scheduled, never duplicated on
   `push` and `pull_request`.
-- Feature branches do not run push CI; the PR exact head is the only
-  development authority.
-- `main` always runs exact-head CI before it can be used as an RC source.
+- Feature branches do not run duplicate push CI. A normal `pull_request` run
+  validates GitHub's PR integration/merge ref, so it tests the proposed branch
+  together with the current base without pretending that ref is a release SHA.
+- After merge, `main` always runs CI on the exact repository commit. That
+  successful post-merge `main` SHA is the release/RC qualification authority.
 - Release workflows may package only an exact successful `main` CI SHA.

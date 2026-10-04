@@ -79,14 +79,16 @@ jobs:
         shell: pwsh
         run: ./tools/ci/windows_test_suite.ps1 -BuildDir build -PackageDir package
 
-      - name: Upload runnable exact-head build
-        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+      - name: Upload runnable validation build
+        # PR runs validate GitHub's integration/merge ref; main/manual runs use
+        # an exact repository commit. Keep PR artifacts short-lived but available
+        # for final GUI/QRIS inspection before merge.
         uses: actions/upload-artifact@v4
         with:
           name: SonKuPik-K500-${{ github.sha }}-Windows
           path: package
           if-no-files-found: error
-          retention-days: 7
+          retention-days: ${{ github.event_name == 'pull_request' && 3 || 7 }}
 
 
   installer:
