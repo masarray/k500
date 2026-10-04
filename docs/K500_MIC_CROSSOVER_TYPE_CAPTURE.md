@@ -8,7 +8,7 @@ Status: physically captured 2026-10-04 with the manufacturer K500 application ov
 | --- | ---: | --- |
 | `Connect_Mic_LPType_bypass_bessel12db_reconnect_butter12db_reconnect_bessel18db_RC_butter18db_RC_butter24db.pcapng` | 30,808 bytes | `6d3f7d233653674c60554c6e1dd88261a64a7937c68c13ec343ded12140c4a29` |
 
-The capture begins with Mic LP Type at Bypass and then exercises Bessel 12, Butter 12, Bessel 18, Butter 18, and Butter 24 with reconnects between known states.
+The capture begins with Mic LP Type at Bypass and then exercises the first five raw enum states with reconnects. The operator note labelled the final raw-5 state as Butter 24, but later independent physical evidence resolves the shared enum as raw 5 = Bessel 24 and raw 6 = Butter 24. The raw bytes from this first sweep remain valid; only that final human-readable label is superseded.
 
 ## Authoritative CONNECT/readback truth
 
@@ -22,7 +22,7 @@ Bessel 12  -> 1
 Butter 12  -> 2
 Bessel 18  -> 3
 Butter 18  -> 4
-Butter 24  -> 5
+Bessel 24  -> 5   (raw-5 state; corrected by later independent evidence)
 ```
 
 Across every adjacent reconnect in this capture, `0x0014` is the only active-memory byte that changes.
@@ -42,7 +42,7 @@ The observed values align with the already-established shared filter enum:
 7 LR 24 / Link Riley 24
 ```
 
-This file physically exercises 0..5. Codes 6..7 remain shared-enum compatibility for Mic LP until independently exercised on Mic LP.
+This first file physically exercises raw 0..5. A later independent Mic LP donor-isolation capture physically exercises raw 6 = Butter 24 and raw 7 = LR 24, closing the high-order end of the shared enum.
 
 ## Captured WRITE frames and selector
 
@@ -53,10 +53,10 @@ Bessel 12  AA 06 00 11 01 01 80 3E 09 20
 Butter 12  AA 06 00 11 01 02 80 3E 09 1F
 Bessel 18  AA 06 00 11 01 03 80 3E 09 1E
 Butter 18  AA 06 00 11 01 04 80 3E 09 1D
-Butter 24  AA 06 00 11 01 05 80 3E 09 1C
+Bessel 24  AA 06 00 11 01 05 80 3E 09 1C
 ```
 
-Thus selector `0x01` is Mic LP and the type byte follows the shared enum.
+Thus selector `0x01` is Mic LP and the type byte follows the shared enum. The original session note calling the raw-`0x05` frame "Butter 24" is superseded by the later raw-`0x06` Butter 24 / raw-`0x07` LR 24 physical toggle and by the independent State-A output capture.
 
 ### Important trailing-byte boundary
 
@@ -80,7 +80,7 @@ is correct specifically when Input1 Gain is -3 dB; it is not a constant.
 
 1. On CONNECT/reconciliation, decode Mic HP Type from direct `activeMemory[0x0013]` and Mic LP Type from direct `activeMemory[0x0014]`.
 2. Update both Mic A and Mic B shared crossover presentation without emitting an edit.
-3. Decode type raws through the shared 0..7 filter enum.
+3. Decode type raws through the shared 0..7 filter enum; in particular raw 5 = Bessel 24 and raw 6 = Butter 24.
 4. Canonical state may treat both Mic HP/LP Type as captured reconnect truth.
 5. Mic CMD 0x11 WRITE must preserve the current Music Input1 Gain raw byte; never hard-code `0x00` or `0x09`.
 
@@ -117,12 +117,14 @@ Mode 2 -> Mode 3 = 88 differing active-memory bytes
 ```
 
 Despite those state changes, every physical Mic LP type write retained final byte
-`0x09`:
+`0x09`, while the filter type itself explicitly confirms the shared high-order enum:
 
 ```text
 Butter24  AA 06 00 11 01 06 80 3E 09 1B
 LR24      AA 06 00 11 01 07 80 3E 09 1A
 ```
+
+This later capture is the decisive correction for the first sweep's final display label: Mic LP uses raw `0x06` for Butter 24, not raw `0x05`.
 
 The same pair repeats in Modes 1, 2 and 3.
 

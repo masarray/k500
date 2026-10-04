@@ -111,6 +111,11 @@ def check_protocol_and_state() -> None:
         "SubDelay = 0x00D5",
     )
     require(
+        "src/k500/K500Protocol.cpp",
+        'case 0x05: return prefix + QStringLiteral("Bessel 24")',
+        'case 0x06: return prefix + QStringLiteral("Butter 24")',
+    )
+    require(
         "src/k500/K500ResponseParser.cpp",
         "tryDecodeAdjMannerVrOff",
         "response.data.at(19)",
@@ -182,7 +187,12 @@ def check_ui_contracts() -> None:
         "LIVE_RACK_STABLE_DELEGATE_V1",
         "readonly property var modelData: root.channels[index] || ({})",
         "modelData.accentColor",
+        "DEFERRED_AUTHORITATIVE_SYNC_V1",
+        "property bool deferredModelSync: false",
+        "onDraggingChanged:",
     )
+    require_count("qml/components/RackFaderPanel.qml", "property bool deferredModelSync: false", 2)
+    require_count("qml/components/RackFaderPanel.qml", "onDraggingChanged:", 2)
     require_count("qml/components/RackFaderPanel.qml", "model: root.channels ? root.channels.length : 0", 2)
     require(
         "qml/components/SystemWorkspaceImpl.qml",
