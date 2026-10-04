@@ -71,17 +71,17 @@ is correct specifically when Input1 Gain is -3 dB; it is not a constant.
 
 ## Explicit non-claims
 
-- **Mic HP Type readback is not mapped by this capture.** A neighboring byte may look plausible, but no Mic HP dropdown transition was performed here.
-- Main/Surround/Center/Sub filter-type readback is not inferred from Mic.
+- The original Mic-LP sweep alone did not map Mic HP. The later State-A reconnect closes Mic HP at direct activeMemory[0x0013].
+- Main/Surround/Center/Sub filter-type readback is established separately by the same State-A reconnect and is not inferred from Mic.
 - The Mic LP trailing `CMD 0x11` byte is dynamic and capture-resolved to Music Input1 Gain raw.
 - No new persistent/file offset is inferred from the live offset.
 
 ## Application contract
 
-1. On CONNECT/reconciliation, decode Mic LP Type from direct `activeMemory[0x0014]`.
-2. Update both Mic A and Mic B LP presentation without emitting an edit.
-3. Preserve the existing Mic HP presentation/assumption until dedicated HP reconnect evidence exists.
-4. Canonical state may mark Mic LP Type as captured truth while Mic HP remains assumed.
+1. On CONNECT/reconciliation, decode Mic HP Type from direct `activeMemory[0x0013]` and Mic LP Type from direct `activeMemory[0x0014]`.
+2. Update both Mic A and Mic B shared crossover presentation without emitting an edit.
+3. Decode type raws through the shared 0..7 filter enum.
+4. Canonical state may treat both Mic HP/LP Type as captured reconnect truth.
 5. Mic CMD 0x11 WRITE must preserve the current Music Input1 Gain raw byte; never hard-code `0x00` or `0x09`.
 
 
@@ -211,3 +211,28 @@ A Mic HP/LP write must serialize the **current canonical Music Input1 Gain**,
 not a connect-time constant. This matters after a live Input1 edit: replaying
 the old snapshot byte could silently roll Input1 back when the user later
 changes Mic crossover.
+
+
+## Mic HP reconnect closure — State A, 2026-10-04
+
+The later `Reconnect_AllOutputFilterTypes_StateA.pcapng` snapshot supplies the
+missing Mic HP reconnect evidence. The manufacturer UI shows:
+
+```text
+Mic HP  Bessel 12
+Mic LP  Butter 12
+HPF     96 Hz
+LPF     16000 Hz
+```
+
+The full 939-byte readback resolves:
+
+```text
+activeMemory[0x0013] = 0x01 = HP Bessel 12
+activeMemory[0x0014] = 0x02 = LP Butter 12
+```
+
+The frequency scalars decode to 96 / 16000 in the same snapshot, confirming the
+Mic state is current rather than stale. This closes connect-time Mic HP
+hydration at direct `0x0013`; the original LP sweep remains the stronger
+multi-state evidence for `0x0014`.
