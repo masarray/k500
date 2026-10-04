@@ -1032,18 +1032,37 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
         captured(prefix + QStringLiteral("hpfHz"), it->hpfHz);
         captured(prefix + QStringLiteral("lpfHz"), it->lpfHz);
         if (it.key() == QStringLiteral("music")) {
-            // Music type bytes are capture-backed device truth.
             captured(prefix + QStringLiteral("hpType"), it->hpType);
             captured(prefix + QStringLiteral("lpType"), it->lpType);
         } else if (it.key() == QStringLiteral("mic")) {
-            // Only Mic LP has reconnect evidence in this batch. Do not promote
-            // Mic HP merely because the two dropdowns share CMD 0x11.
-            assumed(prefix + QStringLiteral("hpType"), it->hpType);
-            if (m_micLpTypeKnown)
-                captured(prefix + QStringLiteral("lpType"), it->lpType);
-            else
-                assumed(prefix + QStringLiteral("lpType"), it->lpType);
+            const bool hpKnown = K500Protocol::crossoverFilterCodeValid(
+                byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF));
+            const bool lpKnown = K500Protocol::crossoverFilterCodeValid(
+                byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF));
+            (hpKnown ? captured : assumed)(prefix + QStringLiteral("hpType"), it->hpType);
+            (lpKnown ? captured : assumed)(prefix + QStringLiteral("lpType"), it->lpType);
+        } else if (it.key() == QStringLiteral("main")
+                   || it.key() == QStringLiteral("surround")
+                   || it.key() == QStringLiteral("center")
+                   || it.key() == QStringLiteral("sub")) {
+            int hpOffset = K500Protocol::ReadbackOffset::MainHpType;
+            int lpOffset = K500Protocol::ReadbackOffset::MainLpType;
+            if (it.key() == QStringLiteral("surround")) {
+                hpOffset = K500Protocol::ReadbackOffset::SurroundHpType;
+                lpOffset = K500Protocol::ReadbackOffset::SurroundLpType;
+            } else if (it.key() == QStringLiteral("center")) {
+                hpOffset = K500Protocol::ReadbackOffset::CenterHpType;
+                lpOffset = K500Protocol::ReadbackOffset::CenterLpType;
+            } else if (it.key() == QStringLiteral("sub")) {
+                hpOffset = K500Protocol::ReadbackOffset::SubHpType;
+                lpOffset = K500Protocol::ReadbackOffset::SubLpType;
+            }
+            const bool hpKnown = K500Protocol::crossoverFilterCodeValid(byteAt(memory, hpOffset, 0xFF));
+            const bool lpKnown = K500Protocol::crossoverFilterCodeValid(byteAt(memory, lpOffset, 0xFF));
+            (hpKnown ? captured : assumed)(prefix + QStringLiteral("hpType"), it->hpType);
+            (lpKnown ? captured : assumed)(prefix + QStringLiteral("lpType"), it->lpType);
         } else {
+            // Reverb/Echo have no native HP/LP Type selectors.
             assumed(prefix + QStringLiteral("hpType"), it->hpType);
             assumed(prefix + QStringLiteral("lpType"), it->lpType);
         }
