@@ -1,12 +1,12 @@
 # v1.1 Updater Release-Candidate Acceptance
 
-> Public stable remains **v1.0.3** while release-provenance qualification is pending. The auto-managed/self-update lifecycle itself has completed follow-up desktop testing successfully after PR #96.
+> RC5 acceptance is recorded below from the immutable v1.1.0-rc.5 artifacts built from exact main commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. Public stable remains **v1.0.3** only until the byte-identical promotion workflow publishes v1.1.0.
 
-UPDATER_V1_1_ACCEPTANCE=pending
-UPDATER_V1_1_ACCEPTED_TAG=
-UPDATER_V1_1_ACCEPTED_COMMIT=
-UPDATER_V1_1_MACHINE_SHA256=
-UPDATER_V1_1_USER_SHA256=
+UPDATER_V1_1_ACCEPTANCE=accepted
+UPDATER_V1_1_ACCEPTED_TAG=v1.1.0-rc.5
+UPDATER_V1_1_ACCEPTED_COMMIT=01c545ed27d9a4316fb255765a25ae41f0e1457a
+UPDATER_V1_1_MACHINE_SHA256=47b74627d141bd9b9676fd8e9891e36f2f407b918660fbf955d9de26c59e9d0f
+UPDATER_V1_1_USER_SHA256=ba5952249d32ae808d295470f24424209a30428fe255223d202beca40a01ce30
 
 This record is the fail-closed publication gate for the P1–P4 Windows updater lifecycle. It covers desktop installation/update behavior only; it does not broaden the existing Windows x64 + USB HID K500 hardware support claim.
 
@@ -29,11 +29,22 @@ RC4 was subsequently published from exact commit `3fa49b3627ffd0631e9e3915413775
 
 The next immutable candidate is **RC5** from one exact post-merge `main` commit. RC3/RC4 updater desktop results remain valid regression evidence for the updater lifecycle itself, but public stable provenance must bind to the newer RC5 bytes because stable promotion is byte-identical and may not rebuild after acceptance.
 
+## RC5 acceptance record
+
+Release-owner acceptance was recorded on 2026-10-04 after the exact RC5 workflow completed successfully on commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`, including clean build, regression suite, machine-wide installer validation, per-user installer validation, and deep updater lifecycle acceptance.
+
+Accepted immutable artifacts:
+
+- Machine installer SHA-256: `47b74627d141bd9b9676fd8e9891e36f2f407b918660fbf955d9de26c59e9d0f`
+- Per-user installer SHA-256: `ba5952249d32ae808d295470f24424209a30428fe255223d202beca40a01ce30`
+
+The release owner explicitly authorized public release from this accepted RC5 line. Stable publication must be byte-identical promotion only.
+
 ## Functional desktop status
 
 Follow-up operator testing after PR #96 confirms the auto-managed/self-update lifecycle is functionally working, including the no-admin per-user update path and post-update relaunch visibility. This closes the updater-runtime/UX acceptance concern.
 
-The machine-readable acceptance token intentionally remains `pending` until the final immutable RC tag, its exact source commit, and SHA-256 values for the machine and per-user installers are recorded below. That remaining work is release provenance/promotion bookkeeping, not an unresolved updater-runtime defect.
+The machine-readable acceptance token is now `accepted` for immutable `v1.1.0-rc.5`. The exact source commit and both installer SHA-256 values are recorded above. Stable promotion must reuse these exact bytes; no rebuild is authorized.
 
 ## Why RC testing is staged
 
