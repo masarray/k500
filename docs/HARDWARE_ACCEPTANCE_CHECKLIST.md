@@ -83,7 +83,9 @@ Fields that remain read-only in the parity matrix are not acceptance failures; t
 - [ ] Reconnect Mic LP at Bypass/Bessel12/Butter12/Bessel18/Butter18/Butter24 hydrates enum 0/1/2/3/4/5 from direct `activeMemory[0x0014]`.
 - [ ] Mic A and Mic B LP presentation follow the shared Mic LP device field while hydration emits zero `stateEdited` events.
 - [ ] Mic HP presentation is not falsely promoted from a neighboring byte; it remains evidence-gated.
-- [ ] Mic LP type edits at 16 kHz reproduce trailing `0x09` across multiple Equipment Modes; before generic Mic crossover WRITE qualification, vary the candidate donor/frequency state and prove whether `0x09` is fixed or preserved.
+- [ ] Mic LP type edits preserve current Music Input1 Gain raw in the final CMD `0x11` byte: -3 dB -> `0x09`, 0 dB -> `0x0C`.
+- [ ] Change Input2/BT gain while Input1 is unchanged and confirm the Mic CMD `0x11` tail does not follow those controls.
+- [ ] After a live Input1 edit, a later Mic HP/LP edit must not roll Input1 back to its connect-time value.
 
 ## Section-navigation crash regression
 

@@ -158,3 +158,46 @@ Key write after each state. Direct `activeMemory[0x001B]` is a known FBX byte
 and equals zero in the current three-mode capture, so this test can decisively
 confirm or eliminate that historically suspicious nearby candidate without
 guessing.
+
+
+## FBX candidate eliminated for Top-Music tail — 2026-10-04
+
+Physical capture:
+
+| Capture | SHA-256 |
+| --- | --- |
+| `1 Top-Music tail — tes kandidat paling mencurigakan.pcapng` | `b66efea0e8ff244287cac9fe696bc36bea5c63602cd2eeeee2a0b79baba86dcb` |
+
+Sequence:
+
+```text
+initial Music Key edit                 tail 00
+FBX 0 -> 1 -> 2 -> 3 -> 4 (CMD 0x05)
+Music Key edit                         tail 02
+FBX 4 -> 3 -> 2 -> 1 -> 0 (CMD 0x05)
+Music Key edit                         tail 02
+```
+
+Therefore the Top-Music tail does **not** directly encode current FBX level:
+when FBX returned to 0 the tail remained `0x02`.
+
+The accompanying native-UI state shows Music HP Type = Butterworth 12 dB
+(enum `0x02`), which is consistent with the existing compatibility donor
+`activeMemory[0x0007]`, but this is supporting correlation rather than a
+controlled donor proof. Do not promote it yet.
+
+### Minimal final donor capture
+
+Vary **Music HP Type itself**, then trigger Music Key after each value while
+leaving other controls untouched:
+
+```text
+Music HP Type Bypass      -> Music Key 0 -> +1 -> 0
+Music HP Type Bessel 12   -> Music Key 0 -> +1 -> 0
+Music HP Type Butter 18   -> Music Key 0 -> +1 -> 0
+restore Butter 12         -> Music Key 0 -> +1 -> 0
+```
+
+If the Top-Music tail follows `00 -> 01 -> 04 -> 02`, direct
+`activeMemory[0x0007]` is proven as the preservation donor. If it does not,
+that candidate is eliminated without disturbing any other mapping.
