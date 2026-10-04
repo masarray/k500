@@ -127,6 +127,18 @@ AA 25 00 0E 00 63 63 63 63 64 32 64 32 61 32 26 32 2F 12 07 01
 
 The first timing pair below is **R then L**.
 
+Actual native-device reference state from the supplied screenshot:
+
+```text
+Semantic L = 14 ms ≈ 4.8 m
+Semantic R = 20 ms ≈ 6.8 m
+
+Wire timing pair:
+14 00 0E 00
+^ R=20   ^ L=14
+```
+
+
 Surround R=14 ms, L=20 ms:
 
 ```text
