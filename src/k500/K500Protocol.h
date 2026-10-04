@@ -174,7 +174,22 @@ constexpr int BtNameMaxLength = 8;
 // fileU8()/fileU16() translation.
 namespace ReadbackOffset {
 constexpr int MusicNoiseGate = 0x0005;
+constexpr int MicHpType = 0x0013;
 constexpr int MicLpType = 0x0014;
+constexpr int MainHpType = 0x002C;
+constexpr int MainLpType = 0x002E;
+constexpr int SurroundHpType = 0x0040;
+constexpr int SurroundLpType = 0x0042;
+constexpr int CenterHpType = 0x0054;
+constexpr int CenterLpType = 0x0056;
+constexpr int SubHpType = 0x0068;
+constexpr int SubLpType = 0x006A;
+constexpr int MainLDelay = 0x00CB;
+constexpr int MainRDelay = 0x00CD;
+constexpr int SurroundLDelay = 0x00CF;
+constexpr int SurroundRDelay = 0x00D1;
+constexpr int CenterDelay = 0x00D3;
+constexpr int SubDelay = 0x00D5;
 // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — physical donor-isolation capture
 // proves Mic CMD 0x11 final data byte mirrors Music Input1 Gain raw.
 constexpr int MusicInput1Gain = 0x0016;
