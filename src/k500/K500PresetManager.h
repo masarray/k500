@@ -85,7 +85,7 @@ private:
         AwaitAdjMannerAck,
         AwaitBtNameAck,
     };
-    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare, BtIdentity };
+    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare, BtIdentity, AdjManner };
 
     struct MassEntry {
         int slot = 1;
