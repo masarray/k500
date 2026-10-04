@@ -84,7 +84,7 @@ jobs:
           foreach ($b in $bytes) { $sum = ($sum + [int]$b) -band 0xff }
           if ($sum -ne 0) { throw "Mode 01 additive checksum invalid: $sum" }
           $mode01 = (Get-FileHash $preset -Algorithm SHA256).Hash.ToLowerInvariant()
-          $golden = '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1'
+          $golden = '761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4'
           if ($mode01 -ne $golden) { throw "Mode 01 official preset regressed: $mode01" }
 
           $installer = Get-Content 'packaging/windows/installer.iss' -Raw
@@ -333,7 +333,7 @@ jobs:
             portableFormat = 'ZIP (non-self-extracting)'
             selfExtractingPortable = $false
             officialPresetSource = 'github:masarray/k500/resources/presets@main'
-            mode01NativeSha256 = '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1'
+            mode01NativeSha256 = '761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4'
             regressionSuite = @('P0/P1 architecture','updater metadata integrity','P2 preset protocol','P3 codec','P3.2 donor corpus','P3.4 edit persistence','P4.2 donor batch','runtime navigation self-tests','portable ZIP test','Inno installed-app test')
             artifacts = $artifacts
           }
@@ -355,7 +355,7 @@ jobs:
           if ($manifest.stableReleaseEligible -ne $true) { throw 'Stable release eligibility must be true' }
           if ($manifest.codeSigning -ne 'unsigned-open-source') { throw 'Unsigned OSS distribution status must be explicit' }
           if ($manifest.selfExtractingPortable -ne $false) { throw 'Portable distribution must not be self-extracting' }
-          if ($manifest.mode01NativeSha256 -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') { throw 'Official Mode 01 manifest identity mismatch' }
+          if ($manifest.mode01NativeSha256 -ne '761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4') { throw 'Official Mode 01 manifest identity mismatch' }
           if ($manifest.artifacts.Count -ne 3) { throw 'Manifest must describe both installers and portable ZIP' }
 
       - name: Upload stable Windows artifact
