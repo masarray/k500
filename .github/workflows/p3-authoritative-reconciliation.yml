@@ -12,6 +12,7 @@ on:
       - 'src/k500/K500Protocol.*'
       - 'src/k500/K500ResponseParser.*'
       - 'src/k500/K500PresetManager.*'
+      - 'src/k500/K500PresetEditMapper.*'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/MusicTonePanel.qml'
@@ -26,6 +27,8 @@ on:
       - 'docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md'
       - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
+      - 'docs/ECHO_CMD0D_CAPTURE.md'
+      - 'docs/REVERB_CMD0B_CAPTURE.md'
       - 'docs/K500_FBX_CAPTURE_MAP.md'
       - 'docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md'
       - 'docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md'
@@ -43,6 +46,7 @@ on:
       - 'src/k500/K500Protocol.*'
       - 'src/k500/K500ResponseParser.*'
       - 'src/k500/K500PresetManager.*'
+      - 'src/k500/K500PresetEditMapper.*'
       - 'src/StudioEngine.*'
       - 'qml/components/SectionWorkspace.qml'
       - 'qml/components/MusicTonePanel.qml'
@@ -55,6 +59,8 @@ on:
       - 'docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md'
       - 'docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md'
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
+      - 'docs/ECHO_CMD0D_CAPTURE.md'
+      - 'docs/REVERB_CMD0B_CAPTURE.md'
       - 'docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md'
       - 'docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md'
       - 'docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md'
@@ -107,6 +113,7 @@ jobs:
           response_h = Path('src/k500/K500ResponseParser.h').read_text(encoding='utf-8')
           response_cpp = Path('src/k500/K500ResponseParser.cpp').read_text(encoding='utf-8')
           preset_manager = Path('src/k500/K500PresetManager.cpp').read_text(encoding='utf-8')
+          preset_edit_mapper = Path('src/k500/K500PresetEditMapper.cpp').read_text(encoding='utf-8')
           studio_h = Path('src/StudioEngine.h').read_text(encoding='utf-8')
           studio_cpp = Path('src/StudioEngine.cpp').read_text(encoding='utf-8')
           qml = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
@@ -122,6 +129,8 @@ jobs:
           output_delay_doc = Path('docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md').read_text(encoding='utf-8')
           runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
           music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
+          echo_doc = Path('docs/ECHO_CMD0D_CAPTURE.md').read_text(encoding='utf-8')
+          reverb_doc = Path('docs/REVERB_CMD0B_CAPTURE.md').read_text(encoding='utf-8')
           fbx_doc = Path('docs/K500_FBX_CAPTURE_MAP.md').read_text(encoding='utf-8')
           music_xover_doc = Path('docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md').read_text(encoding='utf-8')
           mic_xover_doc = Path('docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md').read_text(encoding='utf-8')
@@ -154,6 +163,8 @@ jobs:
               'music tone native UI range is guarded': 'from:-91;to:-50' in music_tone_qml and 'offAtMin:true' in music_tone_qml and 'from:-12;to:12' in music_tone_qml and 'offAtMin' in parameter_slider,
               'music tone capture evidence documented': 'raw `0x00` = OFF' in music_tone_doc and 'raw = round((dB + 12.0) * 10)' in music_tone_doc,
               'music tone reconnect readback is direct and guarded': 'MusicNoiseGate = 0x0005' in protocol_h and 'MusicBass = 0x00DF' in protocol_h and 'musicNoiseGateRawValid' in studio_cpp and 'musicBassRawValid' in studio_cpp and 'activeMemory[0x0005]' in music_tone_doc and 'activeMemory[0x00DF]' in music_tone_doc,
+              'echo endpoint ranges are capture-locked': 'EchoRightDelayMinPercent = -50' in protocol_h and 'EchoRightDelayMaxPercent = 50' in protocol_h and 'EchoRightPredelayMinPercent = -50' in protocol_h and 'EchoLeftPredelayMaxMs = 100' in protocol_h and 'rightDelayPercent' in studio_cpp and 'rightPredelayPercent' in studio_cpp and 'leftPredelayMs' in studio_cpp and 'raw=UI+50' in echo_doc,
+              'fx native UI is frequency-only': qml.count('showTypes: false') >= 2 and 'FX_NATIVE_FREQUENCY_ONLY_V1' in qml and 'no native HP/LP filter-type control' in preset_edit_mapper and 'no HP/LP filter type' in reverb_doc and 'no HP/LP filter type' in echo_doc,
               'top music unresolved tail stays evidence-gated': 'TOP_MUSIC_TAIL_SOURCE_PENDING_20261004' in protocol_cpp and 'Top-Music tail safety boundary' in music_tone_doc,
               'fbx native range is 0..4': 'MicFbxMinLevel = 0' in protocol_h and 'MicFbxMaxLevel = 4' in protocol_h and 'from:0,to:4' in qml,
               'fbx read uses direct active-memory offset': 'byteAt(memory, 0x001B, 0)' in controller and 'byteAt(memory, 0x001B)' in studio_cpp and 'fileU8(memory, 0x001B)' not in studio_cpp,
