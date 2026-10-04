@@ -138,9 +138,9 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | Effect Init Level | ✅ 0x001D | ✅ dedicated CMD 0x0A + F5 ACK | capture-mapped | no |
 | UDisk Record Vol | ✅ 0x0095 + 1 | ✅ CMD 0x3E raw=UI-1, tail 00 00 | capture-mapped | no |
 | USB Record Vol | ✅ 0x0096 + 1 | ✅ CMD 0x3E selector 0x03, raw=UI-1 | capture-mapped | no |
-| Dance/Mic Trigger Threshold | 🟨 0x0093 structural seed, range-guarded | ✅ CMD 0x22 raw=dB+60 | capture-mapped write | no further daily-use capture |
-| Dance/Mic Trigger Hold Time | 🟨 0x0094 structural seed, range-guarded | ✅ CMD 0x22 raw seconds | capture-mapped write | no further daily-use capture |
-| Adj Manner / VR OFF | ❌ reconnect/readback unknown | ✅ CMD 0x07 + F8 ACK | partial | **YES — readback only if persistent status desired** |
+| Dance/Mic Trigger Threshold | ❌ reconnect seed reopened; old 0x0093/0x0094 pair invalidated | ✅ CMD 0x22 raw=dB+60 | WRITE captured, safe live seed gated | optional only if Dance live editing must ship |
+| Dance/Mic Trigger Hold Time | ❌ reconnect seed reopened; file 0x0094 is Adj Manner | ✅ CMD 0x22 raw seconds | WRITE captured, safe live seed gated | optional only if Dance live editing must ship |
+| Adj Manner / VR OFF | ✅ active 0x008C / file 0x0094 + C0 data[19] bit0 inverse | ✅ CMD 0x07 + F8 ACK | READ+WRITE closed | no |
 
 ## Identity / security
 
@@ -165,7 +165,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 ### P1 — useful next
 
 6. Output Delay READ+WRITE is now closed for all six semantic controls; reconnect capture 5/10/15/20/25/30 proves the contiguous high-scalar block.
-7. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
+7. Adj Manner / VR OFF READ+WRITE is closed. The only optional follow-up is front-panel VR **analog telemetry** if exact live screwdriver-slider tracking is required.
 8. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
 9. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
 
