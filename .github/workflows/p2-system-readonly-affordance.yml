@@ -20,12 +20,13 @@ jobs:
 
           checks = {
               'P2 semantic token': 'P2_SYSTEM_READONLY_AFFORDANCE_V1' in qml,
-              'BT/BLE identity is explicitly read only': 'BT / BLE IDENTITY' in qml and 'Rename / reset mapping not verified' in qml,
+              'BT identity is capture-backed': 'BT / BLE IDENTITY' in qml and 'LIVE · CMD 4E' in qml and 'setBtName' in qml and 'resetBtName' in qml,
+              'BLE remains explicitly read only': 'BT rename/reset verified · BLE remains read only' in qml,
               'offline BT/BLE does not invent device names': 'CONNECT K500 TO READ' in qml and 'KTV_BT_00AB12' not in qml and 'KTV_BLE_00AB12' not in qml,
               'credential surface is explicitly unavailable': 'READ ONLY · DEVICE MANAGED' in qml and 'NOT EXPOSED' in qml,
               'fake lock checkbox model removed': 'model:[{label:"Unlock",on:true}' not in qml,
               'fake password field removed': 'NEW PASSWORD' not in qml,
-              'unverified credential write copy is explicit': 'Controls stay unavailable until the native write mapping is proven.' in qml,
+              'credential scope is intentionally closed': 'intentionally outside the daily-use scope' in qml and 'no guessed credential traffic' in qml,
           }
 
           failed = [name for name, ok in checks.items() if not ok]
