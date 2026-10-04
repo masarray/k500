@@ -220,18 +220,26 @@ StudioPanel {
                     spacing: 3
 
                     Repeater {
-                        model: root.channels
+                        // LIVE_RACK_STABLE_DELEGATE_V1 — model only the stable
+                        // channel count. Replacing a bound JS array must update
+                        // channelSpec in-place instead of destroying the active knob.
+                        model: root.channels ? root.channels.length : 0
                         delegate: Item {
                             id: fxChannel
                             required property int index
-                            required property var modelData
+                            readonly property var modelData: root.channels[index] || ({})
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.minimumWidth: 88
                             property real localValue: Number(modelData.value)
                             readonly property bool channelEditable: modelData.editable === undefined || Boolean(modelData.editable)
+                            onModelDataChanged: {
+                                if (!fxKnob.dragging)
+                                    localValue = Number(modelData.value)
+                            }
 
                             StudioKnob {
+                                id: fxKnob
                                 anchors.centerIn: parent
                                 enabled: fxChannel.channelEditable
                                 opacity: fxChannel.channelEditable ? 1.0 : 0.62
@@ -698,11 +706,14 @@ StudioPanel {
                 visible: !root.compactCluster
 
                 Repeater {
-                    model: root.channels
+                    // LIVE_RACK_STABLE_DELEGATE_V1 — preserve every fader
+                    // delegate while the channel count is unchanged. The
+                    // metadata/value binding may change, the MouseArea owner may not.
+                    model: root.channels ? root.channels.length : 0
                     delegate: Item {
                         id: channel
                         required property int index
-                        required property var modelData
+                        readonly property var modelData: root.channels[index] || ({})
                         Layout.fillWidth: true
                         Layout.minimumWidth: 48
                         Layout.fillHeight: true
