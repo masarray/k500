@@ -144,7 +144,10 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] USB Record 1/4/6 uses CMD 0x3E selector 0x03 and reconnect readback returns the same UI value.
 - [ ] Mic Max and UDisk Record use their capture-mapped live writes and reconnect to the same device values.
 - [ ] Adj Manner VR OFF ON/OFF receives RSP 0xF8.
-- [ ] After reconnect, Adj Manner VR OFF returns to DEVICE STATE UNKNOWN rather than claiming a stale local value.
+- [ ] Reconnect hydrates unticked/OFF as activeMemory[0x008C]=0 and ticked/ON as 1.
+- [ ] C0 reconnect state agrees: data[19] bit0 set = FRONT VR ACTIVE, clear = SOFTWARE CONTROL.
+- [ ] With FRONT VR ACTIVE, Music Bass/Mid/Mid Freq/Treble plus captured Reverb/Echo trim-owned controls are software-read-only and visually hardware-owned.
+- [ ] With VR OFF ON, those software editors regain ownership without Adj Manner rewriting their values.
 - [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
 - [ ] With Use Init OFF, Recall does not locally synthesize those master values; the UI follows the 939-byte K500 readback.
 
@@ -173,8 +176,8 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Editing Threshold preserves the current hardware Hold Time in the same pair frame.
 - [ ] Editing Hold Time preserves the current hardware Threshold in the same pair frame.
 - [ ] RSP 0xDD is observed for accepted native writes.
-- [ ] If the paired 0x0093/0x0094 seed does not decode inside captured ranges, both controls stay disabled and no guessed CMD 0x22 is sent.
-- [ ] Reconnect on normal hardware produces a valid paired seed and the UI matches the native application.
+- [ ] Dance Mic remains fail-closed after the Adj Manner capture invalidated the old 0x0093/0x0094 structural seed.
+- [ ] No CMD 0x22 is emitted until an independently proven reconnect seed is available.
 
 ### BT identity
 
