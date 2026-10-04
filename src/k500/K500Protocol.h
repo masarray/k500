@@ -167,10 +167,7 @@ constexpr int BtNameMaxLength = 8;
 // fileU8()/fileU16() translation.
 namespace ReadbackOffset {
 constexpr int MusicNoiseGate = 0x0005;
-constexpr int MusicHpType = 0x0007;
-constexpr int MusicLpType = 0x0008;
 constexpr int MicLpType = 0x0014;
-constexpr int TopMusicTailScalar = 0x001B;
 constexpr int MusicBass = 0x00DF;
 } // namespace ReadbackOffset
 

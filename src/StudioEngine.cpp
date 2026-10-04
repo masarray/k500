@@ -467,12 +467,10 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     // direct active-memory offsets 0x0007=Music HP Type and 0x0008=Music LP Type.
     // These bytes are authoritative device state and must replace stale/default UI.
     syncString(m_hpType,
-               K500Protocol::crossoverFilterLabel(
-                   byteAt(memory, K500Protocol::ReadbackOffset::MusicHpType), true),
+               K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0007), true),
                [this] { emit hpTypeChanged(); });
     syncString(m_lpType,
-               K500Protocol::crossoverFilterLabel(
-                   byteAt(memory, K500Protocol::ReadbackOffset::MusicLpType), false),
+               K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false),
                [this] { emit lpTypeChanged(); });
 
     // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — these three bytes are a shared

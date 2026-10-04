@@ -249,8 +249,8 @@ int main(int argc, char *argv[])
         putFileU16(memory, 0x009E, 18000); // Music LPF
         // MUSIC_CROSSOVER_TYPE_READBACK_V1 — direct active-memory bytes from
         // physical reconnect captures, not .k500 file-offset defaults.
-        memory[K500Protocol::ReadbackOffset::MusicHpType] = char(0x07); // HP LR 24
-        memory[K500Protocol::ReadbackOffset::MusicLpType] = char(0x00); // Bypass
+        memory[0x0007] = char(0x07); // Music HP Type = HP LR 24
+        memory[0x0008] = char(0x00); // Music LP Type = Bypass
         memory[K500Protocol::ReadbackOffset::MusicNoiseGate] = char(0x29); // -50 dB
         memory[K500Protocol::ReadbackOffset::MusicBass] = char(0xF0); // +12.0 dB
 

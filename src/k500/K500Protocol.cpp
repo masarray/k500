@@ -331,13 +331,18 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(K500Frame::clampByte(qRound(state.digitalGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qBound(-7, state.key, 7) + 7)));
     // MUSIC_TONE_READBACK_20261004_V1 — reconnect captures prove the gate is
-    // direct activeMemory[0x0005]. The following device-owned tail byte is the
-    // established scalar at activeMemory[0x001B]. activeMemory[0x0007] is Music
-    // HP Type and must never be replayed as the Top-Music tail.
+    // direct activeMemory[0x0005], so an unrelated Top-Music edit must preserve
+    // that byte rather than the historical guessed 0x001B donor.
     body.append(char(state.noiseGateRaw >= 0
                          ? K500Frame::clampByte(qBound(0, state.noiseGateRaw, 41))
                          : mirrored(ReadbackOffset::MusicNoiseGate, 0x00)));
-    body.append(char(mirrored(ReadbackOffset::TopMusicTailScalar, 0x02)));
+
+    // TOP_MUSIC_TAIL_SOURCE_PENDING_20261004 — keep the pre-existing writer
+    // behavior for compatibility, but do NOT promote activeMemory[0x0007] as
+    // captured tail truth: 0x0007 is now proven Music HP Type, and the latest
+    // native CMD 0x02 capture can carry a different tail value. A dedicated
+    // donor-isolation capture is required before changing this preservation path.
+    body.append(char(mirrored(0x07, 0x02)));
     return K500Frame::build(body);
 }
 
@@ -771,7 +776,7 @@ bool selfTest(QString *error)
     maxCapture.key = 0; maxCapture.noiseGateRaw = 21;
     QByteArray maxScalars(0x40, char(0));
     maxScalars[0x03] = char(25);
-    maxScalars[ReadbackOffset::TopMusicTailScalar] = char(2);
+    maxScalars[0x07] = char(2);
     if (!expect(topMusicBlock(maxCapture, maxScalars),
                 {0xAA,0x0D,0x02,0x19,0x19,0x3C,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x38},
                 QStringLiteral("Music Max 60 preserves Top Music 25"))) return false;
@@ -798,7 +803,7 @@ bool selfTest(QString *error)
     QByteArray gateScalars(0x40, char(0));
     gateScalars[0x03] = char(0x19);
     gateScalars[0x04] = char(0x54);
-    gateScalars[ReadbackOffset::TopMusicTailScalar] = char(0x13);
+    gateScalars[0x07] = char(0x13);
     gateCapture.noiseGateRaw = musicNoiseGateRaw(NativeRange::MusicNoiseGateOffDb);
     if (!expect(topMusicBlock(gateCapture, gateScalars),
                 {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x00,0x13,0x24},
@@ -812,29 +817,18 @@ bool selfTest(QString *error)
                 {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
                 QStringLiteral("Music Noise Gate -50 capture"))) return false;
 
-    // MUSIC_TONE_READBACK_20261004_V1 — exact current-state vector from the
-    // supplied reconnect sweep. Poison active[0x0007] to prove Music HP Type
-    // cannot leak into the Top-Music tail; gate and tail must come from 0x0005
-    // and 0x001B respectively.
-    K500MusicBlockState reconnectGateCapture;
-    reconnectGateCapture.topMusicVol = 25;
-    reconnectGateCapture.musicInitVol = 75;
-    reconnectGateCapture.musicMaxVol = 54;
-    reconnectGateCapture.sourceRaw = 2;
-    reconnectGateCapture.input1GainDb = -3;
-    reconnectGateCapture.input2GainDb = -3;
-    reconnectGateCapture.bluetoothGainDb = -3;
-    reconnectGateCapture.uDiskGainDb = -4;
-    reconnectGateCapture.digitalGainDb = -4;
-    reconnectGateCapture.key = 0;
+    // MUSIC_TONE_READBACK_20261004_V1 — poison the historical 0x001B gate
+    // donor while leaving the legacy tail seed untouched. This regression locks
+    // only the newly proven gate source; it intentionally does not claim a new
+    // Top-Music tail source.
+    K500MusicBlockState reconnectGateCapture = gateCapture;
     reconnectGateCapture.noiseGateRaw = -1;
-    QByteArray reconnectGateScalars(0x40, char(0));
+    QByteArray reconnectGateScalars = gateScalars;
     reconnectGateScalars[ReadbackOffset::MusicNoiseGate] = char(0x29);
-    reconnectGateScalars[ReadbackOffset::MusicHpType] = char(0x7F);
-    reconnectGateScalars[ReadbackOffset::TopMusicTailScalar] = char(0x00);
-    if (!expect(K500Frame::toUsbFrame(topMusicBlock(reconnectGateCapture, reconnectGateScalars)),
-                {0xAA,0x0D,0x00,0x02,0x19,0x4B,0x36,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x00,0xFA},
-                QStringLiteral("Music Gate reconnect seed + Top-Music tail preservation"))) return false;
+    reconnectGateScalars[0x1B] = char(0x7F); // poison old guessed gate donor
+    if (!expect(topMusicBlock(reconnectGateCapture, reconnectGateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
+                QStringLiteral("Music Gate reconnect readback donor"))) return false;
 
     if (!expect(musicBass(-12.0), {0xAA,0x06,0x0C,0x02,0x00,0x00,0x00,0x09,0xE3},
                 QStringLiteral("Music Bass -12 capture"))) return false;
@@ -847,8 +841,8 @@ bool selfTest(QString *error)
     // hydrated/editable state while the still-unproven neighbours stay seeded.
     scalars[0x03] = char(0x7F); scalars[0x04] = char(0x52);
     scalars[ReadbackOffset::MusicNoiseGate] = char(0x0B);
-    scalars[ReadbackOffset::TopMusicTailScalar] = char(0x06);
-    scalars[ReadbackOffset::MusicHpType] = char(0x7F); // poison old tail donor
+    scalars[0x1B] = char(0x7F); // poison historical guessed gate donor
+    scalars[0x07] = char(0x06); // legacy tail seed, still evidence-gated
     music.topMusicVol = 70; music.musicInitVol = 49; music.musicMaxVol = 82; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
     if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music captured init scalar"))) return false;
 
@@ -859,7 +853,7 @@ bool selfTest(QString *error)
     musicInitCapture.key = 0; musicInitCapture.noiseGateRaw = 21;
     QByteArray musicInitScalars(0x40, char(0));
     musicInitScalars[0x03] = char(0x19);
-    musicInitScalars[ReadbackOffset::TopMusicTailScalar] = char(0x00);
+    musicInitScalars[0x07] = char(0x00);
     if (!expect(K500Frame::toUsbFrame(topMusicBlock(musicInitCapture, musicInitScalars)),
                 {0xAA,0x0D,0x00,0x02,0x19,0x54,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0xE7},
                 QStringLiteral("Music Init 84 USB capture"))) return false;
