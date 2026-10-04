@@ -9,6 +9,8 @@ on:
       - 'docs/index.html'
       - 'docs/README.md'
       - '.github/workflows/landing-release-sync.yml'
+      - '.github/workflows/windows-stable-release.yml'
+      - '.github/workflows/windows-updater-promote.yml'
   push:
     branches:
       - main
@@ -48,6 +50,24 @@ jobs:
             exit 1
           fi
           grep -Fq 'filename: assetName' 'functions/download/[kind].js'
+
+          # Public release metadata must advertise only the Smart Installer route.
+          grep -Fq "setup: '/download/windows'" functions/api/release.js
+          if grep -Fqi 'portable' functions/api/release.js; then
+            echo 'Portable metadata must not exist in the public release API.' >&2
+            exit 1
+          fi
+          if grep -Fq '/download/portable' site/README.md; then
+            echo 'Portable route must not be documented by the current landing architecture.' >&2
+            exit 1
+          fi
+
+          # v1.1+ must use byte-identical Smart Installer promotion; the legacy v1.0 publisher is historical only.
+          grep -Fq 'v1.1+ stable must promote exact accepted RC artifacts through windows-updater-promote.yml' .github/workflows/windows-stable-release.yml
+          if grep -Fq 'Windows-Portable.zip' .github/workflows/windows-updater-promote.yml; then
+            echo 'Portable artifact leaked into the active v1.1 stable promotion workflow.' >&2
+            exit 1
+          fi
 
           # Every public documentation/README surface delegates to the same canonical routes.
           for page in README.md docs/index.html docs/README.md; do
