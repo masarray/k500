@@ -67,6 +67,16 @@ jobs:
           assert 'enabled: root.canAcknowledge' in dialog
           assert 'Qt.openUrlExternally(SupportLinks.youtubeUrl)' in dialog
           assert 'Qt.openUrlExternally(SupportLinks.tokopediaUrl)' in dialog
+          assert 'DONATION_READABLE_HIERARCHY_V2' in dialog
+          assert 'DONATION_TEXT_LINKS_V2' in dialog
+          assert 'LUCIDE_HEART_FILLED_V1' in dialog
+          assert 'name: "heart"' in dialog and 'filled: true' in dialog
+          assert 'font.pixelSize: 24' in dialog, 'gratitude headline must remain readable'
+          assert 'font.pixelSize: 14' in dialog, 'support message must remain readable'
+          assert dialog.count('font.underline: true') == 2, 'support destinations must be text hyperlinks'
+          assert 'SupportLinks.merchantName' not in dialog
+          assert 'SupportLinks.merchantNmid' not in dialog
+          assert 'labelPixelSize: 13' in dialog
 
           assert 'qrc:/support/qris-sonkupik.png' in links
           assert 'SONKUPIK, AUDIO DEVELOPER, DIGITAL & KREATIF' in links

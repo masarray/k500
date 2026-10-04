@@ -18,6 +18,9 @@ Rectangle {
     property bool contextHighlighted: false
     property bool mixerSelect: false
     property bool primaryAction: false
+    // Optional per-surface typography override. Zero preserves the global
+    // compact control baseline, so existing buttons remain pixel-identical.
+    property int labelPixelSize: 0
     signal clicked()
 
     // MIXER_SOURCE_RAISED_ACTIVE_V5
@@ -243,7 +246,9 @@ Rectangle {
                         : "transparent"
             renderType: Text.NativeRendering
             font.family: Theme.fontFamily
-            font.pixelSize: root.compact ? 10 : Theme.textS
+            font.pixelSize: root.labelPixelSize > 0
+                            ? root.labelPixelSize
+                            : root.compact ? 10 : Theme.textS
             font.weight: root.mixerLit || root.primaryAction ? Font.Bold : root.labelHighlighted ? Font.DemiBold : Font.Medium
             font.hintingPreference: Font.PreferFullHinting
             font.letterSpacing: .12
