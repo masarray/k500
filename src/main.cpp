@@ -379,8 +379,6 @@ int main(int argc, char *argv[])
         putFixedAscii(memory, 0x0385, 0x13, QByteArray("KTV_BT_TEST"));
         putFixedAscii(memory, 0x0398, 0x13, QByteArray("KTV_BLE_TEST"));
 
-        const QString micAHpTypeBeforeHydration = studioEngine.micAEqBands()->hpType();
-        const QString micBHpTypeBeforeHydration = studioEngine.micBEqBands()->hpType();
         int hydrationEdits = 0;
         QObject::connect(&studioEngine, &StudioEngine::stateEdited,
                          [&hydrationEdits](const QString &, const QVariant &) { ++hydrationEdits; });
