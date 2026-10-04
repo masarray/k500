@@ -41,12 +41,12 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 
 ### Changed
 
-- Promoted the hardware-evidenced 2026-10-04 musicality updates for Modes 01, 03, and 05 into the bundled official K500 preset bank.
+- Promoted the 2026-10-04 balanced-enhanced Music family across the bundled official K500 preset bank, anchored by the real-K500-approved results of Modes 01, 03, and 05.
 - Mode 01 now ships the hardware-accepted Main Balance V2 tonal balance.
 - Mode 03 now ships the auditioned KAR DANGDUT R1 music-balance refinement.
 - Mode 05 now ships the hardware-accepted tempo-aware Pop Kenangan R2: 310 ms echo retained, ~2470 ms reverb decay, 75 ms predelay, clearer center vocal and wider wet halo.
-- Modes 02, 04, and 06–10 intentionally retain their previous official bytes; their evolved R1 files remain research candidates pending mode-specific real-K500 audition.
-- Updated release and consolidated CI guards so packaged, cached and GitHub-synced official presets converge on the evidence-approved mixed bank.
+- Modes 02, 04, and 06–10 now use the same mature Music balance with small context-specific voicing only; Mic, FX, output, Sub, crossover, dynamics, delay, Alt and unknown/reserved donor state remain unchanged.
+- Updated release and consolidated CI guards so packaged, cached and GitHub-synced official presets converge on the exact balanced-enhanced bank.
 
 
 ## Unreleased — Voluntary QRIS support prompt

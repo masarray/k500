@@ -115,11 +115,11 @@ Premium treble should be revealing and silky, not merely brighter.
 Working architecture:
 
 ```text
-Mode identity = vocal architecture + FX/spatial vocal behavior
-Music quality = shared premium Hi-Fi target where the donor allows it
+Mode identity = vocal architecture + FX/spatial vocal behavior + output/Sub context
+Music quality = shared premium balanced-enhanced family, with small context-specific Music-gain voicing
 ```
 
-Do not destroy an accepted vocal identity just to make raw music-routing numbers look identical between modes.
+Real-K500 listening has converged on a tight accepted Music envelope in Modes 01, 03 and 05. Use that envelope as the family anchor for the whole library; do not leave another mode on an older, thinner Music balance merely to preserve historical donor differences. Context should be expressed with small Music deltas and with the existing Mic/FX/output/Sub architecture, not by transplanting a whole preset.
 
 Output gain differs by preset, so identical route values do not imply identical effective energy. A useful comparative proxy is:
 
@@ -143,22 +143,28 @@ Future experiments normally branch from the current official bytes; rollback inv
 
 ## 8. Current official preset library
 
-The 2026-10-04 public-release promotion is intentionally mixed by evidence state: Slots 01, 03, and 05 use the accepted new candidates; Slots 02, 04, and 06–10 retain their previous official bytes while their R1 evolution remains under `research/` pending individual real-K500 audition.
+The 2026-10-04 official bank now uses one balanced-enhanced Music family. Modes 01, 03 and 05 are the real-K500 listening anchors and remain locked; Modes 02, 04 and 06–10 use surgical Music-gain-only variants close to that accepted envelope. All non-Music donor identity is preserved.
 
-| Slot | Repository file | Internal name | SHA-256 / status | Sonic role |
+Nominal family anchor (Music PEQ gain, bands 1..7):
+
+```text
+[ +1.6, +3.0, +8.1, -0.9, +1.3, +1.1, +5.8 ] dB
+```
+
+| Slot | Repository file | Internal name | SHA-256 | Sonic role |
 |---:|---|---|---|---|
-| 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` | concert / Air-Focus universal karaoke |
-| 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | previous official rename-only audio state | dry/controlled broadcast utility; R1 pending hardware audition |
-| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` | accepted R1 punch/smoothness refinement over the proven Hi-Fi Core V3/Sub lineage |
-| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | previous official pop-rock / slow-rock; R1 pending hardware audition |
-| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` | accepted tempo-aware R2 romantic slow-pop |
-| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | previous official soft/fresh sholawat; R1 pending hardware audition |
-| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7` | previous official intimate/classy lounge; R1 pending hardware audition |
-| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146` | previous official warm vintage/slap character; R1 pending hardware audition |
-| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c` | previous official natural/organic acoustic vocal; R1 pending hardware audition |
-| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90` | previous official bass/groove + rhythmic echo; R1 pending hardware audition |
+| 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` | locked concert/universal anchor |
+| 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | `05ef7c06323d19dd091bb04c47263cbb37e24c24e367e01e02e39d9fde0aa064` | exact nominal enhanced Music core; dry broadcast Mic/FX retained |
+| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` | locked punch/groove anchor |
+| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `8e533466dcd29cbf9cf325dc8128246f1445b35b5d8d4b96a3ea9e47072a3ae1` | slightly stronger punch/opening |
+| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` | locked warm/romantic anchor |
+| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `d55d882e742cab6b0b5f1cbb8a6f2a92238ba78eaa972488bca70167d7b4bbc5` | gentler punch/top for devotional material |
+| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `126a952847c221095189c0a13c1ed8851b0aa41b15a5c592d98b005ccfabc80d` | intimate/classy enhanced variant |
+| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `dbba6942598f15f61db1ab9069a052e0726846a51e76c706e66c16b88ce8c5d8` | warmer/darker enhanced variant |
+| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `d3834f43518b0de29af86275659bbe2299845a3e7ad950fb4124d87fbb56e4bc` | natural enhanced variant |
+| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `ec70d5ec0fe249ff8d19da12d456e1eab48988c37a619ab5ab51841b9644a2f6` | deeper/groove-led enhanced variant |
 
-The library is intentionally heterogeneous. Air Focus is a quality reference, not a parameter template. Genre-specific Music/Mic/Sub voicing remains donor-based and should not be normalized without new hardware evidence.
+The library is heterogeneous in **context**, not in baseline Music quality. Never clone a full preset architecture across modes; share the mature Music balance, then preserve or micro-voice the mode-specific Mic/FX/output/Sub architecture.
 
 ## 9. Locking policy
 

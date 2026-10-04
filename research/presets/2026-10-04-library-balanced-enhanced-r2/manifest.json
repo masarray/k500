@@ -1,6 +1,6 @@
 {
   "generated": "2026-10-04",
-  "status": "release-ready balanced-enhanced family candidate based on accepted real-K500 music results from Slots 01, 03, 05; 01/03/05 remain locked",
+  "status": "promoted official balanced-enhanced family; exact R2 bytes for Slots 02/04/06-10 are official; Slots 01/03/05 remain locked accepted anchors",
   "listeningAuthority": {
     "acceptedSlots": [
       "01 KONSER NYANYI",
@@ -238,5 +238,23 @@
         5.5
       ]
     }
-  ]
+  ],
+  "promotion": {
+    "official": true,
+    "exactBytes": true,
+    "lockedAnchors": [
+      "01",
+      "03",
+      "05"
+    ],
+    "promotedSlots": [
+      "02",
+      "04",
+      "06",
+      "07",
+      "08",
+      "09",
+      "10"
+    ]
+  }
 }

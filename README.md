@@ -180,7 +180,7 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The bundled official preset bank promotes only the 2026-10-04 musicality candidates that have final real-K500 evidence: KONSER NYANYI Main Balance V2, KAR DANGDUT R1, and tempo-aware POP KENANGAN R2. Slots 02, 04, and 06–10 remain on their previous official bytes until each evolved R1 candidate receives its own hardware audition.
+The bundled official preset bank now uses one coherent **balanced-enhanced Music family** anchored by the real-K500-approved results of KONSER NYANYI, KAR DANGDUT, and POP KENANGAN V2. Slots 02, 04, and 06–10 inherit that same mature Music balance with only small context-specific voicing; their Mic, FX, output, Sub, crossover, dynamics, delay, Alt, and reserved bytes remain donor-specific.
 
 
 The current official Mode 01 file at `resources/presets/01_KONSER_NYANYI.k500` is `KONSER NYANYI`, evolved surgically from the exact native `CONCERT HIFI V4` donor through K500 hardware-listening iterations.
@@ -190,7 +190,7 @@ Current official SHA-256
 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
 ```
 
-The exact native donor remains rollback/provenance evidence. The official preset library now carries distinct genre-specific voices across Slots 01–10; Mode 02 intentionally remains the dry Broadcast utility rather than following the concert/Air-Focus tuning.
+The exact native donor remains rollback/provenance evidence. The official preset library still carries distinct genre-specific voices across Slots 01–10, but premium Music enhancement is now a shared product trait. Mode 02 keeps its dry/controlled Broadcast vocal and FX identity while its Music path receives the same balanced-enhanced family.
 
 CI guards the current official Mode 01 identity used by new packages, while remote official preset updates continue to require K500 file validation before cache promotion.
 

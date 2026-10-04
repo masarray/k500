@@ -61,6 +61,4 @@ See `manifest.json` for exact SHA-256 and source/candidate blob identities.
 
 ## Promotion discipline
 
-These exact candidate bytes are promotion-ready. Do not rebuild them after
-acceptance. If one context needs correction, tune only that mode by a small
-Music-gain delta and keep all accepted regions locked.
+These exact R2 bytes are now promoted to the official bank for Slots 02, 04 and 06–10. Do not rebuild or normalize them after promotion. If one context needs correction, tune only that mode by a small Music-gain delta and keep all accepted regions locked.

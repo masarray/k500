@@ -195,7 +195,7 @@ Mode 01 is now `KONSER NYANYI`, evolved from the exact native `CONCERT HIFI V4` 
 The finalized official library is intentionally differentiated by use case:
 
 - 01 `KONSER NYANYI` — fresh, large, forgiving concert karaoke;
-- 02 `MC HOST RADIO` — dry/controlled broadcast utility; intentionally not Air-Focus styled;
+- 02 `MC HOST RADIO` — dry/controlled broadcast vocal/FX utility with the shared balanced-enhanced Music family;
 - 03 `KAR DANGDUT` — refreshed vocal FX over the proven Hi-Fi Core V3 Music/Sub foundation;
 - 04 `POP ROCK BALLAD` — pop/slow-rock with casual-user ambience plus stronger singer control;
 - 05 `POP KENANGAN V2` — warm romantic 70s/80s slow-pop;
@@ -205,7 +205,7 @@ The finalized official library is intentionally differentiated by use case:
 - 09 `ACOUSTIC NATURAL` — natural/organic vocal with unobtrusive ambience;
 - 10 `REGGAE DUB` — bass/groove-led preset with intentional rhythmic echo.
 
-Do not homogenize the library by transplanting one mode's full EQ/FX architecture into another. Preserve each donor's genre-specific Music/Mic/Sub foundation unless hardware evidence justifies a targeted change.
+The accepted product rule is now more specific: **premium Music enhancement is shared across all modes**, anchored by the real-K500-approved 01/03/05 balance. The remaining presets should stay close to that Music envelope and use only small context-specific Music-gain differences. Do **not** homogenize the full preset: Mic, Reverb/Echo, output routing/EQ, Sub, dynamics, delays, crossover, Alt and unknown/reserved donor state remain mode-specific unless separately proven.
 
 ## Signal-flow model
 
