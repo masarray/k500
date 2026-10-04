@@ -5,9 +5,9 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 ## Current stable baseline
 
 - Product: **SonKuPik K500**
-- Public stable line: **v1.0.x**
-- Qualified v1.0 transport scope: **Windows x64 + USB HID**
-- Bluetooth SPP: implemented, **experimental / not yet v1.0 hardware-qualified**
+- Public stable line: **v1.1.0**
+- Qualified stable transport scope: **Windows x64 + USB HID**
+- Bluetooth SPP: implemented, **experimental / not yet hardware-qualified**
 - QML never owns raw device I/O.
 - Device readback is authoritative after connect and recall.
 - Unsupported hardware commands remain read-only; never guess packets.
