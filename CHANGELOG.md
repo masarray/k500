@@ -140,9 +140,9 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - The final official catalog names/descriptions are synchronized with the device-visible identities for Slots 01–10.
 - v1.1 stable promotion derives the Mode 01 manifest SHA-256 from the exact accepted RC commit rather than a source-era hard-coded donor hash.
 
-## 1.1.0 candidate — Windows updater lifecycle P1–P4
+## 1.1.0 — Windows updater lifecycle P1–P4
 
-The source version is 1.1.0 for release-candidate qualification. Public stable remains v1.0.3 until an exact RC is accepted and the fail-closed updater acceptance token is promoted in a separate reviewed change.
+Public stable v1.1.0 was promoted byte-identically from accepted `v1.1.0-rc.5` at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`; the accepted machine and per-user installer bytes were reused without rebuilding.
 
 ### Added
 
@@ -178,7 +178,7 @@ Public stable release from commit `7d6ded580e15b652db97edf0700283e3fa931996`, pr
 ### Validation
 
 - The v1.0.3 device-validation line advanced through RC1/RC2 with exact-build CI and physical-capture-backed fixes before the final public stable package.
-- Public v1.0.3 remains the current latest non-prerelease release while v1.1 updater promotion is qualified separately.
+- v1.0.3 remains historical stable release evidence; v1.1.0 is the current latest non-prerelease public stable.
 
 ## 1.0.2 — Smart Windows lifecycle
 

@@ -34,8 +34,8 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Contract | Current truth |
 |---|---|
 | Hardware-qualified baseline | `v1.0.0` |
-| Public stable | `v1.0.3` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
-| Current source candidate | `v1.1.0` updater RC line; not public stable |
+| Public stable | `v1.1.0` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Stable source line | `v1.1.0`, promoted byte-identically from accepted `v1.1.0-rc.5` |
 | Product download router | [Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
