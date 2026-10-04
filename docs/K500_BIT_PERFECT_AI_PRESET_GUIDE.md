@@ -367,8 +367,10 @@ Do not automatically rewrite the corresponding `Alt` scalar unless its linkage i
 0x000B  musicInitVol
 0x000C  musicMaxVol
 0x0012  micInitVol
-0x0013  micMaxVol
+0x0013  micMaxVol (0..84 hard ceiling for topMicVol)
 0x001D  effectInitLevel
+0x0093  Dance Mic threshold raw (structural seed; raw 0..60 => -60..0 dB)
+0x0094  Dance Mic hold seconds (structural seed; valid 1..30)
 0x0095  U-Disk record raw, UI = raw + 1
 0x0096  USB record raw, UI = raw + 1
 ```
