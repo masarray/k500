@@ -477,10 +477,11 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     // EQ-enable image. Set bit = active, clear bit = bypass.
     const K500EqBypassImage eqBypass{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
 
-    // MIC_LP_TYPE_READBACK_20261004_V1 — direct activeMemory[0x0014].
-    // HP remains deliberately untouched until its own reconnect capture exists.
-    const quint8 micLpTypeRaw = byteAt(
-        memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    // OUTPUT_CROSSOVER_TYPE_READBACK_20261004_V1 — State-A reconnect maps
+    // the primary HP/LP filter enums directly from active memory.
+    const quint8 micHpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF);
+    const quint8 micLpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    const bool micHpTypeKnown = K500Protocol::crossoverFilterCodeValid(micHpTypeRaw);
     const bool micLpTypeKnown = K500Protocol::crossoverFilterCodeValid(micLpTypeRaw);
 
     QVariantMap eqState;
@@ -525,15 +526,21 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
             hpType = m_hpType;
             lpType = m_lpType;
         } else if ((key == QStringLiteral("micA") || key == QStringLiteral("micB")) && model) {
-            // Promote only the captured Mic LP byte. Preserve the existing HP
-            // presentation/default so LP evidence cannot masquerade as HP truth.
-            hpType = model->hpType();
-            lpType = micLpTypeKnown
-                ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false)
-                : model->lpType();
+            hpType = micHpTypeKnown ? K500Protocol::crossoverFilterLabel(micHpTypeRaw, true) : model->hpType();
+            lpType = micLpTypeKnown ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false) : model->lpType();
+        } else if (key == QStringLiteral("main")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainLpType), false);
+        } else if (key == QStringLiteral("surround")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundLpType), false);
+        } else if (key == QStringLiteral("center")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterLpType), false);
+        } else if (key == QStringLiteral("sub")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubLpType), false);
         } else if (model) {
-            // Other sections remain evidence-gated until their own reconnect
-            // captures identify authoritative type bytes.
             hpType = model->hpType();
             lpType = model->lpType();
         }
@@ -645,8 +652,8 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x002A))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x002C))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x002E))},
-        {QStringLiteral("lDelayMs"), static_cast<int>(fileU16(memory, 0x0034))},
-        {QStringLiteral("rDelayMs"), static_cast<int>(fileU16(memory, 0x0036))},
+        {QStringLiteral("lDelayMs"), static_cast<int>(fileU16(memory, 0x00D4))},
+        {QStringLiteral("rDelayMs"), static_cast<int>(fileU16(memory, 0x00D6))},
     };
     mergeMap(mainOutput, compState(memory, 0x0030));
 
@@ -668,7 +675,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x0052))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x0054))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x0056))},
-        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x005C))},
+        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x00DC))},
     };
     mergeMap(centerOutput, compState(memory, 0x0058));
 
@@ -678,7 +685,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x0066))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x0068))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x006A))},
-        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x0070))},
+        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x00DE))},
         {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00B8))},
         {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00BC))},
     };
