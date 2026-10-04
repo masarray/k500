@@ -106,7 +106,7 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Mic Init 0/25/84 writes change only the intended CMD 0x05 scalar and later Top Mic edits do not roll it back.
 - [ ] Effect Init 0/25/84 uses CMD 0x0A / RSP 0xF5 and later Top Effect edits preserve the new Init value.
 - [ ] USB Record 1/4/6 uses CMD 0x3E selector 0x03 and reconnect readback returns the same UI value.
-- [ ] UDisk Record and Mic Max remain visibly read-only and generate no guessed frame.
+- [ ] Mic Max and UDisk Record use their capture-mapped live writes and reconnect to the same device values.
 - [ ] Adj Manner VR OFF ON/OFF receives RSP 0xF8.
 - [ ] After reconnect, Adj Manner VR OFF returns to DEVICE STATE UNKNOWN rather than claiming a stale local value.
 - [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
@@ -156,6 +156,22 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Lock/password and Admin/User credential controls remain unavailable.
 - [ ] No credential command is guessed or emitted.
 - [ ] These device-managed controls are not release-blocking for the daily-use operational scope.
+
+## Output Delay — final physical capture batch
+
+- [ ] Main L Delay 0/20/50 ms writes only data[16..17] of Main CMD 0x0E.
+- [ ] Main R Delay 0/20/50 ms writes only data[18..19] of Main CMD 0x0E.
+- [ ] Main L/R readback after reconnect matches the native application.
+- [ ] Surround **L** Delay writes native data[18..19], not data[16..17].
+- [ ] Surround **R** Delay writes native data[16..17], not data[18..19].
+- [ ] Surround L/R labels remain semantically correct in SonKuPik despite the reversed wire order.
+- [ ] Center Output Delay 0/20/30/40/50 ms writes only data[16..17].
+- [ ] Subwoofer Output Delay 0/20/30/40/50 ms writes only data[16..17].
+- [ ] All six controls clamp to the native 0..50 ms range.
+- [ ] Device ACK is RSP 0xF1 for accepted Output block writes.
+- [ ] Volume, mixer, compressor, HPF/LPF and every reserved byte remain unchanged while editing delay.
+- [ ] Reconnect restores Main L/R, Surround L/R, Center and Sub delay from hardware truth.
+- [ ] Native distance display equivalence is sensible: 20 ms ≈ 6.8 m and 50 ms ≈ 17.0 m; distance is not transmitted separately.
 
 ## Persistent Equipment Mode rename
 
