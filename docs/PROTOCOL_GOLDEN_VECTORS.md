@@ -150,7 +150,7 @@ Sub LPF                              AA 06 11 0F 02 E8 03 00 ED
 
 Music uses current scalar `0x1B` as the final state byte for its `CMD 0x11` crossover write.
 
-Do **not** generalize the non-Music final byte to a constant. Older 1 kHz non-Music vectors above carry `0x00`, while the 2026-10-04 native Mic LP 16 kHz type sweep carries `0x09`:
+Do **not** treat the historical generic non-Music `0x00` builder byte as physical Mic evidence. The initial protocol builder hard-coded `0x00`. Two physical 2026-10-04 Mic LP captures, including a three-Equipment-Mode donor-isolation run, carry `0x09` at 16 kHz:
 
 ```text
 Bessel 12  AA 06 11 01 01 80 3E 09 20
@@ -160,7 +160,7 @@ Butter 18  AA 06 11 01 04 80 3E 09 1D
 Butter 24  AA 06 11 01 05 80 3E 09 1C
 ```
 
-This proves selector `0x01` + the type enum, but the source/meaning of the final `0x09` is not yet isolated. Do not hard-code it.
+This proves selector `0x01` + the type enum and strongly establishes `0x09` for Mic-LP type edits at 16 kHz across multiple device modes. The source/meaning of `0x09` is still not isolated, so the generic Mic crossover writer must not yet assume it is frequency-independent.
 
 ## Top Music device-seed safety
 

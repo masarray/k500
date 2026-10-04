@@ -80,3 +80,82 @@ This capture therefore promotes **Mic LP READ truth only**. It records the obser
 3. Preserve the existing Mic HP presentation/assumption until dedicated HP reconnect evidence exists.
 4. Canonical state may mark Mic LP Type as captured truth while Mic HP remains assumed.
 5. Do not change the existing Mic WRITE trailing-byte strategy from this capture alone.
+
+
+## Cross-mode donor-isolation capture — 2026-10-04
+
+Additional evidence:
+
+| Capture | SHA-256 |
+| --- | --- |
+| `Reconnect_ModeA_B_C_TopMusicTail_MicLPStateDonor.pcapng` | `e3b39a78019f2948e722553e51379c464720c553153ef12773998ba8df592bff` |
+
+Sequence observed:
+
+- Mode 1 CONNECT/readback.
+- Music Key 0 -> +1 -> 0.
+- Mic LP LR24 -> Butter24 -> LR24.
+- Recall Mode 2, full readback, reconnect, repeat the edits.
+- Recall Mode 3, full readback, reconnect, repeat the edits, final reconnect.
+
+Six complete checksum-valid 939-byte snapshots were reconstructed. Stability is excellent:
+
+```text
+Mode 2 post-recall vs Mode 2 reconnect = 0 differing bytes
+Mode 3 post-recall vs Mode 3 reconnect = 0 differing bytes
+Mode 3 pre-final vs final reconnect     = 0 differing bytes
+```
+
+The three representative mode states are genuinely different:
+
+```text
+Mode 1 -> Mode 2 = 98 differing active-memory bytes
+Mode 2 -> Mode 3 = 88 differing active-memory bytes
+```
+
+Despite those state changes, every physical Mic LP type write retained final byte
+`0x09`:
+
+```text
+Butter24  AA 06 00 11 01 06 80 3E 09 1B
+LR24      AA 06 00 11 01 07 80 3E 09 1A
+```
+
+The same pair repeats in Modes 1, 2 and 3.
+
+### What this proves
+
+The repository's historical non-Music `0x00` final byte originated in the
+initial generic software builder; it was not independently established by a
+physical Mic capture. The physical Mic LP evidence currently available therefore
+agrees on `0x09` for type edits at 16 kHz across multiple Equipment Modes.
+
+This is strong evidence for the native Mic-LP type-edit byte, but it does not yet
+prove whether `0x09` is a fixed protocol constant or a preserved device field
+that happens to remain equal across these modes.
+
+If the byte is a direct single-byte donor from active memory, cross-mode
+correlation reduces the candidate set to only:
+
+```text
+0x0016 0x0017 0x0018 0x00E8
+0x011A 0x01DD 0x020F 0x0278
+```
+
+Do not promote any one candidate from equality alone.
+
+### Minimal next capture
+
+Before changing the generic Mic crossover writer, vary one candidate source and
+then trigger a Mic LP type write. Highest-value first pass:
+
+1. Music Input1 Gain -3 dB -> 0 dB, then LR24 -> Butter24 -> LR24.
+2. Restore Input1 Gain.
+3. Music Input2 Gain -3 dB -> 0 dB, repeat Mic LP toggle.
+4. Restore Input2 Gain.
+5. Bluetooth Gain -3 dB -> 0 dB, repeat Mic LP toggle.
+6. Restore Bluetooth Gain.
+
+If the final Mic `CMD 0x11` byte follows `0x09 -> 0x0C`, the donor is
+identified. If it remains `0x09`, those three easy scalar candidates are
+eliminated and the remaining EQ-byte candidates can be tested deliberately.

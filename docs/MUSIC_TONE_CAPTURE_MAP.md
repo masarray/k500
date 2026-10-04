@@ -126,3 +126,35 @@ As with Noise Gate, `0x00DF` is a direct active-memory index and is not a `.k500
 4. Canonical state may promote these semantic values as snapshot-derived truth.
 5. An unrelated Top-Music edit must preserve the captured Noise Gate value from `0x0005`.
 6. Do not infer the unresolved Top-Music trailing-byte donor from adjacency or one-state correlation.
+
+
+## Cross-mode Top-Music tail isolation — 2026-10-04
+
+The same cross-mode capture
+`Reconnect_ModeA_B_C_TopMusicTail_MicLPStateDonor.pcapng`
+(SHA-256 `e3b39a78019f2948e722553e51379c464720c553153ef12773998ba8df592bff`)
+contains six stable 939-byte readbacks spanning Equipment Modes 1, 2 and 3.
+
+Each mode changes many unrelated active-memory bytes, but every native Music Key
+edit carries the same trailing Top-Music byte:
+
+```text
+Key +1  AA 0D 00 02 19 19 54 02 09 09 09 08 08 08 15 00 21
+Key  0  AA 0D 00 02 19 19 54 02 09 09 09 08 08 07 15 00 22
+                                                     ^^ gate = 0x15
+                                                        ^^ unresolved tail = 0x00
+```
+
+The captured gate byte `0x15` matches authoritative
+`activeMemory[0x0005]`, independently re-confirming the Noise Gate donor.
+
+The unresolved trailing byte remains `0x00` across all three modes. Because
+196 active-memory bytes are also zero in all three representative snapshots,
+this capture cannot uniquely identify a direct donor for that field. It does,
+however, eliminate every candidate byte that changes between Modes 1/2/3.
+
+A focused high-value next test is to vary FBX `0 -> 4 -> 0` and trigger a Music
+Key write after each state. Direct `activeMemory[0x001B]` is a known FBX byte
+and equals zero in the current three-mode capture, so this test can decisively
+confirm or eliminate that historically suspicious nearby candidate without
+guessing.

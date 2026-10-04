@@ -83,7 +83,7 @@ Fields that remain read-only in the parity matrix are not acceptance failures; t
 - [ ] Reconnect Mic LP at Bypass/Bessel12/Butter12/Bessel18/Butter18/Butter24 hydrates enum 0/1/2/3/4/5 from direct `activeMemory[0x0014]`.
 - [ ] Mic A and Mic B LP presentation follow the shared Mic LP device field while hydration emits zero `stateEdited` events.
 - [ ] Mic HP presentation is not falsely promoted from a neighboring byte; it remains evidence-gated.
-- [ ] Do not qualify Mic LP WRITE as preservation-safe by hard-coding trailing `0x09`; older 1 kHz vectors use `0x00`, so the donor must first be isolated.
+- [ ] Mic LP type edits at 16 kHz reproduce trailing `0x09` across multiple Equipment Modes; before generic Mic crossover WRITE qualification, vary the candidate donor/frequency state and prove whether `0x09` is fixed or preserved.
 
 ## Section-navigation crash regression
 
