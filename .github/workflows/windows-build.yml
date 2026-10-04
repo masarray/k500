@@ -224,6 +224,12 @@ jobs:
         shell: pwsh
         run: cmake --build build --config Release
 
+      - name: Run protocol golden-vector self-test
+        shell: pwsh
+        run: |
+          & build/k500_protocol_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Protocol golden-vector self-test failed' }
+
       - name: Run preset regression suite
         shell: pwsh
         run: |
