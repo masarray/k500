@@ -13,13 +13,14 @@ on:
   push:
     branches:
       - 'fix/startup-limit-fader-stability-20261004'
+      - 'fix/stable-live-rack-delegates-20261004'
 
 jobs:
   guard:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Verify stable Startup Limits gesture ownership
+      - name: Verify stable live-rack gesture ownership
         shell: python
         run: |
           from pathlib import Path
@@ -64,8 +65,27 @@ jobs:
           assert 'root.dispatchLive(channel.modelData.label' in rack
           assert 'String(channel.modelData.label) === "MUSIC MAX"' not in rack
 
+          # LIVE_RACK_STABLE_DELEGATE_V1 — RackFaderPanel must key Repeater
+          # ownership from channel count, not from a replaceable JS object-array.
+          assert rack.count('LIVE_RACK_STABLE_DELEGATE_V1') >= 2
+          assert rack.count('model: root.channels ? root.channels.length : 0') == 2
+          assert 'model: root.channels\n' not in rack
+          assert 'readonly property var modelData: root.channels[index] || ({})' in rack
+
+          # Recording and Mic Trigger are live deviceState consumers too. Their
+          # metadata models must be immutable while readback only updates local values.
+          assert 'SYSTEM_LIVE_STABLE_DELEGATE_V1' in system
+          assert 'model: root.recordingChannels.length' in system
+          assert 'model: root.micTriggerChannels.length' in system
+          assert 'recChannel.localValue = root.stableSystemValue' in system
+          assert 'triggerChannel.localValue = root.stableSystemValue' in system
+          recording_block = system.split('text:"RECORDING"', 1)[1].split('text:"MIC TRIGGER"', 1)[0]
+          trigger_block = system.split('text:"MIC TRIGGER"', 1)[1].split('MasterStripPanel {', 1)[0]
+          assert 'model:[' not in recording_block
+          assert 'model:[' not in trigger_block
+
           assert 'musicInitBeforeMaxEdit' in main
           assert 'effectInitBeforeMaxEdit' in main
           assert 'qFuzzyCompare(studioEngine.micInitVol(), micInitBeforeMaxEdit)' in main
 
-          print('Startup Limits interaction ownership guard passed')
+          print('Live rack interaction ownership guard passed')
