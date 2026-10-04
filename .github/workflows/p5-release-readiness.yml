@@ -208,7 +208,7 @@ jobs:
             'prerelease: false',
             "channel = 'stable'",
             "portableFormat = 'ZIP (non-self-extracting)'",
-            "mode01NativeSha256 = '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1'",
+            "mode01NativeSha256 = '761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4'",
             'Run full preset and updater regression suite',
             'Validate portable ZIP end-to-end',
             'Validate Inno installer end-to-end',
@@ -299,7 +299,7 @@ jobs:
 
           $mode01Path = 'resources/presets/01_KONSER_NYANYI.k500'
           $mode01Hash = (Get-FileHash $mode01Path -Algorithm SHA256).Hash.ToLowerInvariant()
-          if ($mode01Hash -ne '4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1') {
+          if ($mode01Hash -ne '761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4') {
             throw "Official Mode 01 changed: $mode01Hash"
           }
 

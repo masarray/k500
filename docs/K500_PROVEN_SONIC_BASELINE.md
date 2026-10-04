@@ -133,7 +133,7 @@ The exact native `CONCERT HIFI V4` donor remains the rollback/provenance referen
 ```text
 resources/presets/01_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
-SHA-256: 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
+SHA-256: 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
 ```
 
 Future experiments normally branch from the current official bytes; rollback investigations may explicitly return to the archived native hash recorded in the v1.0 history.
@@ -142,16 +142,16 @@ Future experiments normally branch from the current official bytes; rollback inv
 
 | Slot | Repository file | Internal name | SHA-256 / status | Sonic role |
 |---:|---|---|---|---|
-| 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1` | concert / Air-Focus universal karaoke |
+| 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` | concert / Air-Focus universal karaoke |
 | 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | rename-only from the same donor audio | dry/controlled broadcast utility |
-| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `3c446e94ddf0db32490d69a182fdc675f0a289c7d9e6cc54512dc91cb4673e85` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub |
-| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | finalized pop-rock / slow-rock |
-| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `80b793878642b97b401674c01def771ee2390bd7032f1b66a0d12d84ff41c3b8` | warm romantic 70s/80s slow-pop |
-| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | soft/fresh sholawat |
-| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7` | intimate/classy lounge |
-| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146` | warm vintage/slap character |
-| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c` | natural/organic acoustic vocal |
-| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90` | bass/groove + rhythmic echo |
+| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub |
+| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `587309332d5cc856a05577d45cbfa296847ee4ba7e0c7f619ced2385e6709ad8` | finalized pop-rock / slow-rock |
+| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` | warm romantic 70s/80s slow-pop |
+| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `bb45e9fc31585b8d27dbe840ca8be1145379a21b071eb66c06dd91f067d30ea8` | soft/fresh sholawat |
+| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `5fdab7fa5b7081d8c00e39ef8e2ee931bd72a15ab4e9a8da197605d796e1c388` | intimate/classy lounge |
+| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `3df4c1ef52a39dc0b3907186d8375246b22c69ee41419b496531386fb3e23e33` | warm vintage/slap character |
+| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `faa26cca9f3a7d364bb408bb0381917333ac841e7ace75a5edbc40ab46afc85d` | natural/organic acoustic vocal |
+| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `971b8d53f07814278ce3eef43be1cee4cf86fb379386c0979c7101c2a64fff03` | bass/groove + rhythmic echo |
 
 The library is intentionally heterogeneous. Air Focus is a quality reference, not a parameter template. Genre-specific Music/Mic/Sub voicing remains donor-based and should not be normalized without new hardware evidence.
 
