@@ -116,10 +116,10 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | EQ bypass | ✅ | ✅ | complete | no |
 | HPF/LPF frequency | ✅ | ✅ | complete | no |
 | HPF/LPF filter type on CONNECT | ✅ Main 0x002C/0x002E; Surround 0x0040/0x0042; Center 0x0054/0x0056; Sub 0x0068/0x006A | n/a | capture-mapped | no |
-| Surround L/R Delay | ✅ 0x00D8/0x00DA | ✅ CMD 0x0E; wire order R@data16, L@data18 | capture-mapped | no |
-| Main L/R Delay | ✅ 0x0034/0x0036 | ✅ CMD 0x0E; L@data16, R@data18 | capture-mapped | no |
-| Center Output Delay | ✅ 0x005C | ✅ CMD 0x0E data16 | capture-mapped | no |
-| Sub Output Delay | ✅ 0x0070 | ✅ CMD 0x0E data16 | capture-mapped | no |
+| Surround L/R Delay | ✅ file 0x00D8/0x00DA -> active 0x00CF/0x00D1 | ✅ CMD 0x0E; wire order R@data16, L@data18 | capture-mapped | no |
+| Main L/R Delay | ✅ file 0x00D4/0x00D6 -> active 0x00CB/0x00CD | ✅ CMD 0x0E; L@data16, R@data18 | capture-mapped | no |
+| Center Output Delay | ✅ file 0x00DC -> active 0x00D3 | ✅ CMD 0x0E data16 | capture-mapped | no |
+| Sub Output Delay | ✅ file 0x00DE -> active 0x00D5 | ✅ CMD 0x0E data16 | capture-mapped | no |
 
 ## System / Equipment Mode
 
@@ -160,12 +160,11 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass READ/WRITE are now closed.
 2. **Mic Noise Gate write**.
-3. **Main/Center/Sub output-delay reconnect truth** — State-A crossover capture proves the old low-offset delay READ assumptions collide with filter-type bytes. Use distinct non-zero delays to isolate the likely contiguous high delay block before changing runtime/preset readback.
 4. **Top-Music preservation tail only** — Mic `CMD 0x11` final state-byte donor is now closed as Music Input1 Gain raw / direct `activeMemory[0x0016]`. Top-Music `CMD 0x02` trailing-byte source still needs one focused capture.
 
 ### P1 — useful next
 
-6. Output Delay WRITE command fields remain capture-mapped, and Surround reconnect READ remains anchored. Main/Center/Sub READ offsets are reopened by the 2026-10-04 State-A crossover capture; do not claim full reconnect parity until the distinct-delay capture closes them.
+6. Output Delay READ+WRITE is now closed for all six semantic controls; reconnect capture 5/10/15/20/25/30 proves the contiguous high-scalar block.
 7. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
 8. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
 9. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
