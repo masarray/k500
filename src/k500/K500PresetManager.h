@@ -103,6 +103,8 @@ private:
     void onBytesReceived(const QByteArray &bytes);
     void onResponse(const K500Response &response);
 
+    void hydrateAdjMannerFromMemory(const QByteArray &memory);
+
     void sendRecallHandshake();
     void startReadback(ReadbackPurpose purpose);
     void sendNextReadBlock();
