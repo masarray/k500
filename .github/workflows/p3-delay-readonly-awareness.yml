@@ -33,6 +33,7 @@ jobs:
           rack = Path('qml/components/RackFilterPanel.qml').read_text(encoding='utf-8')
           section = Path('qml/components/SectionWorkspace.qml').read_text(encoding='utf-8')
           evidence = Path('docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md').read_text(encoding='utf-8')
+          main_cpp = Path('src/main.cpp').read_text(encoding='utf-8')
 
           assert 'OUTPUT_DELAY_CMD0E_CAPTURED_V1' in protocol
           assert 'OutputDelayMinMs = 0' in protocol_h
@@ -97,6 +98,10 @@ jobs:
           assert 'OUTPUT DELAY' in sub_ui and 'editable:false' not in sub_ui
 
           assert 'opposite wire order from Main' in evidence
+          assert 'Surround L Delay = 14 ms' in evidence and 'Surround R Delay = 20 ms' in evidence
+          assert 'SURROUND_DELAY_ACTUAL_REFERENCE_V1' in main_cpp
+          assert 'putFileU16(memory, 0x00D8, 14)' in main_cpp
+          assert 'putFileU16(memory, 0x00DA, 20)' in main_cpp
           assert '0..50 ms' in evidence
           assert 'RSP 0xF1' in evidence
 
