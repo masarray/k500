@@ -4,9 +4,10 @@ Status date: 2026-10-04
 Baseline: `main` @ `3fa49b3627ffd0631e9e3915413775db65725852` (post-RC4/Smart Installer truth)
 
 The focused 2026-10-04 System captures are documented in
-`docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`. Historical capture references
-remain valid evidence, but new mapping work must start from current main and
-must not revive superseded branches.
+`docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`. The final Output Delay sweeps are
+documented in `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`. Historical capture
+references remain valid evidence, but new mapping work must start from current
+main and must not revive superseded branches.
 
 This document is the capture-planning source of truth. It separates:
 - device READ mapping (connect/readback/runtime state),
@@ -114,10 +115,10 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | EQ bypass | ✅ | ✅ | complete | no |
 | HPF/LPF frequency | ✅ | ✅ | complete | no |
 | HPF/LPF filter type on CONNECT | ❌ assumed/defaulted | n/a | partial | **YES** |
-| Surround L/R Delay | ✅ | ✅ CMD 0x0E | complete | no |
-| Main L/R Delay | ❌ currently UI read-only/fallback | ❌ output block does not patch | missing | **YES** |
-| Center Output Delay | ❌ | ❌ | missing | **YES** |
-| Sub Output Delay | ❌ | ❌ | missing | **YES** |
+| Surround L/R Delay | ✅ 0x00D8/0x00DA | ✅ CMD 0x0E; wire order R@data16, L@data18 | capture-mapped | no |
+| Main L/R Delay | ✅ 0x0034/0x0036 | ✅ CMD 0x0E; L@data16, R@data18 | capture-mapped | no |
+| Center Output Delay | ✅ 0x005C | ✅ CMD 0x0E data16 | capture-mapped | no |
+| Sub Output Delay | ✅ 0x0070 | ✅ CMD 0x0E data16 | capture-mapped | no |
 
 ## System / Equipment Mode
 
@@ -165,7 +166,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 ### P1 — useful next
 
-7. Main L/R delay, Center delay, Sub delay.
+7. Main/Surround/Center/Sub Output Delay — **daily-use mapping complete**; hardware reconnect acceptance remains.
 8. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
 9. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
 10. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
