@@ -568,6 +568,16 @@ QByteArray outputBlock(const QString &section,
     while (data.size() < OutputDataLength)
         data.append(char(0));
 
+    const int safeLDelay = qBound(NativeRange::OutputDelayMinMs,
+                                  state.lDelayMs,
+                                  NativeRange::OutputDelayMaxMs);
+    const int safeRDelay = qBound(NativeRange::OutputDelayMinMs,
+                                  state.rDelayMs,
+                                  NativeRange::OutputDelayMaxMs);
+    const int safeMonoDelay = qBound(NativeRange::OutputDelayMinMs,
+                                     state.outputDelayMs,
+                                     NativeRange::OutputDelayMaxMs);
+
     if (section == QStringLiteral("main")) {
         data[0] = char(outDbToRaw(state.lVolDb));
         data[2] = char(outDbToRaw(state.rVolDb));
@@ -575,6 +585,9 @@ QByteArray outputBlock(const QString &section,
         data[6] = char(K500Frame::clampByte(state.musicLevel));
         data[8] = char(K500Frame::clampByte(state.reverbLevel));
         data[10] = char(K500Frame::clampByte(state.echoLevel));
+        // OUTPUT_DELAY_CMD0E_CAPTURED_V1 — Main uses natural channel order.
+        writeU16Le(data, 16, safeLDelay);
+        writeU16Le(data, 18, safeRDelay);
     } else if (section == QStringLiteral("surround")) {
         data[0] = char(outDbToRaw(state.lVolDb));
         data[2] = char(outDbToRaw(state.rVolDb));
@@ -582,14 +595,18 @@ QByteArray outputBlock(const QString &section,
         data[6] = char(K500Frame::clampByte(state.musicLevel));
         data[8] = char(K500Frame::clampByte(state.reverbLevel));
         data[10] = char(K500Frame::clampByte(state.echoLevel));
-        writeU16Le(data, 16, state.lDelayMs);
-        writeU16Le(data, 18, state.rDelayMs);
+        // Physical capture proves Surround wire order is reversed versus Main:
+        // R delay is data[16..17], L delay is data[18..19].
+        writeU16Le(data, 16, safeRDelay);
+        writeU16Le(data, 18, safeLDelay);
     } else {
         data[0] = char(outDbToRaw(state.outputVolDb));
         data[4] = char(K500Frame::clampByte(state.micDirect));
         data[6] = char(K500Frame::clampByte(state.musicLevel));
         data[8] = char(K500Frame::clampByte(state.reverbLevel));
         data[10] = char(K500Frame::clampByte(state.echoLevel));
+        // Center and Subwoofer expose one mono Output Delay at data[16..17].
+        writeU16Le(data, 16, safeMonoDelay);
     }
 
     data[12] = char(K500Frame::clampByte(state.compThresholdDb + 50));
