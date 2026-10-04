@@ -573,16 +573,17 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         }
     }
 
-    // DANCE_MIC_READBACK_STRUCTURAL_V1 — CMD 0x22 proves the pair encoding.
-    // The only two unassigned scalar bytes between Mic EQ Link (0x0092) and
-    // Record volumes (0x0095/0x0096) are 0x0093/0x0094. Accept them as a
-    // usable seed only when BOTH bytes are inside the physically captured
-    // domains; otherwise expose trigger state as unknown and keep live writes gated.
-    const int danceThresholdRaw = static_cast<int>(fileU8(memory, 0x0093, 0xFF));
-    const int danceHoldRaw = static_cast<int>(fileU8(memory, 0x0094, 0xFF));
-    const bool danceTriggerKnown = danceThresholdRaw >= 0 && danceThresholdRaw <= 60
-                                   && danceHoldRaw >= K500Protocol::NativeRange::DanceMicHoldMinSec
-                                   && danceHoldRaw <= K500Protocol::NativeRange::DanceMicHoldMaxSec;
+    // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1 — file[0x0094]
+    // is capture-proven Adj Manner VR OFF, so the former structural Dance seed
+    // is invalid. Keep Dance trigger unknown rather than reinterpret a hardware flag.
+    const bool danceTriggerKnown = false;
+    const int danceThresholdRaw = 10; // presentation fallback only (-50 dB)
+    const int danceHoldRaw = 6;       // presentation fallback only
+
+    const quint8 adjMannerRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::AdjMannerVrOff, 0xFF);
+    const bool adjMannerKnown = adjMannerRaw <= 1;
+    const bool adjMannerVrOff = adjMannerKnown && adjMannerRaw == 1;
 
     QVariantMap system{
         {QStringLiteral("topMusicVol"), static_cast<int>(fileU8(memory, 0x0008))},
@@ -598,6 +599,9 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("danceMicTriggerKnown"), danceTriggerKnown},
         {QStringLiteral("danceMicThresholdDb"), danceTriggerKnown ? danceThresholdRaw - 60 : -50},
         {QStringLiteral("danceMicHoldSec"), danceTriggerKnown ? danceHoldRaw : 6},
+        {QStringLiteral("adjMannerVrOffKnown"), adjMannerKnown},
+        {QStringLiteral("adjMannerVrOff"), adjMannerVrOff},
+        {QStringLiteral("manualVrEnabled"), adjMannerKnown && !adjMannerVrOff},
         {QStringLiteral("deviceModeIndex"), modeIndex},
         {QStringLiteral("deviceModeNames"), modeNames},
         {QStringLiteral("activeModeName"), activeName},
