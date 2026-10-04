@@ -1,9 +1,9 @@
-name: Windows Stable Release
+name: Windows Legacy v1.0 Stable Release
 
-# Public stable publisher for the hardware-accepted Windows USB baseline.
-# Standard Inno Setup installer + ordinary portable ZIP; unsigned open-source build.
-# Explicit release only: ordinary merges must never replace the same-version
-# public installer or silently change the bytes trusted by existing updaters.
+# Historical v1.0.x stable publisher only. It preserves the original v1.0 Setup +
+# Portable release contract for provenance and cannot publish v1.1 or newer.
+# v1.1+ public stable is Smart Installer distribution promoted byte-for-byte from
+# an accepted updater RC through windows-updater-promote.yml.
 on:
   workflow_dispatch:
 
@@ -16,7 +16,7 @@ env:
 
 jobs:
   package-windows-stable:
-    name: Stable Inno installer + portable ZIP
+    name: Legacy v1.0 stable publisher
     runs-on: windows-2022
 
     steps:
