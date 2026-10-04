@@ -143,6 +143,7 @@ Item {
     }
     readonly property bool btNameWriteReady: root.deviceConnected
                                              && root.presetManager
+                                             && root.presetManager.usbStoreAvailable
                                              && !root.presetManager.busy
                                              && root.validBtNameDraft()
                                              && root.normalizedBtNameDraft() !== String(root.currentBtName || "").trim()
@@ -774,7 +775,7 @@ Item {
                                     Layout.preferredWidth:48
                                     text:"Reset"
                                     compact:true
-                                    enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
+                                    enabled:root.deviceConnected&&root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
                                     onClicked:root.presetManager.resetBtName()
                                 }
                             }
