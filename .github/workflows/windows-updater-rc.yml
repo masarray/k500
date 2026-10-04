@@ -81,14 +81,10 @@ jobs:
           }
           $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/runs?head_sha=$env:GITHUB_SHA&per_page=100"
           $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
-          $required = @(
-            'Guard smart install and update',
-            'Qt Windows Build',
-            'Guard v1 stable release readiness',
-            'P5 QML Object Load',
-            'P3 Runtime RAII',
-            'P2 Transport Lifecycle'
-          )
+          # CI_CONSOLIDATED_PIPELINE_V1 — normal qualification is one exact-SHA
+          # workflow. The RC job below still rebuilds/packages/installs the candidate
+          # independently; this gate only proves the source SHA passed normal CI.
+          $required = @('K500 CI')
           foreach ($name in $required) {
             $ok = @($response.workflow_runs | Where-Object {
               $_.name -eq $name -and $_.head_sha -eq $env:GITHUB_SHA -and
@@ -275,7 +271,7 @@ jobs:
             migration = 'explicit-machine-to-user'
             rollbackRecovery = $true
             resumableDownloads = $true
-            requiredExactHeadWorkflows = @('Guard smart install and update','Qt Windows Build','Guard v1 stable release readiness','P5 QML Object Load','P3 Runtime RAII','P2 Transport Lifecycle')
+            requiredExactHeadWorkflows = @('K500 CI')
             artifacts = $artifacts
           }
           $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/updater-rc-manifest.json

@@ -1,0 +1,88 @@
+name: K500 CI
+
+# CI_CONSOLIDATED_PIPELINE_V1
+# One PR/main workflow, one Windows build, many tests. Regressions belong in
+# executable tests or tools/ci/contracts.py, not new per-feature workflows.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k500-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  QT_VERSION: '6.10.2'
+
+jobs:
+  contracts:
+    name: Fast contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build_required: ${{ steps.scope.outputs.build_required }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Compute CI scope
+        id: scope
+        env:
+          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: python tools/ci/change_scope.py
+
+      - name: Repository contracts
+        run: python tools/ci/contracts.py
+
+      - name: Preset lab syntax
+        run: python -m py_compile tools/k500_preset_lab.py
+
+  windows:
+    name: Windows build + regression
+    needs: contracts
+    if: needs.contracts.outputs.build_required == 'true'
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure Release build
+        shell: pwsh
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+
+      - name: Build once
+        shell: pwsh
+        run: cmake --build build --config Release
+
+      - name: Run consolidated Windows regression suite
+        shell: pwsh
+        run: ./tools/ci/windows_test_suite.ps1 -BuildDir build -PackageDir package
+
+      - name: Upload runnable exact-head build
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonKuPik-K500-${{ github.sha }}-Windows
+          path: package
+          if-no-files-found: error
+          retention-days: 7

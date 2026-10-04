@@ -2,6 +2,18 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — CI consolidation
+
+### Changed
+
+- Replaced milestone/feature workflow fan-out with one normal **K500 CI** pipeline.
+- Normal Windows CI now compiles once and executes the complete hardware-free regression suite from that same build.
+- Added a fast cross-platform repository contract suite for preset integrity, protocol/readback invariants, UI ownership, updater provenance and CI topology.
+- Pull-request concurrency cancels obsolete exact-head runs; feature branches no longer run duplicate push CI.
+- P4 AddressSanitizer/fuzz/soak is manual hardening instead of an automatic per-commit runner.
+- Updater RC qualification now requires one successful exact-main `K500 CI` run instead of six independent workflow names.
+- Legacy milestone workflows were retired from active Actions; their historical implementation remains available through Git history.
+
 ## Unreleased — Final K500 protocol and hardware-ownership closure
 
 ### Added

@@ -274,3 +274,20 @@ Before merge:
 - for v1.1+ updater releases, never rebuild after RC acceptance: promotion must verify and reuse the exact accepted RC binary hashes recorded in `docs/V1_1_UPDATER_RC_ACCEPTANCE.md`.
 
 A new AI thread should prefer repository evidence over remembered chat context. If a fact conflicts, the current stable code, golden vectors, exact donor files, and evidence-backed documentation are authoritative.
+
+
+## CI architecture invariant
+
+The repository uses **tests as regression units, not GitHub workflows as regression units**.
+
+- Normal pull requests and `main` use the single `K500 CI` workflow.
+- New bug/feature coverage belongs in an executable self-test or `tools/ci/contracts.py`.
+- Do not create one workflow per milestone, protocol field, UI control, or bug.
+- Compile the Windows tree once, then run all hardware-free self-tests against that exact build.
+- PR exact-head concurrency cancels obsolete runs.
+- Heavy ASan/fuzz/soak is manual hardening, not default PR CI.
+- RC/stable workflows remain manual and immutable.
+- The active workflow budget is intentionally <= 4 files under `.github/workflows`.
+- Any proposal to add another active workflow must first prove that it cannot be expressed as a test/job in `ci.yml`.
+
+Read `docs/CI_ARCHITECTURE.md` before changing CI.
