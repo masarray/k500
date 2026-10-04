@@ -585,9 +585,9 @@ void K500PresetManager::onResponse(const K500Response &response)
         clearTimeout();
         m_adjMannerVrOffKnown = true;
         emit adjMannerVrOffChanged();
-        setProgress(QStringLiteral("Adj Manner VR OFF %1 · device acknowledged")
+        setProgress(QStringLiteral("Adj Manner VR OFF %1 · acknowledged · refreshing 939-byte ownership truth")
                         .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
-        finishOperation(QStringLiteral("Adj Manner VR OFF"));
+        startReadback(ReadbackPurpose::AdjManner);
         return;
     }
 
@@ -712,6 +712,12 @@ void K500PresetManager::finishReadback()
     if (m_readbackPurpose == ReadbackPurpose::BtIdentity) {
         setProgress(QStringLiteral("BT Name · 939-byte identity refresh complete"));
         finishOperation(QStringLiteral("BT Name"));
+        return;
+    }
+
+    if (m_readbackPurpose == ReadbackPurpose::AdjManner) {
+        setProgress(QStringLiteral("Adj Manner VR OFF · 939-byte ownership resync complete"));
+        finishOperation(QStringLiteral("Adj Manner VR OFF"));
         return;
     }
 
