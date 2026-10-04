@@ -162,6 +162,19 @@ StudioPanel {
         if (t === "Subwoofer Bus") return l === "SUB"
         return false
     }
+    // OUTPUT_MUTE_LR_WIRE_CORRECTION_V1
+    // Physical Main/Surround mute audition proves the stereo mute actions are
+    // crossed relative to the visible L/R captions. Keep normal fader routing
+    // untouched; only mute-floor writes use the opposite stereo live path.
+    function muteLiveLabel(label) {
+        var t = String(root.title || "")
+        var l = String(label || "").toUpperCase()
+        if (t === "Main Bus" || t === "Surround Bus") {
+            if (l === "L") return "R"
+            if (l === "R") return "L"
+        }
+        return label
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -785,7 +798,7 @@ StudioPanel {
                         function setMuted(next) {
                             if (!channel.canMute || channel.muted === next) return
                             channel.muted = next
-                            root.dispatchLive(channel.modelData.label,
+                            root.dispatchLive(root.muteLiveLabel(channel.modelData.label),
                                               next ? channel.muteFloor : channel.localValue)
                         }
 
@@ -889,7 +902,9 @@ StudioPanel {
                                     // Engine/device signals sync the same delegate
                                     // afterwards without destroying its MouseArea.
                                     channel.localValue = v
-                                    root.dispatchLive(channel.modelData.label,
+                                    root.dispatchLive(channel.muted
+                                                      ? root.muteLiveLabel(channel.modelData.label)
+                                                      : channel.modelData.label,
                                                       channel.muted ? channel.muteFloor : v)
                                 }
                             }
