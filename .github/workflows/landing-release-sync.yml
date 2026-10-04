@@ -21,6 +21,8 @@ on:
       - 'docs/index.html'
       - 'docs/README.md'
       - '.github/workflows/landing-release-sync.yml'
+      - '.github/workflows/windows-stable-release.yml'
+      - '.github/workflows/windows-updater-promote.yml'
 
 jobs:
   latest-stable-routing:
