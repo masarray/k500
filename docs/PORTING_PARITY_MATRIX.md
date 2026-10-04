@@ -54,6 +54,11 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Music Init / Mic Init live write | CAPTURE-MAPPED 🟧 | CMD 0x02 / 0x05 writable second scalar; 0..84 |
 | Effect Init live write | CAPTURE-MAPPED 🟧 | dedicated CMD 0x0A + RSP 0xF5; 0..84 |
 | USB Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E selector 0x03; UI 1..6 -> raw 0..5 |
+| UDisk Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E raw UI-1 + 00 00; RSP 0xC1 |
+| Mic Max Volume | CAPTURE-MAPPED 🟧 | Top Mic CMD 0x05 third scalar; 0..84 hard ceiling for Top Mic |
+| Dance Mic Trigger | CAPTURE-MAPPED 🟧 | paired CMD 0x22; threshold -60..0 dB + hold 1..30 s; guarded structural seed |
+| BT Name rename/reset | CAPTURE-MAPPED 🟧 | USB CMD 0x4E SET/RESET + RSP 0xB1 + 939-byte identity refresh |
+| BLE Name rename/reset | READ ONLY 🟦 | readback exists; deliberately not inferred from BT CMD 0x4E |
 | Adj Manner / VR OFF setter | CAPTURE-MAPPED 🟧 | CMD 0x07 + RSP 0xF8; reconnect state remains unknown |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
@@ -84,8 +89,12 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
 | Smart Installer distribution | LOCKED SW ✅ | machine/per-user installer runtime self-tests; portable retired from v1.1 public distribution |
 | Persistent LCD/Equipment Mode rename | CAPTURE-MAPPED 🟧 | active-slot name at slot-image 0x0280..0x028F + native Store + Recall/readback |
-| Mic Max Volume | READ ONLY 🟦 | read scalar exists; write delta not captured |
-| UDisk Record Volume | READ ONLY 🟦 | read scalar exists; write selector not captured |
+| Mic Max Volume | CAPTURE-MAPPED 🟧 | captured CMD 0x05 scalar + Top Mic hard ceiling |
+| UDisk Record Volume | CAPTURE-MAPPED 🟧 | captured CMD 0x3E raw UI-1 + RSP 0xC1 |
+| Dance Mic threshold/hold | CAPTURE-MAPPED 🟧 | captured full-pair CMD 0x22; write is fail-closed without valid paired seed |
+| BT Name rename/reset | CAPTURE-MAPPED 🟧 | USB CMD 0x4E + B1 ACK + authoritative identity refresh |
+| BLE Name rename/reset | READ ONLY 🟦 | no BLE write capture; no BT-family inference |
+| Lock/Admin credentials | READ ONLY 🟦 | intentionally device-managed/outside daily-use product scope; no guessed traffic |
 
 ## State model parity
 
