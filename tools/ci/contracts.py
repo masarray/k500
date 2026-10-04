@@ -198,15 +198,17 @@ def check_ui_contracts() -> None:
         "DEFERRED_AUTHORITATIVE_SYNC_V1",
         "property bool deferredModelSync: false",
         "onDraggingChanged:",
-        "OUTPUT_MUTE_LR_WIRE_CORRECTION_V1",
-        "function muteLiveLabel(label)",
-        "if (l === \"L\") return \"R\"",
-        "if (l === \"R\") return \"L\"",
+        "OUTPUT_MUTE_SEMANTIC_LR_V2",
     )
     require_count("qml/components/RackFaderPanel.qml", "property bool deferredModelSync: false", 2)
     require_count("qml/components/RackFaderPanel.qml", "onDraggingChanged:", 2)
     require_count("qml/components/RackFaderPanel.qml", "model: root.channels ? root.channels.length : 0", 2)
-    require_count("qml/components/RackFaderPanel.qml", "root.muteLiveLabel(channel.modelData.label)", 2)
+    forbid(
+        "qml/components/RackFaderPanel.qml",
+        "function muteLiveLabel(label)",
+        "return \"R\"",
+        "return \"L\"",
+    )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
         "SYSTEM_LIVE_STABLE_DELEGATE_V1",
