@@ -50,6 +50,33 @@ distance_m ≈ delay_ms × 0.34
 
 No distance value is transmitted separately.
 
+## Clarified Surround semantic reference
+
+The manufacturer UI/reference screenshot supplied with this batch shows the
+actual device state before further edits as:
+
+```text
+Surround L Delay = 14 ms ≈ 4.8 m
+Surround R Delay = 20 ms ≈ 6.8 m
+```
+
+This is a **semantic/readback reference**, not an application default. SonKuPik
+must hydrate these values from hardware. It must never hardcode 14/20.
+
+The two PCAP sweeps still prove the native transport exception independently:
+the capture identified as **Surround L** moves the second timing word
+(`data[18..19]`) while the first timing word stays fixed; the capture
+identified as **Surround R** moves the first timing word (`data[16..17]`)
+while the second stays fixed. Therefore the final semantic mapping remains:
+
+```text
+L = data[18..19]
+R = data[16..17]
+```
+
+For the screenshot/reference state above, the serialized pair is therefore
+`14 00 0E 00` in wire order (**R=20 first, L=14 second**).
+
 ## Delay field positions
 
 Positions below are relative to the 35-byte Output data image, not the complete
