@@ -32,7 +32,7 @@ export async function onRequestGet() {
       tag,
       version,
       channel: 'stable',
-      setup: '/download/windows',
+      setup: '/download/windows'
     }), {
       status: 200,
       headers: {
