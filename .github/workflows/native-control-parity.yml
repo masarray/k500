@@ -74,12 +74,22 @@ jobs:
               'Music bypass changes type not cutoff': 'CROSSOVER_TYPE_BYPASS_V2' in music_filter and 'root.engine.hpType = value' in music_filter and 'root.engine.lpType = value' in music_filter,
               'Music source is six-way exclusive': 'MUSIC_SOURCE_SINGLE_CHOICE_V1' in music_input and '["INPUT1", "INPUT2", "BT", "UDISK", "OPTIC", "UAUDIO"]' in music_input and 'checked: root.selectedSource === index' in music_input and 'root.engine.editDevicePath("music.sourceRaw", next)' in music_input and 'root.active = !root.active' not in input_fader and 'else if (path == QStringLiteral("music.sourceRaw")) m_music.sourceRaw = qBound(0, value.toInt(), 5);' in controller and 'MUSIC_SOURCE_SIX_WAY_V1' in protocol and 'qBound(0, state.sourceRaw, 5)' in protocol,
               'Music keeps five gain trims with shared digital trim': music_input.count('InputFader {') == 5 and 'label:"INPUT1 GAIN"' in music_input and 'label:"INPUT2 GAIN"' in music_input and 'label:"BT GAIN"' in music_input and 'label:"UDISK GAIN"' in music_input and 'label:"DIGITAL GAIN"' in music_input,
-              'Rack crossover layout normalized': 'CROSSOVER_RACK_LAYOUT_V3' in rack_filter and 'SURROUND_DELAY_VERIFIED_V1' in rack_filter,
+              'Rack crossover layout normalized': 'CROSSOVER_RACK_LAYOUT_V3' in rack_filter and 'OUTPUT_DELAY_CMD0E_CAPTURED_V1' in rack_filter,
               'Compressor graph stops on caption baseline': 'COMPRESSOR_GRAPH_CAPTION_BASELINE_V1' in rack_dynamics and 'Layout.preferredHeight: 227' in rack_dynamics and 'Layout.minimumHeight: 227' in rack_dynamics and 'Layout.maximumHeight: 227' in rack_dynamics and 'Layout.alignment: Qt.AlignTop' in rack_dynamics and 'Layout.fillHeight: true\n                radius: 8\n                color: "#040608"' not in rack_dynamics,
               'Right columns follow Mic 216px reference': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in workspace and 'readonly property int rightPanelWidth: 216' in workspace and 'readonly property int masterWidth: rightPanelWidth' in workspace and 'Layout.preferredWidth: root.rightPanelWidth' in workspace and 'Layout.minimumWidth: root.rightPanelWidth' in workspace and 'Layout.maximumWidth: root.rightPanelWidth' in workspace and 'Layout.preferredWidth:root.rightPanelWidth' in workspace and 'Layout.minimumWidth:root.rightPanelWidth' in workspace and 'Layout.maximumWidth:root.rightPanelWidth' in workspace and 'Layout.preferredWidth:228' not in workspace and 'Layout.preferredWidth: 222' not in workspace,
               'Music uses same two wide right columns': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in main and 'readonly property int rightPanelWidth: 216' in main and main.count('Layout.preferredWidth: root.rightPanelWidth') >= 2 and main.count('Layout.minimumWidth: root.rightPanelWidth') >= 2 and main.count('Layout.maximumWidth: root.rightPanelWidth') >= 2,
               'Master strip default is fixed wide': 'RIGHT_COLUMN_WIDTH_PARITY_V1' in master_strip and 'implicitWidth: 216' in master_strip and 'Layout.minimumWidth: 216' in master_strip and 'Layout.preferredWidth: 216' in master_strip and 'Layout.maximumWidth: 216' in master_strip,
-              'Output delay UI parity is evidence gated': 'OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1' in workspace and workspace.count('editable:false') >= 4 and 'ctx.sectionIndex !== 5' in rack_filter,
+              'Output delay UI is capture-backed across all buses':
+                  'OUTPUT_DELAY_CMD0E_CAPTURED_V1' in workspace
+                  and 'outputs.main.lDelayMs' in rack_filter
+                  and 'outputs.main.rDelayMs' in rack_filter
+                  and 'outputs.surround.lDelayMs' in rack_filter
+                  and 'outputs.surround.rDelayMs' in rack_filter
+                  and 'outputs.center.outputDelayMs' in rack_filter
+                  and 'outputs.sub.outputDelayMs' in rack_filter
+                  and 'writeU16Le(data, 16, safeRDelay);' in protocol
+                  and 'writeU16Le(data, 18, safeLDelay);' in protocol
+                  and 'OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1' not in workspace,
               'Responsive crossover slider': 'RESPONSIVE_PARAMETER_SLIDER_V1' in slider and 'property bool editable: true' in slider and 'captionWidth' in slider and 'readoutWidth' in slider,
               'Bypass visible in all selectors': '"Bypass"' in music_filter and '"Bypass"' in rack_filter and '"Bypass"' in inspector,
               'Inspector emits real bypass value': 'root.typeEdited(v)' in inspector and 'Bypass ' not in inspector,
