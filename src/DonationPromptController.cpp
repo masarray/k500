@@ -39,6 +39,8 @@ DonationPromptController::DonationPromptController(bool previewMode, QObject *pa
     initialize(QDate::currentDate());
 }
 
+DonationPromptController::~DonationPromptController() = default;
+
 DonationPromptController::DonationPromptController(const QString &settingsFilePath,
                                                    const QDate &today,
                                                    bool previewMode,

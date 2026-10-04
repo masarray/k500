@@ -18,6 +18,7 @@ class DonationPromptController final : public QObject
 
 public:
     explicit DonationPromptController(bool previewMode = false, QObject *parent = nullptr);
+    ~DonationPromptController() override;
     DonationPromptController(const QString &settingsFilePath,
                              const QDate &today,
                              bool previewMode = false,

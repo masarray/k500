@@ -162,7 +162,8 @@ Popup {
                 anchors.margins: 12
                 source: root.qrisReady ? SupportLinks.qrisSource : ""
                 fillMode: Image.PreserveAspectFit
-                smooth: true
+                // QR modules must stay pixel-crisp after scaling.
+                smooth: false
                 asynchronous: false
                 visible: root.qrisReady
             }

@@ -27,7 +27,9 @@ ApplicationWindow {
     // Update discovery may finish while the donation prompt is open; keep the
     // update pending and surface it only after the user closes the support card.
     function maybeOpenUpdateDialog() {
-        if (donationPromptDialog.opened || updateDialog.opened)
+        if ((root.donationPrompt && root.donationPrompt.shouldShow)
+            || donationPromptDialog.opened
+            || updateDialog.opened)
             return
 
         if (AppUpdater.updateAvailable
