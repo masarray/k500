@@ -1090,7 +1090,9 @@ bool selfTest(QString *error)
 
     QByteArray preserve(OutputDataLength, char(0x5A));
     const QByteArray preservedFrame = outputBlock(QStringLiteral("main"), main, preserve);
-    if (preservedFrame.size() < 39 || byteFromChar(preservedFrame.at(21)) != 0x5A)
+    // Delay data[16..19] is now verified/owned. Keep the preservation sentinel
+    // on still-unknown data[20] instead.
+    if (preservedFrame.size() < 39 || byteFromChar(preservedFrame.at(24)) != 0x5A)
         return fail(QStringLiteral("output block must preserve unknown device bytes"));
     if (!outputBlock(QStringLiteral("unknown"), main, preserve).isEmpty())
         return fail(QStringLiteral("unsupported output section must not produce a frame"));
