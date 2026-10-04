@@ -1039,8 +1039,10 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
                 byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF));
             const bool lpKnown = K500Protocol::crossoverFilterCodeValid(
                 byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF));
-            (hpKnown ? captured : assumed)(prefix + QStringLiteral("hpType"), it->hpType);
-            (lpKnown ? captured : assumed)(prefix + QStringLiteral("lpType"), it->lpType);
+            if (hpKnown) captured(prefix + QStringLiteral("hpType"), it->hpType);
+            else assumed(prefix + QStringLiteral("hpType"), it->hpType);
+            if (lpKnown) captured(prefix + QStringLiteral("lpType"), it->lpType);
+            else assumed(prefix + QStringLiteral("lpType"), it->lpType);
         } else if (it.key() == QStringLiteral("main")
                    || it.key() == QStringLiteral("surround")
                    || it.key() == QStringLiteral("center")
@@ -1059,8 +1061,10 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
             }
             const bool hpKnown = K500Protocol::crossoverFilterCodeValid(byteAt(memory, hpOffset, 0xFF));
             const bool lpKnown = K500Protocol::crossoverFilterCodeValid(byteAt(memory, lpOffset, 0xFF));
-            (hpKnown ? captured : assumed)(prefix + QStringLiteral("hpType"), it->hpType);
-            (lpKnown ? captured : assumed)(prefix + QStringLiteral("lpType"), it->lpType);
+            if (hpKnown) captured(prefix + QStringLiteral("hpType"), it->hpType);
+            else assumed(prefix + QStringLiteral("hpType"), it->hpType);
+            if (lpKnown) captured(prefix + QStringLiteral("lpType"), it->lpType);
+            else assumed(prefix + QStringLiteral("lpType"), it->lpType);
         } else {
             // Reverb/Echo have no native HP/LP Type selectors.
             assumed(prefix + QStringLiteral("hpType"), it->hpType);
