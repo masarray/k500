@@ -44,6 +44,16 @@ function Remove-RegKey {
     & reg.exe DELETE $Key /f /reg:64 *> $null
 }
 
+function Stop-RelaunchedK500 {
+    # Production --post-update-foreground intentionally stays open. The old CI
+    # handoff fixture exited immediately, so the consolidated RC test must close
+    # the relaunched GUI before uninstall/rollback starts another scenario.
+    Start-Sleep -Milliseconds 400
+    Get-Process -Name 'SonKuPik-K500' -ErrorAction SilentlyContinue |
+        Stop-Process -Force -ErrorAction SilentlyContinue
+    Start-Sleep -Milliseconds 150
+}
+
 $packageRoot = (Resolve-Path $PackageDir).Path
 $buildRoot = (Resolve-Path $BuildDir).Path
 $userSetupPath = (Resolve-Path $UserSetup).Path
@@ -128,6 +138,7 @@ $updateArgs = @(
 )
 $handoff = Start-BoundedProcess -FilePath $helperPath -ArgumentList $updateArgs -Label 'verified per-user helper update'
 if ($handoff.ExitCode -ne 0) { throw "Per-user update handoff failed: $($handoff.ExitCode)" }
+Stop-RelaunchedK500
 
 $updateLogText = Get-Content $updateLog -Raw
 if (-not $updateLogText.Contains('Installer and app health check passed; recovery snapshot released.')) {
@@ -185,6 +196,7 @@ foreach ($case in @(
     if ($result.ExitCode -ne $case.Expected) {
         throw "$($case.Name) returned $($result.ExitCode), expected $($case.Expected)"
     }
+    Stop-RelaunchedK500
     if ((Get-FileHash (Join-Path $rollbackDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $originalAppHash) {
         throw "$($case.Name) did not restore original application bytes"
     }
@@ -245,6 +257,7 @@ $migrationArgs = @(
 )
 $migration = Start-BoundedProcess -FilePath $helperPath -ArgumentList $migrationArgs -Label 'explicit machine-to-user migration'
 if ($migration.ExitCode -ne 0) { throw "Machine-to-user migration failed: $($migration.ExitCode)" }
+Stop-RelaunchedK500
 if (Test-Path (Join-Path $machineDir 'SonKuPik-K500.exe')) { throw "Migration left old machine application active" }
 if (-not (Test-Path (Join-Path $defaultDir 'SonKuPik-K500.exe'))) { throw "Migration did not create per-user application" }
 
