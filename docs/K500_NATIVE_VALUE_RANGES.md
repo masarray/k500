@@ -102,6 +102,25 @@ captured. Do not infer them from adjacent fields.
 Adj Manner / VR OFF is a boolean setter (`CMD 0x07`) rather than a numeric
 range. Its reconnect/readback location remains unproven.
 
+## Final System operational controls — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Mic Max | 0 | 84 | scalar | Native USB capture, CMD 0x05 |
+| UDisk Record Volume | 1 | 6 | UI step | Native USB capture, CMD 0x3E |
+| Dance Mic Threshold | -60 | 0 | dB | Native USB capture, CMD 0x22 |
+| Dance Mic Hold Time | 1 | 30 | s | Native USB capture, CMD 0x22 |
+| BT Name | 1 | 8 | printable ASCII chars | Native USB capture, CMD 0x4E |
+
+Mic Max is a hard ceiling for Top Mic:
+`TopMic = min(TopMic, MicMax)`.
+
+Dance Mic threshold uses `raw = dB + 60`. Hold Time uses raw seconds.
+Both values travel together in one CMD 0x22 frame.
+
+BT Name's captured field is exactly 8 bytes, NUL-padded. Do not expand the
+writable UI to the longer readback buffer without new packet evidence.
+
 ## Common PEQ
 
 | Parameter | Minimum | Maximum | Unit | Evidence |
