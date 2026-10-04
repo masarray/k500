@@ -4,12 +4,11 @@ Date: 2026-10-04
 
 ## Current candidate
 
-**V2 is the active GOLD candidate pending real K500 listening acceptance.**
+**V2 passed the real-K500 listening gate and is the accepted GOLD Mode 01 balance for this release.**
 
 `01_KONSER_NYANYI_MAIN_BALANCE_V2.k500`
 
-The official distribution file is intentionally **not replaced yet**. Promotion only
-happens after hardware listening confirms V2.
+The exact accepted V2 bytes are promoted to the official distribution file. Do not rebuild or normalize them after acceptance.
 
 ## Problem statement
 
@@ -139,5 +138,4 @@ Accept V2 only if:
 - no loss of detail, openness or width;
 - long listening remains non-fatiguing.
 
-If these pass, treat the exact V2 bytes as the Mode 01 GOLD candidate for promotion.
-Do not rebuild the binary after acceptance.
+These criteria passed in the final listening round. Treat the exact V2 bytes as the promoted Mode 01 GOLD reference and do not rebuild the binary after acceptance.

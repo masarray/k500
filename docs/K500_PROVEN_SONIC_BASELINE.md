@@ -33,6 +33,7 @@ The successful real-hardware progression was:
 Core V1: bass became enjoyable; mid still ordinary
 Core V2: small mid refinement -> mid became enjoyable
 Core V3: small very-bottom extension -> overall result became enjoyable
+2026-10-04 R1: real-K500 comparison accepted a slightly stronger 158 Hz punch / smoother upper balance while preserving the proven Sub foundation
 ```
 
 The underlying Mode 03 Hi-Fi Core V3 Music/Sub architecture remains the **GOLD MUSIC REFERENCE** inside the official `KAR DANGDUT` file. Do not casually rebuild its successful bass/mid architecture from a generic karaoke curve.
@@ -43,29 +44,29 @@ Music EQ reference:
 
 | Band | Type | Frequency | Q | Gain |
 |---:|---|---:|---:|---:|
-| 1 | P | 11704 Hz | 2.0 | +1.8 dB |
-| 2 | P | 158 Hz | 2.3 | +2.3 dB |
-| 3 | P | 66 Hz | 0.4 | +7.6 dB |
-| 4 | P | 1315 Hz | 2.4 | -0.6 dB |
+| 1 | P | 11704 Hz | 2.0 | +1.6 dB |
+| 2 | P | 158 Hz | 2.3 | +3.1 dB |
+| 3 | P | 66 Hz | 0.4 | +8.2 dB |
+| 4 | P | 1315 Hz | 2.4 | -0.8 dB |
 | 5 | P | 2916 Hz | 2.1 | +1.3 dB |
-| 6 | P | 6495 Hz | 1.9 | +1.5 dB |
-| 7 | HS | 766 Hz | 0.4 | +6.5 dB |
+| 6 | P | 6495 Hz | 1.9 | +1.2 dB |
+| 7 | HS | 766 Hz | 0.4 | +6.0 dB |
 
 Raw gain values in tenths of dB:
 
 ```text
-[18, 23, 76, -6, 13, 15, 65]
+[16, 31, 82, -8, 13, 12, 60]
 ```
 
 ### Why the balance matters
 
 - **66 Hz:** broad low-end excitement/weight. Do not keep raising it to solve every request for deeper bass.
 - **158 Hz:** kick/bass-body and physical punch.
-- **1315 Hz:** the V2 move from -1.2 to -0.6 dB was important to make the mid feel less ordinary.
+- **1315 Hz:** the accepted R1 value is -0.8 dB, preserving vocal/music separation without hollowing the backing.
 - **2916 Hz:** controlled articulation; protect the 2.5–4.5 kHz harshness guardrail.
-- **6495 Hz:** micro-detail and polish.
-- **11704 Hz:** air and top-end luxury.
-- **HS 766 Hz:** broad openness; do not blindly increase it further.
+- **6495 Hz:** micro-detail and polish; R1 deliberately backs this down to +1.2 dB to avoid cymbal dominance.
+- **11704 Hz:** air and top-end luxury; R1 keeps it present at +1.6 dB rather than chasing brightness.
+- **HS 766 Hz:** broad openness; accepted R1 uses +6.0 dB and should not be increased casually.
 
 ## 4. Proven Sub foundation
 
@@ -87,13 +88,15 @@ Use Music/Main for broad musical bass/body and the dedicated Sub path for very-b
 
 ## 5. Mid and treble design lessons
 
-For enjoyable midrange, increase information density and texture rather than broad mid loudness. The successful V2 refinement was small:
+For enjoyable midrange, increase information density and texture rather than broad mid loudness. The current accepted Mode 03 R1 balance uses small, role-specific moves around the proven core rather than a wholesale rewrite:
 
 ```text
-1315 Hz  -1.2 -> -0.6 dB
-2916 Hz  +1.0 -> +1.3 dB
-6495 Hz  +1.4 -> +1.5 dB
-11704 Hz +1.6 -> +1.8 dB
+158 Hz   +2.3 -> +3.1 dB
+66 Hz    +7.6 -> +8.2 dB
+1315 Hz  -0.6 -> -0.8 dB
+6495 Hz  +1.5 -> +1.2 dB
+11704 Hz +1.8 -> +1.6 dB
+HS 766   +6.5 -> +6.0 dB
 ```
 
 Useful treble roles:
@@ -138,20 +141,22 @@ SHA-256: 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
 
 Future experiments normally branch from the current official bytes; rollback investigations may explicitly return to the archived native hash recorded in the v1.0 history.
 
-## 8. Final official preset library
+## 8. Current official preset library
+
+The 2026-10-04 public-release promotion is intentionally mixed by evidence state: Slots 01, 03, and 05 use the accepted new candidates; Slots 02, 04, and 06–10 retain their previous official bytes while their R1 evolution remains under `research/` pending individual real-K500 audition.
 
 | Slot | Repository file | Internal name | SHA-256 / status | Sonic role |
 |---:|---|---|---|---|
 | 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` | concert / Air-Focus universal karaoke |
-| 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | rename-only from the same donor audio | dry/controlled broadcast utility |
-| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` | Dangdut vocal FX over preserved Hi-Fi Core V3 music/sub |
-| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `587309332d5cc856a05577d45cbfa296847ee4ba7e0c7f619ced2385e6709ad8` | finalized pop-rock / slow-rock |
-| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` | warm romantic 70s/80s slow-pop |
-| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `bb45e9fc31585b8d27dbe840ca8be1145379a21b071eb66c06dd91f067d30ea8` | soft/fresh sholawat |
-| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `5fdab7fa5b7081d8c00e39ef8e2ee931bd72a15ab4e9a8da197605d796e1c388` | intimate/classy lounge |
-| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `3df4c1ef52a39dc0b3907186d8375246b22c69ee41419b496531386fb3e23e33` | warm vintage/slap character |
-| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `faa26cca9f3a7d364bb408bb0381917333ac841e7ace75a5edbc40ab46afc85d` | natural/organic acoustic vocal |
-| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `971b8d53f07814278ce3eef43be1cee4cf86fb379386c0979c7101c2a64fff03` | bass/groove + rhythmic echo |
+| 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | previous official rename-only audio state | dry/controlled broadcast utility; R1 pending hardware audition |
+| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` | accepted R1 punch/smoothness refinement over the proven Hi-Fi Core V3/Sub lineage |
+| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | previous official pop-rock / slow-rock; R1 pending hardware audition |
+| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` | accepted tempo-aware R2 romantic slow-pop |
+| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | previous official soft/fresh sholawat; R1 pending hardware audition |
+| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7` | previous official intimate/classy lounge; R1 pending hardware audition |
+| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146` | previous official warm vintage/slap character; R1 pending hardware audition |
+| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c` | previous official natural/organic acoustic vocal; R1 pending hardware audition |
+| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90` | previous official bass/groove + rhythmic echo; R1 pending hardware audition |
 
 The library is intentionally heterogeneous. Air Focus is a quality reference, not a parameter template. Genre-specific Music/Mic/Sub voicing remains donor-based and should not be normalized without new hardware evidence.
 

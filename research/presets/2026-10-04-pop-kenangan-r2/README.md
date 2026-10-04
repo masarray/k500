@@ -2,6 +2,11 @@
 
 Date: 2026-10-04
 
+## Status
+
+**Accepted on the real K500 singing/listening round and promoted byte-for-byte as official Mode 05 for this release.**
+
+
 ## Why R2 exists
 
 Real-hardware feedback on the R1 library candidate was clear:
@@ -171,4 +176,4 @@ R2 passes only if:
 7. music stays warm without sounding closed;
 8. no 200-500 Hz mud appears after 20-30 minutes.
 
-If accepted, promote the **exact R2 bytes**; do not rebuild after hardware acceptance.
+The acceptance criteria passed. The **exact R2 bytes** are promoted; do not rebuild after hardware acceptance.

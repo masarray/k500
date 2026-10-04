@@ -90,7 +90,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Multi-file batch validation | LOCKED SW ✅ | whole-batch fail-closed P4.2 regression |
 | Unified SONKUPIK + LOCAL preset library | LOCKED SW ✅ | source provenance separated; both use same validator |
 | Official GitHub preset sync/cache | LOCKED SW ✅ | validation before cache promotion; offline fallback |
-| Official Mode 01 `KONSER NYANYI` | LOCKED SW ✅ | current official file SHA-256 `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`; evolved from the physically proven native `CONCERT HIFI V4` donor lineage |
+| Official Mode 01 `KONSER NYANYI` | LOCKED SW ✅ | current official file SHA-256 `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4`; evolved from the physically proven native `CONCERT HIFI V4` donor lineage |
 | Support Report diagnostics | LOCKED SW ✅ | bounded schema + payload/path redaction guard |
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
 | Smart Installer distribution | LOCKED SW ✅ | machine/per-user installer runtime self-tests; portable retired from v1.1 public distribution |
@@ -164,7 +164,7 @@ Remote official files do not bypass the codec/validator and never overwrite Loca
 
 Current official Mode 01 is `KONSER NYANYI`:
 
-`4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
+`761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4`
 
 Its rollback/provenance lineage retains the physically proven native `CONCERT HIFI V4` donor (`9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`). The current official file and the historical donor must not be conflated. Checksum validity alone is not proof of native-equivalent behavior.
 
