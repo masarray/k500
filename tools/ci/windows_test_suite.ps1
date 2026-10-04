@@ -71,7 +71,8 @@ $perfArgs = @(
     "--device-perf",
     "--device-perf-report=$perfReport"
 )
-Invoke-Checked -Exe "$PackageDir/SonKuPik-K500.exe" -Arguments $perfArgs -Label "Engine + device performance smoke"
+$perfProcess = Start-Process -FilePath "$PackageDir/SonKuPik-K500.exe" -ArgumentList $perfArgs -Wait -PassThru
+if ($perfProcess.ExitCode -ne 0) { throw "Engine + device performance smoke failed with exit code $($perfProcess.ExitCode)" }
 if (-not (Test-Path $perfReport)) { throw "Device performance smoke did not create JSON report" }
 $perf = Get-Content -Raw $perfReport | ConvertFrom-Json
 if ($perf.schema -ne "sonkupik-k500-device-performance-v1") { throw "Device performance report schema mismatch" }
