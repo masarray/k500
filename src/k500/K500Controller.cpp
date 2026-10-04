@@ -225,16 +225,11 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_effect.topEffectVol = fileU8(memory, 0x000A, 35);
     m_effect.effectInitLevel = fileU8(memory, 0x001D, 25);
 
-    // DANCE_MIC_READBACK_STRUCTURAL_V1 — safe seed gate for the full-pair CMD 0x22.
-    const int danceThresholdRaw = static_cast<int>(fileU8(memory, 0x0093, 0xFF));
-    const int danceHoldRaw = static_cast<int>(fileU8(memory, 0x0094, 0xFF));
-    m_danceMicSeedKnown = danceThresholdRaw >= 0 && danceThresholdRaw <= 60
-                          && danceHoldRaw >= K500Protocol::NativeRange::DanceMicHoldMinSec
-                          && danceHoldRaw <= K500Protocol::NativeRange::DanceMicHoldMaxSec;
-    if (m_danceMicSeedKnown) {
-        m_danceMicThresholdDb = danceThresholdRaw - 60;
-        m_danceMicHoldSec = danceHoldRaw;
-    }
+    // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1 — the old
+    // structural seed at file[0x0093/0x0094] is invalid: paired reconnect
+    // captures prove file[0x0094] / active[0x008C] is Adj Manner VR OFF.
+    // Fail closed until Dance Mic receives its own controlled reconnect delta.
+    m_danceMicSeedKnown = false;
 
     // REVERB_CMD0B_CAPTURED_V1 — state and raw image are hydrated before LIVE.
     m_reverb.level = fileU8(memory, 0x0074, 100);
@@ -957,6 +952,10 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
              static_cast<int>(fileU8(memory, 0x0095)) + 1);
     captured(QStringLiteral("system.usbRecordVol"),
              static_cast<int>(fileU8(memory, 0x0096)) + 1);
+    const quint8 adjMannerRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::AdjMannerVrOff, 0xFF);
+    if (adjMannerRaw <= 1)
+        captured(QStringLiteral("system.adjMannerVrOff"), adjMannerRaw == 1);
     if (m_danceMicSeedKnown) {
         derived(QStringLiteral("system.danceMicThresholdDb"), m_danceMicThresholdDb);
         derived(QStringLiteral("system.danceMicHoldSec"), m_danceMicHoldSec);
