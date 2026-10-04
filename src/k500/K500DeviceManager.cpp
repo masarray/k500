@@ -771,6 +771,11 @@ void K500DeviceManager::finishConnected()
     }
 
     m_lastValidRx.start();
+
+    // PLAYER_STATUS_E3_RUNTIME_AUTHORITY_V2
+    // Reconfirm playback immediately after the long 939-byte connect sync;
+    // do not make the TopBar wait one 3.2 s heartbeat interval.
+    writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status connect refresh"));
     m_heartbeatTimer.start();
 }
 
@@ -846,8 +851,13 @@ void K500DeviceManager::onBytesReceived(const QByteArray &bytes)
 
 void K500DeviceManager::handleResponse(const K500Response &response)
 {
+    // PLAYER_STATUS_E3_RUNTIME_AUTHORITY_V2
+    // Physical captures prove E3 carries the live STOPPED/PLAYING bit. C0
+    // mirrors that bit in historical captures, but it is a handshake snapshot
+    // and must not overwrite the fresher probe/heartbeat runtime state.
     bool decodedPlaying = false;
-    if (K500ResponseParser::tryDecodePlaying(response, &decodedPlaying))
+    if (response.rsp == 0xE3
+        && K500ResponseParser::tryDecodePlaying(response, &decodedPlaying))
         setPlaying(decodedPlaying);
 
     bool decodedMuted = false;

@@ -32,6 +32,12 @@ PLAYING ... 00 00 00 0C 0D AB 03 CE 00 00 ...
 
 Contract: bit 0x04 clear = not playing (stopped/paused UI state); bit 0x04 set = actively playing. SonKuPik must derive the Play/Pause icon from device RX, never from a local optimistic boolean.
 
+Runtime precedence is stricter than capture equivalence: **RSP 0xE3 heartbeat is the
+live playback authority**. C0 is retained as corroborating handshake evidence
+but must not overwrite the fresher E3 runtime state. Connect performs an
+immediate E3 refresh after the 939-byte synchronization so the TopBar icon is
+correct without waiting for the normal heartbeat interval.
+
 ## Mute — setter and connect read-side captured
 
 Native write frames remain:

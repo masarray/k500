@@ -141,6 +141,12 @@ def check_protocol_and_state() -> None:
         "K500Protocol::ActiveMemoryBlockSize",
     )
     require(
+        "src/k500/K500DeviceManager.cpp",
+        "PLAYER_STATUS_E3_RUNTIME_AUTHORITY_V2",
+        "response.rsp == 0xE3",
+        "Player status connect refresh",
+    )
+    require(
         "src/k500/K500PresetManager.cpp",
         "K500Protocol::ActiveMemorySize",
         "K500Protocol::ActiveMemoryBlockSize",
