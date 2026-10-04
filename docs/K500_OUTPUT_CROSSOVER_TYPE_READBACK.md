@@ -102,71 +102,32 @@ selector family remains:
 Together with the shared 0..7 enum, the readback side can now be implemented
 without assuming default filter labels.
 
-## Critical collision discovered: output-delay READ offsets
+## Output-delay collision resolved by follow-up capture
 
-This capture falsifies the previous Main/Center/Sub delay **readback** assumption.
-
-The current code/documentation interprets:
-
-```text
-file 0x0034 / active 0x002C as Main L Delay
-file 0x0036 / active 0x002E as Main R Delay
-file 0x005C / active 0x0054 as Center Output Delay
-file 0x0070 / active 0x0068 as Sub Output Delay
-```
-
-But State A proves those live bytes are crossover filter types:
+The State-A reconnect proved the old low-offset Main/Center/Sub delay assumptions
+were wrong because those bytes are filter-type enums. The dedicated follow-up
+`Reconnect_AllOutputDelays_5_10_15_20_25_30.pcapng`
+(SHA-256 `f477cde52f59a23d8cf73b360dc4d3343490bc1967596e639d66b177dfec871d`)
+then closes the real delay block:
 
 ```text
-active 0x002C = 3 = Main HP Bessel18
-active 0x002E = 4 = Main LP Butter18
-active 0x0054 = 7 = Center HP LR24
-active 0x0068 = 7 = Sub HP LR24
+active 0x00CB..0x00D6
+05 00 | 0A 00 | 0F 00 | 14 00 | 19 00 | 1E 00
+MainL   MainR   SurrL   SurrR   Center  Sub
 ```
 
-The screenshots show Main delays 0/0 ms, Center delay 0 ms and Sub delay 0 ms,
-so decoding those type bytes as 3/4/7/7 ms is demonstrably incorrect.
+Corresponding file/preset scalars are `0x00D4, 0x00D6, 0x00D8, 0x00DA,
+0x00DC, 0x00DE`.
 
-Do **not** repair this by guessing another offset.
-
-A promising contiguous six-word region exists at active
-`0x00CB..0x00D6` (file-like positions `0x00D4..0x00DF`) and currently reads:
-
-```text
-00 00 | 00 00 | 0E 00 | 14 00 | 00 00 | 00 00
-  0       0       14      20      0       0
-```
-
-This exactly matches the screenshot sequence
-Main L=0, Main R=0, Surround L=14, Surround R=20, Center=0, Sub=0 if ordered
-that way, and the Surround 14/20 pair agrees with independently captured
-Surround delay truth. However, four zero-valued fields are not enough to
-uniquely assign every word. Keep Main/Center/Sub delay readback evidence-gated
-until a reconnect capture uses distinct non-zero delay values.
-
-## Minimal delay-isolation capture
-
-Use one reconnect state:
-
-```text
-Main L       5 ms
-Main R      10 ms
-Surround L  15 ms
-Surround R  20 ms
-Center      25 ms
-Sub         30 ms
-```
-
-Then disconnect -> start capture -> connect -> wait full readback -> disconnect.
-
-If active `0x00CB..0x00D6` becomes
-`05 00 0A 00 0F 00 14 00 19 00 1E 00`, the complete delay READ block is
-isolated in one shot.
+Therefore filter-type hydration can safely use the direct offsets in this
+document while output-delay hydration/persistence uses the high scalar block.
+The two meanings no longer collide.
 
 ## Safety boundary
 
-- Promote the filter-type bytes above as direct active-memory truth.
-- Do not infer Reverb/Echo filter-type bytes from this output pattern.
-- Do not treat the type-byte offsets as delay words.
-- Do not rewrite preset-file delay offsets solely from this reconnect capture;
-  live active memory and .k500 persistence layout must be qualified separately.
+- Promote the primary Mic/Main/Surround/Center/Sub filter-type bytes above as
+  direct active-memory truth.
+- Reverb/Echo have no native HP/LP Type selector; they are frequency-only.
+- Never decode output delays from the filter-type bytes.
+- Preserve the independently captured Surround wire-order exception when
+  serializing CMD 0x0E.
