@@ -232,6 +232,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0012, 26); // mic init
         putFileU8(memory, 0x0013, 82); // mic max
         putFileU8(memory, 0x001D, 27); // effect init
+        putFileU8(memory, 0x0093, 10); // Dance Mic threshold raw -> -50 dB
+        putFileU8(memory, 0x0094, 6);  // Dance Mic hold -> 6 sec
         putFileU8(memory, 0x0095, 8);  // U-Disk record -> UI 9
         putFileU8(memory, 0x0096, 10); // USB record -> UI 11
 
@@ -383,6 +385,7 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.masterMusic(), 61.0)
             && qFuzzyCompare(studioEngine.musicMaxVol(), 84.0)
             && qFuzzyCompare(studioEngine.masterMic(), 57.0)
+            && qFuzzyCompare(studioEngine.micMaxVol(), 82.0)
             && qFuzzyCompare(studioEngine.masterFx(), 49.0)
             && studioEngine.musicKey() == 3
             && qFuzzyCompare(studioEngine.input1Gain(), 3.0)
@@ -405,6 +408,9 @@ int main(int argc, char *argv[])
             && system.value(QStringLiteral("effectInitLevel")).toInt() == 27
             && system.value(QStringLiteral("uDiskRecordVol")).toInt() == 9
             && system.value(QStringLiteral("usbRecordVol")).toInt() == 11
+            && system.value(QStringLiteral("danceMicTriggerKnown")).toBool()
+            && system.value(QStringLiteral("danceMicThresholdDb")).toInt() == -50
+            && system.value(QStringLiteral("danceMicHoldSec")).toInt() == 6
             && system.value(QStringLiteral("deviceModeIndex")).toInt() == 4
             && system.value(QStringLiteral("activeModeName")).toString() == QStringLiteral("KARAOKE ARTIST")
             && system.value(QStringLiteral("btName")).toString() == QStringLiteral("KTV_BT_TEST")
@@ -463,6 +469,22 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.masterMusic(), 25.0)
             && hydrationEdits == editsBeforeCeilingTest + 2;
         if (!loweredCeilingValid || !raisedCeilingValid)
+            return 7;
+
+        // MIC_MAX_NATIVE_CEILING_V1 — same user-visible ceiling contract for Mic.
+        const int editsBeforeMicCeilingTest = hydrationEdits;
+        studioEngine.setMicMaxVol(30);
+        const bool loweredMicCeilingValid =
+            qFuzzyCompare(studioEngine.micMaxVol(), 30.0)
+            && qFuzzyCompare(studioEngine.masterMic(), 30.0)
+            && studioEngine.lastChangedPath() == QStringLiteral("system.micMaxVol")
+            && hydrationEdits == editsBeforeMicCeilingTest + 1;
+        studioEngine.setMicMaxVol(82);
+        const bool raisedMicCeilingValid =
+            qFuzzyCompare(studioEngine.micMaxVol(), 82.0)
+            && qFuzzyCompare(studioEngine.masterMic(), 30.0)
+            && hydrationEdits == editsBeforeMicCeilingTest + 2;
+        if (!loweredMicCeilingValid || !raisedMicCeilingValid)
             return 7;
 
         // Restore authoritative fixture state for the QML/runtime half of this test.
