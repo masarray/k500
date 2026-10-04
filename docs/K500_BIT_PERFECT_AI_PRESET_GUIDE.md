@@ -454,6 +454,8 @@ raw 99 -> +12 dB
 0x0031  Main compressor ratio
 0x0032  Main compressor attack ms
 0x0033  Main compressor release sec = raw / 10
+0x0034  Main L delay ms, uint16 LE, native 0..50
+0x0036  Main R delay ms, uint16 LE, native 0..50
 ```
 
 ---
@@ -471,8 +473,8 @@ raw 99 -> +12 dB
 0x0045  Surround compressor ratio
 0x0046  Surround compressor attack ms
 0x0047  Surround compressor release sec = raw / 10
-0x00D8  Surround L delay ms, uint16 LE
-0x00DA  Surround R delay ms, uint16 LE
+0x00D8  Surround L delay ms, uint16 LE, native 0..50
+0x00DA  Surround R delay ms, uint16 LE, native 0..50
 ```
 
 ### Recommended conceptual role
@@ -484,6 +486,11 @@ width + ambience + 3D halo
 ```
 
 not as a second Main output.
+
+Native CMD 0x0E transport has a capture-proven Surround exception:
+semantic/preset storage stays L=0x00D8 and R=0x00DA, but the wire image serializes
+**R at data[16..17] and L at data[18..19]**. Do not "normalize" this transport
+order to match Main.
 
 Typical luxury-system strategy:
 
@@ -507,6 +514,7 @@ Typical luxury-system strategy:
 0x0059  Center compressor ratio
 0x005A  Center compressor attack ms
 0x005B  Center compressor release sec = raw / 10
+0x005C  Center Output Delay ms, uint16 LE, native 0..50
 ```
 
 ### Recommended conceptual role
@@ -533,6 +541,7 @@ It should not simply duplicate Main at equal level.
 0x006D  Sub compressor ratio
 0x006E  Sub compressor attack ms
 0x006F  Sub compressor release sec = raw / 10
+0x0070  Subwoofer Output Delay ms, uint16 LE, native 0..50
 0x00B8  Sub HPF
 0x00BC  Sub LPF
 ```
