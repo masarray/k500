@@ -1,6 +1,6 @@
 {
   "generated": "2026-10-04",
-  "status": "hardware-audition candidates; do not promote as official until accepted on real K500",
+  "status": "mixed evidence state: Slots 01 and 03 accepted/promoted; Slot 05 R1 superseded by accepted R2; Slots 02,04,06-10 remain research-only hardware-audition candidates",
   "empiricalAnchor": {
     "preset": "01_KONSER_NYANYI_MAIN_BALANCE_V2.k500",
     "userFeedback": "V2 is more enjoyable on real K500 Main output",
@@ -295,5 +295,17 @@
         "air10000_14000": -0.199
       }
     }
-  ]
+  ],
+  "promotionDecision": {
+    "10": "pending individual real-K500 audition; previous official bytes retained",
+    "01": "accepted on real K500; exact R1/V2 bytes promoted",
+    "02": "pending individual real-K500 audition; previous official bytes retained",
+    "03": "accepted from representative real-K500 comparison; exact R1 bytes promoted",
+    "04": "pending individual real-K500 audition; previous official bytes retained",
+    "05": "R1 superseded; tempo-aware R2 accepted and promoted",
+    "06": "pending individual real-K500 audition; previous official bytes retained",
+    "07": "pending individual real-K500 audition; previous official bytes retained",
+    "08": "pending individual real-K500 audition; previous official bytes retained",
+    "09": "pending individual real-K500 audition; previous official bytes retained"
+  }
 }

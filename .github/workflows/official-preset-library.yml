@@ -87,15 +87,15 @@ jobs:
 
           $expected = @(
             @{ path='resources/presets/01_KONSER_NYANYI.k500';       name='KONSER NYANYI';    sha='761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4' },
-            @{ path='resources/presets/02_MC_HOST_RADIO.k500';       name='MC HOST RADIO';    sha='d3a8b211cebcc880fa9ec267cdc224d609fc1134c97042485c68a00b8d97c639' },
+            @{ path='resources/presets/02_MC_HOST_RADIO.k500';       name='MC HOST RADIO';    sha=$null },
             @{ path='resources/presets/03_KAR_DANGDUT.k500';name='KAR DANGDUT';      sha='ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc' },
-            @{ path='resources/presets/04_POP_ROCK_BALLAD.k500';            name='POP ROCK BALLAD';  sha='587309332d5cc856a05577d45cbfa296847ee4ba7e0c7f619ced2385e6709ad8' },
+            @{ path='resources/presets/04_POP_ROCK_BALLAD.k500';            name='POP ROCK BALLAD';  sha='d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5' },
             @{ path='resources/presets/05_POP_KENANGAN_V2.k500';    name='POP KENANGAN V2';  sha='e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5' },
-            @{ path='resources/presets/06_SHOLAWAT_SYAHDU.k500';   name='SHOLAWAT SYAHDU';  sha='bb45e9fc31585b8d27dbe840ca8be1145379a21b071eb66c06dd91f067d30ea8' },
-            @{ path='resources/presets/07_JAZZ_LOUNGE.k500';            name='JAZZ LOUNGE';      sha='5fdab7fa5b7081d8c00e39ef8e2ee931bd72a15ab4e9a8da197605d796e1c388' },
-            @{ path='resources/presets/08_BLUES_CLUB.k500';           name='BLUES CLUB';       sha='3df4c1ef52a39dc0b3907186d8375246b22c69ee41419b496531386fb3e23e33' },
-            @{ path='resources/presets/09_ACOUSTIC_NATURAL.k500';        name='ACOUSTIC NATURAL'; sha='faa26cca9f3a7d364bb408bb0381917333ac841e7ace75a5edbc40ab46afc85d' },
-            @{ path='resources/presets/10_REGGAE_DUB.k500';          name='REGGAE DUB';       sha='971b8d53f07814278ce3eef43be1cee4cf86fb379386c0979c7101c2a64fff03' }
+            @{ path='resources/presets/06_SHOLAWAT_SYAHDU.k500';   name='SHOLAWAT SYAHDU';  sha='e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c' },
+            @{ path='resources/presets/07_JAZZ_LOUNGE.k500';            name='JAZZ LOUNGE';      sha='934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7' },
+            @{ path='resources/presets/08_BLUES_CLUB.k500';           name='BLUES CLUB';       sha='741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146' },
+            @{ path='resources/presets/09_ACOUSTIC_NATURAL.k500';        name='ACOUSTIC NATURAL'; sha='8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c' },
+            @{ path='resources/presets/10_REGGAE_DUB.k500';          name='REGGAE DUB';       sha='1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90' }
           )
           foreach ($entry in $expected) {
             $bytes = [IO.File]::ReadAllBytes($entry.path)

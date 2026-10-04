@@ -49,7 +49,7 @@ A pull request changing an official preset should include:
 
 Mode 01 is currently pinned to the official `KONSER NYANYI` file with SHA-256:
 
-`4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
+`761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4`
 
 It was evolved surgically from the exact native `CONCERT HIFI V4` donor. Preserve that native donor as rollback/provenance evidence; do not reconstruct or normalize either file without new evidence and an explicit review.
 

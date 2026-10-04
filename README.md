@@ -180,7 +180,7 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The bundled official preset bank now uses the 2026-10-04 final musicality evolution: hardware-accepted KONSER NYANYI Main Balance V2, hardware-accepted tempo-aware POP KENANGAN R2, and context-preserving evolved genre modes for Slots 02–04 and 06–10.
+The bundled official preset bank promotes only the 2026-10-04 musicality candidates that have final real-K500 evidence: KONSER NYANYI Main Balance V2, KAR DANGDUT R1, and tempo-aware POP KENANGAN R2. Slots 02, 04, and 06–10 remain on their previous official bytes until each evolved R1 candidate receives its own hardware audition.
 
 
 The current official Mode 01 file at `resources/presets/01_KONSER_NYANYI.k500` is `KONSER NYANYI`, evolved surgically from the exact native `CONCERT HIFI V4` donor through K500 hardware-listening iterations.

@@ -4,7 +4,7 @@ Date: 2026-10-04
 
 ## Status
 
-This folder contains **hardware-audition candidates**, not yet promoted official bytes.
+This folder is the R1 research bank. **Slot 01 and Slot 03 have completed the final real-K500 listening gate and their exact accepted bytes are promoted. Slot 05 R1 was superseded by the separately documented, hardware-accepted R2. Slots 02, 04, and 06–10 remain hardware-audition candidates and are not official.**
 
 The empirical anchor is the real-K500 accepted direction from
 `KONSER NYANYI Main Balance V2`: the user reported that V2 is more enjoyable
@@ -89,16 +89,19 @@ This intentionally creates two families:
 - Slots 07-10 already have deliberately restrained genre-specific music cores,
   so they receive only micro-evolution rather than normalization.
 
-## Hardware acceptance order
+## Remaining hardware acceptance order
 
-To avoid subjective drift, audition in this order:
+Slots 01 and 03 are accepted. Slot 05 R1 is superseded by accepted R2.
 
-1. 03 KAR DANGDUT — verifies high-energy punch/sparkle balance.
-2. 05 POP KENANGAN V2 — verifies warm/non-fatiguing side.
-3. 09 ACOUSTIC NATURAL — verifies that minimal modes remain natural.
-4. 10 REGGAE DUB — verifies no excess deep-bass accumulation.
-5. 02 MC HOST RADIO — verifies utility identity remains dry/controlled.
-6. remaining modes.
+To avoid subjective drift, audition the remaining R1 candidates in this order:
+
+1. 09 ACOUSTIC NATURAL — verifies that minimal modes remain natural.
+2. 10 REGGAE DUB — verifies no excess deep-bass accumulation.
+3. 02 MC HOST RADIO — verifies utility identity remains dry/controlled.
+4. 04 POP ROCK BALLAD.
+5. 06 SHOLAWAT SYAHDU.
+6. 07 JAZZ LOUNGE.
+7. 08 BLUES CLUB.
 
 Use the same source tracks, interface gain, K500 output, speaker level and room
 position whenever possible.
