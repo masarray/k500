@@ -364,8 +364,12 @@ ACK = RSP 0xB1
 The promoted UI accepts only 1..8 printable ASCII characters for SET. BT Name
 operations are USB-only because the supplied evidence is USB capture. After ACK,
 SonKuPik performs a full 939-byte refresh and displays the hardware BT name from
-the established active-memory readback. BLE rename/reset is NOT inferred from
-this BT command and remains read-only.
+the established active-memory readback. The readback identity field itself is
+0x13 bytes at activeMemory[0x0385], so generated/reset identities such as
+`KTV_BT_00AB12` must be shown in full even though CMD 0x4E SET accepts only
+1..8 user-entered ASCII characters. UI display length and write payload length
+are therefore separate contracts. BLE rename/reset is NOT inferred from this BT
+command and remains read-only.
 
 ## Daily-use scope closure
 

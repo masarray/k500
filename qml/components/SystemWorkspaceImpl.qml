@@ -777,6 +777,7 @@ Item {
                                 Layout.fillWidth:true
                                 Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
                                 Item{Layout.fillWidth:true}
+                                Text{text:"READ 19 · WRITE 8";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.DemiBold}
                                 Text{text:"LIVE · CMD 4E";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
                             }
                             RowLayout {
@@ -794,8 +795,12 @@ Item {
                                         anchors.leftMargin:9
                                         anchors.rightMargin:9
                                         verticalAlignment:TextInput.AlignVCenter
+                                        // BT_IDENTITY_DISPLAY_FULL_V1 — hardware readback
+                                        // is a 0x13-byte identity field. Do not truncate
+                                        // KTV_BT_00AB12-style device names just because
+                                        // CMD 0x4E SET itself accepts only 1..8 ASCII.
                                         text:root.btNameDraft
-                                        maximumLength:8
+                                        maximumLength:19
                                         readOnly:!root.deviceConnected||!root.presetManager||root.presetManager.busy
                                         selectByMouse:true
                                         color:readOnly?Theme.textDim:Theme.amber
