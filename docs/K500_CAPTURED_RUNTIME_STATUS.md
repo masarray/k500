@@ -137,6 +137,30 @@ master values from the Init fields during Recall. It must keep the established
 Recall -> C0 -> full 939-byte readback -> hydrate flow and accept the device's
 post-Recall result.
 
+## Adj Manner / front-panel VR ownership — reconnect captured 2026-10-04
+
+Paired reconnect captures:
+
+| Capture | Size | SHA-256 |
+| --- | ---: | --- |
+| `Reconnect_AdjManner_VROFF_OFF.pcapng` | 5,016 | `1f2cab60928e88a421f93e2fa2ac9034686016326d2c6025087df6a12aeea230` |
+| `Reconnect_AdjManner_VROFF_ON.pcapng` | 5,264 | `6b9d3cd469c9c0126a4737dd84e94dcec5f7da2bbae09e4b7eb80f545ff6660` |
+
+The complete 939-byte snapshots differ only at direct
+`activeMemory[0x008C]`: 0=VR OFF unticked/front-panel trims active,
+1=VR OFF ticked/software ownership.
+
+The same state is present in RSP 0xC0 `data[19]` bit 0 with inverse polarity:
+
+```text
+0x43 bit0=1 -> front-panel VR active -> adjMannerVrOff=false
+0x42 bit0=0 -> front-panel VR disabled -> adjMannerVrOff=true
+```
+
+The setter remains CMD 0x07 / ACK RSP 0xF8. Because this changes control
+ownership, SonKuPik follows the ACK with one full 939-byte readback before LIVE
+resumes; ordinary parameter edits do not use this expensive reconciliation.
+
 ## Change control
 
 Any future mapping from these runtime status fields must include exact captured vectors in a hardware-free self-test and a repo guard so the semantics cannot silently regress.
