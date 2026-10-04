@@ -143,8 +143,11 @@ def check_protocol_and_state() -> None:
     require(
         "src/k500/K500DeviceManager.cpp",
         "PLAYER_STATUS_E3_RUNTIME_AUTHORITY_V2",
+        "PLAYER_STATUS_RESPONSIVE_POLL_V1",
         "response.rsp == 0xE3",
         "Player status connect refresh",
+        "Player status poll",
+        "PlayerStatusIntervalMs = 400",
     )
     require(
         "src/k500/K500PresetManager.cpp",

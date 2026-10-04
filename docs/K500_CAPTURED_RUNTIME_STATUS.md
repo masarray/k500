@@ -36,7 +36,10 @@ Runtime precedence is stricter than capture equivalence: **RSP 0xE3 heartbeat is
 live playback authority**. C0 is retained as corroborating handshake evidence
 but must not overwrite the fresher E3 runtime state. Connect performs an
 immediate E3 refresh after the 939-byte synchronization so the TopBar icon is
-correct without waiting for the normal heartbeat interval.
+correct without waiting for the normal heartbeat interval. While READY, a
+dedicated **400 ms E3-only status poll** keeps externally changed playback state
+visually current. This fast poll does not trigger active-memory reads, live
+parameter writes, preset reconciliation, or optimistic UI state.
 
 ## Mute — setter and connect read-side captured
 

@@ -140,6 +140,7 @@ private:
     void finishConnected();
     void connectionTimeout();
     void heartbeatTick();
+    void playerStatusTick();
 
     void onBytesReceived(const QByteArray &bytes);
     void handleResponse(const K500Response &response);
@@ -184,6 +185,7 @@ private:
     QTimer m_responseTimer;
     QTimer m_probeDelayTimer;
     QTimer m_heartbeatTimer;
+    QTimer m_playerStatusTimer;
     QTimer m_reconciliationTimer;
     QTimer m_schedulerTimer;
     QElapsedTimer m_schedulerClock;

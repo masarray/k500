@@ -17,6 +17,7 @@ namespace {
 constexpr quint16 K500UsbVendorId = 0x10C4;
 constexpr quint16 K500UsbProductId = 0x0321;
 constexpr int HeartbeatIntervalMs = 3200;
+constexpr int PlayerStatusIntervalMs = 400;
 constexpr int ProbeTimeoutMs = 1350;
 constexpr int HandshakeTimeoutMs = 2200;
 constexpr int ReadbackTimeoutMs = 2600;
@@ -44,6 +45,7 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
     m_responseTimer.setSingleShot(true);
     m_probeDelayTimer.setSingleShot(true);
     m_heartbeatTimer.setInterval(HeartbeatIntervalMs);
+    m_playerStatusTimer.setInterval(PlayerStatusIntervalMs);
     m_reconciliationTimer.setSingleShot(true);
     m_schedulerTimer.setSingleShot(true);
     m_schedulerClock.start();
@@ -58,6 +60,8 @@ K500DeviceManager::K500DeviceManager(K500Controller *controller, QObject *parent
             this, &K500DeviceManager::sendProbeHeartbeat);
     connect(&m_heartbeatTimer, &QTimer::timeout,
             this, &K500DeviceManager::heartbeatTick);
+    connect(&m_playerStatusTimer, &QTimer::timeout,
+            this, &K500DeviceManager::playerStatusTick);
     connect(&m_reconciliationTimer, &QTimer::timeout,
             this, &K500DeviceManager::startAuthoritativeReconciliation);
     connect(&m_schedulerTimer, &QTimer::timeout,
@@ -776,6 +780,11 @@ void K500DeviceManager::finishConnected()
     // Reconfirm playback immediately after the long 939-byte connect sync;
     // do not make the TopBar wait one 3.2 s heartbeat interval.
     writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status connect refresh"));
+    // PLAYER_STATUS_RESPONSIVE_POLL_V1 — runtime playback changes can happen
+    // outside SonKuPik. Poll only the cheap E3 status path at sub-second cadence;
+    // keep the slower watchdog heartbeat and all 939-byte readback traffic
+    // unchanged.
+    m_playerStatusTimer.start();
     m_heartbeatTimer.start();
 }
 
@@ -828,6 +837,18 @@ void K500DeviceManager::heartbeatTick()
     }
 
     writeFrame(K500Protocol::heartbeat(), QStringLiteral("Heartbeat 0x1C"));
+}
+
+void K500DeviceManager::playerStatusTick()
+{
+    if (m_stage != Stage::Ready || !connected())
+        return;
+
+    // Device-authoritative UI: do not predict play/pause locally. A 400 ms E3
+    // cadence keeps the TopBar responsive to playback changes made by the K500,
+    // remote source, or manufacturer control surface without touching preset
+    // memory or live parameter scheduling.
+    writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status poll"));
 }
 
 void K500DeviceManager::onBytesReceived(const QByteArray &bytes)
@@ -930,6 +951,7 @@ void K500DeviceManager::resetConnectionState(bool keepError)
     m_responseTimer.stop();
     m_probeDelayTimer.stop();
     m_heartbeatTimer.stop();
+    m_playerStatusTimer.stop();
     m_reconciliationTimer.stop();
     m_reconciliationInProgress = false;
     m_stage = Stage::Idle;

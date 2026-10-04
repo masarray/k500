@@ -46,6 +46,7 @@ void K500DeviceManager::shutdown()
     m_responseTimer.stop();
     m_probeDelayTimer.stop();
     m_heartbeatTimer.stop();
+    m_playerStatusTimer.stop();
     m_stage = Stage::Idle;
     m_parser.reset();
 
