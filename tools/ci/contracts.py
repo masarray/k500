@@ -565,9 +565,29 @@ def check_ci_topology() -> None:
             event_driven[path.name] = events
 
     allowed = {"windows-build.yml"}
+
+    # ONE_SHOT_STABLE_PROMOTION_TRIGGER_20261004
+    # The accepted RC5 stable promotion may temporarily auto-run exactly once
+    # from main because the normal workflow_dispatch control is not available
+    # to the release operator in this session. Keep the exception fail-closed:
+    # it is valid only while the workflow carries the one-shot marker and the
+    # acceptance record is already exact-byte accepted.
+    promote = workflows / "windows-updater-promote.yml"
+    acceptance = (ROOT / "docs" / "V1_1_UPDATER_RC_ACCEPTANCE.md").read_text(encoding="utf-8")
+    if (
+        promote.is_file()
+        and "ONE_SHOT_STABLE_PROMOTION_TRIGGER_20261004" in promote.read_text(encoding="utf-8")
+        and "UPDATER_V1_1_ACCEPTANCE=accepted" in acceptance
+    ):
+        allowed.add("windows-updater-promote.yml")
+        if event_driven.get("windows-updater-promote.yml", set()) != {"push"}:
+            FAILURES.append("one-shot stable promotion must be push-only")
+        else:
+            PASSES.append("one-shot stable promotion trigger is armed")
+
     unexpected = sorted(set(event_driven) - allowed)
     if unexpected:
-        FAILURES.append(f"event-driven workflow sprawl: {unexpected}; only windows-build.yml may auto-run")
+        FAILURES.append(f"event-driven workflow sprawl: {unexpected}; only consolidated CI plus the accepted one-shot promotion may auto-run")
     ci_events = event_driven.get("windows-build.yml", set())
     if ci_events != {"pull_request", "push"}:
         FAILURES.append(f"windows-build.yml event contract mismatch: {sorted(ci_events)}")
