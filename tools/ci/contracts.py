@@ -51,6 +51,14 @@ def require_count(rel: str, token: str, minimum: int) -> None:
         PASSES.append(f"{rel}: {token!r} x{count}")
 
 
+def require_exact_count(rel: str, token: str, expected: int) -> None:
+    count = read(rel).count(token)
+    if count != expected:
+        FAILURES.append(f"{rel}: expected exactly {expected} occurrences of {token!r}, found {count}")
+    else:
+        PASSES.append(f"{rel}: {token!r} exactly x{count}")
+
+
 def check_presets() -> None:
     expected = {
         "01_KONSER_NYANYI.k500": ("KONSER NYANYI", "761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4"),
@@ -219,12 +227,187 @@ def check_ui_contracts() -> None:
     require_count("qml/components/SectionWorkspace.qml", "editable:!root.manualVrActive", 6)
     require_count("qml/components/SectionWorkspace.qml", "showTypes: false", 2)
 
+    # CRASH_SAFE_FIXED_EQ_PAGES_V1 / P5_LAZY_SYSTEM_WORKSPACE_V1 — syntax lint
+    # cannot prove object lifetime. Keep the small structural invariants that
+    # prevent the historical 10/7/5-band graph hot-swap heap-corruption class.
+    require(
+        "qml/components/SystemWorkspace.qml",
+        "P5_LAZY_SYSTEM_WORKSPACE_V1",
+        "Loader",
+        "asynchronous: true",
+        "SystemWorkspaceImpl",
+        "loadRequested",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "P2_DEVICE_PRESET_UI_V1",
+        "MassUploadTransferWindow",
+    )
+    require("CMakeLists.txt", "qml/components/SystemWorkspaceImpl.qml")
+    require(
+        "qml/components/SectionEqGraphHost.qml",
+        "CRASH_SAFE_FIXED_EQ_PAGES_V1",
+    )
+    require_exact_count("qml/components/SectionEqGraphHost.qml", "SectionEqGraph {", 8)
+    forbid("qml/components/SectionEqGraphHost.qml", "Loader {")
+
     # Presentation may never bypass the native controller/engine boundary.
     for path in (ROOT / "qml").rglob("*.qml"):
         data = path.read_text(encoding="utf-8")
         if "K500Controller" in data or "K500WinIo" in data:
             FAILURES.append(f"{path.relative_to(ROOT)}: direct native I/O reference from QML")
     PASSES.append("QML/native ownership boundary")
+
+
+
+def check_public_surface_contracts() -> None:
+    # Donation prompt: preserve the accepted 3-second/no-auto-close behavior,
+    # official QRIS source, readable hierarchy, and strictly voluntary boundary.
+    require(
+        "src/DonationPromptController.cpp",
+        "support/donationPrompt/v1/observedDays",
+        "kRequiredDistinctDays = 3",
+        "qrisAvailable()",
+        "DONATION_QRIS_FAIL_CLOSED_V1",
+        "DONATION_PROMPT_DISTINCT_DAY_V1",
+    )
+    require("src/DonationPromptController.h", "QSettings")
+    forbid(
+        "src/DonationPromptController.cpp",
+        "StudioEngine",
+        "QNetwork",
+        "http://",
+        "https://",
+    )
+    require(
+        "src/main.cpp",
+        "--donation-prompt-preview",
+        'QStringLiteral("donationPrompt")',
+    )
+    require(
+        "qml/Main.qml",
+        "DONATION_UPDATE_PROMPT_ARBITER_V1",
+        "donationPromptDialog.opened",
+    )
+    require(
+        "qml/components/DonationPrompt.qml",
+        "countdownSeconds: 3",
+        "Popup.NoAutoClose",
+        "enabled: root.canAcknowledge",
+        "DONATION_READABLE_HIERARCHY_V2",
+        "DONATION_TEXT_LINKS_V2",
+        "LUCIDE_HEART_FILLED_V1",
+        'name: "heart"',
+        "filled: true",
+        "font.pixelSize: 24",
+        "font.pixelSize: 14",
+        "labelPixelSize: 13",
+        "sourceClipRect: SupportLinks.qrisCrop",
+        "Qt.openUrlExternally(SupportLinks.youtubeUrl)",
+        "Qt.openUrlExternally(SupportLinks.tokopediaUrl)",
+    )
+    require_exact_count("qml/components/DonationPrompt.qml", "font.underline: true", 2)
+    forbid(
+        "qml/components/DonationPrompt.qml",
+        "SupportLinks.merchantName",
+        "SupportLinks.merchantNmid",
+    )
+    require(
+        "qml/theme/SupportLinks.qml",
+        "qrc:/support/qris-sonkupik.png",
+        "https://www.youtube.com/@sonkupik",
+        "https://www.tokopedia.com/dr-sonkupik/",
+        "SONKUPIK, AUDIO DEVELOPER, DIGITAL & KREATIF",
+        "ID1026551401775",
+    )
+    require(
+        "CMakeLists.txt",
+        "resources/support/qris-sonkupik.png",
+        'if(EXISTS "${SONKUPIK_QRIS_FILE}")',
+        "k500_donation_prompt_selftest",
+    )
+
+    qris = ROOT / "resources" / "support" / "qris-sonkupik.png"
+    if not qris.is_file():
+        FAILURES.append("QRIS support asset missing")
+    else:
+        raw = qris.read_bytes()
+        if len(raw) <= 100_000 or raw[:8] != b"\x89PNG\r\n\x1a\n":
+            FAILURES.append("QRIS support asset is not the expected production PNG")
+        elif len(raw) < 24:
+            FAILURES.append("QRIS support asset PNG header is truncated")
+        else:
+            width = int.from_bytes(raw[16:20], "big")
+            height = int.from_bytes(raw[20:24], "big")
+            if width < 600 or height < 600:
+                FAILURES.append(f"QRIS support asset too small: {width}x{height}")
+            else:
+                PASSES.append(f"QRIS production asset: {width}x{height}")
+
+    # About/support link contract.
+    require(
+        "qml/components/AboutDialog.qml",
+        "ABOUT_FLOATING_CARD_V2",
+        "ABOUT_VERSION_BELOW_SUBTITLE_V2",
+        "Qt.application.version",
+        "Copyright © 2026, SonKuPik",
+        "SupportLinks.youtubeUrl",
+        "SupportLinks.tokopediaUrl",
+        "qrc:/assets/SonKuPik-k500-logo.png",
+    )
+    require_exact_count("qml/components/AboutDialog.qml", "Qt.openUrlExternally", 2)
+    forbid("qml/components/AboutDialog.qml", "font.pixelSize: 8")
+    require(
+        "qml/components/TopBar.qml",
+        "signal aboutRequested()",
+        "onClicked:root.aboutRequested()",
+    )
+    require(
+        "qml/Main.qml",
+        "AboutDialog {",
+        "onAboutRequested: aboutDialog.open()",
+    )
+
+    # Selected native-text / Lucide raster baseline. These are intentionally
+    # small optical contracts, not a pixel-perfect theme snapshot.
+    require(
+        "src/AppVersionInit.cpp",
+        "UI_NATIVE_TEXT_RENDERING_V1",
+        "QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering)",
+    )
+    require(
+        "qml/components/LucideIcon.qml",
+        "LUCIDE_CURVE_AA_V1",
+    )
+    require_count("qml/components/LucideIcon.qml", "preferredRendererType: Shape.CurveRenderer", 11)
+    forbid("qml/components/LucideIcon.qml", "layer.samples")
+    require(
+        "qml/components/SoftButton.qml",
+        "renderType: Text.NativeRendering",
+        "font.hintingPreference: Font.PreferFullHinting",
+        "root.compact ? 10",
+        "LUCIDE_OPTICAL_NORMALIZATION_V1",
+        'root.iconName === "usb" ? 1.82',
+        "TEXT_NATIVE_PRESS_STABILITY_V1",
+        "y: mouse.pressed ? 1 : 0",
+    )
+    forbid("qml/components/SoftButton.qml", "scale: mouse.pressed")
+    require(
+        "qml/components/SectionDrawer.qml",
+        "MICRO_TYPE_OPTICAL_POLISH_V1",
+        "font.pixelSize: 10",
+        "y: navPointer.pressed ? 1 : 0",
+        "strokeWidth: 1.85",
+    )
+    require(
+        "qml/components/TopBar.qml",
+        "font.pixelSize: 10",
+        "font.hintingPreference: Font.PreferFullHinting",
+    )
+    require(
+        "qml/components/StudioKnob.qml",
+        "font.pixelSize:root.premium ? 10 : 9",
+    )
 
 
 def check_release_contracts() -> None:
@@ -363,6 +546,7 @@ def main() -> int:
     check_presets()
     check_protocol_and_state()
     check_ui_contracts()
+    check_public_surface_contracts()
     check_release_contracts()
     check_preset_sync()
     check_build_targets()

@@ -30,8 +30,11 @@ def main() -> int:
     event = os.environ.get("GITHUB_EVENT_NAME", "")
     paths = changed_paths()
 
-    build_prefixes = ("src/", "qml/", "resources/", "packaging/", "tests/")
-    build_names = {"CMakeLists.txt"}
+    # CI_SELF_VALIDATION_SCOPE_V1 — changing the consolidated CI implementation
+    # must exercise the Windows suite it controls. Do not let a tools/ci-only PR
+    # validate only the fast Ubuntu contracts.
+    build_prefixes = ("src/", "qml/", "resources/", "packaging/", "tests/", "tools/ci/")
+    build_names = {"CMakeLists.txt", ".github/workflows/windows-build.yml"}
     force_build = event in {"push", "workflow_dispatch"} or "<unknown-diff>" in paths
     build = force_build or any(p in build_names or p.startswith(build_prefixes) for p in paths)
 
@@ -42,7 +45,11 @@ def main() -> int:
         "qml/components/UpdateDialog.qml",
         "assets/SonKuPik-k500-logo.png",
     )
-    installer_names = {"CMakeLists.txt", "src/AppVersionInit.cpp"}
+    installer_names = {
+        "CMakeLists.txt",
+        "src/AppVersionInit.cpp",
+        "tools/ci/installer_smoke.ps1",
+    }
     installer = any(
         p in installer_names
         or any(p.startswith(prefix) for prefix in installer_prefixes)

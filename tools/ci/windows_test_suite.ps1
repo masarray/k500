@@ -56,8 +56,28 @@ Write-Host "==> Deploy Qt runtime"
 windeployqt --release --qmldir qml "$PackageDir/SonKuPik-K500.exe"
 if ($LASTEXITCODE -ne 0) { throw "windeployqt failed" }
 
-foreach ($arg in @("--font-self-test", "--protocol-self-test", "--engine-self-test", "--update-health-check=1.1.0")) {
+foreach ($arg in @("--font-self-test", "--protocol-self-test", "--update-health-check=1.1.0")) {
     Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @($arg) "Runtime $arg"
 }
+
+# FINAL_DEVICE_PERFORMANCE_SMOKE_V1 — keep the old hardware-free qualification
+# signal, but run it against the already-built/deployed executable instead of
+# paying for another Qt/MSVC workflow.
+Write-Host "==> Final device performance smoke"
+$perfReport = Join-Path (Resolve-Path $BuildDir).Path "final-device-performance-smoke.json"
+Remove-Item $perfReport -Force -ErrorAction SilentlyContinue
+Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @(
+    "--engine-self-test",
+    "--device-perf",
+    "--device-perf-report=$perfReport"
+) "Engine + device performance smoke"
+if (-not (Test-Path $perfReport)) { throw "Device performance smoke did not create JSON report" }
+$perf = Get-Content -Raw $perfReport | ConvertFrom-Json
+if ($perf.schema -ne "sonkupik-k500-device-performance-v1") { throw "Device performance report schema mismatch" }
+if ([string]::IsNullOrWhiteSpace($perf.gitCommit) -or $perf.gitCommit -eq "unknown") { throw "Device performance report missing exact Git commit" }
+if ($perf.bootstrapToEventLoopMs -lt 0) { throw "Bootstrap/event-loop timing was not recorded" }
+if (-not $perf.runtime.startupPostQml.valid) { throw "Windows runtime snapshot was not captured" }
+if ($perf.eventLoop.samples -lt 1) { throw "Event-loop sampler did not run" }
+if ($perf.gates.scope -notmatch "Performance-only") { throw "Performance/manual acceptance scope separation missing" }
 
 Write-Host "K500 consolidated Windows regression suite PASS"
