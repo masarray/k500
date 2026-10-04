@@ -42,6 +42,7 @@ Item {
         case "chevron-left": return "m15 18-6-6 6-6"
         case "chevron-right": return "m9 18 6-6-6-6"
         case "chevron-down": return "m6 9 6 6 6-6"
+        case "heart": return "M2 9.5a5.5 5.5 0 0 1 9.591-3.676.56.56 0 0 0 .818 0A5.49 5.49 0 0 1 22 9.5c0 2.29-1.5 4-3 5.5l-5.492 5.313a2 2 0 0 1-3 .019L5 15c-1.5-1.5-3-3.2-3-5.5"
         default: return "M22 12 A10 10 0 1 1 2 12 A10 10 0 1 1 22 12 M13 12 A1 1 0 1 1 11 12 A1 1 0 1 1 13 12"
         }
     }

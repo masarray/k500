@@ -9,8 +9,8 @@ Popup {
     parent: Overlay.overlay
     modal: true
     focus: true
-    width: 540
-    height: 670
+    width: Math.min(640, parent ? parent.width - 48 : 640)
+    height: Math.min(760, parent ? parent.height - 48 : 760)
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
     padding: 0
@@ -21,7 +21,7 @@ Popup {
     readonly property bool qrisReady: promptController && promptController.qrisAvailable
 
     Overlay.modal: Rectangle {
-        color: "#C0060A0E"
+        color: "#D0060A0E"
     }
 
     enter: Transition {
@@ -51,19 +51,19 @@ Popup {
     background: Item {
         Rectangle {
             anchors.fill: parent
-            anchors.margins: -10
-            radius: 22
-            color: "#66000000"
+            anchors.margins: -12
+            radius: 24
+            color: "#72000000"
         }
 
         Rectangle {
             anchors.fill: parent
-            radius: 16
+            radius: 17
             border.width: 1
-            border.color: "#314048"
+            border.color: "#31545A"
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#151D23" }
-                GradientStop { position: 0.22; color: "#0E151A" }
+                GradientStop { position: 0.0; color: "#142027" }
+                GradientStop { position: 0.20; color: "#0E171C" }
                 GradientStop { position: 1.0; color: "#080D11" }
             }
         }
@@ -83,83 +83,106 @@ Popup {
         }
     }
 
+    // DONATION_READABLE_HIERARCHY_V2 — QR + gratitude are primary.
+    // Supporting copy, links, legal note and dismissal are deliberately quieter.
     contentItem: ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 22
-        spacing: 10
+        anchors.margins: 32
+        spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
-            spacing: 10
+            Layout.preferredHeight: 42
+            spacing: 12
 
             Rectangle {
-                Layout.preferredWidth: 36
-                Layout.preferredHeight: 36
-                radius: 9
-                color: "#0A2225"
+                Layout.preferredWidth: 42
+                Layout.preferredHeight: 42
+                radius: 21
+                color: "#24F36B6B"
                 border.width: 1
-                border.color: "#26656B"
+                border.color: "#55F36B6B"
 
-                Text {
+                // LUCIDE_HEART_FILLED_V1 — use the existing Lucide renderer,
+                // not a text glyph, so the support mark stays optically crisp.
+                LucideIcon {
                     anchors.centerIn: parent
-                    text: "♡"
-                    color: Theme.accent
-                    renderType: Text.NativeRendering
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 21
-                    font.weight: Font.DemiBold
+                    width: 25
+                    height: 25
+                    name: "heart"
+                    color: Theme.red
+                    strokeWidth: 1.7
+                    filled: true
                 }
             }
 
-            ColumnLayout {
+            Text {
                 Layout.fillWidth: true
-                spacing: 0
-
-                Text {
-                    text: "DUKUNG PENGEMBANGAN SONKUPIK"
-                    color: Theme.accent
-                    renderType: Text.NativeRendering
-                    font.family: Theme.monoFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
-                    font.letterSpacing: .8
-                }
-
-                Text {
-                    text: "Terima kasih sudah menggunakan K500"
-                    color: Theme.text
-                    renderType: Text.NativeRendering
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 16
-                    font.weight: Font.DemiBold
-                }
+                text: "DUKUNG PENGEMBANGAN SONKUPIK"
+                color: Theme.accent
+                renderType: Text.NativeRendering
+                font.family: Theme.fontFamily
+                font.pixelSize: 11
+                font.weight: Font.DemiBold
+                font.letterSpacing: .72
+                elide: Text.ElideRight
             }
         }
+
+        Item { Layout.preferredHeight: 10 }
 
         Text {
             Layout.fillWidth: true
-            text: "Jika aplikasi dan preset SonKuPik membantu, dukungan sukarela Anda membantu pengujian, penyempurnaan software, dan pengembangan preset-preset baru."
+            text: "Terima kasih sudah menggunakan K500"
+            color: "#F1F6F8"
+            renderType: Text.NativeRendering
+            font.family: Theme.fontFamily
+            font.pixelSize: 24
+            font.weight: Font.DemiBold
+            font.hintingPreference: Font.PreferFullHinting
+            wrapMode: Text.Wrap
+            lineHeight: 1.08
+        }
+
+        Item { Layout.preferredHeight: 8 }
+
+        Text {
+            Layout.fillWidth: true
+            text: "Jika aplikasi dan preset SonKuPik membantu, donasi sukarela Anda ikut mendukung pengembangan preset-preset baru yang lebih baik."
             color: Theme.textSoft
             renderType: Text.NativeRendering
             font.family: Theme.fontFamily
-            font.pixelSize: 10
+            font.pixelSize: 14
             font.weight: Font.Medium
+            font.hintingPreference: Font.PreferFullHinting
             wrapMode: Text.Wrap
-            lineHeight: 1.14
+            lineHeight: 1.34
         }
+
+        Item { Layout.preferredHeight: 18 }
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 320
-            Layout.preferredHeight: 320
-            radius: 14
-            color: "#F7F9FA"
+            Layout.preferredWidth: 390
+            Layout.preferredHeight: 390
+            radius: 15
+            color: "#FAFCFD"
             border.width: 1
-            border.color: root.qrisReady ? "#7BC8CC" : "#C8D0D5"
+            border.color: root.qrisReady ? "#81E9ED" : "#C8D0D5"
+
+            Rectangle {
+                anchors.fill: parent
+                anchors.margins: -2
+                radius: 17
+                color: "transparent"
+                border.width: 1
+                border.color: "#3024E9F2"
+                visible: root.qrisReady
+            }
 
             Image {
                 anchors.fill: parent
-                anchors.margins: 12
+                anchors.margins: 14
                 source: root.qrisReady ? SupportLinks.qrisSource : ""
                 sourceClipRect: SupportLinks.qrisCrop
                 fillMode: Image.PreserveAspectFit
@@ -171,8 +194,8 @@ Popup {
 
             Column {
                 anchors.centerIn: parent
-                width: parent.width - 44
-                spacing: 8
+                width: parent.width - 56
+                spacing: 10
                 visible: !root.qrisReady
 
                 Text {
@@ -181,8 +204,8 @@ Popup {
                     text: "QRIS RESMI"
                     color: "#1B252B"
                     font.family: Theme.fontFamily
-                    font.pixelSize: 16
-                    font.weight: Font.Bold
+                    font.pixelSize: 18
+                    font.weight: Font.DemiBold
                 }
 
                 Text {
@@ -191,137 +214,108 @@ Popup {
                     text: "Belum dibundel pada build ini.\nTidak ada QR pengganti yang dibuat otomatis."
                     color: "#53616A"
                     font.family: Theme.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: 13
                     font.weight: Font.Medium
                     wrapMode: Text.Wrap
+                    lineHeight: 1.25
                 }
             }
         }
 
-        ColumnLayout {
-            Layout.fillWidth: true
-            spacing: 1
+        Item { Layout.preferredHeight: 14 }
 
-            Text {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: SupportLinks.merchantName
-                color: Theme.text
-                renderType: Text.NativeRendering
-                font.family: Theme.fontFamily
-                font.pixelSize: 10
-                font.weight: Font.DemiBold
-                elide: Text.ElideRight
-            }
-
-            Text {
-                Layout.fillWidth: true
-                horizontalAlignment: Text.AlignHCenter
-                text: "NMID " + SupportLinks.merchantNmid
-                color: Theme.textDim
-                renderType: Text.NativeRendering
-                font.family: Theme.monoFamily
-                font.pixelSize: 9
-                font.weight: Font.Medium
-            }
-        }
-
+        // DONATION_TEXT_LINKS_V2 — text hyperlinks, not button-shaped cards.
         RowLayout {
-            Layout.fillWidth: true
-            spacing: 8
+            Layout.alignment: Qt.AlignHCenter
+            Layout.preferredHeight: 34
+            spacing: 18
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 42
-                radius: 8
-                color: youtubeMouse.containsMouse ? "#151E24" : "#0C1217"
-                border.width: 1
-                border.color: youtubeMouse.containsMouse ? "#485861" : "#26323A"
+            Item {
+                id: youtubeLink
+                Layout.preferredWidth: youtubeText.implicitWidth + 18
+                Layout.preferredHeight: 34
+                activeFocusOnTab: true
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 11
-                    anchors.rightMargin: 11
-                    spacing: 8
-
-                    Text {
-                        text: "▶"
-                        color: "#FF626B"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.Bold
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Tutorial YouTube SonKuPik"
-                        color: Theme.textSoft
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-                    Text {
-                        text: "↗"
-                        color: Theme.textFaint
-                        font.pixelSize: 13
-                    }
+                Text {
+                    id: youtubeText
+                    anchors.centerIn: parent
+                    text: "Tutorial YouTube SonKuPik"
+                    color: youtubeLink.activeFocus || youtubeLinkMouse.containsMouse ? "#A8FAFD" : Theme.accent
+                    renderType: Text.NativeRendering
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    font.underline: true
                 }
 
                 MouseArea {
-                    id: youtubeMouse
+                    id: youtubeLinkMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: youtubeLink.forceActiveFocus()
                     onClicked: Qt.openUrlExternally(SupportLinks.youtubeUrl)
                 }
+
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        Qt.openUrlExternally(SupportLinks.youtubeUrl)
+                        event.accepted = true
+                    }
+                }
             }
 
             Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 42
-                radius: 8
-                color: tokopediaMouse.containsMouse ? "#151E24" : "#0C1217"
-                border.width: 1
-                border.color: tokopediaMouse.containsMouse ? "#485861" : "#26323A"
+                Layout.preferredWidth: 1
+                Layout.preferredHeight: 20
+                color: "#3D5360"
+            }
 
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 11
-                    anchors.rightMargin: 11
-                    spacing: 8
+            Item {
+                id: tokopediaLink
+                Layout.preferredWidth: tokopediaText.implicitWidth + 18
+                Layout.preferredHeight: 34
+                activeFocusOnTab: true
 
-                    Text {
-                        text: "●"
-                        color: "#42B549"
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 11
-                        font.weight: Font.Bold
-                    }
-                    Text {
-                        Layout.fillWidth: true
-                        text: "Order K500 di Tokopedia"
-                        color: Theme.textSoft
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.DemiBold
-                        elide: Text.ElideRight
-                    }
-                    Text {
-                        text: "↗"
-                        color: Theme.textFaint
-                        font.pixelSize: 13
-                    }
+                Text {
+                    id: tokopediaText
+                    anchors.centerIn: parent
+                    text: "Order K500 di Tokopedia"
+                    color: tokopediaLink.activeFocus || tokopediaLinkMouse.containsMouse ? "#A8FAFD" : Theme.accent
+                    renderType: Text.NativeRendering
+                    font.family: Theme.fontFamily
+                    font.pixelSize: 13
+                    font.weight: Font.DemiBold
+                    font.underline: true
                 }
 
                 MouseArea {
-                    id: tokopediaMouse
+                    id: tokopediaLinkMouse
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    onPressed: tokopediaLink.forceActiveFocus()
                     onClicked: Qt.openUrlExternally(SupportLinks.tokopediaUrl)
+                }
+
+                Keys.onPressed: function(event) {
+                    if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter || event.key === Qt.Key_Space) {
+                        Qt.openUrlExternally(SupportLinks.tokopediaUrl)
+                        event.accepted = true
+                    }
                 }
             }
         }
+
+        Item { Layout.preferredHeight: 8 }
+
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 1
+            color: "#27363E"
+        }
+
+        Item { Layout.preferredHeight: 10 }
 
         Text {
             Layout.fillWidth: true
@@ -329,20 +323,20 @@ Popup {
             color: Theme.textDim
             renderType: Text.NativeRendering
             font.family: Theme.fontFamily
-            font.pixelSize: 9
+            font.pixelSize: 11
+            font.weight: Font.Medium
             horizontalAlignment: Text.AlignHCenter
             wrapMode: Text.Wrap
         }
 
-        Item {
-            Layout.fillHeight: true
-        }
+        Item { Layout.fillHeight: true; Layout.minimumHeight: 12 }
 
         SoftButton {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 150
-            Layout.preferredHeight: 34
+            Layout.preferredWidth: 176
+            Layout.preferredHeight: 42
             text: root.canAcknowledge ? "OK" : "OK (" + root.countdownSeconds + ")"
+            labelPixelSize: 13
             compact: false
             mixerSelect: true
             primaryAction: true
