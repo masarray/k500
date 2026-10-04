@@ -20,20 +20,13 @@ on:
       - 'tests/windows/update_failure_installer_fixture.cpp'
       - 'tests/windows/update_migration_uninstaller_fixture.cpp'
       - '.github/workflows/smart-install-update-guard.yml'
+  # EXACT_MAIN_SMART_INSTALL_GUARD_V1
+  # windows-updater-rc.yml requires this guard to have a successful run for the
+  # exact main commit being packaged. Therefore every main push must run it,
+  # even when the commit only changes unrelated GUI/DSP code. PRs remain
+  # path-filtered above so development CI stays economical.
   push:
     branches: [ main ]
-    paths:
-      - 'CMakeLists.txt'
-      - 'src/AppVersionInit.cpp'
-      - 'src/AppUpdateManager.*'
-      - 'qml/Main.qml'
-      - 'qml/components/UpdateDialog.qml'
-      - 'packaging/windows/installer.iss'
-      - 'packaging/windows/update_helper.cpp'
-      - 'tests/windows/update_handoff_fixture.cpp'
-      - 'tests/windows/update_failure_installer_fixture.cpp'
-      - 'tests/windows/update_migration_uninstaller_fixture.cpp'
-      - '.github/workflows/smart-install-update-guard.yml'
 
 jobs:
   guard:
