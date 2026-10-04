@@ -295,8 +295,11 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0045, 5);
         putFileU8(memory, 0x0046, 13);
         putFileU8(memory, 0x0047, 4);
-        putFileU16(memory, 0x00D8, 17);
-        putFileU16(memory, 0x00DA, 19);
+        // SURROUND_DELAY_ACTUAL_REFERENCE_V1 — native KTV screenshot/capture
+        // reference state: L=14 ms (4.8 m), R=20 ms (6.8 m). These are
+        // hydrated hardware values, not application defaults.
+        putFileU16(memory, 0x00D8, 14);
+        putFileU16(memory, 0x00DA, 20);
 
         // Center output.
         putFileU8(memory, 0x004C, 89); // +7 dB
@@ -434,8 +437,8 @@ int main(int argc, char *argv[])
             && mainOutput.value(QStringLiteral("lDelayMs")).toInt() == 50
             && mainOutput.value(QStringLiteral("rDelayMs")).toInt() == 20
             && qFuzzyCompare(surroundOutput.value(QStringLiteral("lVolDb")).toDouble(), 9.0)
-            && surroundOutput.value(QStringLiteral("lDelayMs")).toInt() == 17
-            && surroundOutput.value(QStringLiteral("rDelayMs")).toInt() == 19
+            && surroundOutput.value(QStringLiteral("lDelayMs")).toInt() == 14
+            && surroundOutput.value(QStringLiteral("rDelayMs")).toInt() == 20
             && qFuzzyCompare(centerOutput.value(QStringLiteral("outputVolDb")).toDouble(), 7.0)
             && centerOutput.value(QStringLiteral("outputDelayMs")).toInt() == 30
             && qFuzzyCompare(subOutput.value(QStringLiteral("outputVolDb")).toDouble(), 6.0)
