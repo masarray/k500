@@ -5,6 +5,14 @@ name: Windows Updater Stable Promotion
 # metadata, and then published. Acceptance provenance lives in the repository.
 on:
   workflow_dispatch:
+  # ONE_SHOT_STABLE_PROMOTION_TRIGGER_20261004
+  # Temporary exact-main trigger used only to publish accepted RC5 as v1.1.0.
+  # Remove immediately after successful stable publication.
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/windows-updater-promote.yml'
 
 permissions:
   contents: write
