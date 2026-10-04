@@ -422,15 +422,18 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         notify();
     };
 
+    syncDouble(m_musicInitVol, fileU8(memory, 0x000B), [this] { emit musicInitVolChanged(); });
     syncDouble(m_musicMaxVol, fileU8(memory, 0x000C), [this] { emit musicMaxVolChanged(); });
     syncDouble(m_masterMusic,
                qMin<double>(fileU8(memory, 0x0008), m_musicMaxVol),
                [this] { emit masterMusicChanged(); });
+    syncDouble(m_micInitVol, fileU8(memory, 0x0012), [this] { emit micInitVolChanged(); });
     syncDouble(m_micMaxVol, fileU8(memory, 0x0013), [this] { emit micMaxVolChanged(); });
     syncDouble(m_masterMic,
                qMin<double>(fileU8(memory, 0x0009), m_micMaxVol),
                [this] { emit masterMicChanged(); });
     syncDouble(m_masterFx, fileU8(memory, 0x000A), [this] { emit masterFxChanged(); });
+    syncDouble(m_effectInitLevel, fileU8(memory, 0x001D), [this] { emit effectInitLevelChanged(); });
     syncInt(m_musicKey, static_cast<int>(fileU8(memory, 0x0011)) - 7, [this] { emit musicKeyChanged(); });
     syncDouble(m_input1Gain, static_cast<int>(fileU8(memory, 0x001E)) - 12, [this] { emit input1GainChanged(); });
     syncDouble(m_input2Gain, static_cast<int>(fileU8(memory, 0x001F)) - 12, [this] { emit input2GainChanged(); });
@@ -782,6 +785,15 @@ void StudioEngine::setMasterMusic(double value)
         emit masterMusicChanged();
 }
 
+void StudioEngine::setMusicInitVol(double value)
+{
+    if (assign(m_musicInitVol,
+               clampValue(value, K500Protocol::NativeRange::StartupLevelMin,
+                          K500Protocol::NativeRange::StartupLevelMax),
+               "system.musicInitVol"))
+        emit musicInitVolChanged();
+}
+
 void StudioEngine::setMusicMaxVol(double value)
 {
     const double nextMax = clampValue(value, 0.0, K500Protocol::TopVolumeMax);
@@ -811,6 +823,15 @@ void StudioEngine::setMasterMic(double value)
         emit masterMicChanged();
 }
 
+void StudioEngine::setMicInitVol(double value)
+{
+    if (assign(m_micInitVol,
+               clampValue(value, K500Protocol::NativeRange::StartupLevelMin,
+                          K500Protocol::NativeRange::StartupLevelMax),
+               "system.micInitVol"))
+        emit micInitVolChanged();
+}
+
 void StudioEngine::setMicMaxVol(double value)
 {
     const double nextMax = clampValue(value, 0.0, K500Protocol::TopVolumeMax);
@@ -833,6 +854,15 @@ void StudioEngine::setMicMaxVol(double value)
 void StudioEngine::setMasterFx(double value)
 {
     if (assign(m_masterFx, clampValue(value, 0.0, 100.0), "system.topEffectVol")) emit masterFxChanged();
+}
+
+void StudioEngine::setEffectInitLevel(double value)
+{
+    if (assign(m_effectInitLevel,
+               clampValue(value, K500Protocol::NativeRange::StartupLevelMin,
+                          K500Protocol::NativeRange::StartupLevelMax),
+               "system.effectInitLevel"))
+        emit effectInitLevelChanged();
 }
 
 void StudioEngine::syncMusicCrossoverModel()

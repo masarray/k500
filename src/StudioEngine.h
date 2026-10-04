@@ -117,10 +117,13 @@ class StudioEngine final : public QObject
     Q_PROPERTY(double uDiskGain READ uDiskGain WRITE setUDiskGain NOTIFY uDiskGainChanged)
     Q_PROPERTY(double digitalGain READ digitalGain WRITE setDigitalGain NOTIFY digitalGainChanged)
     Q_PROPERTY(double masterMusic READ masterMusic WRITE setMasterMusic NOTIFY masterMusicChanged)
+    Q_PROPERTY(double musicInitVol READ musicInitVol WRITE setMusicInitVol NOTIFY musicInitVolChanged)
     Q_PROPERTY(double musicMaxVol READ musicMaxVol WRITE setMusicMaxVol NOTIFY musicMaxVolChanged)
     Q_PROPERTY(double masterMic READ masterMic WRITE setMasterMic NOTIFY masterMicChanged)
+    Q_PROPERTY(double micInitVol READ micInitVol WRITE setMicInitVol NOTIFY micInitVolChanged)
     Q_PROPERTY(double micMaxVol READ micMaxVol WRITE setMicMaxVol NOTIFY micMaxVolChanged)
     Q_PROPERTY(double masterFx READ masterFx WRITE setMasterFx NOTIFY masterFxChanged)
+    Q_PROPERTY(double effectInitLevel READ effectInitLevel WRITE setEffectInitLevel NOTIFY effectInitLevelChanged)
     Q_PROPERTY(QString lastChangedPath READ lastChangedPath NOTIFY stateEdited)
 
 public:
@@ -212,10 +215,13 @@ public:
     double uDiskGain() const { return m_uDiskGain; }
     double digitalGain() const { return m_digitalGain; }
     double masterMusic() const { return m_masterMusic; }
+    double musicInitVol() const { return m_musicInitVol; }
     double musicMaxVol() const { return m_musicMaxVol; }
     double masterMic() const { return m_masterMic; }
+    double micInitVol() const { return m_micInitVol; }
     double micMaxVol() const { return m_micMaxVol; }
     double masterFx() const { return m_masterFx; }
+    double effectInitLevel() const { return m_effectInitLevel; }
     QString lastChangedPath() const { return m_lastChangedPath; }
 
 public slots:
@@ -248,10 +254,13 @@ public slots:
     void setUDiskGain(double value);
     void setDigitalGain(double value);
     void setMasterMusic(double value);
+    void setMusicInitVol(double value);
     void setMusicMaxVol(double value);
     void setMasterMic(double value);
+    void setMicInitVol(double value);
     void setMicMaxVol(double value);
     void setMasterFx(double value);
+    void setEffectInitLevel(double value);
 
 signals:
     void deviceStateChanged();
@@ -271,10 +280,13 @@ signals:
     void uDiskGainChanged();
     void digitalGainChanged();
     void masterMusicChanged();
+    void musicInitVolChanged();
     void musicMaxVolChanged();
     void masterMicChanged();
+    void micInitVolChanged();
     void micMaxVolChanged();
     void masterFxChanged();
+    void effectInitLevelChanged();
     void stateEdited(const QString &path, const QVariant &value);
 
 private:
@@ -321,9 +333,12 @@ private:
     double m_uDiskGain = -4.0;
     double m_digitalGain = -4.0;
     double m_masterMusic = 35.0;
+    double m_musicInitVol = 25.0;
     double m_musicMaxVol = 84.0;
     double m_masterMic = 35.0;
+    double m_micInitVol = 25.0;
     double m_micMaxVol = 84.0;
     double m_masterFx = 35.0;
+    double m_effectInitLevel = 25.0;
     QString m_lastChangedPath;
 };

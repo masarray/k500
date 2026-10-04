@@ -83,6 +83,28 @@ State layers must remain distinct:
 
 A refactor that makes one layer masquerade as another is a regression even if the UI looks simpler.
 
+## UI interaction-state invariant
+
+Qt/QML GUI objects remain on the GUI thread. Do **not** create a background
+"GUI worker" that mutates QML objects. The dedicated worker boundary is for
+native transport/I/O.
+
+For every interactive control surface:
+
+- model/delegate identity must remain stable for the full pointer/keyboard gesture;
+- a live value change must update the existing delegate in place, never rebuild
+  the model that owns the active `MouseArea`;
+- gesture-local presentation owns the value until release/cancel;
+- StudioEngine owns semantic live UI intent; QML is presentation/gesture only;
+- authoritative connect/Recall/reconciliation may replace values, but must not
+  masquerade as an ordinary live edit;
+- changing one semantic control must never reset unrelated sibling controls;
+- dynamic JS arrays that embed live engine/device values must not be used as a
+  `Repeater`/`ListView` model when those values can change during interaction.
+
+This extends the existing crash-proof fixed-model rule beyond EQ pages to all
+interactive racks. A visually correct refactor that recreates a delegate during
+drag is a regression.
 ## Stable preset transaction truth
 
 - Active-memory readback is exactly `0x03AB` = **939 bytes**.

@@ -149,6 +149,28 @@ Item {
                                              && root.normalizedBtNameDraft() !== String(root.currentBtName || "").trim()
     readonly property int lowerRackHeight: 304
 
+    // STARTUP_LIMIT_STABLE_MODEL_V1 — metadata identity is constant for the
+    // lifetime of this workspace. Live values are owned by StudioEngine and
+    // resolved in-place by RackFaderPanel; changing one value must never rebuild
+    // all five delegates or cancel an active pointer grab.
+    readonly property var startupLimitChannels: [
+        {label:"MUSIC INIT",from:0,to:84,step:1,unit:"",decimals:0},
+        {label:"MUSIC MAX",from:0,to:84,step:1,unit:"",decimals:0},
+        {label:"MIC INIT",from:0,to:84,step:1,unit:"",decimals:0},
+        {label:"MIC MAX",from:0,to:84,step:1,unit:"",decimals:0},
+        {label:"EFFECT INIT",from:0,to:84,step:1,unit:"",decimals:0}
+    ]
+    function startupLimitValue(label, fallback) {
+        if (!root.engine) return fallback
+        var key = String(label || "").toUpperCase()
+        if (key === "MUSIC INIT") return Number(root.engine.musicInitVol)
+        if (key === "MUSIC MAX") return Number(root.engine.musicMaxVol)
+        if (key === "MIC INIT") return Number(root.engine.micInitVol)
+        if (key === "MIC MAX") return Number(root.engine.micMaxVol)
+        if (key === "EFFECT INIT") return Number(root.engine.effectInitLevel)
+        return fallback
+    }
+
     onSelectedDeviceModeNameChanged: root.modeNameDraft = root.selectedDeviceModeName
     onCurrentBtNameChanged: root.btNameDraft = root.currentBtName
 
@@ -900,13 +922,9 @@ Item {
                 Layout.fillHeight:true
                 Layout.preferredWidth:466
                 title:"Startup Limits"
-                channels:[
-                    {label:"MUSIC INIT",value:Number(root.systemValue("musicInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
-                    {label:"MUSIC MAX",value:Number(root.engine.musicMaxVol),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
-                    {label:"MIC INIT",value:Number(root.systemValue("micInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
-                    {label:"MIC MAX",value:Number(root.engine.micMaxVol),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
-                    {label:"EFFECT INIT",value:Number(root.systemValue("effectInitLevel",25)),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady}
-                ]
+                channels:root.startupLimitChannels
+                valueResolver:root.startupLimitValue
+                interactionEnabled:root.deviceConnected && root.engine.deviceStateReady
             }
 
             StudioPanel {

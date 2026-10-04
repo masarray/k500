@@ -390,10 +390,13 @@ int main(int argc, char *argv[])
             && state.value(QStringLiteral("memorySize")).toInt() == 0x03AB
             && state.value(QStringLiteral("presetName")).toString() == QStringLiteral("KARAOKE ARTIST")
             && qFuzzyCompare(studioEngine.masterMusic(), 61.0)
+            && qFuzzyCompare(studioEngine.musicInitVol(), 25.0)
             && qFuzzyCompare(studioEngine.musicMaxVol(), 84.0)
             && qFuzzyCompare(studioEngine.masterMic(), 57.0)
+            && qFuzzyCompare(studioEngine.micInitVol(), 26.0)
             && qFuzzyCompare(studioEngine.micMaxVol(), 82.0)
             && qFuzzyCompare(studioEngine.masterFx(), 49.0)
+            && qFuzzyCompare(studioEngine.effectInitLevel(), 27.0)
             && studioEngine.musicKey() == 3
             && qFuzzyCompare(studioEngine.input1Gain(), 3.0)
             && qFuzzyCompare(studioEngine.input2Gain(), -1.0)
@@ -468,16 +471,25 @@ int main(int argc, char *argv[])
         // MUSIC_MAX_NATIVE_CEILING_V1 — lowering Max clamps current Music master
         // immediately; raising Max back does not raise the master.
         const int editsBeforeCeilingTest = hydrationEdits;
+        const double musicInitBeforeMaxEdit = studioEngine.musicInitVol();
+        const double micInitBeforeMaxEdit = studioEngine.micInitVol();
+        const double effectInitBeforeMaxEdit = studioEngine.effectInitLevel();
         studioEngine.setMusicMaxVol(25);
         const bool loweredCeilingValid =
             qFuzzyCompare(studioEngine.musicMaxVol(), 25.0)
             && qFuzzyCompare(studioEngine.masterMusic(), 25.0)
+            && qFuzzyCompare(studioEngine.musicInitVol(), musicInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.micInitVol(), micInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.effectInitLevel(), effectInitBeforeMaxEdit)
             && studioEngine.lastChangedPath() == QStringLiteral("system.musicMaxVol")
             && hydrationEdits == editsBeforeCeilingTest + 1;
         studioEngine.setMusicMaxVol(84);
         const bool raisedCeilingValid =
             qFuzzyCompare(studioEngine.musicMaxVol(), 84.0)
             && qFuzzyCompare(studioEngine.masterMusic(), 25.0)
+            && qFuzzyCompare(studioEngine.musicInitVol(), musicInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.micInitVol(), micInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.effectInitLevel(), effectInitBeforeMaxEdit)
             && hydrationEdits == editsBeforeCeilingTest + 2;
         if (!loweredCeilingValid || !raisedCeilingValid)
             return 7;
@@ -488,12 +500,18 @@ int main(int argc, char *argv[])
         const bool loweredMicCeilingValid =
             qFuzzyCompare(studioEngine.micMaxVol(), 30.0)
             && qFuzzyCompare(studioEngine.masterMic(), 30.0)
+            && qFuzzyCompare(studioEngine.musicInitVol(), musicInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.micInitVol(), micInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.effectInitLevel(), effectInitBeforeMaxEdit)
             && studioEngine.lastChangedPath() == QStringLiteral("system.micMaxVol")
             && hydrationEdits == editsBeforeMicCeilingTest + 1;
         studioEngine.setMicMaxVol(82);
         const bool raisedMicCeilingValid =
             qFuzzyCompare(studioEngine.micMaxVol(), 82.0)
             && qFuzzyCompare(studioEngine.masterMic(), 30.0)
+            && qFuzzyCompare(studioEngine.musicInitVol(), musicInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.micInitVol(), micInitBeforeMaxEdit)
+            && qFuzzyCompare(studioEngine.effectInitLevel(), effectInitBeforeMaxEdit)
             && hydrationEdits == editsBeforeMicCeilingTest + 2;
         if (!loweredMicCeilingValid || !raisedMicCeilingValid)
             return 7;
