@@ -66,11 +66,12 @@ foreach ($arg in @("--font-self-test", "--protocol-self-test", "--update-health-
 Write-Host "==> Final device performance smoke"
 $perfReport = Join-Path (Resolve-Path $BuildDir).Path "final-device-performance-smoke.json"
 Remove-Item $perfReport -Force -ErrorAction SilentlyContinue
-Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @(
+$perfArgs = @(
     "--engine-self-test",
     "--device-perf",
     "--device-perf-report=$perfReport"
-) "Engine + device performance smoke"
+)
+Invoke-Checked -Exe "$PackageDir/SonKuPik-K500.exe" -Arguments $perfArgs -Label "Engine + device performance smoke"
 if (-not (Test-Path $perfReport)) { throw "Device performance smoke did not create JSON report" }
 $perf = Get-Content -Raw $perfReport | ConvertFrom-Json
 if ($perf.schema -ne "sonkupik-k500-device-performance-v1") { throw "Device performance report schema mismatch" }
