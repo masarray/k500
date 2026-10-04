@@ -10,7 +10,7 @@ UPDATER_V1_1_USER_SHA256=
 
 This record is the fail-closed publication gate for the P1–P4 Windows updater lifecycle. It covers desktop installation/update behavior only; it does not broaden the existing Windows x64 + USB HID K500 hardware support claim.
 
-## RC3 validation evidence and RC4 closure
+## RC3/RC4 validation evidence and RC5 final-candidate closure
 
 RC3 was published as `v1.1.0-rc.3` from exact commit `b5ff360bcebe8afc18a01ac7e303c0fde67cb76b` and completed its exact-head qualification workflow successfully.
 
@@ -25,7 +25,9 @@ The automated smart-install/update guard independently covers the persistence/cl
 
 RC3 is **not** the final stable candidate because current `main` subsequently synchronized the ten official preset filenames through PR #108. The public distribution policy is also being simplified to **Smart Installer only**: RC/stable publication retains the machine Setup plus the scope-matched per-user package required by the updater, while the Portable ZIP is removed from the v1.1 release contract.
 
-The next immutable candidate is therefore RC4 from one exact post-policy `main` commit. RC3 desktop results remain valid updater-regression evidence because the intervening changes do not alter the updater runtime/helper/installer implementation.
+RC4 was subsequently published from exact commit `3fa49b3627ffd0631e9e3915413775db65725852`, but it predates the final capture-backed K500 protocol/readback closure, output-delay/crossover completion, Adj Manner hardware-ownership semantics, and the final voluntary QRIS support integration. Those changes are part of the application binary and therefore RC4 cannot be promoted as v1.1.0 stable.
+
+The next immutable candidate is **RC5** from one exact post-merge `main` commit. RC3/RC4 updater desktop results remain valid regression evidence for the updater lifecycle itself, but public stable provenance must bind to the newer RC5 bytes because stable promotion is byte-identical and may not rebuild after acceptance.
 
 ## Functional desktop status
 
@@ -49,7 +51,7 @@ Therefore acceptance uses a two-stage compatibility path instead of pretending v
 
 - Target application version: `1.1.0`.
 - RC tags: immutable `v1.1.0-rc.N` GitHub prereleases.
-- Candidate must be built from one exact `main` commit after P4 merges.
+- Candidate must be built from one exact `main` commit after all public-release protocol/UI/support merges; the next eligible immutable candidate is `v1.1.0-rc.5`.
 - Candidate updater opt-in is process-local and explicit; normal launches remain on `/releases/latest`.
 - Windows artifacts remain unsigned open-source builds.
 - Public v1.0.3 assets and tag are immutable and must never be overwritten.

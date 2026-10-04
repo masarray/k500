@@ -2,6 +2,29 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Final K500 protocol and hardware-ownership closure
+
+### Added
+
+- Closed capture-backed reconnect truth for Music Noise Gate and Music Bass and hydrate them directly from the authoritative 939-byte K500 active-memory image.
+- Closed Mic and output crossover filter-type readback for the capture-proven sections while preserving evidence gates for unsupported filter-type controls.
+- Closed Main/Surround/Center/Sub output-delay readback and write parity, including the native Surround channel-order exception.
+- Closed Adj Manner / VR OFF readback from direct `activeMemory[0x008C]` plus the independent inverse C0 handshake bit, while keeping `CMD 0x07 / RSP 0xF8` as the setter/ACK path.
+- Added front-panel VR ownership semantics: when physical screwdriver trim controls own Music tone and the captured Reverb/Echo trim subset, those software editors remain visible but read-only and visually hardware-owned.
+- Adj Manner changes now perform an explicit post-ACK 939-byte ownership resync before LIVE resumes.
+
+### Fixed
+
+- Retired the old speculative Dance Mic reconnect seed after physical evidence proved file scalar `0x0094` belongs to Adj Manner VR OFF. Dance Mic write encoding remains captured, but live editing fails closed until an independent paired reconnect seed is proven.
+- Corrected canonical evidence promotion for capture-proven Mic/Main/Surround/Center/Sub crossover types instead of leaving physically mapped output types marked assumed.
+- Preserved parallel QRIS/support work from current `main` while integrating the protocol branch, including the shared `src/main.cpp` changes.
+
+### Release qualification
+
+- RC4 predates this final protocol/public-release closure and is therefore not eligible for v1.1.0 stable promotion.
+- The next immutable public candidate is **v1.1.0-rc.5** from the exact post-merge `main` commit.
+- Stable v1.1.0 remains fail-closed until the exact RC5 machine and per-user installer bytes are accepted and recorded in the updater acceptance provenance gate.
+
 ## Unreleased — Voluntary QRIS support prompt
 
 ### Added

@@ -12,6 +12,8 @@ Current public stable: **v1.0.3**.
 
 Current source candidate line: **v1.1.0** (updater lifecycle qualification; not public stable until accepted and published).
 
+Next immutable candidate: **v1.1.0-rc.5** from the exact final post-merge `main` commit. RC4 predates the final protocol/readback and Adj Manner ownership closure and must not be promoted stable.
+
 Current qualified scope: **Windows 10/11 x64 + USB HID**.
 
 Bluetooth SPP is implemented but experimental until independent physical acceptance is recorded.
