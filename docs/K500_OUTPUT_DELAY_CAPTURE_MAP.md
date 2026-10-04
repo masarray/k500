@@ -210,6 +210,8 @@ active 0x00CB..0x00D6
 
 Therefore the READ/persistence map is capture-locked:
 
+Guard vocabulary: Main L begins at **file scalar 0x00D4** and Subwoofer ends at **file scalar 0x00DE**; the corresponding direct live block begins at **active 0x00CB**.
+
 | Semantic control | Active-memory offset | .k500/file scalar |
 | --- | ---: | ---: |
 | Main L Delay | `0x00CB` | `0x00D4` |
