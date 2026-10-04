@@ -322,13 +322,18 @@ QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceS
     body.reserve(15);
     body.append(char(0x0E));
     body.append(char(0x05));
-    body.append(char(K500Frame::clampByte(qBound(0, state.topMicVol, TopVolumeMax))));
+    const int safeMicMax = qBound(NativeRange::StartupLevelMin,
+                                  state.micMaxVol, NativeRange::StartupLevelMax);
+    const int safeTopMic = qBound(0, qMin(state.topMicVol, safeMicMax), TopVolumeMax);
+    body.append(char(K500Frame::clampByte(safeTopMic)));
     // MIC_INIT_CMD05_CAPTURED_V1 — physical slider capture proves the second
     // scalar in CMD 0x05 is writable Mic Init state. Hydration preserves it for
     // unrelated writes until the user explicitly edits this field.
     body.append(char(K500Frame::clampByte(qBound(
         NativeRange::StartupLevelMin, state.micInitVol, NativeRange::StartupLevelMax))));
-    body.append(char(mirrored(0x0B, TopVolumeMax)));
+    // MIC_MAX_CMD05_CAPTURED_V1 — the third scalar is writable Mic Max and
+    // native KTV clamps Top Mic in the same frame when Max is lowered below it.
+    body.append(char(K500Frame::clampByte(safeMicMax)));
     body.append(char(mirrored(0x0E, 0x0B)));
     body.append(char(K500Frame::clampByte(
         qBound(NativeRange::MicFbxMinLevel, state.fbxLevel, NativeRange::MicFbxMaxLevel))));
@@ -379,6 +384,75 @@ QByteArray usbRecordVolume(int levelOneBased)
     const int safe = qBound(NativeRange::UsbRecordVolMin, levelOneBased,
                             NativeRange::UsbRecordVolMax);
     return K500Frame::build(bytes({0x04, 0x3E, 0x03, safe - 1, 0x54}));
+}
+
+QByteArray uDiskRecordVolume(int levelOneBased)
+{
+    // UDISK_RECORD_VOL_CMD3E_CAPTURED_V1 — physical sweep:
+    // UI 1..6 -> raw 0..5 in byte 1, followed by two fixed zero bytes.
+    // ACK family is RSP 0xC1.
+    const int safe = qBound(NativeRange::UDiskRecordVolMin, levelOneBased,
+                            NativeRange::UDiskRecordVolMax);
+    return K500Frame::build(bytes({0x04, 0x3E, safe - 1, 0x00, 0x00}));
+}
+
+QByteArray danceMicTrigger(int thresholdDb, int holdSeconds)
+{
+    // DANCE_MIC_TRIGGER_CMD22_CAPTURED_V1 — both user controls are sent in
+    // one full pair: selector 0x01, threshold raw=(dB+60), hold seconds,
+    // fixed tail 0x0B 00 00. ACK family is RSP 0xDD.
+    const int safeThreshold = qBound(NativeRange::DanceMicThresholdMinDb,
+                                     thresholdDb,
+                                     NativeRange::DanceMicThresholdMaxDb);
+    const int safeHold = qBound(NativeRange::DanceMicHoldMinSec,
+                                holdSeconds,
+                                NativeRange::DanceMicHoldMaxSec);
+    return K500Frame::build(bytes({
+        0x07, 0x22, 0x01,
+        safeThreshold - NativeRange::DanceMicThresholdMinDb,
+        safeHold,
+        0x0B, 0x00, 0x00,
+    }));
+}
+
+QByteArray btNameSet(const QString &name)
+{
+    const QString normalized = name.trimmed();
+    if (normalized.isEmpty() || normalized.size() > NativeRange::BtNameMaxLength)
+        return {};
+
+    QByteArray raw;
+    raw.reserve(NativeRange::BtNameMaxLength);
+    for (const QChar ch : normalized) {
+        const ushort code = ch.unicode();
+        if (code < 0x20 || code > 0x7E)
+            return {};
+        raw.append(static_cast<char>(code));
+    }
+    raw.append(QByteArray(NativeRange::BtNameMaxLength - raw.size(), char(0)));
+
+    QByteArray body;
+    body.reserve(12);
+    body.append(char(0x0B));
+    body.append(char(0x4E));
+    body.append(char(0x01));
+    body.append(raw);
+    body.append(char(0x03));
+    return K500Frame::build(body);
+}
+
+QByteArray btNameReset()
+{
+    // BT_NAME_CMD4E_CAPTURED_V1 — RESET uses operation 0x00, eight zero bytes,
+    // route mask 0x03. SET uses operation 0x01 and the same fixed 8-byte field.
+    QByteArray body;
+    body.reserve(12);
+    body.append(char(0x0B));
+    body.append(char(0x4E));
+    body.append(char(0x00));
+    body.append(QByteArray(NativeRange::BtNameMaxLength, char(0)));
+    body.append(char(0x03));
+    return K500Frame::build(body);
 }
 
 QByteArray adjMannerVrOff(bool enabled)
@@ -698,6 +772,28 @@ bool selfTest(QString *error)
     K500MicBlockState mic;
     if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x00, 0x00, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x5D}, QStringLiteral("top mic default"))) return false;
 
+    K500MicBlockState micMaxCapture;
+    micMaxCapture.topMicVol = 35;
+    micMaxCapture.micInitVol = 35;
+    micMaxCapture.micMaxVol = 50;
+    micMaxCapture.micAVol = 96;
+    micMaxCapture.micBVol = 96;
+    micMaxCapture.compThresholdDb = -11;
+    micMaxCapture.compRatio = 3;
+    micMaxCapture.attackMs = 10;
+    micMaxCapture.releaseSec = 0.2;
+    if (!expect(K500Frame::toUsbFrame(topMicBlock(micMaxCapture, {})),
+                {0xAA,0x0E,0x00,0x05,0x23,0x23,0x32,0x0B,0x00,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x74},
+                QStringLiteral("Mic Max 50 capture"))) return false;
+    micMaxCapture.micMaxVol = 30;
+    if (!expect(K500Frame::toUsbFrame(topMicBlock(micMaxCapture, {})),
+                {0xAA,0x0E,0x00,0x05,0x1E,0x23,0x1E,0x0B,0x00,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0x8D},
+                QStringLiteral("Mic Max 30 clamps Top Mic capture"))) return false;
+    micMaxCapture.micMaxVol = 0;
+    if (!expect(K500Frame::toUsbFrame(topMicBlock(micMaxCapture, {})),
+                {0xAA,0x0E,0x00,0x05,0x00,0x23,0x00,0x0B,0x00,0x00,0x60,0x60,0x27,0x03,0x0A,0x02,0x00,0xC9},
+                QStringLiteral("Mic Max 0 clamps Top Mic capture"))) return false;
+
     QByteArray micScalars(0x40, char(0));
     micScalars[0x0A] = char(0x7F); micScalars[0x0B] = char(0x54); micScalars[0x0E] = char(0x0B);
     // Poison old init donor and neighbour 0x1C: captured writable fields must
@@ -757,6 +853,36 @@ bool selfTest(QString *error)
     if (!expect(K500Frame::toUsbFrame(usbRecordVolume(1)),
                 {0xAA,0x04,0x00,0x3E,0x03,0x00,0x54,0x67},
                 QStringLiteral("USB Record Vol 1 capture"))) return false;
+
+    if (!expect(K500Frame::toUsbFrame(uDiskRecordVolume(6)),
+                {0xAA,0x04,0x00,0x3E,0x05,0x00,0x00,0xB9},
+                QStringLiteral("UDisk Record Vol 6 capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(uDiskRecordVolume(1)),
+                {0xAA,0x04,0x00,0x3E,0x00,0x00,0x00,0xBE},
+                QStringLiteral("UDisk Record Vol 1 capture"))) return false;
+
+    if (!expect(K500Frame::toUsbFrame(danceMicTrigger(-50, 6)),
+                {0xAA,0x07,0x00,0x22,0x01,0x0A,0x06,0x0B,0x00,0x00,0xBB},
+                QStringLiteral("Dance Mic threshold -50 dB capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(danceMicTrigger(0, 6)),
+                {0xAA,0x07,0x00,0x22,0x01,0x3C,0x06,0x0B,0x00,0x00,0x89},
+                QStringLiteral("Dance Mic threshold 0 dB capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(danceMicTrigger(-60, 1)),
+                {0xAA,0x07,0x00,0x22,0x01,0x00,0x01,0x0B,0x00,0x00,0xCA},
+                QStringLiteral("Dance Mic hold 1 second capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(danceMicTrigger(-60, 30)),
+                {0xAA,0x07,0x00,0x22,0x01,0x00,0x1E,0x0B,0x00,0x00,0xAD},
+                QStringLiteral("Dance Mic hold 30 seconds capture"))) return false;
+
+    if (!expect(K500Frame::toUsbFrame(btNameSet(QStringLiteral("ARI"))),
+                {0xAA,0x0B,0x00,0x4E,0x01,0x41,0x52,0x49,0x00,0x00,0x00,0x00,0x00,0x03,0xC7},
+                QStringLiteral("BT Name ARI capture"))) return false;
+    if (!expect(K500Frame::toUsbFrame(btNameReset()),
+                {0xAA,0x0B,0x00,0x4E,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x03,0xA4},
+                QStringLiteral("BT Name RESET capture"))) return false;
+    if (!btNameSet(QStringLiteral("123456789")).isEmpty()
+        || !btNameSet(QString::fromUtf8("ARIÉ")).isEmpty())
+        return fail(QStringLiteral("BT Name accepted unproven >8/non-ASCII input"));
 
     if (!expect(K500Frame::toUsbFrame(adjMannerVrOff(false)),
                 {0xAA,0x03,0x00,0x07,0x00,0x00,0xF6},
