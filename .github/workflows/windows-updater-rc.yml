@@ -235,6 +235,11 @@ jobs:
           $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Per-user candidate uninstall failed: $($uninstall.ExitCode)" }
 
+      - name: Run deep updater lifecycle acceptance
+        shell: pwsh
+        run: |
+          ./tools/ci/updater_deep_acceptance.ps1 -Version '${{ steps.meta.outputs.version }}' -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" -PackageDir package -BuildDir build
+
       - name: Generate and validate RC provenance
         shell: pwsh
         run: |

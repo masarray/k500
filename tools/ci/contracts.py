@@ -441,8 +441,31 @@ def check_release_contracts() -> None:
         "name: Windows Updater Release Candidate",
         "'K500 CI'",
         "requiredExactHeadWorkflows = @('K500 CI')",
+        "Run deep updater lifecycle acceptance",
+        "tools/ci/updater_deep_acceptance.ps1",
         "prerelease: true",
         "overwrite_files: false",
+    )
+    require(
+        "tools/ci/updater_deep_acceptance.ps1",
+        "RC_DEEP_UPDATER_ACCEPTANCE_V1",
+        "SONKUPIK_UPDATE_HELPER_CI=1",
+        "verified per-user helper update",
+        "installer-nonzero",
+        "failed-health-check",
+        "explicit machine-to-user migration",
+        "preset-user-data-must-survive",
+        "official-cache-must-survive",
+        "qsettings-must-survive",
+        "--remove-stale-registration",
+        "Active registration cleanup did not fail closed",
+    )
+    require(
+        "src/AppUpdateManager.cpp",
+        "Range",
+        "Content-Range",
+        "partialInstallerPath",
+        "QCryptographicHash::Sha256",
     )
     require(
         ".github/workflows/windows-updater-promote.yml",

@@ -98,7 +98,16 @@ RC and stable workflows remain manual and immutable.
 
 `windows-updater-rc.yml` accepts a commit only when that exact `main` SHA has
 a successful **K500 CI** workflow. The RC job then performs its own installer
-build/install/uninstall/provenance qualification.
+build/install/uninstall/provenance qualification. Before publication it also
+runs `tools/ci/updater_deep_acceptance.ps1` against the exact per-user RC
+installer to prove verified same-version update, rollback after installer and
+health-check failure, explicit machine-to-user migration with user-data
+sentinels, and narrow stale-registration repair.
+
+The deep lifecycle script is intentionally **RC-only**. Ordinary updater PRs use
+the path-aware `installer_smoke.ps1`; this keeps normal development fast while
+preserving the release acceptance evidence that used to live in a large
+standalone workflow.
 
 Stable promotion never rebuilds accepted application bytes.
 

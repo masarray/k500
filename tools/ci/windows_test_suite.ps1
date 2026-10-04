@@ -82,4 +82,17 @@ if (-not $perf.runtime.startupPostQml.valid) { throw "Windows runtime snapshot w
 if ($perf.eventLoop.samples -lt 1) { throw "Event-loop sampler did not run" }
 if ($perf.gates.scope -notmatch "Performance-only") { throw "Performance/manual acceptance scope separation missing" }
 
+Write-Host "==> RC-only updater acceptance script syntax"
+$parseTokens = $null
+$parseErrors = $null
+[void][System.Management.Automation.Language.Parser]::ParseFile(
+    (Join-Path $PWD "tools/ci/updater_deep_acceptance.ps1"),
+    [ref]$parseTokens,
+    [ref]$parseErrors
+)
+if ($parseErrors.Count -ne 0) {
+    $parseErrors | ForEach-Object { Write-Error $_.Message }
+    throw "RC deep updater acceptance script has PowerShell syntax errors"
+}
+
 Write-Host "K500 consolidated Windows regression suite PASS"
