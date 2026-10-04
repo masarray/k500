@@ -62,9 +62,13 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Adj Manner / VR OFF setter | CAPTURE-MAPPED 🟧 | CMD 0x07 + RSP 0xF8; reconnect state remains unknown |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Surround output block + L/R delay | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Main L/R Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16=L/data18=R, uint16 LE ms, 0..50 |
+| Surround output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Surround L/R Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E native wire exception: data16=R/data18=L, uint16 LE ms, 0..50 |
 | Center output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Center Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
 | Sub output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Subwoofer Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
 | Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
 | Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
 | Music Noise Gate / Bass live write | CAPTURE-MAPPED 🟧 | captured CMD 0x02 gate field + CMD 0x0C Bass; connect readback pending |
