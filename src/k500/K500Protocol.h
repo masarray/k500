@@ -97,6 +97,7 @@ struct K500OutputBlockState
     double releaseSec = 0.1;
     int lDelayMs = 0;
     int rDelayMs = 0;
+    int outputDelayMs = 0;
 };
 
 namespace K500Protocol {
@@ -155,6 +156,8 @@ constexpr int DanceMicThresholdMinDb = -60;
 constexpr int DanceMicThresholdMaxDb = 0;
 constexpr int DanceMicHoldMinSec = 1;
 constexpr int DanceMicHoldMaxSec = 30;
+constexpr int OutputDelayMinMs = 0;
+constexpr int OutputDelayMaxMs = 50;
 constexpr int BtNameMaxLength = 8;
 } // namespace NativeRange
 
