@@ -281,8 +281,8 @@ Golden reference frames:
 Main
 AA 25 0E 00 63 00 5F 00 5B 00 57 00 53 00 4F 00 2F 12 07 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 6E
 
-Surround (L=3 ms, R=4 ms delay)
-AA 25 0E 02 63 00 61 00 57 00 55 00 50 00 4B 00 1E 64 01 01 03 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 35
+Surround (semantic L=3 ms, R=4 ms; native wire stores R first)
+AA 25 0E 02 63 00 61 00 57 00 55 00 50 00 4B 00 1E 64 01 01 04 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 35
 
 Center
 AA 25 0E 04 63 00 00 00 58 00 56 00 54 00 52 00 2E 0A 05 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 D3
@@ -292,6 +292,38 @@ AA 25 0E 05 5D 00 00 00 46 00 5A 00 3C 00 32 00 28 08 04 03 00 00 00 00 00 00 00
 ```
 
 The regression self-test seeds unknown bytes with sentinel values and verifies untouched positions survive a block edit. This is a destructive-write safety guard.
+
+### Output Delay capture closure
+
+The final 2026-10-04 physical sweeps prove the Output timing fields and native
+range `0..50 ms`:
+
+```text
+Main:      data[16..17] = L delay ms, data[18..19] = R delay ms
+Surround:  data[16..17] = R delay ms, data[18..19] = L delay ms
+Center:    data[16..17] = mono Output Delay ms
+Subwoofer: data[16..17] = mono Output Delay ms
+ACK: RSP 0xF1
+```
+
+Exact USB references:
+
+```text
+Main L50 R20
+AA 25 00 0E 00 63 63 63 63 64 32 64 32 61 32 26 32 2F 12 07 01 32 00 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 9B
+
+Surround L20 R14 (wire R14 then L20)
+AA 25 00 0E 02 5D 63 5D 63 46 32 4E 32 64 32 32 32 2A 04 0C 03 0E 00 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FA
+
+Center 20 ms
+AA 25 00 0E 04 58 63 63 63 62 32 30 32 4A 32 22 32 29 04 0A 03 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 34
+
+Subwoofer 20 ms
+AA 25 00 0E 05 63 4B 4B 4B 00 32 60 32 00 32 00 32 2A 06 19 03 14 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 FC
+```
+
+See `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md` for capture hashes, 50-ms vectors,
+readback/preset offsets, and the Surround wire-order exception.
 
 ## System USB Record / Adj Manner VR OFF
 
