@@ -46,6 +46,8 @@ public:
     Q_INVOKABLE void setAdjMannerVrOff(bool enabled);
     Q_INVOKABLE void saveCurrentToSlot(int slotOneBased);
     Q_INVOKABLE void renameActiveMode(const QString &name);
+    Q_INVOKABLE void setBtName(const QString &name);
+    Q_INVOKABLE void resetBtName();
 
     // P4_PC_PRESET_UPLOAD_V1 — a validated 0x0290 image produced by the P3
     // codec can be stored directly without replacing it with fresh device
@@ -69,7 +71,7 @@ signals:
     void operationFailed(const QString &kind, const QString &message);
 
 private:
-    enum class Operation { None, Recall, UseInit, AdjManner, Save, Rename, Upload, MassUpload };
+    enum class Operation { None, Recall, UseInit, AdjManner, BtName, Save, Rename, Upload, MassUpload };
     enum class Step {
         Idle,
         RecallDelay,
@@ -81,8 +83,9 @@ private:
         AwaitCommitAck,
         AwaitUseInitAck,
         AwaitAdjMannerAck,
+        AwaitBtNameAck,
     };
-    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare };
+    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare, BtIdentity };
 
     struct MassEntry {
         int slot = 1;
