@@ -106,6 +106,10 @@ constexpr int TopVolumeMax = 84;
 constexpr int ReverbDataLength = 15;
 constexpr int EchoDataLength = 22;
 constexpr int OutputDataLength = 35;
+// Canonical manufacturer active-memory geometry. Keep transport/readback
+// consumers on these shared constants instead of duplicating magic numbers.
+constexpr int ActiveMemorySize = 0x03AB;       // 939 bytes, 0x0000..0x03AA
+constexpr int ActiveMemoryBlockSize = 0x003A;  // 58-byte CMD 0x40 chunks
 
 // K500_NATIVE_VALUE_CONTRACT_V1
 // These bounds mirror the manufacturer UI / captured native behavior. They are

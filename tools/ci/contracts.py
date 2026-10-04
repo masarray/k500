@@ -97,6 +97,7 @@ def check_protocol_and_state() -> None:
     require(
         "src/k500/K500Protocol.h",
         "ActiveMemorySize = 0x03AB",
+        "ActiveMemoryBlockSize = 0x003A",
         "MusicNoiseGate = 0x0005",
         "MicHpType = 0x0013",
         "MicLpType = 0x0014",
@@ -120,6 +121,26 @@ def check_protocol_and_state() -> None:
         "ReadbackPurpose::AdjManner",
         "startReadback(ReadbackPurpose::AdjManner)",
         "939-byte ownership resync complete",
+    )
+    require(
+        "src/k500/K500DeviceManager.cpp",
+        "K500Protocol::ActiveMemorySize",
+        "K500Protocol::ActiveMemoryBlockSize",
+    )
+    require(
+        "src/k500/K500PresetManager.cpp",
+        "K500Protocol::ActiveMemorySize",
+        "K500Protocol::ActiveMemoryBlockSize",
+    )
+    forbid(
+        "src/k500/K500DeviceManager.cpp",
+        "constexpr int ActiveMemorySize = 0x03AB",
+        "constexpr int ActiveMemoryBlockSize = 0x003A",
+    )
+    forbid(
+        "src/k500/K500PresetManager.cpp",
+        "constexpr int ActiveMemorySize = 0x03AB",
+        "constexpr int ActiveMemoryBlockSize = 0x003A",
     )
     require(
         "src/k500/K500Controller.cpp",

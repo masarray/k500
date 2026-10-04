@@ -8,8 +8,6 @@
 #include <algorithm>
 
 namespace {
-constexpr int ActiveMemorySize = 0x03AB;
-constexpr int ActiveMemoryBlockSize = 0x003A;
 constexpr int ActiveMemoryInterBlockMs = 35;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int RecallHandshakeTimeoutMs = 3000;
@@ -621,7 +619,7 @@ void K500PresetManager::onResponse(const K500Response &response)
 void K500PresetManager::startReadback(ReadbackPurpose purpose)
 {
     m_readbackPurpose = purpose;
-    m_readbackMemory = QByteArray(ActiveMemorySize, char(0));
+    m_readbackMemory = QByteArray(K500Protocol::ActiveMemorySize, char(0));
     m_readOffset = 0;
     m_pendingReadLength = 0;
     m_step = Step::Readback;
@@ -632,15 +630,15 @@ void K500PresetManager::sendNextReadBlock()
 {
     if (m_step != Step::Readback)
         return;
-    if (m_readOffset >= ActiveMemorySize) {
+    if (m_readOffset >= K500Protocol::ActiveMemorySize) {
         finishReadback();
         return;
     }
 
-    m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_readOffset);
+    m_pendingReadLength = qMin(K500Protocol::ActiveMemoryBlockSize, K500Protocol::ActiveMemorySize - m_readOffset);
     const quint8 mode = m_manager->m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
     setProgress(QStringLiteral("%1 · reading K500 %2/%3")
-                    .arg(operationName(m_operation)).arg(m_readOffset).arg(ActiveMemorySize));
+                    .arg(operationName(m_operation)).arg(m_readOffset).arg(K500Protocol::ActiveMemorySize));
     if (!send(K500Protocol::readBlock(static_cast<quint16>(m_readOffset),
                                       static_cast<quint16>(m_pendingReadLength), mode),
               QStringLiteral("P2 read 0x%1 len %2")
@@ -666,7 +664,7 @@ void K500PresetManager::acceptReadBlock(const QByteArray &data)
     m_readOffset += m_pendingReadLength;
     m_pendingReadLength = 0;
 
-    if (m_readOffset >= ActiveMemorySize) {
+    if (m_readOffset >= K500Protocol::ActiveMemorySize) {
         finishReadback();
         return;
     }
@@ -678,7 +676,7 @@ void K500PresetManager::acceptReadBlock(const QByteArray &data)
 
 void K500PresetManager::finishReadback()
 {
-    if (m_readbackMemory.size() != ActiveMemorySize || m_readOffset < ActiveMemorySize) {
+    if (m_readbackMemory.size() != K500Protocol::ActiveMemorySize || m_readOffset < K500Protocol::ActiveMemorySize) {
         failOperation(operationName(m_operation), QStringLiteral("P2 full readback tidak lengkap."));
         return;
     }
