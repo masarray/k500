@@ -200,7 +200,8 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     // edits the gate; do not pretend 0x001B is authoritative gate truth.
     m_music.noiseGateRaw = -1;
 
-    m_mic.topMicVol = fileU8(memory, 0x0009, 35);
+    m_mic.micMaxVol = fileU8(memory, 0x0013, K500Protocol::TopVolumeMax);
+    m_mic.topMicVol = qMin<int>(fileU8(memory, 0x0009, 35), m_mic.micMaxVol);
     m_mic.micInitVol = fileU8(memory, 0x0012, 25);
     m_mic.micAVol = fileU8(memory, 0x0014, 96);
     m_mic.micBVol = fileU8(memory, 0x0015, 96);
@@ -217,6 +218,17 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
 
     m_effect.topEffectVol = fileU8(memory, 0x000A, 35);
     m_effect.effectInitLevel = fileU8(memory, 0x001D, 25);
+
+    // DANCE_MIC_READBACK_STRUCTURAL_V1 — safe seed gate for the full-pair CMD 0x22.
+    const int danceThresholdRaw = static_cast<int>(fileU8(memory, 0x0093, 0xFF));
+    const int danceHoldRaw = static_cast<int>(fileU8(memory, 0x0094, 0xFF));
+    m_danceMicSeedKnown = danceThresholdRaw >= 0 && danceThresholdRaw <= 60
+                          && danceHoldRaw >= K500Protocol::NativeRange::DanceMicHoldMinSec
+                          && danceHoldRaw <= K500Protocol::NativeRange::DanceMicHoldMaxSec;
+    if (m_danceMicSeedKnown) {
+        m_danceMicThresholdDb = danceThresholdRaw - 60;
+        m_danceMicHoldSec = danceHoldRaw;
+    }
 
     // REVERB_CMD0B_CAPTURED_V1 — state and raw image are hydrated before LIVE.
     m_reverb.level = fileU8(memory, 0x0074, 100);
@@ -338,6 +350,9 @@ void K500Controller::clearDeviceState()
     m_reverbRaw.clear();
     m_echo = K500EchoBlockState{};
     m_echoRaw.clear();
+    m_danceMicThresholdDb = -50;
+    m_danceMicHoldSec = 6;
+    m_danceMicSeedKnown = false;
     m_eqBypass = K500EqBypassImage{};
     m_eqBypassReady = false;
     m_outputs.clear();
@@ -364,9 +379,12 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     QVariant normalizedValue = value;
     if (path == QStringLiteral("system.topMusicVol"))
         normalizedValue = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);
+    else if (path == QStringLiteral("system.topMicVol"))
+        normalizedValue = qBound(0, qRound(value.toDouble()), m_mic.micMaxVol);
     else if (path == QStringLiteral("system.musicMaxVol")
              || path == QStringLiteral("system.musicInitVol")
              || path == QStringLiteral("system.micInitVol")
+             || path == QStringLiteral("system.micMaxVol")
              || path == QStringLiteral("system.effectInitLevel"))
         normalizedValue = qBound(K500Protocol::NativeRange::StartupLevelMin,
                                  qRound(value.toDouble()),
@@ -375,6 +393,18 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         normalizedValue = qBound(K500Protocol::NativeRange::UsbRecordVolMin,
                                  qRound(value.toDouble()),
                                  K500Protocol::NativeRange::UsbRecordVolMax);
+    else if (path == QStringLiteral("system.uDiskRecordVol"))
+        normalizedValue = qBound(K500Protocol::NativeRange::UDiskRecordVolMin,
+                                 qRound(value.toDouble()),
+                                 K500Protocol::NativeRange::UDiskRecordVolMax);
+    else if (path == QStringLiteral("system.danceMicThresholdDb"))
+        normalizedValue = qBound(K500Protocol::NativeRange::DanceMicThresholdMinDb,
+                                 qRound(value.toDouble()),
+                                 K500Protocol::NativeRange::DanceMicThresholdMaxDb);
+    else if (path == QStringLiteral("system.danceMicHoldSec"))
+        normalizedValue = qBound(K500Protocol::NativeRange::DanceMicHoldMinSec,
+                                 qRound(value.toDouble()),
+                                 K500Protocol::NativeRange::DanceMicHoldMaxSec);
     QString canonicalReason;
     if (!m_canonicalState.stageDesired(path, normalizedValue, nullptr, &canonicalReason)) {
         deferWrite(path, canonicalReason);
@@ -542,8 +572,18 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
     }
 
     bool isTopMicPath = true;
-    if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = qRound(value.toDouble());
+    if (path == QStringLiteral("system.topMicVol")) m_mic.topMicVol = normalizedValue.toInt();
     else if (path == QStringLiteral("system.micInitVol")) m_mic.micInitVol = normalizedValue.toInt();
+    else if (path == QStringLiteral("system.micMaxVol")) {
+        m_mic.micMaxVol = normalizedValue.toInt();
+        const int clampedMaster = qMin(m_mic.topMicVol, m_mic.micMaxVol);
+        if (clampedMaster != m_mic.topMicVol) {
+            m_mic.topMicVol = clampedMaster;
+            m_canonicalState.stageDesired(QStringLiteral("system.topMicVol"),
+                                          clampedMaster);
+            emit canonicalStateChanged();
+        }
+    }
     else if (path == QStringLiteral("mic.micAVol")) m_mic.micAVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.micBVol")) m_mic.micBVol = qRound(value.toDouble());
     else if (path == QStringLiteral("mic.fbxLevel"))
@@ -574,6 +614,29 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         queueBlockFrame(QStringLiteral("system:usb-record"), path,
                         K500Protocol::usbRecordVolume(normalizedValue.toInt()),
                         QStringLiteral("USB Record Vol · %1").arg(normalizedValue.toInt()));
+        return;
+    }
+    if (path == QStringLiteral("system.uDiskRecordVol")) {
+        queueBlockFrame(QStringLiteral("system:udisk-record"), path,
+                        K500Protocol::uDiskRecordVolume(normalizedValue.toInt()),
+                        QStringLiteral("UDisk Record Vol · %1").arg(normalizedValue.toInt()));
+        return;
+    }
+    if (path == QStringLiteral("system.danceMicThresholdDb")
+        || path == QStringLiteral("system.danceMicHoldSec")) {
+        if (!m_danceMicSeedKnown) {
+            deferWrite(path, QStringLiteral("Dance Mic CMD 0x22 requires valid paired seed at scalar offsets 0x0093/0x0094"));
+            return;
+        }
+        if (path == QStringLiteral("system.danceMicThresholdDb"))
+            m_danceMicThresholdDb = normalizedValue.toInt();
+        else
+            m_danceMicHoldSec = normalizedValue.toInt();
+        queueBlockFrame(QStringLiteral("system:dance-mic"), path,
+                        K500Protocol::danceMicTrigger(m_danceMicThresholdDb,
+                                                      m_danceMicHoldSec),
+                        QStringLiteral("Dance Mic · %1 dB · %2 s")
+                            .arg(m_danceMicThresholdDb).arg(m_danceMicHoldSec));
         return;
     }
 
@@ -817,10 +880,17 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
     captured(QStringLiteral("system.musicMaxVol"), m_music.musicMaxVol);
     captured(QStringLiteral("system.topMicVol"), m_mic.topMicVol);
     captured(QStringLiteral("system.micInitVol"), m_mic.micInitVol);
+    captured(QStringLiteral("system.micMaxVol"), m_mic.micMaxVol);
     captured(QStringLiteral("system.topEffectVol"), m_effect.topEffectVol);
     captured(QStringLiteral("system.effectInitLevel"), m_effect.effectInitLevel);
+    captured(QStringLiteral("system.uDiskRecordVol"),
+             static_cast<int>(fileU8(memory, 0x0095)) + 1);
     captured(QStringLiteral("system.usbRecordVol"),
              static_cast<int>(fileU8(memory, 0x0096)) + 1);
+    if (m_danceMicSeedKnown) {
+        derived(QStringLiteral("system.danceMicThresholdDb"), m_danceMicThresholdDb);
+        derived(QStringLiteral("system.danceMicHoldSec"), m_danceMicHoldSec);
+    }
     captured(QStringLiteral("music.sourceRaw"), m_music.sourceRaw);
     derived(QStringLiteral("music.key"), m_music.key);
     derived(QStringLiteral("music.input1GainDb"), m_music.input1GainDb);
