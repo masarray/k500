@@ -28,6 +28,7 @@ on:
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
       - 'docs/K500_FBX_CAPTURE_MAP.md'
       - 'docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md'
+      - 'docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md'
       - 'docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md'
       - 'docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
@@ -53,6 +54,9 @@ on:
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
       - 'docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md'
       - 'docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md'
+      - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
+      - 'docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md'
+      - 'docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md'
       - 'docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md'
       - 'docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
@@ -120,6 +124,7 @@ jobs:
           music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
           fbx_doc = Path('docs/K500_FBX_CAPTURE_MAP.md').read_text(encoding='utf-8')
           music_xover_doc = Path('docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md').read_text(encoding='utf-8')
+          mic_xover_doc = Path('docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md').read_text(encoding='utf-8')
           music_max_doc = Path('docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md').read_text(encoding='utf-8')
           eq_bypass_doc = Path('docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md').read_text(encoding='utf-8')
           main = Path('src/main.cpp').read_text(encoding='utf-8')
@@ -148,6 +153,8 @@ jobs:
               'music tone captured writes are implemented': 'musicNoiseGateRaw' in protocol_cpp and 'musicBass' in protocol_cpp and 'music.noiseGateDb' in controller and 'music.bassDb' in controller,
               'music tone native UI range is guarded': 'from:-91;to:-50' in music_tone_qml and 'offAtMin:true' in music_tone_qml and 'from:-12;to:12' in music_tone_qml and 'offAtMin' in parameter_slider,
               'music tone capture evidence documented': 'raw `0x00` = OFF' in music_tone_doc and 'raw = round((dB + 12.0) * 10)' in music_tone_doc,
+              'music tone reconnect readback is direct and guarded': 'MusicNoiseGate = 0x0005' in protocol_h and 'MusicBass = 0x00DF' in protocol_h and 'musicNoiseGateRawValid' in studio_cpp and 'musicBassRawValid' in studio_cpp and 'activeMemory[0x0005]' in music_tone_doc and 'activeMemory[0x00DF]' in music_tone_doc,
+              'top music unresolved tail stays evidence-gated': 'TOP_MUSIC_TAIL_SOURCE_PENDING_20261004' in protocol_cpp and 'Top-Music tail safety boundary' in music_tone_doc,
               'fbx native range is 0..4': 'MicFbxMinLevel = 0' in protocol_h and 'MicFbxMaxLevel = 4' in protocol_h and 'from:0,to:4' in qml,
               'fbx read uses direct active-memory offset': 'byteAt(memory, 0x001B, 0)' in controller and 'byteAt(memory, 0x001B)' in studio_cpp and 'fileU8(memory, 0x001B)' not in studio_cpp,
               'fbx write owns one byte and fixed neighbour': 'FBX_NATIVE_0_4_CAPTURED_V1' in protocol_cpp and 'qBound(NativeRange::MicFbxMinLevel' in protocol_cpp and 'body.append(char(0x00));' in protocol_cpp,
@@ -156,6 +163,8 @@ jobs:
               'music crossover type readback uses exact active offsets': 'byteAt(memory, 0x0007)' in studio_cpp and 'byteAt(memory, 0x0008)' in studio_cpp and 'byteAt(memory, 0x0007)' in controller and 'byteAt(memory, 0x0008)' in controller,
               'music crossover types are canonical captured truth': 'it.key() == QStringLiteral("music")' in controller and 'captured(prefix + QStringLiteral("hpType")' in controller and 'captured(prefix + QStringLiteral("lpType")' in controller,
               'music crossover capture evidence documented': 'activeMemory[0x0007]' in music_xover_doc and 'activeMemory[0x0008]' in music_xover_doc and '0 = Bypass' in music_xover_doc and '7 | HP LR 24' in music_xover_doc,
+              'mic LP readback is captured without promoting HP': 'MicLpType = 0x0014' in protocol_h and 'ReadbackOffset::MicLpType' in studio_cpp and 'm_micLpTypeKnown' in controller and 'activeMemory[0x0014]' in mic_xover_doc and 'Mic HP Type readback is not mapped' in mic_xover_doc,
+              'mic LP write trailing byte remains unresolved': 'trailing `0x09`' in mic_xover_doc and 'must be isolated' in mic_xover_doc,
               'eq bypass is active-low enable semantics': 'EQ_ENABLE_ACTIVE_LOW_BYPASS_V1' in protocol_cpp and 'return (value & mask) != mask;' in protocol_cpp and '*target & static_cast<quint8>(~mask)' in protocol_cpp and 'activeMemory[0x027D] = FD' in eq_bypass_doc and 'activeMemory[0x027D] = 7D' in eq_bypass_doc,
               'music max protocol ceiling is captured': 'musicMaxVol = 84' in protocol_h and 'qMin(state.topMusicVol, safeMusicMax)' in protocol_cpp and 'system.musicMaxVol' in controller and 'qMin(m_music.topMusicVol, m_music.musicMaxVol)' in controller,
               'music max UI keeps native ruler ceiling': 'musicMaxVol READ musicMaxVol' in studio_h and 'setMusicMaxVol' in studio_cpp and 'hardMax' in studio_fader_qml and 'root.engine.musicMaxVol' in master_strip_qml and 'system.musicMaxVol' in rack_fader_qml and 'root.engine.musicMaxVol' in system_qml,

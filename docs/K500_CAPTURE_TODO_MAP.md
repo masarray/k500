@@ -1,7 +1,7 @@
 # K500 Capture Coverage & TODO Map
 
 Status date: 2026-10-04
-Baseline: `main` @ `3fa49b3627ffd0631e9e3915413775db65725852` (post-RC4/Smart Installer truth)
+Baseline for this capture integration: `main` @ `d157cee083f1727a2943ba79111931eb98846d9a`
 
 The focused 2026-10-04 System captures are documented in
 `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`. The final Output Delay sweeps are
@@ -50,8 +50,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | HPF/LPF frequency | ✅ | ✅ | complete | no |
 | HPF/LPF filter type on WRITE | n/a | ✅ CMD 0x11 mapping | complete | no |
 | HPF/LPF filter type on CONNECT | ✅ HP=activeMemory[0x0007], LP=activeMemory[0x0008] | n/a | complete for Music | no |
-| Music Noise Gate | ❌ connect/readback not yet proven | ✅ CMD 0x02 block, raw 0=OFF / 1..41=-90..-50 dB | partial | **YES — reconnect OFF vs -50 dB** |
-| Music Bass | ❌ connect/readback not yet proven | ✅ CMD 0x0C selector 0x02, 0.1 dB encoding | partial | **YES — reconnect 0 dB vs +12/-12 dB** |
+| Music Noise Gate | ✅ direct activeMemory[0x0005], raw 0=OFF / 1..41=-90..-50 dB | ✅ CMD 0x02 block | capture-mapped READ/WRITE | no — reconnect truth closed 2026-10-04 |
+| Music Bass | ✅ direct activeMemory[0x00DF], dB=(raw-120)/10 | ✅ CMD 0x0C selector 0x02, 0.1 dB encoding | capture-mapped READ/WRITE | no — reconnect truth closed 2026-10-04 |
 | Music Mid | ❌ | ❌ controller unsupported | missing | **YES** |
 | Music Mid Frequency | ❌ | ❌ controller unsupported | missing | **YES** |
 | Music Treble | ❌ | ❌ controller unsupported | missing | **YES** |
@@ -66,7 +66,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | Mic PEQ A/B | ✅ | ✅ | complete | no |
 | Mic EQ Link | ✅ | ✅ captured CMD 0x3C | complete | no |
 | Mic HPF/LPF frequency | ✅ | ✅ | complete | no |
-| Mic HPF/LPF filter type on CONNECT | ❌ assumed/defaulted | n/a | partial | **YES** |
+| Mic HPF filter type on CONNECT | ❌ assumed/defaulted | n/a | partial | **YES — dedicated HP reconnect sweep** |
+| Mic LPF filter type on CONNECT | ✅ direct activeMemory[0x0014], 0..5 physically swept | observed CMD 0x11 selector 0x01; trailing state byte unresolved | capture-mapped READ only | no further READ capture |
 | Mic Noise Gate | ✅ active memory 0x0016 | ❌ no donor-verified write | partial | **YES — write delta** |
 | FBX / anti-feedback level | ✅ direct activeMemory[0x001B], range 0..4 | ✅ CMD 0x05 direct byte + RSP 0xFA | complete | no |
 
@@ -157,25 +158,24 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 ### P0 — capture first
 
-1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
+1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass READ/WRITE are now closed.
 2. **Mic Noise Gate write**.
-3. **System Startup Limits** — daily-use set complete: Music Init/Max, Mic Init/Max, Effect Init mapped.
-4. **Recording + Mic Trigger** — daily-use set complete: UDisk Rec, USB Rec, Threshold and Hold Time mapped.
-5. **Remaining non-Music crossover filter-type readback** — Mic/Main/Surround/Center/Sub still need their own connect-state mapping.
-6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
+3. **Mic HP filter-type reconnect truth** plus remaining Main/Surround/Center/Sub filter-type readback. Mic LP READ is now closed at direct 0x0014.
+4. **Preservation-safety donors** — isolate the Top-Music CMD 0x02 trailing-byte source and the Mic CMD 0x11 final state-byte source. The 2026-10-04 captures prove both are state-dependent enough that adjacency/constant guesses are unsafe.
+5. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas/readback evidence.
 
 ### P1 — useful next
 
-7. Main/Surround/Center/Sub Output Delay — **daily-use mapping complete**; hardware reconnect acceptance remains.
-8. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
-9. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
-10. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
+6. Main/Surround/Center/Sub Output Delay — **daily-use mapping complete**; hardware reconnect acceptance remains.
+7. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
+8. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
+9. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
 
 ### P2 — last / potentially destructive
 
-11. Reset All Settings.
-12. Lock state/password flows — **scope closed / intentionally unsupported**.
-13. Admin/User mode and password flows — **scope closed / intentionally unsupported**.
+10. Reset All Settings.
+11. Lock state/password flows — **scope closed / intentionally unsupported**.
+12. Admin/User mode and password flows — **scope closed / intentionally unsupported**.
 
 ## Recommended capture method
 

@@ -49,6 +49,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | PEQ: Mic A/B, Music, Main, Surround, Center, Sub, Reverb, Echo | STABLE USB ✅ | donor-verified command family; unsupported detail fields stay read-only |
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
 | Music HP/LP filter type readback | CAPTURE-MAPPED 🟧 | READ activeMemory[0x0007]/[0x0008] + existing CMD 0x11 write enum |
+| Mic LP filter type readback | CAPTURE-MAPPED 🟧 | READ direct activeMemory[0x0014], physical 0..5 sweep; Mic HP remains evidence-gated; Mic CMD 0x11 final state byte unresolved |
 | Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored unrelated scalars + captured FBX 0..4 direct byte |
 | Top Effect `CMD 0x09` | STABLE USB ✅ | current hydrated Effect Init preservation |
 | Music Init / Mic Init live write | CAPTURE-MAPPED 🟧 | CMD 0x02 / 0x05 writable second scalar; 0..84 |
@@ -71,7 +72,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Subwoofer Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
 | Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
 | Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
-| Music Noise Gate / Bass live write | CAPTURE-MAPPED 🟧 | captured CMD 0x02 gate field + CMD 0x0C Bass; connect readback pending |
+| Music Noise Gate / Bass READ+WRITE | CAPTURE-MAPPED 🟧 | Gate READ direct 0x0005 + CMD 0x02; Bass READ direct 0x00DF + CMD 0x0C; reconnect truth captured 2026-10-04 |
 | Mic FBX / anti-feedback level | CAPTURE-MAPPED 🟧 | READ activeMemory[0x001B], WRITE CMD 0x05 levels 0..4, RSP 0xFA |
 | Mic gate live write | READ ONLY 🟦 | no verified live command; do not guess |
 | Equipment Mode Recall 1–10 | STABLE USB ✅ | `0x01 -> settle -> 0x3F/C0 -> 939-byte resync` |

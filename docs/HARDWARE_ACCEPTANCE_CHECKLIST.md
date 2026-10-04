@@ -73,6 +73,18 @@ Test USB for every stable release that materially changes these paths. Use the B
 
 Fields that remain read-only in the parity matrix are not acceptance failures; they are intentional protocol boundaries.
 
+## Music Tone + Mic LP readback — 2026-10-04
+
+- [ ] Reconnect with Music Noise Gate OFF hydrates OFF from direct `activeMemory[0x0005]=0`.
+- [ ] Reconnect at -90 dB and -50 dB hydrates -90/-50 from raw 1/41 without any startup replay write.
+- [ ] Editing an unrelated Top-Music field preserves the hardware Noise Gate value; no stale `0x001B` fallback is replayed as the gate.
+- [ ] The unresolved Top-Music trailing byte is not presented as capture-mapped truth and is not remapped from one-state correlation.
+- [ ] Reconnect Music Bass at -12/0/+12 dB hydrates -12/0/+12 from direct `activeMemory[0x00DF]=0/120/240`.
+- [ ] Reconnect Mic LP at Bypass/Bessel12/Butter12/Bessel18/Butter18/Butter24 hydrates enum 0/1/2/3/4/5 from direct `activeMemory[0x0014]`.
+- [ ] Mic A and Mic B LP presentation follow the shared Mic LP device field while hydration emits zero `stateEdited` events.
+- [ ] Mic HP presentation is not falsely promoted from a neighboring byte; it remains evidence-gated.
+- [ ] Do not qualify Mic LP WRITE as preservation-safe by hard-coding trailing `0x09`; older 1 kHz vectors use `0x00`, so the donor must first be isolated.
+
 ## Section-navigation crash regression
 
 The v1 baseline uses fixed EQ graph/model lifetimes. If a change touches QML section/workspace lifecycle, run repeated transitions including:
