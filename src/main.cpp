@@ -18,6 +18,7 @@
 #endif
 
 #include "AppUpdateManager.h"
+#include "DonationPromptController.h"
 #include "StudioEngine.h"
 #include "k500/K500Controller.h"
 #include "k500/K500DeviceManager.h"
@@ -159,6 +160,8 @@ int main(int argc, char *argv[])
     QQuickStyle::setStyle(QStringLiteral("Basic"));
 
     StudioEngine studioEngine;
+    DonationPromptController donationPromptController(
+        app.arguments().contains(QStringLiteral("--donation-prompt-preview")));
     K500Controller k500Controller;
     K500DeviceManager deviceManager(&k500Controller);
 
@@ -631,6 +634,7 @@ int main(int argc, char *argv[])
     engine.setInitialProperties({
         {QStringLiteral("studioEngine"), QVariant::fromValue(&studioEngine)},
         {QStringLiteral("deviceManager"), QVariant::fromValue(&deviceManager)},
+        {QStringLiteral("donationPrompt"), QVariant::fromValue(&donationPromptController)},
     });
     QObject::connect(
         &engine,
