@@ -152,6 +152,7 @@ Official downloads must pass K500 file validation before replacing the last-know
 - Default personal preset home under `Documents\SonKuPik K500\Presets`, separate from application binaries.
 - Verified in-app stable updater with manifest/SHA-256 checks and normal Windows UAC elevation.
 - Support Report JSON with sensitive preset payload/path information excluded.
+- Optional one-time voluntary-support prompt after three distinct usage days; it is isolated from K500 control and only auto-opens when a verified bundled QRIS asset is present.
 - Branded Smart Installer plus the scope-matched per-user updater package.
 
 **Intentionally unsupported:** persistent LCD / Equipment Mode rename remains disabled until a donor-verified native rename transaction is captured.

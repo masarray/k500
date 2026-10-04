@@ -2,6 +2,21 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Voluntary QRIS support prompt
+
+### Added
+
+- Added a one-time voluntary-support prompt that becomes eligible only after the application has been opened on three distinct local calendar days.
+- The acknowledgement button is intentionally locked for the first three seconds and shows a visible countdown before becoming interactive.
+- Added centralized SonKuPik YouTube/tutorial and Tokopedia K500 links shared with the About dialog.
+- Added deterministic hardware-free coverage for distinct-day counting, same-day reopen behavior, fail-closed QRIS behavior, and QA preview isolation.
+
+### Safety
+
+- Donation state is isolated from StudioEngine, preset state, transport, recall, and K500 device I/O.
+- Production auto-prompting is fail-closed unless a verified static QRIS PNG is bundled at `resources/support/qris-sonkupik.png`; the application never fabricates a payment QR.
+- Donation remains optional and does not unlock, restrict, or modify any K500 feature.
+
 
 ## Unreleased — Smart Installer public distribution
 

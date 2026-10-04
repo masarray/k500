@@ -1,0 +1,70 @@
+name: Guard Donation Prompt
+
+on:
+  pull_request:
+    paths:
+      - 'CMakeLists.txt'
+      - 'src/main.cpp'
+      - 'src/DonationPromptController.cpp'
+      - 'src/DonationPromptController.h'
+      - 'src/DonationPromptSelfTestMain.cpp'
+      - 'qml/Main.qml'
+      - 'qml/components/AboutDialog.qml'
+      - 'qml/components/DonationPrompt.qml'
+      - 'qml/theme/SupportLinks.qml'
+      - 'resources/support/qris-sonkupik.png'
+      - 'docs/DONATION_QRIS_PROMPT.md'
+      - '.github/workflows/donation-prompt-guard.yml'
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify isolated fail-closed support prompt
+        shell: python
+        run: |
+          from pathlib import Path
+
+          controller = Path('src/DonationPromptController.cpp').read_text(encoding='utf-8')
+          header = Path('src/DonationPromptController.h').read_text(encoding='utf-8')
+          main = Path('src/main.cpp').read_text(encoding='utf-8')
+          root = Path('qml/Main.qml').read_text(encoding='utf-8')
+          dialog = Path('qml/components/DonationPrompt.qml').read_text(encoding='utf-8')
+          links = Path('qml/theme/SupportLinks.qml').read_text(encoding='utf-8')
+          cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
+
+          for token in [
+              'support/donationPrompt/v1/observedDays',
+              'kRequiredDistinctDays = 3',
+              'qrisAvailable()',
+              'DONATION_QRIS_FAIL_CLOSED_V1',
+              'DONATION_PROMPT_DISTINCT_DAY_V1',
+          ]:
+              assert token in controller, f'missing controller invariant: {token}'
+
+          assert 'QSettings' in header
+          assert 'K500' not in controller
+          assert 'StudioEngine' not in controller
+          assert 'K500' not in header
+          assert 'StudioEngine' not in header
+
+          assert '--donation-prompt-preview' in main
+          assert 'donationPrompt' in main
+          assert 'DONATION_UPDATE_PROMPT_ARBITER_V1' in root
+          assert 'donationPromptDialog.opened' in root
+          assert 'countdownSeconds: 3' in dialog
+          assert 'Popup.NoAutoClose' in dialog
+          assert 'enabled: root.canAcknowledge' in dialog
+          assert 'Qt.openUrlExternally(SupportLinks.youtubeUrl)' in dialog
+          assert 'Qt.openUrlExternally(SupportLinks.tokopediaUrl)' in dialog
+
+          assert 'qrc:/support/qris-sonkupik.png' in links
+          assert 'https://' not in controller
+          assert 'QNetwork' not in controller
+          assert 'resources/support/qris-sonkupik.png' in cmake
+          assert 'if(EXISTS "${SONKUPIK_QRIS_FILE}")' in cmake
+          assert 'k500_donation_prompt_selftest' in cmake
+
+          print('Donation prompt isolation and QRIS fail-closed guard passed')

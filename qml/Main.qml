@@ -6,6 +6,7 @@ ApplicationWindow {
     id: root
     required property var studioEngine
     required property var deviceManager
+    required property var donationPrompt
     visible: true
     width: 1484
     height: 920
@@ -21,6 +22,19 @@ ApplicationWindow {
     // gesture from being visually accepted while Controller LIVE is paused.
     readonly property bool deviceSyncBarrier: deviceManager.status === "syncing"
     property int selectedSection: 0
+
+    // DONATION_UPDATE_PROMPT_ARBITER_V1 — startup surfaces never stack.
+    // Update discovery may finish while the donation prompt is open; keep the
+    // update pending and surface it only after the user closes the support card.
+    function maybeOpenUpdateDialog() {
+        if (donationPromptDialog.opened || updateDialog.opened)
+            return
+
+        if (AppUpdater.updateAvailable
+            || AppUpdater.state === "migration-available"
+            || AppUpdater.state === "registration-repair")
+            updateDialog.open()
+    }
 
     background: Rectangle {
         gradient: Gradient {
@@ -141,6 +155,26 @@ ApplicationWindow {
         id: aboutDialog
     }
 
+    // DONATION_PROMPT_DAY3_V1 — one-time voluntary support prompt, eligible
+    // only after three distinct local calendar days and only when a verified
+    // bundled QRIS asset exists. Let the real window paint before showing it.
+    DonationPrompt {
+        id: donationPromptDialog
+        promptController: root.donationPrompt
+        onClosed: root.maybeOpenUpdateDialog()
+    }
+
+    Timer {
+        interval: 180
+        repeat: false
+        running: root.donationPrompt && root.donationPrompt.shouldShow
+        onTriggered: {
+            if (root.donationPrompt && root.donationPrompt.shouldShow
+                && !donationPromptDialog.opened)
+                donationPromptDialog.open()
+        }
+    }
+
     // SMART_UPDATE_UI_V1 — update discovery is silent on startup. Only a newer
     // public stable release opens the premium prompt; network failure never
     // interrupts K500 control or produces a startup warning. The dialog also
@@ -155,16 +189,12 @@ ApplicationWindow {
     Connections {
         target: AppUpdater
         function onUpdateChanged() {
-            if (AppUpdater.updateAvailable && !updateDialog.opened)
-                updateDialog.open()
+            root.maybeOpenUpdateDialog()
         }
         function onStateChanged() {
             // Discovery may surface a one-time migration offer, but the move
             // itself remains explicit and never starts from this signal.
-            if ((AppUpdater.state === "migration-available"
-                 || AppUpdater.state === "registration-repair")
-                && !updateDialog.opened)
-                updateDialog.open()
+            root.maybeOpenUpdateDialog()
         }
     }
 
