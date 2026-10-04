@@ -33,7 +33,6 @@ export async function onRequestGet() {
       version,
       channel: 'stable',
       setup: '/download/windows',
-      portable: '/download/portable'
     }), {
       status: 200,
       headers: {
@@ -48,7 +47,6 @@ export async function onRequestGet() {
       version: null,
       channel: 'stable',
       setup: '/download/windows',
-      portable: '/download/portable'
     }), {
       status: 503,
       headers: {
