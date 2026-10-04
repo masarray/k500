@@ -192,7 +192,7 @@ AA 0E 05 23 19 54 0B 00 00 60 60 26 03 0A 02 00 5D
 Body layout after command byte:
 
 ```text
-[topMicVol] [micInit state] [micMax mirrored] [gate mirrored]
+[topMicVol clamped to micMax] [micInit state] [micMax state] [gate mirrored]
 [FBX 0..4] [00 fixed] [micA] [micB] [TH+50] [ratio] [attack] [release*10] [00]
 ```
 
@@ -204,6 +204,16 @@ Mic Init 26  AA 0E 00 05 1E 1A 54 0B 04 00 64 64 32 02 01 0C 00 49
 
 Like Music Init, Mic Init is hydrated into block state and survives later Top Mic
 writes without falling back to a stale pre-edit scalar.
+
+The final Mic Max sweep proves the third scalar writable and a hard ceiling:
+
+```text
+Max 50  AA 0E 00 05 23 23 32 0B 00 00 60 60 27 03 0A 02 00 74
+Max 30  AA 0E 00 05 1E 23 1E 0B 00 00 60 60 27 03 0A 02 00 8D
+Max  0  AA 0E 00 05 00 23 00 0B 00 00 60 60 27 03 0A 02 00 C9
+```
+
+Contract: `TopMic = min(TopMic, MicMax)`; ACK remains `RSP 0xFA`.
 
 Exact native FBX write vectors from the paired 2026-09-20 captures:
 
@@ -294,7 +304,44 @@ USB Record 6  AA 04 00 3E 03 05 54 62
 USB Record 1  AA 04 00 3E 03 00 54 67
 ```
 
-UDisk Record remains read-only because its selector was not captured.
+UDisk Record has now been independently captured. Its CMD 0x3E payload is NOT
+the USB Record selector form:
+
+```text
+UDisk UI 6  AA 04 00 3E 05 00 00 B9
+UDisk UI 1  AA 04 00 3E 00 00 00 BE
+```
+
+UI `1..6` maps to raw `0..5`; ACK is also `RSP 0xC1`.
+
+Dance Mic Trigger uses one full-pair `CMD 0x22`:
+
+```text
+AA 07 00 22 01 <thresholdRaw> <holdSec> 0B 00 00 checksum
+thresholdRaw = dB + 60, domain -60..0 dB
+holdSec = 1..30
+ACK = RSP 0xDD
+
+-50 dB / 6 s  AA 07 00 22 01 0A 06 0B 00 00 BB
+  0 dB / 6 s  AA 07 00 22 01 3C 06 0B 00 00 89
+-60 dB / 1 s  AA 07 00 22 01 00 01 0B 00 00 CA
+-60 dB /30 s  AA 07 00 22 01 00 1E 0B 00 00 AD
+```
+
+The paired seed uses scalar offsets 0x0093/0x0094 only when both bytes decode
+inside the captured domains; otherwise no write is emitted.
+
+BT Name uses dedicated `CMD 0x4E`:
+
+```text
+SET "ARI"  AA 0B 00 4E 01 41 52 49 00 00 00 00 00 03 C7
+RESET      AA 0B 00 4E 00 00 00 00 00 00 00 00 00 03 A4
+ACK = RSP 0xB1
+```
+
+SET uses an exact 8-byte NUL-padded printable-ASCII field and route mask 0x03.
+After ACK the USB-only promoted workflow performs a full 939-byte identity
+refresh. BLE identity remains read-only.
 
 Adj Manner / VR OFF uses `CMD 0x07`; ACK is `RSP 0xF8`.
 
