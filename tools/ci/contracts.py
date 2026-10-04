@@ -308,13 +308,13 @@ def check_ci_topology() -> None:
         if events:
             event_driven[path.name] = events
 
-    allowed = {"ci.yml"}
+    allowed = {"windows-build.yml"}
     unexpected = sorted(set(event_driven) - allowed)
     if unexpected:
-        FAILURES.append(f"event-driven workflow sprawl: {unexpected}; only ci.yml may auto-run")
-    ci_events = event_driven.get("ci.yml", set())
+        FAILURES.append(f"event-driven workflow sprawl: {unexpected}; only windows-build.yml may auto-run")
+    ci_events = event_driven.get("windows-build.yml", set())
     if ci_events != {"pull_request", "push"}:
-        FAILURES.append(f"ci.yml event contract mismatch: {sorted(ci_events)}")
+        FAILURES.append(f"windows-build.yml event contract mismatch: {sorted(ci_events)}")
     else:
         PASSES.append("CI topology: single PR/main workflow")
 

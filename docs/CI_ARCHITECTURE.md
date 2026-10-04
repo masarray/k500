@@ -92,7 +92,7 @@ Stable promotion never rebuilds accepted application bytes.
   control.
 - Add behavior coverage to a self-test executable whenever possible.
 - Add a rule to `contracts.py` only for a true static invariant.
-- Keep PR/main orchestration in `ci.yml`.
+- Keep PR/main orchestration in `windows-build.yml`.
 - Heavy diagnostics are manual or narrowly scheduled, never duplicated on
   `push` and `pull_request`.
 - Feature branches do not run push CI; the PR exact head is the only

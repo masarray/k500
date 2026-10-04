@@ -288,6 +288,6 @@ The repository uses **tests as regression units, not GitHub workflows as regress
 - Heavy ASan/fuzz/soak is manual hardening, not default PR CI.
 - RC/stable workflows remain manual and immutable.
 - The active workflow budget is intentionally <= 4 files under `.github/workflows`.
-- Any proposal to add another active workflow must first prove that it cannot be expressed as a test/job in `ci.yml`.
+- Any proposal to add another active workflow must first prove that it cannot be expressed as a test/job in `windows-build.yml`.
 
 Read `docs/CI_ARCHITECTURE.md` before changing CI.
