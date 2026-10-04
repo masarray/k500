@@ -1,0 +1,14 @@
+{
+  "name": "KONSER NYANYI",
+  "eq": {
+    "music": {
+      "bands": {
+        "1": { "gain_db": 1.5 },
+        "2": { "gain_db": 2.6 },
+        "3": { "gain_db": 8.2 },
+        "6": { "gain_db": 1.0 },
+        "7": { "gain_db": 5.8 }
+      }
+    }
+  }
+}

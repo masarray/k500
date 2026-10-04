@@ -1,0 +1,25 @@
+{
+  "candidate": "01_KONSER_NYANYI_MAIN_BALANCE_V2.k500",
+  "status": "GOLD candidate pending real K500 audition",
+  "officialDonorBlob": "dcbdd768c455922af147d1ac1e2bd025e4ba4fc6",
+  "v1Blob": "93bc6910a4cec0b01c48bb2d5b4456ebe5f7eba7",
+  "v2Blob": "3325fd8312fbf093193bd68c5a0b8ca5b3b2d487",
+  "size": 1144,
+  "checksumModulo256": 0,
+  "v1ToV2ChangedBytes": [
+    {"offset":"0x01C0","semantic":"Music band 2 gain @ 158 Hz","beforeRaw":26,"afterRaw":30,"beforeDb":2.6,"afterDb":3.0},
+    {"offset":"0x01D0","semantic":"Music band 4 gain @ 1315 Hz","beforeRaw":-6,"afterRaw":-9,"beforeDb":-0.6,"afterDb":-0.9},
+    {"offset":"0x0475","semantic":"checksum","beforeRaw":137,"afterRaw":136}
+  ],
+  "locks": [
+    "Music 66 Hz +8.2 dB",
+    "Music 6.495 kHz +1.0 dB",
+    "Music HS 766 Hz +5.8 dB",
+    "Music 11.704 kHz +1.5 dB",
+    "all Mic A/B",
+    "Main/Center/Surround/Sub EQ and routing",
+    "Reverb/Echo",
+    "compressors/delays/crossovers",
+    "all Alt/unknown bytes"
+  ]
+}

@@ -1,0 +1,299 @@
+{
+  "generated": "2026-10-04",
+  "status": "hardware-audition candidates; do not promote as official until accepted on real K500",
+  "empiricalAnchor": {
+    "preset": "01_KONSER_NYANYI_MAIN_BALANCE_V2.k500",
+    "userFeedback": "V2 is more enjoyable on real K500 Main output",
+    "sourceOfficialBlob": "dcbdd768c455922af147d1ac1e2bd025e4ba4fc6",
+    "acceptedCandidateBlob": "3325fd8312fbf093193bd68c5a0b8ca5b3b2d487"
+  },
+  "invariants": [
+    "donor-based surgical editing only",
+    "Music PEQ gain fields only",
+    "preserve frequencies, Q, typeRaw, crossover, Mic, FX, outputs, compressors, delays, Alt/reserved/unknown bytes",
+    "no Sub EQ changes in this round",
+    "recompute checksum last",
+    "1144-byte container and checksum modulo 256 = 0"
+  ],
+  "bands": {
+    "1": "11704 Hz Q2.0 air",
+    "2": "158 Hz Q2.3 kick/body",
+    "3": "66 Hz Q0.4 deep foundation",
+    "4": "1315 Hz Q2.4 mid density/pocket",
+    "5": "2916 Hz Q2.1 articulation",
+    "6": "6495 Hz Q1.9 detail/cymbal polish",
+    "7": "HS 766 Hz Q0.4 broad openness"
+  },
+  "modes": [
+    {
+      "slot": 1,
+      "name": "KONSER NYANYI",
+      "role": "fresh universal concert karaoke",
+      "sourceBlob": "dcbdd768c455922af147d1ac1e2bd025e4ba4fc6",
+      "candidateBlob": "3325fd8312fbf093193bd68c5a0b8ca5b3b2d487",
+      "target": [
+        1.5,
+        3,
+        8.2,
+        -0.9,
+        1.3,
+        1,
+        5.8
+      ],
+      "deltaDb": {
+        "sub45_90": 0.605,
+        "punch90_180": 0.777,
+        "body120_250": 0.685,
+        "mud250_500": 0.014,
+        "presence1500_2500": -0.652,
+        "iRing2500_4500": -0.718,
+        "detail5000_7000": -1.103,
+        "sparkle7000_10000": -1.006,
+        "air10000_14000": -0.975
+      }
+    },
+    {
+      "slot": 2,
+      "name": "MC HOST RADIO",
+      "role": "dry controlled broadcast utility",
+      "sourceBlob": "705b7c4bdbb2bc15a04fbe3ee6b5290c1bdc7ef2",
+      "candidateBlob": "ab054e933f5ee46986407adf0b98a5c45e67803b",
+      "target": [
+        1.5,
+        2.8,
+        8,
+        -0.9,
+        1.3,
+        1.1,
+        5.9
+      ],
+      "deltaDb": {
+        "sub45_90": 0.403,
+        "punch90_180": 0.529,
+        "body120_250": 0.465,
+        "mud250_500": -0.023,
+        "presence1500_2500": -0.571,
+        "iRing2500_4500": -0.614,
+        "detail5000_7000": -0.926,
+        "sparkle7000_10000": -0.86,
+        "air10000_14000": -0.866
+      }
+    },
+    {
+      "slot": 3,
+      "name": "KAR DANGDUT",
+      "role": "dangdut groove and singing reward",
+      "sourceBlob": "ec0a04e20f3a1813cf2f20d115456553315600eb",
+      "candidateBlob": "a80d8d53c411efafce08e454297d5df76fbb96ff",
+      "target": [
+        1.6,
+        3.1,
+        8.2,
+        -0.8,
+        1.3,
+        1.2,
+        6
+      ],
+      "deltaDb": {
+        "sub45_90": 0.613,
+        "punch90_180": 0.841,
+        "body120_250": 0.762,
+        "mud250_500": 0.071,
+        "presence1500_2500": -0.457,
+        "iRing2500_4500": -0.504,
+        "detail5000_7000": -0.741,
+        "sparkle7000_10000": -0.688,
+        "air10000_14000": -0.68
+      }
+    },
+    {
+      "slot": 4,
+      "name": "POP ROCK BALLAD",
+      "role": "pop/rock impact with vocal space",
+      "sourceBlob": "7743de95f6c7cd7a1ad7ea98546a4ec14a25623a",
+      "candidateBlob": "01445a723177cd9da8d2f999314940e055621c72",
+      "target": [
+        1.6,
+        3,
+        8,
+        -0.8,
+        1.3,
+        1.1,
+        5.9
+      ],
+      "deltaDb": {
+        "sub45_90": 0.414,
+        "punch90_180": 0.638,
+        "body120_250": 0.584,
+        "mud250_500": -0.007,
+        "presence1500_2500": -0.543,
+        "iRing2500_4500": -0.609,
+        "detail5000_7000": -0.918,
+        "sparkle7000_10000": -0.834,
+        "air10000_14000": -0.789
+      }
+    },
+    {
+      "slot": 5,
+      "name": "POP KENANGAN V2",
+      "role": "warm romantic nostalgic pop",
+      "sourceBlob": "e1468b8eeb0a7e20c372f4520b1d626bdaacc3b0",
+      "candidateBlob": "0c736688f4f4e6ed4993e60b9ad6cd146c5d3fe6",
+      "target": [
+        1.4,
+        2.8,
+        8,
+        -1,
+        1.2,
+        1,
+        5.7
+      ],
+      "deltaDb": {
+        "sub45_90": 0.401,
+        "punch90_180": 0.519,
+        "body120_250": 0.447,
+        "mud250_500": -0.073,
+        "presence1500_2500": -0.791,
+        "iRing2500_4500": -0.881,
+        "detail5000_7000": -1.216,
+        "sparkle7000_10000": -1.134,
+        "air10000_14000": -1.153
+      }
+    },
+    {
+      "slot": 6,
+      "name": "SHOLAWAT SYAHDU",
+      "role": "soft devotional ambience",
+      "sourceBlob": "66da830344e12d5d2d61f26cdbb66009e60abb70",
+      "candidateBlob": "9dfc4cc2d1ecc7dc031123cf20527509d932d212",
+      "target": [
+        1.4,
+        2.6,
+        7.9,
+        -0.9,
+        1.2,
+        1,
+        5.7
+      ],
+      "deltaDb": {
+        "sub45_90": 0.294,
+        "punch90_180": 0.339,
+        "body120_250": 0.273,
+        "mud250_500": -0.109,
+        "presence1500_2500": -0.765,
+        "iRing2500_4500": -0.878,
+        "detail5000_7000": -1.216,
+        "sparkle7000_10000": -1.133,
+        "air10000_14000": -1.152
+      }
+    },
+    {
+      "slot": 7,
+      "name": "JAZZ LOUNGE",
+      "role": "intimate classy lounge",
+      "sourceBlob": "ad29062ca68bd2db2439424dd3b45bae4ee7285b",
+      "candidateBlob": "3c8ca14c9308350780aa9900250883a144b8d524",
+      "target": [
+        0.8,
+        0,
+        6.6,
+        -1.5,
+        0.2,
+        0.3,
+        5.4
+      ],
+      "deltaDb": {
+        "sub45_90": 0.217,
+        "punch90_180": 0.412,
+        "body120_250": 0.4,
+        "mud250_500": 0.053,
+        "presence1500_2500": -0.105,
+        "iRing2500_4500": -0.093,
+        "detail5000_7000": -0.091,
+        "sparkle7000_10000": -0.074,
+        "air10000_14000": -0.023
+      }
+    },
+    {
+      "slot": 8,
+      "name": "BLUES CLUB",
+      "role": "warm vintage groove",
+      "sourceBlob": "83aba266d284465de8a166e14cb96c0167546189",
+      "candidateBlob": "c90319541f1528b7ef2f80b98aaa6cd5c700e74b",
+      "target": [
+        0.4,
+        0.7,
+        5.6,
+        -1.5,
+        0,
+        0.2,
+        4.5
+      ],
+      "deltaDb": {
+        "sub45_90": 0.213,
+        "punch90_180": 0.359,
+        "body120_250": 0.341,
+        "mud250_500": 0.046,
+        "presence1500_2500": -0.106,
+        "iRing2500_4500": -0.095,
+        "detail5000_7000": -0.098,
+        "sparkle7000_10000": -0.099,
+        "air10000_14000": -0.1
+      }
+    },
+    {
+      "slot": 9,
+      "name": "ACOUSTIC NATURAL",
+      "role": "natural organic acoustic",
+      "sourceBlob": "40fe7f739400f19f368f98b9d11d9b990872e1ae",
+      "candidateBlob": "ad5ac9647965104baed4d357e1b2008431ccefe4",
+      "target": [
+        0.4,
+        0,
+        6.8,
+        -1.8,
+        -0.1,
+        -0.3,
+        5.9
+      ],
+      "deltaDb": {
+        "sub45_90": 0.019,
+        "punch90_180": 0.212,
+        "body120_250": 0.23,
+        "mud250_500": 0.003,
+        "presence1500_2500": -0.08,
+        "iRing2500_4500": -0.091,
+        "detail5000_7000": -0.097,
+        "sparkle7000_10000": -0.099,
+        "air10000_14000": -0.099
+      }
+    },
+    {
+      "slot": 10,
+      "name": "REGGAE DUB",
+      "role": "deep groove-led reggae/dub",
+      "sourceBlob": "01e3a62bd34d655ad49f94f7b5379058d01a47eb",
+      "candidateBlob": "7baeff8d6dbb09ca87e3ea7c73e7d2caa6cf4d45",
+      "target": [
+        0.6,
+        0,
+        7.8,
+        -1,
+        -0.2,
+        0.1,
+        4.7
+      ],
+      "deltaDb": {
+        "sub45_90": 0.027,
+        "punch90_180": 0.315,
+        "body120_250": 0.341,
+        "mud250_500": -0.009,
+        "presence1500_2500": -0.216,
+        "iRing2500_4500": -0.192,
+        "detail5000_7000": -0.197,
+        "sparkle7000_10000": -0.198,
+        "air10000_14000": -0.199
+      }
+    }
+  ]
+}

@@ -25,6 +25,17 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - The next immutable public candidate is **v1.1.0-rc.5** from the exact post-merge `main` commit.
 - Stable v1.1.0 remains fail-closed until the exact RC5 machine and per-user installer bytes are accepted and recorded in the updater acceptance provenance gate.
 
+## Unreleased — Final musicality preset library
+
+### Changed
+
+- Promoted the 2026-10-04 musicality evolution into all ten bundled official K500 presets.
+- Mode 01 now ships the hardware-accepted Main Balance V2 tonal balance.
+- Mode 05 now ships the hardware-accepted tempo-aware Pop Kenangan R2: 310 ms echo retained, ~2470 ms reverb decay, 75 ms predelay, clearer center vocal and wider wet halo.
+- Remaining genre presets keep their individual identities while adopting the common foundation -> punch -> body -> clean mid -> smooth detail -> retained air approach.
+- Updated exact SHA-256 release and CI guards so packaged, cached and GitHub-synced official presets converge on the same final bytes.
+
+
 ## Unreleased — Voluntary QRIS support prompt
 
 ### Added

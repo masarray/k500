@@ -1,0 +1,57 @@
+{
+  "scalars": {
+    "main.reverb": 96,
+    "surround.mic": 74,
+    "surround.reverb": 100,
+    "surround.echo": 55,
+    "surround.delay_left_ms": 12,
+    "surround.delay_right_ms": 18,
+    "center.mic": 97,
+    "center.reverb": 82,
+    "center.echo": 38,
+    "reverb.decay_ms": 2470,
+    "reverb.predelay_ms": 75
+  },
+  "eq": {
+    "micA": {
+      "bands": {
+        "2": { "gain_db": -2.5 },
+        "3": { "gain_db": 5.8 },
+        "4": { "gain_db": -0.8 },
+        "6": { "gain_db": -0.7 },
+        "7": { "gain_db": -2.4 },
+        "8": { "gain_db": -0.5 },
+        "9": { "gain_db": -6.2 }
+      }
+    },
+    "micB": {
+      "bands": {
+        "2": { "gain_db": -2.5 },
+        "3": { "gain_db": 5.8 },
+        "4": { "gain_db": -0.8 },
+        "6": { "gain_db": -0.7 },
+        "7": { "gain_db": -2.4 },
+        "8": { "gain_db": -0.5 },
+        "9": { "gain_db": -6.2 }
+      }
+    },
+    "music": {
+      "bands": {
+        "1": { "gain_db": 1.6 },
+        "2": { "gain_db": 2.9 },
+        "5": { "gain_db": 1.3 },
+        "6": { "gain_db": 1.2 }
+      }
+    },
+    "reverb": {
+      "bands": {
+        "3": { "gain_db": -9.9 },
+        "4": { "gain_db": -13.6 },
+        "5": { "gain_db": 8.2 }
+      }
+    }
+  },
+  "crossovers": {
+    "reverb": { "hpf_hz": 240 }
+  }
+}
