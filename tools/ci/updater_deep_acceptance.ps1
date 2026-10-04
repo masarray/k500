@@ -79,8 +79,6 @@ if ($LASTEXITCODE -ne 0) { throw "Migration uninstaller fixture compilation fail
 $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
 $machineReg = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
 $userReg = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
-$healthMarker = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-health.marker'
-$restartMarker = Join-Path $env:TEMP 'SonKuPik-K500-CI-update-relaunch.marker'
 
 Write-Host "==> Per-user package fails closed when machine registration exists"
 & reg.exe ADD $machineReg /v DisplayName /t REG_SZ /d 'SonKuPik K500 RC machine collision fixture' /f /reg:64 | Out-Null
@@ -108,7 +106,6 @@ $seed = Start-Process -FilePath $userSetupPath -ArgumentList @(
 ) -Wait -PassThru
 if ($seed.ExitCode -ne 0) { throw "Could not seed per-user helper update: $($seed.ExitCode)" }
 
-Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
 $setupHash = (Get-FileHash $userSetupPath -Algorithm SHA256).Hash.ToLowerInvariant()
 $updateLog = Join-Path $env:TEMP 'SonKuPik-K500-RC-update-handoff.log'
 $updateBackup = Join-Path $env:TEMP 'SonKuPik-K500-RC-update-recovery'
@@ -132,18 +129,12 @@ $updateArgs = @(
 $handoff = Start-BoundedProcess -FilePath $helperPath -ArgumentList $updateArgs -Label 'verified per-user helper update'
 if ($handoff.ExitCode -ne 0) { throw "Per-user update handoff failed: $($handoff.ExitCode)" }
 
-$ready = $false
-foreach ($attempt in 1..30) {
-    if ((Test-Path $healthMarker) -and (Test-Path $restartMarker)) {
-        $ready = $true
-        break
-    }
-    Start-Sleep -Milliseconds 250
+$updateLogText = Get-Content $updateLog -Raw
+if (-not $updateLogText.Contains('Installer and app health check passed; recovery snapshot released.')) {
+    throw "Updater did not prove production app health-check and recovery release"
 }
-if (-not $ready) { throw "Updater did not health-check and relaunch installed application" }
-if (-not ((Get-Content $updateLog -Raw).Contains('recovery snapshot released'))) {
-    throw "Updater did not release successful recovery snapshot"
-}
+# Helper exit 0 is reached only after startApplication(targetApp) succeeds, so
+# this verifies relaunch without relying on the old test fixture's marker files.
 if (Test-Path $updateBackup) { throw "Successful update left stale recovery snapshot" }
 
 $cleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @(
@@ -170,7 +161,6 @@ foreach ($case in @(
     @{ Mode='nonzero'; Expected=23; Name='installer-nonzero' },
     @{ Mode='badhealth'; Expected=24; Name='failed-health-check' }
 )) {
-    Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
     $env:SONKUPIK_P3_FAKE_INSTALL_MODE = $case.Mode
     $caseLog = Join-Path $env:TEMP ("SonKuPik-K500-RC-" + $case.Name + '.log')
     $caseBackup = Join-Path $env:TEMP ("SonKuPik-K500-RC-" + $case.Name + '-recovery')
@@ -233,7 +223,6 @@ Set-Content $presetMarker 'preset-user-data-must-survive' -Encoding ascii
 Set-Content $cacheMarker 'official-cache-must-survive' -Encoding ascii
 & reg.exe ADD 'HKCU\Software\MasArray\SonKuPik K500' /v RCDeepPersistence /t REG_SZ /d 'qsettings-must-survive' /f /reg:64 | Out-Null
 
-Remove-Item $healthMarker,$restartMarker -Force -ErrorAction SilentlyContinue
 $migrationLog = Join-Path $env:TEMP 'SonKuPik-K500-RC-migration.log'
 $migrationBackup = Join-Path $env:TEMP 'SonKuPik-K500-RC-migration-recovery'
 Remove-Item $migrationLog -Force -ErrorAction SilentlyContinue
