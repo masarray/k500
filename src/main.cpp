@@ -269,6 +269,7 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0092, 1);  // EQ link
         putFileU16(memory, 0x0098, 90);
         putFileU16(memory, 0x009A, 16000);
+        memory[K500Protocol::ReadbackOffset::MicHpType] = char(0x01); // HP Bessel 12
         memory[K500Protocol::ReadbackOffset::MicLpType] = char(0x03); // LP Bessel 18
 
         // Main output.
@@ -282,8 +283,10 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0031, 4);
         putFileU8(memory, 0x0032, 12);
         putFileU8(memory, 0x0033, 3);  // 0.3 sec
-        putFileU16(memory, 0x0034, 50); // Main L delay
-        putFileU16(memory, 0x0036, 20); // Main R delay
+        memory[K500Protocol::ReadbackOffset::MainHpType] = char(0x03); // HP Bessel 18
+        memory[K500Protocol::ReadbackOffset::MainLpType] = char(0x04); // LP Butter 18
+        putFileU16(memory, 0x00D4, 50); // Main L delay
+        putFileU16(memory, 0x00D6, 20); // Main R delay
         putFileU16(memory, 0x00A0, 45);
         putFileU16(memory, 0x00A4, 19000);
 
@@ -298,6 +301,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0045, 5);
         putFileU8(memory, 0x0046, 13);
         putFileU8(memory, 0x0047, 4);
+        memory[K500Protocol::ReadbackOffset::SurroundHpType] = char(0x05); // HP Bessel 24
+        memory[K500Protocol::ReadbackOffset::SurroundLpType] = char(0x06); // LP Butter 24
         // SURROUND_DELAY_ACTUAL_REFERENCE_V1 — native KTV screenshot/capture
         // reference state: L=14 ms (4.8 m), R=20 ms (6.8 m). These are
         // hydrated hardware values, not application defaults.
@@ -314,7 +319,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0059, 6);
         putFileU8(memory, 0x005A, 14);
         putFileU8(memory, 0x005B, 5);
-        putFileU16(memory, 0x005C, 30); // Center output delay
+        memory[K500Protocol::ReadbackOffset::CenterHpType] = char(0x07); // HP LR 24
+        memory[K500Protocol::ReadbackOffset::CenterLpType] = char(0x01); // LP Bessel 12
+        putFileU16(memory, 0x00DC, 30); // Center output delay
 
         // Sub output + crossover.
         putFileU8(memory, 0x0060, 87); // +6 dB
@@ -326,7 +333,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x006D, 7);
         putFileU8(memory, 0x006E, 15);
         putFileU8(memory, 0x006F, 6);
-        putFileU16(memory, 0x0070, 40); // Sub output delay
+        memory[K500Protocol::ReadbackOffset::SubHpType] = char(0x07); // HP LR 24
+        memory[K500Protocol::ReadbackOffset::SubLpType] = char(0x02); // LP Butter 12
+        putFileU16(memory, 0x00DE, 40); // Sub output delay
         putFileU16(memory, 0x00B8, 42);
         putFileU16(memory, 0x00BC, 96);
 
