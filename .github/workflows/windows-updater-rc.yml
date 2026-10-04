@@ -238,11 +238,7 @@ jobs:
       - name: Run deep updater lifecycle acceptance
         shell: pwsh
         run: |
-          ./tools/ci/updater_deep_acceptance.ps1 \
-            -Version '${{ steps.meta.outputs.version }}' \
-            -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" \
-            -PackageDir package \
-            -BuildDir build
+          ./tools/ci/updater_deep_acceptance.ps1 -Version '${{ steps.meta.outputs.version }}' -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" -PackageDir package -BuildDir build
 
       - name: Generate and validate RC provenance
         shell: pwsh
