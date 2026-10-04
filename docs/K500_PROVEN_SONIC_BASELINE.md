@@ -141,24 +141,66 @@ SHA-256: 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
 
 Future experiments normally branch from the current official bytes; rollback investigations may explicitly return to the archived native hash recorded in the v1.0 history.
 
-## 8. Current official preset library
+## 8. Balanced Enhanced Music Core candidate bank
 
-The 2026-10-04 public-release promotion is intentionally mixed by evidence state: Slots 01, 03, and 05 use the accepted new candidates; Slots 02, 04, and 06–10 retain their previous official bytes while their R1 evolution remains under `research/` pending individual real-K500 audition.
+The accepted hardware anchors are now **01, 03, and 05**. The user explicitly
+prefers the Music result of all three. Their seven Music-PEQ gains occupy a very
+tight, already-proven envelope:
 
-| Slot | Repository file | Internal name | SHA-256 / status | Sonic role |
-|---:|---|---|---|---|
-| 01 | `01_KONSER_NYANYI.k500` | `KONSER NYANYI` | `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` | concert / Air-Focus universal karaoke |
-| 02 | `02_MC_HOST_RADIO.k500` | `MC HOST RADIO` | previous official rename-only audio state | dry/controlled broadcast utility; R1 pending hardware audition |
-| 03 | `03_KAR_DANGDUT.k500` | `KAR DANGDUT` | `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` | accepted R1 punch/smoothness refinement over the proven Hi-Fi Core V3/Sub lineage |
-| 04 | `04_POP_ROCK_BALLAD.k500` | `POP ROCK BALLAD` | `d18c9ddf4d8ba9d5d5fa6f027b97cc31784138a510c1e35778b8995e380172f5` | previous official pop-rock / slow-rock; R1 pending hardware audition |
-| 05 | `05_POP_KENANGAN_V2.k500` | `POP KENANGAN V2` | `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` | accepted tempo-aware R2 romantic slow-pop |
-| 06 | `06_SHOLAWAT_SYAHDU.k500` | `SHOLAWAT SYAHDU` | `e7854512443699f6b3202db488a9d2d137162b4d4e756b4f7c34950a541f909c` | previous official soft/fresh sholawat; R1 pending hardware audition |
-| 07 | `07_JAZZ_LOUNGE.k500` | `JAZZ LOUNGE` | `934caa877de5e8cb7ef2dfe8d12a99a4b804989807357ce62805e419b0a6bae7` | previous official intimate/classy lounge; R1 pending hardware audition |
-| 08 | `08_BLUES_CLUB.k500` | `BLUES CLUB` | `741bfa917a8d491070d18d223e4be7a5010d7c4edb171f2e0e65f95cbbe22146` | previous official warm vintage/slap character; R1 pending hardware audition |
-| 09 | `09_ACOUSTIC_NATURAL.k500` | `ACOUSTIC NATURAL` | `8a5ce6f8b310d24d47d755f99c5acf9b9d992f9a85a2e13ccb7156c0f1d8b81c` | previous official natural/organic acoustic vocal; R1 pending hardware audition |
-| 10 | `10_REGGAE_DUB.k500` | `REGGAE DUB` | `1984d309db61c7258329765306e3e573e64730b04a5cd4472568c3f332742c90` | previous official bass/groove + rhythmic echo; R1 pending hardware audition |
+| Music band | 01 | 03 | 05 | Balanced core |
+| --- | ---: | ---: | ---: | ---: |
+| 11.704 kHz air | +1.5 | +1.6 | +1.6 | **+1.6 dB** |
+| 158 Hz punch/body | +3.0 | +3.1 | +2.9 | **+3.0 dB** |
+| 66 Hz foundation | +8.2 | +8.2 | +8.0 | **+8.2 dB** |
+| 1.315 kHz density/pocket | -0.9 | -0.8 | -1.0 | **-0.9 dB** |
+| 2.916 kHz articulation | +1.3 | +1.3 | +1.3 | **+1.3 dB** |
+| 6.495 kHz detail/polish | +1.0 | +1.2 | +1.2 | **+1.2 dB** |
+| HS 766 Hz openness | +5.8 | +6.0 | +5.7 | **+5.8 dB** |
 
-The library is intentionally heterogeneous. Air Focus is a quality reference, not a parameter template. Genre-specific Music/Mic/Sub voicing remains donor-based and should not be normalized without new hardware evidence.
+The proposed shared core is therefore:
+
+```text
+[+1.6, +3.0, +8.2, -0.9, +1.3, +1.2, +5.8] dB
+```
+
+Every value is inside the exact range already accepted on real K500 hardware;
+this is an interpolation of accepted results, not a new extrapolated voicing.
+
+On branch `preset/balanced-enhanced-bank-20261004`, Slots 02, 04 and 06–10
+apply that shared Music core **only to the seven Music PEQ gain fields**.
+Frequencies, Q, raw filter aliases, crossovers, Mic A/B, dynamics, Reverb,
+Echo, routing, output EQ/gain, compressor, delays and unknown/reserved bytes
+remain byte-identical to each slot's current official donor.
+
+That intentionally preserves context:
+
+- **02 MC HOST RADIO:** enhanced backing music while the dry/controlled MC vocal path remains intact.
+- **04 POP ROCK BALLAD:** enhanced common Music foundation; existing rock/ballad vocal and spatial routing remains the context.
+- **06 SHOLAWAT SYAHDU:** enhanced Music quality while the softer devotional Mic/FX architecture remains untouched.
+- **07 JAZZ LOUNGE:** the common Music quality is adopted, while its lower Surround/Sub routing and intimate vocal architecture preserve lounge scale.
+- **08 BLUES CLUB:** Music gains become current-generation while the warm vintage output/FX context remains donor-owned.
+- **09 ACOUSTIC NATURAL:** common Music quality is added without rewriting its more restrained routing/output or natural vocal identity.
+- **10 REGGAE DUB:** the Music path is modernized while its existing strong Sub route and rhythmic Echo/Dub architecture remain the genre authority.
+
+Candidate hashes:
+
+| Slot | Repository file | Status / SHA-256 |
+|---:|---|---|
+| 01 | `01_KONSER_NYANYI.k500` | accepted, unchanged — `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` |
+| 02 | `02_MC_HOST_RADIO.k500` | **candidate** — `8b18cdbd1f4e1ae409c882d84955bfa34ca770e459615524591732182f14339c` |
+| 03 | `03_KAR_DANGDUT.k500` | accepted, unchanged — `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` |
+| 04 | `04_POP_ROCK_BALLAD.k500` | **candidate** — `bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c` |
+| 05 | `05_POP_KENANGAN_V2.k500` | accepted R2, unchanged — `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` |
+| 06 | `06_SHOLAWAT_SYAHDU.k500` | **candidate** — `9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb` |
+| 07 | `07_JAZZ_LOUNGE.k500` | **candidate** — `a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb` |
+| 08 | `08_BLUES_CLUB.k500` | **candidate** — `ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060` |
+| 09 | `09_ACOUSTIC_NATURAL.k500` | **candidate** — `785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b` |
+| 10 | `10_REGGAE_DUB.k500` | **candidate** — `e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f` |
+
+These candidates are prepared for one controlled real-K500 audition pass.
+Do not call them hardware-accepted or merge them to the public release line
+until that listening gate passes. Once accepted, promote the exact bytes; do
+not rebuild them.
 
 ## 9. Locking policy
 

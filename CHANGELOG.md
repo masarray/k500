@@ -2,6 +2,22 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Balanced Enhanced Music Core candidate
+
+### Changed
+
+- Derived a shared Music PEQ core from the median of the three real-K500 results explicitly preferred by the user: Modes 01, 03 and 05.
+- Prepared Modes 02, 04 and 06–10 with the shared `[+1.6,+3.0,+8.2,-0.9,+1.3,+1.2,+5.8] dB` Music gain profile.
+- The candidate patch is deliberately surgical: only seven Music PEQ gain words plus checksum change; each preset's Mic, FX, routing, output, dynamics, crossover and unknown bytes remain donor-owned.
+- Exact candidate hashes are guarded by consolidated CI so hardware acceptance can promote byte-identical files.
+
+### Qualification
+
+- Modes 01, 03 and 05 remain the accepted anchors.
+- Modes 02, 04 and 06–10 remain **candidate** until one controlled real-K500 listening pass confirms that the shared enhanced Music foundation does not compromise each preset's context.
+- Public RC/stable provenance must not consume these candidate bytes before that gate passes.
+
+
 ## Unreleased — CI consolidation
 
 ### Changed
