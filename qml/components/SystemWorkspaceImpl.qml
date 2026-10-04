@@ -677,17 +677,21 @@ Item {
                                 border.color:active?Theme.accentSoft:(known?"#60676C":Theme.amber)
                                 Text{anchors.centerIn:parent;visible:adjMannerVrCheck.active;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
                                 Text{anchors.centerIn:parent;visible:!adjMannerVrCheck.known;text:"?";color:Theme.amber;font.pixelSize:9;font.weight:Font.Bold}
-                                // Readback is not captured, so this square is a
-                                // status indicator only. OFF/ON below are explicit
-                                // commands; never infer a toggle direction from "?".
+                                // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 —
+                                // reconnect truth comes from C0 + activeMemory[0x008C].
+                                // Checked means the fascia trim-pots are disabled.
                             }
                             Text{text:"Adj Manner VR OFF";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
                             Text{
                                 text:!root.deviceConnected?"CONNECT TO SET"
                                      :root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                        ?(root.presetManager.adjMannerVrOff?"DEVICE ON":"DEVICE OFF")
-                                        :"DEVICE STATE UNKNOWN"
-                                color:root.deviceConnected&&root.presetManager&&!root.presetManager.adjMannerVrOffKnown?Theme.amber:Theme.textDim
+                                        ?(root.presetManager.adjMannerVrOff
+                                            ?"SOFTWARE CONTROL"
+                                            :"FRONT VR ACTIVE")
+                                        :"SYNCING DEVICE"
+                                color:root.presetManager&&root.presetManager.adjMannerVrOffKnown
+                                      ?(root.presetManager.adjMannerVrOff?Theme.accent:Theme.green)
+                                      :Theme.amber
                                 font.family:Theme.monoFamily;font.pixelSize:7
                             }
                             Item{Layout.fillWidth:true}
