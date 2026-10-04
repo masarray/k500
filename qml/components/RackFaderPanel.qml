@@ -7,6 +7,10 @@ StudioPanel {
     property string eyebrow: ""
     property string title: "Mic Inputs"
     property var channels: []
+    // STARTUP_LIMIT_STABLE_MODEL_V1 — live semantic values are resolved from
+    // StudioEngine without replacing the Repeater model identity.
+    property var valueResolver: null
+    property bool interactionEnabled: true
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
@@ -39,6 +43,14 @@ StudioPanel {
     readonly property bool fxVisualActive: root.fxVisual0 > 0.0001
 
     function clamp(v,a,b){ return Math.max(a,Math.min(b,v)) }
+    function resolvedChannelValue(spec) {
+        var fallback = spec && spec.value !== undefined ? Number(spec.value) : 0
+        if (typeof root.valueResolver === "function") {
+            var resolved = Number(root.valueResolver(String(spec && spec.label || ""), fallback))
+            if (isFinite(resolved)) return resolved
+        }
+        return fallback
+    }
     function syncFxVisuals() {
         if (!root.compactCluster || !root.channels || root.channels.length < 3) return
         root.fxVisual0 = Number(root.channels[0].value)
@@ -120,12 +132,24 @@ StudioPanel {
         var path = livePathFor(label)
         var engine = studioEngine()
         if (!path.length || !engine) return
+        if (path === "system.musicInitVol") {
+            engine.musicInitVol = value
+            return
+        }
         if (path === "system.musicMaxVol") {
             engine.musicMaxVol = value
             return
         }
+        if (path === "system.micInitVol") {
+            engine.micInitVol = value
+            return
+        }
         if (path === "system.micMaxVol") {
             engine.micMaxVol = value
+            return
+        }
+        if (path === "system.effectInitLevel") {
+            engine.effectInitLevel = value
             return
         }
         engine.editDevicePath(path, value)
@@ -682,23 +706,45 @@ StudioPanel {
                         Layout.fillWidth: true
                         Layout.minimumWidth: 48
                         Layout.fillHeight: true
-                        property real localValue: Number(modelData.value)
-                        // MUSIC_MAX_FADER_DEVICE_SYNC_V2 + STARTUP_LIMIT_DEVICE_SYNC_V1 —
-                        // every captured startup
-                        // control is hydrated from K500 truth after connect/recall.
-                        // Do not overwrite an in-progress drag, but otherwise let
-                        // authoritative readback replace the local presentation.
+                        property real localValue: root.resolvedChannelValue(modelData)
+                        // STARTUP_LIMIT_STABLE_MODEL_V1 — delegate identity must
+                        // survive every live edit. Only sync an existing delegate
+                        // in-place and never overwrite a gesture in progress.
                         onModelDataChanged: {
-                            if (root.title === "Startup Limits"
-                                && (!rackFader || !rackFader.dragging))
-                                localValue = Number(modelData.value)
+                            if (!rackFader || !rackFader.dragging)
+                                localValue = root.resolvedChannelValue(modelData)
                         }
-                        readonly property bool channelEditable: modelData.editable === undefined
-                                                                || Boolean(modelData.editable)
+                        readonly property bool channelEditable: root.interactionEnabled
+                                                                && (modelData.editable === undefined
+                                                                    || Boolean(modelData.editable))
                         property bool muted: false
                         readonly property bool selected: root.selectedFader === channel.index
                         readonly property bool canMute: root.muteCapable(modelData.label)
                         readonly property real muteFloor: Number(modelData.from)
+
+                        Connections {
+                            target: root.studioEngine()
+                            enabled: root.title === "Startup Limits" && !!target
+                            function syncStartupValue() {
+                                if (!rackFader.dragging)
+                                    channel.localValue = root.resolvedChannelValue(channel.modelData)
+                            }
+                            function onMusicInitVolChanged() {
+                                if (String(channel.modelData.label || "") === "MUSIC INIT") syncStartupValue()
+                            }
+                            function onMusicMaxVolChanged() {
+                                if (String(channel.modelData.label || "") === "MUSIC MAX") syncStartupValue()
+                            }
+                            function onMicInitVolChanged() {
+                                if (String(channel.modelData.label || "") === "MIC INIT") syncStartupValue()
+                            }
+                            function onMicMaxVolChanged() {
+                                if (String(channel.modelData.label || "") === "MIC MAX") syncStartupValue()
+                            }
+                            function onEffectInitLevelChanged() {
+                                if (String(channel.modelData.label || "") === "EFFECT INIT") syncStartupValue()
+                            }
+                        }
 
                         // OUTPUT_MUTE_VERIFIED_FLOOR_V1
                         function setMuted(next) {
@@ -792,21 +838,17 @@ StudioPanel {
                                 from: Number(channel.modelData.from)
                                 to: Number(channel.modelData.to)
                                 step: Number(channel.modelData.step || 1)
-                                defaultValue: Number(channel.modelData.value)
+                                defaultValue: root.resolvedChannelValue(channel.modelData)
                                 accentColor: root.accentColor
                                 selected: channel.selected
                                 onActivated: root.selectedFader = channel.index
                                 onValueEdited: function(v) {
+                                    // Gesture-local state wins until release.
+                                    // Engine/device signals sync the same delegate
+                                    // afterwards without destroying its MouseArea.
+                                    channel.localValue = v
                                     root.dispatchLive(channel.modelData.label,
                                                       channel.muted ? channel.muteFloor : v)
-                                    if (root.title === "Startup Limits"
-                                        && String(channel.modelData.label) === "MUSIC MAX") {
-                                        var engine = root.studioEngine()
-                                        channel.localValue = engine
-                                            ? Number(engine.musicMaxVol) : Number(channel.modelData.value)
-                                    } else {
-                                        channel.localValue = v
-                                    }
                                 }
                             }
 
