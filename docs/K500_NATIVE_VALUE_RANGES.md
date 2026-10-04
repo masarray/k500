@@ -95,9 +95,8 @@ The focused 2026-10-04 USB captures close these manufacturer UI domains:
 
 USB Record stores `raw = UI - 1`, therefore raw `0..5` represents UI `1..6`.
 
-Mic Max and UDisk Record are deliberately omitted: their READ representation is
-known, but their WRITE domains/selector semantics have not been independently
-captured. Do not infer them from adjacent fields.
+Mic Max and UDisk Record were subsequently closed by the final 2026-10-04
+operational capture batch below; do not revive the older read-only assumption.
 
 Adj Manner / VR OFF is a boolean setter (`CMD 0x07`) rather than a numeric
 range. Its reconnect/readback location remains unproven.
@@ -120,6 +119,24 @@ Both values travel together in one CMD 0x22 frame.
 
 BT Name's captured field is exactly 8 bytes, NUL-padded. Do not expand the
 writable UI to the longer readback buffer without new packet evidence.
+
+## Output Delay — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Main L Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Main R Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Surround L Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Surround R Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Center Output Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Subwoofer Output Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+
+Encoding is uint16 little-endian milliseconds. Main uses L at output-data
+16..17 and R at 18..19. **Surround reverses native wire order**: R is at
+16..17 and L at 18..19. Center/Sub use 16..17 only.
+
+The native distance readout is display-only at approximately
+`distance_m = delay_ms * 0.34`; no distance field is sent.
 
 ## Common PEQ
 
