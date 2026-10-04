@@ -1,104 +1,143 @@
-# Mode 01 — Main Balance V1 hardware-audition candidate
+# Mode 01 — Main Balance hardware-audition progression
 
 Date: 2026-10-04
 
-## Purpose
+## Current candidate
 
-Target the reported Mode 01 Main-output failure mode:
+**V2 is the active GOLD candidate pending real K500 listening acceptance.**
 
-- sub/bass and kick do not feel authoritative enough;
-- upper detail/cymbal energy reads as too "kemrences";
-- preserve the already-developed KONSER NYANYI vocal/FX identity.
+`01_KONSER_NYANYI_MAIN_BALANCE_V2.k500`
 
-This is intentionally a **Music-path-only** revision. Main/Center/Surround/Sub EQ,
-all Mic A/B settings, Reverb/Echo, output routing, compressors, delays, crossovers,
-and startup/system fields are bit-preserved from the current official Mode 01.
+The official distribution file is intentionally **not replaced yet**. Promotion only
+happens after hardware listening confirms V2.
 
-## Donor
+## Problem statement
+
+The supplied Mode 01 Main-output capture and listening feedback showed:
+
+- sub/bass and kick originally lacked authority;
+- cymbal/detail energy attracted too much attention ("kemrences");
+- the existing KONSER NYANYI vocal/FX identity must be preserved.
+
+V1 corrected the broad low-vs-high balance. The follow-up capture showed that:
+
+- deep foundation is now sufficient and must be locked;
+- treble is already civilized and must not be cut further;
+- stereo imaging is healthy and must be locked;
+- the remaining refinement is a small **kick/body vs midrange** rebalance.
+
+## Donor and progression
+
+Official donor:
 
 `resources/presets/01_KONSER_NYANYI.k500`
 
-Source Git blob:
+Official donor Git blob:
 
 `dcbdd768c455922af147d1ac1e2bd025e4ba4fc6`
 
-Candidate Git blob:
+V1 Git blob:
 
 `93bc6910a4cec0b01c48bb2d5b4456ebe5f7eba7`
+
+V2 Git blob:
+
+`3325fd8312fbf093193bd68c5a0b8ca5b3b2d487`
 
 Internal hardware name remains:
 
 `KONSER NYANYI`
 
-## Surgical changes
+## V1 — broad correction
 
-| Music band | Role | Official | Candidate | Delta |
-| ---: | --- | ---: | ---: | ---: |
-| 1 @ 11.704 kHz | air | +1.8 dB | +1.5 dB | -0.3 dB |
-| 2 @ 158 Hz | kick/body | +2.3 dB | +2.6 dB | +0.3 dB |
-| 3 @ 66 Hz | low foundation | +7.6 dB | +8.2 dB | +0.6 dB |
-| 6 @ 6.495 kHz | cymbal/detail | +1.5 dB | +1.0 dB | -0.5 dB |
-| 7 HS @ 766 Hz | broad openness | +6.5 dB | +5.8 dB | -0.7 dB |
+V1 changed only Music PEQ gain values:
 
-All frequencies, Q values and raw PEQ type aliases are preserved.
+| Music band | Official | V1 |
+| --- | ---: | ---: |
+| 11.704 kHz / Q2.0 | +1.8 dB | +1.5 dB |
+| 158 Hz / Q2.3 | +2.3 dB | +2.6 dB |
+| 66 Hz / Q0.4 | +7.6 dB | +8.2 dB |
+| 6.495 kHz / Q1.9 | +1.5 dB | +1.0 dB |
+| HS 766 Hz / Q0.4 | +6.5 dB | +5.8 dB |
 
-## Byte-diff audit
+The real Main-output follow-up confirmed the intended direction: stronger low-end
+authority, less distracting top-end energy, healthy stereo field, and no reason to
+continue cutting treble.
 
-Only six bytes differ, including checksum:
+## V2 — final micro-balance
 
-- `0x01B8` Music band 1 gain: 18 -> 15
-- `0x01C0` Music band 2 gain: 23 -> 26
-- `0x01C8` Music band 3 gain: 76 -> 82
-- `0x01E0` Music band 6 gain: 15 -> 10
-- `0x01E8` Music band 7 gain: 65 -> 58
-- `0x0475` checksum: 131 -> 137
+V2 keeps every V1 correction and changes only two semantic parameters:
 
-Container size remains 1144 bytes and modulo-256 checksum remains zero.
+| Music band | V1 | V2 | Delta | Purpose |
+| --- | ---: | ---: | ---: | --- |
+| 158 Hz / Q2.3 | +2.6 dB | **+3.0 dB** | +0.4 dB | more kick/body authority |
+| 1315 Hz / Q2.4 | -0.6 dB | **-0.9 dB** | -0.3 dB | slightly relax backing midrange / vocal pocket |
 
-## Capture-informed modeled delta
+Everything else is locked.
 
-Applying the Music-EQ response delta to the supplied Mode 01 Main-output WAV predicts
-approximately:
+Modeled V1 -> V2 Music-path delta:
 
-- 40–60 Hz: **+0.57 dB**
-- 60–90 Hz: **+0.60 dB**
-- 90–120 Hz: **+0.56 dB**
-- 120–180 Hz: **+0.58 dB**
-- 1–2 kHz: **-0.50 dB**
-- 2–4 kHz: **-0.65 dB**
-- 4–8 kHz: **-0.96 dB**
-- 8–12 kHz: **-0.96 dB**
+- peak at 158 Hz: about **+0.40 dB**
+- average 120–180 Hz: about **+0.31 dB**
+- peak at 1315 Hz: about **-0.30 dB**
+- average 800 Hz–2 kHz: about **-0.15 dB**
+- effectively unchanged below ~90 Hz and above ~4 kHz
 
-This creates roughly 1.5 dB more low-end authority relative to the cymbal/detail
-region without a broad bass rewrite.
+Relative to the original official Mode 01, V2 remains approximately:
 
-## Why this shape
+- +0.56 dB average at 40–60 Hz
+- +0.62 dB at 60–90 Hz
+- +0.64 dB at 90–120 Hz
+- +0.88 dB at 120–180 Hz
+- -0.61 dB at 800 Hz–2 kHz
+- -0.68 dB at 2–4 kHz
+- -1.01 dB at 4–8 kHz
+- -0.98 dB at 8–12 kHz
 
-The current Mode 01 already carries the proven Mode 03 Hi-Fi Core V3 Music/Main/Sub
-architecture. The reported test, however, is **Main-output listening**, so the
-dedicated Sub foundation is not the right place to solve the complaint.
+These are comparative model values, not claims of exact acoustic K500 transfer.
 
-This candidate therefore:
+## V1 -> V2 byte-diff audit
 
-1. preserves the proven core topology;
-2. adds only a small 66/158 Hz Music-path lift;
-3. removes excess broad Music-path brightness rather than cutting the shared Main EQ;
-4. leaves Mic and vocal FX untouched, so singer identity is not collateral damage;
-5. keeps 10–14 kHz air present instead of applying a destructive global treble cut.
+Only **three bytes** differ, including checksum:
+
+- `0x01C0` Music band 2 gain: 26 -> 30
+- `0x01D0` Music band 4 gain: -6 -> -9
+- `0x0475` checksum: 137 -> 136
+
+Container remains exactly 1144 bytes and checksum modulo 256 remains zero.
+
+## Locked regions
+
+Do not alter these in the next listening round:
+
+- 66 Hz low foundation;
+- 6.495 kHz detail;
+- HS 766 Hz broad openness;
+- 11.704 kHz air;
+- all Mic A/B settings;
+- Main / Center / Surround / Sub EQ, routing and output levels;
+- Reverb / Echo;
+- compressors;
+- delays;
+- crossovers;
+- every Alt / reserved / unknown field.
+
+This is deliberate. V2 tests one remaining causal hypothesis only.
 
 ## Hardware acceptance
 
-Use the same song, same interface gain, same K500 Main output and same speaker level.
+Use the same song, audio-interface gain, K500 Main output, speaker level and room
+position used for the V1 follow-up capture.
 
-Accept only if all are true:
+Accept V2 only if:
 
-- kick gains physical impact without becoming bloated;
-- bass line is easier to follow at low/medium listening level;
-- cymbal/hi-hat remains detailed but no longer dominates attention;
-- male and female vocal backing space feels easier to sing into;
-- no new 120–250 Hz boom appears;
-- no loss of desirable air/openness;
-- 20–30 minute listening is less fatiguing.
+- kick has slightly more physical "DUM/thump" without upper-bass boom;
+- bass remains deep but does not become heavier in the very bottom;
+- 300 Hz–2 kHz no longer feels more authoritative than necessary;
+- cymbal/hi-hat remains as smooth as V1 — not darker;
+- backing music leaves a more effortless pocket for the singer;
+- no loss of detail, openness or width;
+- long listening remains non-fatiguing.
 
-If accepted on real K500, promote the exact candidate bytes into official Mode 01
-and update the official SHA/golden references. Do not rebuild after acceptance.
+If these pass, treat the exact V2 bytes as the Mode 01 GOLD candidate for promotion.
+Do not rebuild the binary after acceptance.
