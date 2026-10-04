@@ -16,6 +16,7 @@ read-only evidence gate and corrects the earlier Surround transport field order.
 | `Center_OutputDelay_0ms0meter_20ms6meter8_30ms10m2_40ms13m6_50ms17meter.pcapng` | 605508 | `f546ed2d6c19a18f6cc794be618d71cf4442810635e098d61485a13ce1f40e61` |
 | `Surround_L_Delay_20ms6meter8_50ms17meter_0ms0meter.pcapng` | 463760 | `f076d747036bd90f257835b7c25652a203d1f56ab391d29a739de2164e3980a2` |
 | `Surround_R_Delay_14ms4meter8_50ms17meter_0ms0meter.pcapng` | 12704 | `7529ef354261aa339f19fc6cc0985046db98f9ee480ec1c0be8ba5b31d91d5f8` |
+| `Reconnect_AllOutputDelays_5_10_15_20_25_30.pcapng` | 5512 | `f477cde52f59a23d8cf73b360dc4d3343490bc1967596e639d66b177dfec871d` |
 
 ## Shared command family
 
@@ -187,25 +188,45 @@ AA 25 00 0E 05 63 4B 4B 4B 00 32 60 32 00 32 00 32 2A 06 19 03
 
 ## Active-memory / preset scalar mapping
 
-The command capture proves the write positions. Existing active-memory scalar
-layout supplies the read/persistence seed:
+The dedicated reconnect capture sets six distinct values in one state:
 
 ```text
-Main L Delay       file scalar 0x0034, uint16 LE
-Main R Delay       file scalar 0x0036, uint16 LE
-Surround L Delay   file scalar 0x00D8, uint16 LE
-Surround R Delay   file scalar 0x00DA, uint16 LE
-Center Delay       file scalar 0x005C, uint16 LE
-Subwoofer Delay    file scalar 0x0070, uint16 LE
+Main L       5 ms
+Main R      10 ms
+Surround L  15 ms
+Surround R  20 ms
+Center      25 ms
+Sub         30 ms
 ```
 
-For Main/Center/Sub these offsets are the timing words occupying data[16..19]
-or data[16..17] in their contiguous scalar image. Surround keeps its established
-separate 0x00D8/0x00DA read/preset words and maps them into the reversed native
-wire order at serialization time.
+The 939-byte active-memory snapshot contains exactly:
 
-Reconnect hardware acceptance must still verify that the displayed readback
-matches the native application for all six semantic controls.
+```text
+active 0x00CB..0x00D6
+
+05 00 | 0A 00 | 0F 00 | 14 00 | 19 00 | 1E 00
+   5       10      15      20      25      30
+```
+
+Therefore the READ/persistence map is capture-locked:
+
+| Semantic control | Active-memory offset | .k500/file scalar |
+| --- | ---: | ---: |
+| Main L Delay | `0x00CB` | `0x00D4` |
+| Main R Delay | `0x00CD` | `0x00D6` |
+| Surround L Delay | `0x00CF` | `0x00D8` |
+| Surround R Delay | `0x00D1` | `0x00DA` |
+| Center Output Delay | `0x00D3` | `0x00DC` |
+| Subwoofer Output Delay | `0x00D5` | `0x00DE` |
+
+This supersedes the old Main/Center/Sub assumptions at file offsets
+`0x0034/0x0036`, `0x005C`, and `0x0070`. The State-A crossover capture
+proved those low active bytes are filter-type enums, not delays.
+
+The six delay words form one contiguous high-scalar block. Semantic readback
+order is normal Main L/R, Surround L/R, Center, Sub. Only the native
+`CMD 0x0E` **wire serialization** keeps the independently captured Surround
+exception (R at data16, L at data18).
 
 ## Safety contract
 
