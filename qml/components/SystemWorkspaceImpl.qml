@@ -876,8 +876,8 @@ Item {
                                     anchors.margins:9
                                     spacing:3
                                     Text{text:"READ ONLY · DEVICE MANAGED";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:"Lock state, credentials and password writes are not yet donor-verified.";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;wrapMode:Text.WordWrap}
-                                    Text{Layout.fillWidth:true;text:"Controls stay unavailable until the native write mapping is proven.";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                    Text{Layout.fillWidth:true;text:"Lock/password and Admin/User credentials are intentionally outside the daily-use scope.";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;wrapMode:Text.WordWrap}
+                                    Text{Layout.fillWidth:true;text:"Device-managed only · no guessed credential traffic will be implemented.";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
                                 }
                             }
                             Item{Layout.fillHeight:true}
