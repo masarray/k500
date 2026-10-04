@@ -12,7 +12,7 @@ Current public stable: **v1.0.3**.
 
 Current source candidate line: **v1.1.0** (updater lifecycle qualification; not public stable until accepted and published).
 
-Next immutable candidate: **v1.1.0-rc.5** from the exact final post-merge `main` commit. RC4 predates the final protocol/readback and Adj Manner ownership closure and must not be promoted stable.
+Accepted immutable candidate: **v1.1.0-rc.5** from exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. RC4 predates the final protocol/readback and Adj Manner ownership closure and must not be promoted stable. RC5 is approved for byte-identical v1.1.0 promotion.
 
 Current qualified scope: **Windows 10/11 x64 + USB HID**.
 
