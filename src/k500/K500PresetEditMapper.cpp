@@ -139,6 +139,18 @@ void addCrossoverType(Builder &builder, const EqDescriptor &d, bool hpf, quint16
 EditResult applyCrossover(const QByteArray &source, const QString &section,
                           const QString &field, const QVariant &value)
 {
+    // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Reverb/Echo expose HPF/LPF
+    // cutoff frequencies only. There is no HP/LP filter-type control, so both
+    // live and offline editing must fail closed rather than mutate footer bytes.
+    if ((section == QStringLiteral("reverb") || section == QStringLiteral("echo"))
+        && (field == QStringLiteral("hpType") || field == QStringLiteral("lpType"))) {
+        EditResult r;
+        r.supported = true;
+        r.patch.error = QStringLiteral("%1 has no native HP/LP filter-type control; cutoff frequency only.")
+                            .arg(section);
+        return r;
+    }
+
     QVector<const EqDescriptor *> targets;
     if (section == QStringLiteral("mic") || section == QStringLiteral("micA") || section == QStringLiteral("micB")) {
         targets << eqDescriptor(QStringLiteral("micA")) << eqDescriptor(QStringLiteral("micB"));
