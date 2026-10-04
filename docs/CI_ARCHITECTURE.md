@@ -13,9 +13,12 @@ The normal development budget is intentionally small:
 1. **K500 CI / Fast contracts** — Ubuntu, seconds-to-minutes.
 2. **K500 CI / Windows build + regression** — one Qt/MSVC build, then every
    hardware-free native regression executes from that same build.
-3. **P4 Sanitizer Fuzz** — manual hardening only.
-4. **Windows Updater Release Candidate** — manual immutable RC packaging.
-5. **Windows Updater Stable Promotion** — manual byte-identical promotion.
+3. **K500 CI / Installer smoke** — only when packaging/updater paths change;
+   validates the standalone helper, branding, Inno compilation and a per-user
+   install/uninstall smoke without taxing unrelated DSP/UI work.
+4. **P4 Sanitizer Fuzz** — manual hardening only.
+5. **Windows Updater Release Candidate** — manual immutable RC packaging.
+6. **Windows Updater Stable Promotion** — manual byte-identical promotion.
 
 Only **K500 CI** may auto-run on pull requests and `main`.
 
@@ -41,6 +44,7 @@ orchestration:
 - Every `main` commit always receives the Windows job because release
   qualification is exact-SHA.
 - PR concurrency cancels obsolete heads automatically.
+- Installer smoke is path-aware and does not run for ordinary DSP/UI changes.
 
 ## Gate hierarchy
 
