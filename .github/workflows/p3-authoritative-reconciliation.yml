@@ -22,6 +22,7 @@ on:
       - 'qml/components/RackFaderPanel.qml'
       - 'qml/components/TopBar.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
+      - 'docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md'
       - 'docs/K500_CAPTURED_RUNTIME_STATUS.md'
       - 'docs/MUSIC_TONE_CAPTURE_MAP.md'
       - 'docs/K500_FBX_CAPTURE_MAP.md'
@@ -49,6 +50,7 @@ on:
       - 'qml/components/StudioFader.qml'
       - 'qml/components/RackFaderPanel.qml'
       - 'docs/K500_NATIVE_VALUE_RANGES.md'
+      - 'docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md'
       - 'docs/K500_SYSTEM_MUSIC_MAX_CAPTURE.md'
       - 'docs/protocol/FX_EQ_BYPASS_CAPTURE_MAP.md'
       - 'docs/P3_AUTHORITATIVE_RECONCILIATION.md'
@@ -110,6 +112,7 @@ jobs:
           rack_fader_qml = Path('qml/components/RackFaderPanel.qml').read_text(encoding='utf-8')
           topbar = Path('qml/components/TopBar.qml').read_text(encoding='utf-8')
           native_ranges = Path('docs/K500_NATIVE_VALUE_RANGES.md').read_text(encoding='utf-8')
+          system_capture_doc = Path('docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md').read_text(encoding='utf-8')
           runtime_status = Path('docs/K500_CAPTURED_RUNTIME_STATUS.md').read_text(encoding='utf-8')
           music_tone_doc = Path('docs/MUSIC_TONE_CAPTURE_MAP.md').read_text(encoding='utf-8')
           fbx_doc = Path('docs/K500_FBX_CAPTURE_MAP.md').read_text(encoding='utf-8')
@@ -157,6 +160,12 @@ jobs:
               'music max canonical intent normalization': 'MUSIC_MAX_CANONICAL_CEILING_V2' in controller and 'normalizedValue = qBound(0, qRound(value.toDouble()), m_music.musicMaxVol);' in controller and 'm_canonicalState.stageDesired(QStringLiteral("system.topMusicVol")' in controller,
               'music max device refresh and offline gating': 'MUSIC_MAX_FADER_DEVICE_SYNC_V2' in rack_fader_qml and 'onModelDataChanged:' in rack_fader_qml and 'channel.channelEditable' in rack_fader_qml and 'root.deviceConnected && root.engine.deviceStateReady' in system_qml,
               'music max controller regression': 'Music Max controller/DesiredState ceiling regression passed' in main and 'ceilingProbe.reconcileFromDeviceMemory(confirmedCeiling)' in main,
+              'mic max native ceiling is captured': 'MIC_MAX_NATIVE_CEILING_V1' in protocol_h and 'qMin(state.topMicVol, safeMicMax)' in protocol_cpp and 'system.micMaxVol' in controller and 'micMaxVol READ micMaxVol' in studio_h and 'root.engine.micMaxVol' in master_strip_qml,
+              'final record controls are distinct captured writes': 'uDiskRecordVolume' in protocol_cpp and 'usbRecordVolume' in protocol_cpp and 'system.uDiskRecordVol' in controller and 'system.usbRecordVol' in controller,
+              'dance mic pair is seed-gated': 'DANCE_MIC_READBACK_STRUCTURAL_V1' in controller and 'm_danceMicSeedKnown' in controller and 'danceMicTrigger' in protocol_cpp and 'danceMicTriggerKnown' in system_qml,
+              'bt name transaction is ACKed and refreshed': 'setBtName' in preset_manager and 'response.rsp == 0xB1' in preset_manager and 'ReadbackPurpose::BtIdentity' in preset_manager and 'root.presetManager.setBtName' in system_qml,
+              'final operational capture evidence documented': 'Mic Max Volume' in system_capture_doc and 'Dance Mic Trigger' in system_capture_doc and 'BT Name rename/reset' in system_capture_doc,
+              'credential scope remains fail closed': 'intentionally outside the daily-use scope' in system_qml and 'no guessed credential traffic' in system_qml,
               'runtime capture contract documented': 'STOPPED' in runtime_status and 'PLAYING' in runtime_status and 'AA 03 00 12 00 03 E8' in runtime_status and 'C0 data[7] bit 0x04 set' in runtime_status and 'C0 data[7] bit 0x02 set' in runtime_status,
               'hardware-free self-test': 'P3 authoritative reconciliation self-test passed' in test,
           }
