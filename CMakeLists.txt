@@ -33,6 +33,8 @@ endif()
 qt_add_executable(sonkupik_studio_native WIN32
     src/main.cpp
     src/AppVersionInit.cpp
+    src/DonationPromptController.cpp
+    src/DonationPromptController.h
     src/StudioEngine.cpp
     src/StudioEngine.h
     src/DevicePerformanceMonitor.cpp
@@ -229,6 +231,20 @@ add_executable(k500_p42_batch_test
 )
 target_link_libraries(k500_p42_batch_test PRIVATE Qt6::Core Qt6::Network)
 
+# DONATION_PROMPT_CALENDAR_SELF_TEST_V1 — deterministic, hardware-free
+# qualification for distinct-day counting and QA preview isolation.
+add_executable(k500_donation_prompt_selftest
+    src/DonationPromptSelfTestMain.cpp
+    src/DonationPromptController.cpp
+    src/DonationPromptController.h
+)
+target_include_directories(k500_donation_prompt_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_link_libraries(k500_donation_prompt_selftest PRIVATE Qt6::Core)
+add_custom_command(TARGET k500_donation_prompt_selftest POST_BUILD
+    COMMAND $<TARGET_FILE:k500_donation_prompt_selftest>
+    COMMENT "Running donation prompt distinct-day self-test"
+)
+
 # UPDATE_METADATA_SELF_TEST_V1 — run the production updater manifest/checksum
 # parser without network access, installer execution, or K500 hardware.
 add_executable(k500_update_selftest
@@ -247,7 +263,9 @@ add_custom_command(TARGET k500_update_selftest POST_BUILD
     COMMENT "Running deterministic updater metadata self-test"
 )
 
-set_source_files_properties(qml/theme/Theme.qml
+set_source_files_properties(
+    qml/theme/Theme.qml
+    qml/theme/SupportLinks.qml
     PROPERTIES QT_QML_SINGLETON_TYPE TRUE
 )
 
@@ -258,7 +276,9 @@ qt_add_qml_module(sonkupik_studio_native
     QML_FILES
         qml/Main.qml
         qml/theme/Theme.qml
+        qml/theme/SupportLinks.qml
         qml/components/TopBar.qml
+        qml/components/DonationPrompt.qml
         qml/components/AboutDialog.qml
         qml/components/UpdateDialog.qml
         qml/components/SectionDrawer.qml
@@ -308,6 +328,20 @@ qt_add_resources(sonkupik_studio_native brand_assets
     PREFIX "/"
     FILES "${SONKUPIK_LOGO}"
 )
+
+# DONATION_QRIS_OFFICIAL_ASSET_GATE_V1 — never fabricate a payment QR.
+# The app remains fully functional when the official static merchant PNG is
+# absent. If the owner supplies the verified image at this exact path, CMake
+# embeds it automatically and DonationPromptController enables the prompt.
+set(SONKUPIK_QRIS_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/support/qris-sonkupik.png")
+if(EXISTS "${SONKUPIK_QRIS_FILE}")
+    set_source_files_properties("${SONKUPIK_QRIS_FILE}"
+        PROPERTIES QT_RESOURCE_ALIAS "support/qris-sonkupik.png")
+    qt_add_resources(sonkupik_studio_native donation_qris_asset
+        PREFIX "/"
+        FILES "${SONKUPIK_QRIS_FILE}"
+    )
+endif()
 
 set(SONKUPIK_FONT_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/fonts/PlusJakartaSans-Regular.ttf"

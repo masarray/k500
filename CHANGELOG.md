@@ -2,7 +2,6 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
-
 ## Unreleased — Final musicality preset library
 
 ### Changed
@@ -12,6 +11,22 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Mode 05 now ships the hardware-accepted tempo-aware Pop Kenangan R2: 310 ms echo retained, ~2470 ms reverb decay, 75 ms predelay, clearer center vocal and wider wet halo.
 - Remaining genre presets keep their individual identities while adopting the common foundation -> punch -> body -> clean mid -> smooth detail -> retained air approach.
 - Updated exact SHA-256 release and CI guards so packaged, cached and GitHub-synced official presets converge on the same final bytes.
+
+
+## Unreleased — Voluntary QRIS support prompt
+
+### Added
+
+- Added a one-time voluntary-support prompt that becomes eligible only after the application has been opened on three distinct local calendar days.
+- The acknowledgement button is intentionally locked for the first three seconds and shows a visible countdown before becoming interactive.
+- Added centralized SonKuPik YouTube/tutorial and Tokopedia K500 links shared with the About dialog.
+- Added deterministic hardware-free coverage for distinct-day counting, same-day reopen behavior, fail-closed QRIS behavior, and QA preview isolation.
+
+### Safety
+
+- Donation state is isolated from StudioEngine, preset state, transport, recall, and K500 device I/O.
+- Production auto-prompting is fail-closed unless a verified static QRIS PNG is bundled at `resources/support/qris-sonkupik.png`; the application never fabricates a payment QR.
+- Donation remains optional and does not unlock, restrict, or modify any K500 feature.
 
 
 ## Unreleased — Smart Installer public distribution
