@@ -600,6 +600,8 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x002A))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x002C))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x002E))},
+        {QStringLiteral("lDelayMs"), static_cast<int>(fileU16(memory, 0x0034))},
+        {QStringLiteral("rDelayMs"), static_cast<int>(fileU16(memory, 0x0036))},
     };
     mergeMap(mainOutput, compState(memory, 0x0030));
 
@@ -621,6 +623,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x0052))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x0054))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x0056))},
+        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x005C))},
     };
     mergeMap(centerOutput, compState(memory, 0x0058));
 
@@ -630,6 +633,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x0066))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x0068))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x006A))},
+        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x0070))},
         {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00B8))},
         {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00BC))},
     };
