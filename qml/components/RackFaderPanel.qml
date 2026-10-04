@@ -245,7 +245,8 @@ StudioPanel {
                                 defaultValue: Number(fxChannel.modelData.value)
                                 decimals: Number(fxChannel.modelData.decimals || 0)
                                 unit: String(fxChannel.modelData.unit || "")
-                                accentColor: root.accentColor
+                                accentColor: fxChannel.modelData.accentColor === undefined
+                                             ? root.accentColor : fxChannel.modelData.accentColor
                                 onValueEdited: function(v) {
                                     fxChannel.localValue = v
                                     root.setFxVisual(fxChannel.index,v)
@@ -839,7 +840,8 @@ StudioPanel {
                                 to: Number(channel.modelData.to)
                                 step: Number(channel.modelData.step || 1)
                                 defaultValue: root.resolvedChannelValue(channel.modelData)
-                                accentColor: root.accentColor
+                                accentColor: channel.modelData.accentColor === undefined
+                                             ? root.accentColor : channel.modelData.accentColor
                                 selected: channel.selected
                                 onActivated: root.selectedFader = channel.index
                                 onValueEdited: function(v) {
