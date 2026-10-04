@@ -87,6 +87,17 @@ Fields that remain read-only in the parity matrix are not acceptance failures; t
 - [ ] Change Input2/BT gain while Input1 is unchanged and confirm the Mic CMD `0x11` tail does not follow those controls.
 - [ ] After a live Input1 edit, a later Mic HP/LP edit must not roll Input1 back to its connect-time value.
 
+## Output crossover-type reconnect — 2026-10-04
+
+- [ ] Mic reconnect hydrates HP/LP type from direct activeMemory[0x0013]/[0x0014].
+- [ ] Main reconnect hydrates HP/LP type from direct activeMemory[0x002C]/[0x002E].
+- [ ] Surround reconnect hydrates HP/LP type from direct activeMemory[0x0040]/[0x0042].
+- [ ] Center reconnect hydrates HP/LP type from direct activeMemory[0x0054]/[0x0056].
+- [ ] Sub reconnect hydrates HP/LP type from direct activeMemory[0x0068]/[0x006A].
+- [ ] State A exactly reproduces Mic 1/2, Main 3/4, Surround 5/6, Center 7/1 and the actually captured Sub 7/2.
+- [ ] Main/Center/Sub delay UI is **not** hydrated from those type offsets.
+- [ ] Before restoring authoritative Main/Center/Sub delay readback, run a reconnect with six distinct non-zero delay values.
+
 ## Section-navigation crash regression
 
 The v1 baseline uses fixed EQ graph/model lifetimes. If a change touches QML section/workspace lifecycle, run repeated transitions including:
