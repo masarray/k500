@@ -402,6 +402,9 @@ int main(int argc, char *argv[])
         const QVariantMap micAEq = eq.value(QStringLiteral("micA")).toMap();
         const QVariantMap micBEq = eq.value(QStringLiteral("micB")).toMap();
         const QVariantMap mainEq = eq.value(QStringLiteral("main")).toMap();
+        const QVariantMap surroundEq = eq.value(QStringLiteral("surround")).toMap();
+        const QVariantMap centerEq = eq.value(QStringLiteral("center")).toMap();
+        const QVariantMap subEq = eq.value(QStringLiteral("sub")).toMap();
         const QVariantMap hydratedMusicBand = studioEngine.musicEqBands()->get(2);
         const QVariantMap hydratedMicBand = studioEngine.micAEqBands()->get(0);
         const QVariantMap hydratedSubBand = studioEngine.subEqBands()->get(4);
@@ -498,6 +501,15 @@ int main(int argc, char *argv[])
             && hydratedSubBand.value(QStringLiteral("typeName")).toString() == QStringLiteral("HIGH SHELF")
             && qFuzzyCompare(mainEq.value(QStringLiteral("hpfHz")).toDouble(), 45.0)
             && qFuzzyCompare(mainEq.value(QStringLiteral("lpfHz")).toDouble(), 19000.0)
+            && micAEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 12")
+            && mainEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 18")
+            && mainEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 18")
+            && surroundEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 24")
+            && surroundEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 24")
+            && centerEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
+            && centerEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 12")
+            && subEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
+            && subEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 12")
             && hydrationEdits == 0;
         if (!hydrationValid)
             return 7;
