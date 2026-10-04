@@ -334,13 +334,12 @@ Representative vectors:
 ACK is `RSP 0xDD`.
 
 Because changing either control transmits BOTH values, SonKuPik must have a valid
-paired seed before writing. The scalar layout has exactly two previously
-unassigned bytes between Mic EQ Link (`0x0092`) and record volumes
-(`0x0095/0x0096`): `0x0093/0x0094`. The implementation accepts these as
-the pair seed only when both decode into the captured domains
-(`threshold raw 0..60`, `hold 1..30`). Otherwise the faders remain disabled
-and no guessed write is emitted. This read-side location is structural evidence,
-not a dedicated reconnect capture, and must stay documented as such.
+paired seed before writing. The later Adj Manner reconnect pair **invalidates**
+the former structural `0x0093/0x0094` seed: file `0x0094` is now physically
+proven to be Adj Manner VR OFF (active `0x008C`). Therefore Dance Mic remains
+fail-closed for live editing until an independent reconnect delta maps both
+Threshold and Hold. The captured `CMD 0x22` write format remains valid; only
+the unsafe read-side seed was retired.
 
 ## BT Name rename/reset
 
