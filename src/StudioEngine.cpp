@@ -426,7 +426,10 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     syncDouble(m_masterMusic,
                qMin<double>(fileU8(memory, 0x0008), m_musicMaxVol),
                [this] { emit masterMusicChanged(); });
-    syncDouble(m_masterMic, fileU8(memory, 0x0009), [this] { emit masterMicChanged(); });
+    syncDouble(m_micMaxVol, fileU8(memory, 0x0013), [this] { emit micMaxVolChanged(); });
+    syncDouble(m_masterMic,
+               qMin<double>(fileU8(memory, 0x0009), m_micMaxVol),
+               [this] { emit masterMicChanged(); });
     syncDouble(m_masterFx, fileU8(memory, 0x000A), [this] { emit masterFxChanged(); });
     syncInt(m_musicKey, static_cast<int>(fileU8(memory, 0x0011)) - 7, [this] { emit musicKeyChanged(); });
     syncDouble(m_input1Gain, static_cast<int>(fileU8(memory, 0x001E)) - 12, [this] { emit input1GainChanged(); });
@@ -526,6 +529,17 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         }
     }
 
+    // DANCE_MIC_READBACK_STRUCTURAL_V1 — CMD 0x22 proves the pair encoding.
+    // The only two unassigned scalar bytes between Mic EQ Link (0x0092) and
+    // Record volumes (0x0095/0x0096) are 0x0093/0x0094. Accept them as a
+    // usable seed only when BOTH bytes are inside the physically captured
+    // domains; otherwise expose trigger state as unknown and keep live writes gated.
+    const int danceThresholdRaw = static_cast<int>(fileU8(memory, 0x0093, 0xFF));
+    const int danceHoldRaw = static_cast<int>(fileU8(memory, 0x0094, 0xFF));
+    const bool danceTriggerKnown = danceThresholdRaw >= 0 && danceThresholdRaw <= 60
+                                   && danceHoldRaw >= K500Protocol::NativeRange::DanceMicHoldMinSec
+                                   && danceHoldRaw <= K500Protocol::NativeRange::DanceMicHoldMaxSec;
+
     QVariantMap system{
         {QStringLiteral("topMusicVol"), static_cast<int>(fileU8(memory, 0x0008))},
         {QStringLiteral("topMicVol"), static_cast<int>(fileU8(memory, 0x0009))},
@@ -537,6 +551,9 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("effectInitLevel"), static_cast<int>(fileU8(memory, 0x001D))},
         {QStringLiteral("uDiskRecordVol"), static_cast<int>(fileU8(memory, 0x0095)) + 1},
         {QStringLiteral("usbRecordVol"), static_cast<int>(fileU8(memory, 0x0096)) + 1},
+        {QStringLiteral("danceMicTriggerKnown"), danceTriggerKnown},
+        {QStringLiteral("danceMicThresholdDb"), danceTriggerKnown ? danceThresholdRaw - 60 : -50},
+        {QStringLiteral("danceMicHoldSec"), danceTriggerKnown ? danceHoldRaw : 6},
         {QStringLiteral("deviceModeIndex"), modeIndex},
         {QStringLiteral("deviceModeNames"), modeNames},
         {QStringLiteral("activeModeName"), activeName},
@@ -784,7 +801,29 @@ void StudioEngine::setMusicMaxVol(double value)
 
 void StudioEngine::setMasterMic(double value)
 {
-    if (assign(m_masterMic, clampValue(value, 0.0, 100.0), "system.topMicVol")) emit masterMicChanged();
+    // MIC_MAX_NATIVE_CEILING_V1 — physical sweep proves the same hard-ceiling
+    // behavior as Music Max.
+    if (assign(m_masterMic, clampValue(value, 0.0, m_micMaxVol), "system.topMicVol"))
+        emit masterMicChanged();
+}
+
+void StudioEngine::setMicMaxVol(double value)
+{
+    const double nextMax = clampValue(value, 0.0, K500Protocol::TopVolumeMax);
+    if (qFuzzyCompare(m_micMaxVol + 1000.0, nextMax + 1000.0)
+        && m_masterMic <= nextMax)
+        return;
+
+    m_micMaxVol = nextMax;
+    emit micMaxVolChanged();
+
+    if (m_masterMic > m_micMaxVol) {
+        m_masterMic = m_micMaxVol;
+        emit masterMicChanged();
+    }
+
+    m_lastChangedPath = QStringLiteral("system.micMaxVol");
+    emit stateEdited(m_lastChangedPath, m_micMaxVol);
 }
 
 void StudioEngine::setMasterFx(double value)
