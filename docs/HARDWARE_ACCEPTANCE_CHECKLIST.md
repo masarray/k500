@@ -162,6 +162,7 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Main L Delay 0/20/50 ms writes only data[16..17] of Main CMD 0x0E.
 - [ ] Main R Delay 0/20/50 ms writes only data[18..19] of Main CMD 0x0E.
 - [ ] Main L/R readback after reconnect matches the native application.
+- [ ] With the documented native reference state, reconnect hydrates Surround **L=14 ms / 4.8 m** and **R=20 ms / 6.8 m** without swapping them.
 - [ ] Surround **L** Delay writes native data[18..19], not data[16..17].
 - [ ] Surround **R** Delay writes native data[16..17], not data[18..19].
 - [ ] Surround L/R labels remain semantically correct in SonKuPik despite the reversed wire order.
