@@ -50,12 +50,25 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
 | Music HP/LP filter type readback | CAPTURE-MAPPED 🟧 | READ activeMemory[0x0007]/[0x0008] + existing CMD 0x11 write enum |
 | Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored unrelated scalars + captured FBX 0..4 direct byte |
-| Top Effect `CMD 0x09` | STABLE USB ✅ | mirrored init preservation |
+| Top Effect `CMD 0x09` | STABLE USB ✅ | current hydrated Effect Init preservation |
+| Music Init / Mic Init live write | CAPTURE-MAPPED 🟧 | CMD 0x02 / 0x05 writable second scalar; 0..84 |
+| Effect Init live write | CAPTURE-MAPPED 🟧 | dedicated CMD 0x0A + RSP 0xF5; 0..84 |
+| USB Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E selector 0x03; UI 1..6 -> raw 0..5 |
+| UDisk Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E raw UI-1 + 00 00; RSP 0xC1 |
+| Mic Max Volume | CAPTURE-MAPPED 🟧 | Top Mic CMD 0x05 third scalar; 0..84 hard ceiling for Top Mic |
+| Dance Mic Trigger | CAPTURE-MAPPED 🟧 | paired CMD 0x22; threshold -60..0 dB + hold 1..30 s; guarded structural seed |
+| BT Name rename/reset | CAPTURE-MAPPED 🟧 | USB CMD 0x4E SET/RESET + RSP 0xB1 + 939-byte identity refresh |
+| BLE Name rename/reset | READ ONLY 🟦 | readback exists; deliberately not inferred from BT CMD 0x4E |
+| Adj Manner / VR OFF setter | CAPTURE-MAPPED 🟧 | CMD 0x07 + RSP 0xF8; reconnect state remains unknown |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Surround output block + L/R delay | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Main L/R Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16=L/data18=R, uint16 LE ms, 0..50 |
+| Surround output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Surround L/R Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E native wire exception: data16=R/data18=L, uint16 LE ms, 0..50 |
 | Center output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Center Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
 | Sub output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
+| Subwoofer Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
 | Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
 | Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
 | Music Noise Gate / Bass live write | CAPTURE-MAPPED 🟧 | captured CMD 0x02 gate field + CMD 0x0C Bass; connect readback pending |
@@ -79,7 +92,13 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Support Report diagnostics | LOCKED SW ✅ | bounded schema + payload/path redaction guard |
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
 | Smart Installer distribution | LOCKED SW ✅ | machine/per-user installer runtime self-tests; portable retired from v1.1 public distribution |
-| Persistent LCD/Equipment Mode rename | READ ONLY 🟦 | table readback exists; write transaction not donor-verified |
+| Persistent LCD/Equipment Mode rename | CAPTURE-MAPPED 🟧 | active-slot name at slot-image 0x0280..0x028F + native Store + Recall/readback |
+| Mic Max Volume | CAPTURE-MAPPED 🟧 | captured CMD 0x05 scalar + Top Mic hard ceiling |
+| UDisk Record Volume | CAPTURE-MAPPED 🟧 | captured CMD 0x3E raw UI-1 + RSP 0xC1 |
+| Dance Mic threshold/hold | CAPTURE-MAPPED 🟧 | captured full-pair CMD 0x22; write is fail-closed without valid paired seed |
+| BT Name rename/reset | CAPTURE-MAPPED 🟧 | USB CMD 0x4E + B1 ACK + authoritative identity refresh |
+| BLE Name rename/reset | READ ONLY 🟦 | no BLE write capture; no BT-family inference |
+| Lock/Admin credentials | READ ONLY 🟦 | intentionally device-managed/outside daily-use product scope; no guessed traffic |
 
 ## State model parity
 
@@ -159,7 +178,7 @@ Verified command families are available in the stable USB workflow. Commands wit
 
 ### P2 — Device preset transactions — COMPLETE FOR v1 USB SCOPE
 
-Recall, Use Init, current-device Save, Store chain, and Mass Upload transaction behavior are integrated in the stable baseline.
+Recall, Use Init, current-device Save, Store chain, and Mass Upload transaction behavior are integrated in the stable baseline. The 2026-10-04 capture set additionally maps active-slot persistent Mode Name rename through that same Store coordinator without introducing a second destructive transaction path.
 
 ### P3 / P3.2 / P3.3 / P3.4 — Bit-perfect preset engine and file UI — COMPLETE
 

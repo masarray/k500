@@ -31,11 +31,9 @@ StudioPanel {
     readonly property int hpfIndex: fieldIndex("HPF")
     readonly property int lpfIndex: fieldIndex("LPF")
     readonly property bool hasDelay: monoDelayIndex >= 0 || leftDelayIndex >= 0 || rightDelayIndex >= 0
-    // P3_DELAY_READONLY_AWARENESS_V1
-    // Main/Center/Sub expose native-looking delay slots before their write offsets
-    // are donor-verified. A visibly disabled slider alone is ambiguous in a mixer
-    // UI, so surface the read-only state explicitly. Surround stays unbadged because
-    // both of its delay fields are verified/editable.
+    // OUTPUT_DELAY_CMD0E_CAPTURED_V1
+    // All native output-delay slots are now donor-verified. hasReadOnlyDelay remains
+    // generic so future evidence-gated fields can still surface truthful READ ONLY UI.
     readonly property bool hasReadOnlyDelay:
         (monoDelayIndex >= 0 && !editableAt(monoDelayIndex))
         || (leftDelayIndex >= 0 && !editableAt(leftDelayIndex))
@@ -75,13 +73,22 @@ StudioPanel {
     function dispatchVerifiedAux(index, value) {
         if (index < 0 || index >= root.fields.length || !root.editableAt(index)) return
         var label = String(root.fields[index].label || "").toUpperCase()
-        if (label !== "L DELAY" && label !== "R DELAY") return
+        if (label !== "L DELAY" && label !== "R DELAY" && label !== "OUTPUT DELAY" && label !== "DELAY") return
         var ctx = studioContext()
-        // SURROUND_DELAY_VERIFIED_V1 — donor captures prove D16/D17 and D18/D19
-        // in Surround CMD 0x0E. Main/Center/Sub delay slots are visual parity
-        // only until equivalent donor delta captures prove their write offsets.
-        if (!ctx || ctx.sectionIndex !== 5) return
-        ctx.engine.editDevicePath(label === "L DELAY" ? "outputs.surround.lDelayMs" : "outputs.surround.rDelayMs", value)
+        if (!ctx) return
+
+        if (ctx.sectionIndex === 4 && label === "L DELAY")
+            ctx.engine.editDevicePath("outputs.main.lDelayMs", value)
+        else if (ctx.sectionIndex === 4 && label === "R DELAY")
+            ctx.engine.editDevicePath("outputs.main.rDelayMs", value)
+        else if (ctx.sectionIndex === 5 && label === "L DELAY")
+            ctx.engine.editDevicePath("outputs.surround.lDelayMs", value)
+        else if (ctx.sectionIndex === 5 && label === "R DELAY")
+            ctx.engine.editDevicePath("outputs.surround.rDelayMs", value)
+        else if (ctx.sectionIndex === 6 && (label === "OUTPUT DELAY" || label === "DELAY"))
+            ctx.engine.editDevicePath("outputs.center.outputDelayMs", value)
+        else if (ctx.sectionIndex === 7 && (label === "OUTPUT DELAY" || label === "DELAY"))
+            ctx.engine.editDevicePath("outputs.sub.outputDelayMs", value)
     }
     function editField(index, value) {
         if (index < 0 || !root.editableAt(index)) return

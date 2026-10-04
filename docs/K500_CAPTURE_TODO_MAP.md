@@ -1,9 +1,13 @@
 # K500 Capture Coverage & TODO Map
 
-Status date: 2026-10-01
-Baseline: `main` @ `07f298af6bfdb85574c9810b32a22ca2c6c856e3` (v1.1 candidate truth freeze before RC3)
+Status date: 2026-10-04
+Baseline: `main` @ `3fa49b3627ffd0631e9e3915413775db65725852` (post-RC4/Smart Installer truth)
 
-The capture-backed fixes from PRs #79–#84 are integrated in this baseline. Historical capture references remain valid evidence, but new mapping work must start from this current main and must not revive superseded branches.
+The focused 2026-10-04 System captures are documented in
+`docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`. The final Output Delay sweeps are
+documented in `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`. Historical capture
+references remain valid evidence, but new mapping work must start from current
+main and must not revive superseded branches.
 
 This document is the capture-planning source of truth. It separates:
 - device READ mapping (connect/readback/runtime state),
@@ -111,43 +115,43 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | EQ bypass | ✅ | ✅ | complete | no |
 | HPF/LPF frequency | ✅ | ✅ | complete | no |
 | HPF/LPF filter type on CONNECT | ❌ assumed/defaulted | n/a | partial | **YES** |
-| Surround L/R Delay | ✅ | ✅ CMD 0x0E | complete | no |
-| Main L/R Delay | ❌ currently UI read-only/fallback | ❌ output block does not patch | missing | **YES** |
-| Center Output Delay | ❌ | ❌ | missing | **YES** |
-| Sub Output Delay | ❌ | ❌ | missing | **YES** |
+| Surround L/R Delay | ✅ 0x00D8/0x00DA | ✅ CMD 0x0E; wire order R@data16, L@data18 | capture-mapped | no |
+| Main L/R Delay | ✅ 0x0034/0x0036 | ✅ CMD 0x0E; L@data16, R@data18 | capture-mapped | no |
+| Center Output Delay | ✅ 0x005C | ✅ CMD 0x0E data16 | capture-mapped | no |
+| Sub Output Delay | ✅ 0x0070 | ✅ CMD 0x0E data16 | capture-mapped | no |
 
 ## System / Equipment Mode
 
 | Control | READ | WRITE | Status | Capture needed |
 | --- | --- | --- | --- | --- |
-| Mode names 1..10 | ✅ active memory | ❌ persistent rename not mapped | partial | **YES — rename one sacrificial slot** |
+| Mode names 1..10 | ✅ active memory | ✅ active-slot image 0x0280..0x028F + Store 0x41/42/43 | capture-mapped | no |
 | Active Mode name/slot | ✅ | ✅ Recall | complete | no |
-| Use Init Volume | ✅ | ✅ | complete | no |
+| Use Init Volume | ✅ C0 bit | ✅ CMD 0x12 + ED ACK; Recall semantics proven | complete | no |
 | Save current slot | ✅ transaction | ✅ Store 0x41/42/43 | complete | no |
 | Mass Upload | n/a | ✅ | complete | no |
 | Reset All Settings | ❌ | ❌ disabled | missing | **YES — destructive, last priority** |
-| Music Init Vol | ✅ 0x000B | ❌ preserved-only | partial | **YES** |
+| Music Init Vol | ✅ 0x000B | ✅ Top Music CMD 0x02 second scalar | capture-mapped | no |
 | Music Max Vol | ✅ 0x000C | ✅ Top Music CMD 0x02 + hard ceiling clamp | complete | no |
-| Mic Init Vol | ✅ 0x0012 | ❌ preserved-only | partial | **YES** |
-| Mic Max Vol | ✅ 0x0013 | ❌ preserved-only | partial | **YES** |
-| Effect Init Level | ✅ 0x001D | ❌ current write path is effectively mirrored/preserved | partial | **YES** |
-| UDisk Record Vol | ✅ 0x0095 + 1 | ❌ UI local-only | partial | **YES** |
-| USB Record Vol | ✅ 0x0096 + 1 | ❌ UI local-only | partial | **YES** |
-| Dance/Mic Trigger Threshold | ❌ UI currently hardcoded | ❌ | missing | **YES** |
-| Dance/Mic Trigger Hold Time | ❌ UI currently hardcoded | ❌ | missing | **YES** |
-| Adj Manner / VR OFF | ❌ not represented | ❌ | missing | **YES if feature desired** |
+| Mic Init Vol | ✅ 0x0012 | ✅ Top Mic CMD 0x05 second scalar | capture-mapped | no |
+| Mic Max Vol | ✅ 0x0013 | ✅ Top Mic CMD 0x05 third scalar + hard ceiling | capture-mapped | no |
+| Effect Init Level | ✅ 0x001D | ✅ dedicated CMD 0x0A + F5 ACK | capture-mapped | no |
+| UDisk Record Vol | ✅ 0x0095 + 1 | ✅ CMD 0x3E raw=UI-1, tail 00 00 | capture-mapped | no |
+| USB Record Vol | ✅ 0x0096 + 1 | ✅ CMD 0x3E selector 0x03, raw=UI-1 | capture-mapped | no |
+| Dance/Mic Trigger Threshold | 🟨 0x0093 structural seed, range-guarded | ✅ CMD 0x22 raw=dB+60 | capture-mapped write | no further daily-use capture |
+| Dance/Mic Trigger Hold Time | 🟨 0x0094 structural seed, range-guarded | ✅ CMD 0x22 raw seconds | capture-mapped write | no further daily-use capture |
+| Adj Manner / VR OFF | ❌ reconnect/readback unknown | ✅ CMD 0x07 + F8 ACK | partial | **YES — readback only if persistent status desired** |
 
 ## Identity / security
 
 | Function | READ | WRITE | Status | Capture needed |
 | --- | --- | --- | --- | --- |
-| BT Name | ✅ active memory 0x0385 | ❌ rename/reset | partial | **YES** |
-| BLE Name | ✅ active memory 0x0398 | ❌ rename/reset | partial | **YES** |
-| BT/BLE Reset | ❌ | ❌ | missing | **YES** |
-| Lock state | ❌ | ❌ | missing | **YES, cautious** |
-| Lock password / Modify | ❌ | ❌ | missing | **YES, cautious/destructive** |
-| Admin/User mode state | ❌ | ❌ | missing | **YES, cautious** |
-| Admin password / Modify | ❌ | ❌ | missing | **YES, cautious/destructive** |
+| BT Name | ✅ active memory 0x0385 | ✅ CMD 0x4E SET/RESET + B1 ACK + readback | capture-mapped | no |
+| BLE Name | ✅ active memory 0x0398 | ⛔ intentionally read-only; do not infer from BT | non-blocking | no |
+| BT Reset | ✅ readback after operation | ✅ CMD 0x4E op 0x00 | capture-mapped | no |
+| Lock state | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
+| Lock password / Modify | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
+| Admin/User mode state | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
+| Admin password / Modify | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
 
 ## Highest-value capture order
 
@@ -155,23 +159,23 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
 2. **Mic Noise Gate write**.
-3. **System Startup Limits remaining** — Music Init, Mic Init, Mic Max, Effect Init. Music Max is complete.
-4. **Recording + Mic Trigger** — UDisk Rec, USB Rec, Threshold, Hold Time.
+3. **System Startup Limits** — daily-use set complete: Music Init/Max, Mic Init/Max, Effect Init mapped.
+4. **Recording + Mic Trigger** — daily-use set complete: UDisk Rec, USB Rec, Threshold and Hold Time mapped.
 5. **Remaining non-Music crossover filter-type readback** — Mic/Main/Surround/Center/Sub still need their own connect-state mapping.
 6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
 
 ### P1 — useful next
 
-7. Main L/R delay, Center delay, Sub delay.
-8. Equipment Mode Name rename.
-9. BT Name and BLE Name rename/reset.
-10. Adj Manner / VR OFF.
+7. Main/Surround/Center/Sub Output Delay — **daily-use mapping complete**; hardware reconnect acceptance remains.
+8. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
+9. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
+10. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
 
 ### P2 — last / potentially destructive
 
 11. Reset All Settings.
-12. Lock state/password flows.
-13. Admin/User mode and password flows.
+12. Lock state/password flows — **scope closed / intentionally unsupported**.
+13. Admin/User mode and password flows — **scope closed / intentionally unsupported**.
 
 ## Recommended capture method
 

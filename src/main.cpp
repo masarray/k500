@@ -232,6 +232,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0012, 26); // mic init
         putFileU8(memory, 0x0013, 82); // mic max
         putFileU8(memory, 0x001D, 27); // effect init
+        putFileU8(memory, 0x0093, 10); // Dance Mic threshold raw -> -50 dB
+        putFileU8(memory, 0x0094, 6);  // Dance Mic hold -> 6 sec
         putFileU8(memory, 0x0095, 8);  // U-Disk record -> UI 9
         putFileU8(memory, 0x0096, 10); // USB record -> UI 11
 
@@ -277,6 +279,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0031, 4);
         putFileU8(memory, 0x0032, 12);
         putFileU8(memory, 0x0033, 3);  // 0.3 sec
+        putFileU16(memory, 0x0034, 50); // Main L delay
+        putFileU16(memory, 0x0036, 20); // Main R delay
         putFileU16(memory, 0x00A0, 45);
         putFileU16(memory, 0x00A4, 19000);
 
@@ -291,8 +295,11 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0045, 5);
         putFileU8(memory, 0x0046, 13);
         putFileU8(memory, 0x0047, 4);
-        putFileU16(memory, 0x00D8, 17);
-        putFileU16(memory, 0x00DA, 19);
+        // SURROUND_DELAY_ACTUAL_REFERENCE_V1 — native KTV screenshot/capture
+        // reference state: L=14 ms (4.8 m), R=20 ms (6.8 m). These are
+        // hydrated hardware values, not application defaults.
+        putFileU16(memory, 0x00D8, 14);
+        putFileU16(memory, 0x00DA, 20);
 
         // Center output.
         putFileU8(memory, 0x004C, 89); // +7 dB
@@ -304,6 +311,7 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0059, 6);
         putFileU8(memory, 0x005A, 14);
         putFileU8(memory, 0x005B, 5);
+        putFileU16(memory, 0x005C, 30); // Center output delay
 
         // Sub output + crossover.
         putFileU8(memory, 0x0060, 87); // +6 dB
@@ -315,6 +323,7 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x006D, 7);
         putFileU8(memory, 0x006E, 15);
         putFileU8(memory, 0x006F, 6);
+        putFileU16(memory, 0x0070, 40); // Sub output delay
         putFileU16(memory, 0x00B8, 42);
         putFileU16(memory, 0x00BC, 96);
 
@@ -383,6 +392,7 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.masterMusic(), 61.0)
             && qFuzzyCompare(studioEngine.musicMaxVol(), 84.0)
             && qFuzzyCompare(studioEngine.masterMic(), 57.0)
+            && qFuzzyCompare(studioEngine.micMaxVol(), 82.0)
             && qFuzzyCompare(studioEngine.masterFx(), 49.0)
             && studioEngine.musicKey() == 3
             && qFuzzyCompare(studioEngine.input1Gain(), 3.0)
@@ -405,6 +415,9 @@ int main(int argc, char *argv[])
             && system.value(QStringLiteral("effectInitLevel")).toInt() == 27
             && system.value(QStringLiteral("uDiskRecordVol")).toInt() == 9
             && system.value(QStringLiteral("usbRecordVol")).toInt() == 11
+            && system.value(QStringLiteral("danceMicTriggerKnown")).toBool()
+            && system.value(QStringLiteral("danceMicThresholdDb")).toInt() == -50
+            && system.value(QStringLiteral("danceMicHoldSec")).toInt() == 6
             && system.value(QStringLiteral("deviceModeIndex")).toInt() == 4
             && system.value(QStringLiteral("activeModeName")).toString() == QStringLiteral("KARAOKE ARTIST")
             && system.value(QStringLiteral("btName")).toString() == QStringLiteral("KTV_BT_TEST")
@@ -421,11 +434,15 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(mainOutput.value(QStringLiteral("lVolDb")).toDouble(), 12.0)
             && qFuzzyCompare(mainOutput.value(QStringLiteral("rVolDb")).toDouble(), 10.0)
             && mainOutput.value(QStringLiteral("compThresholdDb")).toInt() == -14
+            && mainOutput.value(QStringLiteral("lDelayMs")).toInt() == 50
+            && mainOutput.value(QStringLiteral("rDelayMs")).toInt() == 20
             && qFuzzyCompare(surroundOutput.value(QStringLiteral("lVolDb")).toDouble(), 9.0)
-            && surroundOutput.value(QStringLiteral("lDelayMs")).toInt() == 17
-            && surroundOutput.value(QStringLiteral("rDelayMs")).toInt() == 19
+            && surroundOutput.value(QStringLiteral("lDelayMs")).toInt() == 14
+            && surroundOutput.value(QStringLiteral("rDelayMs")).toInt() == 20
             && qFuzzyCompare(centerOutput.value(QStringLiteral("outputVolDb")).toDouble(), 7.0)
+            && centerOutput.value(QStringLiteral("outputDelayMs")).toInt() == 30
             && qFuzzyCompare(subOutput.value(QStringLiteral("outputVolDb")).toDouble(), 6.0)
+            && subOutput.value(QStringLiteral("outputDelayMs")).toInt() == 40
             && subOutput.value(QStringLiteral("hpfHz")).toInt() == 42
             && subOutput.value(QStringLiteral("lpfHz")).toInt() == 96
             && reverb.value(QStringLiteral("level")).toInt() == 55
@@ -463,6 +480,22 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.masterMusic(), 25.0)
             && hydrationEdits == editsBeforeCeilingTest + 2;
         if (!loweredCeilingValid || !raisedCeilingValid)
+            return 7;
+
+        // MIC_MAX_NATIVE_CEILING_V1 — same user-visible ceiling contract for Mic.
+        const int editsBeforeMicCeilingTest = hydrationEdits;
+        studioEngine.setMicMaxVol(30);
+        const bool loweredMicCeilingValid =
+            qFuzzyCompare(studioEngine.micMaxVol(), 30.0)
+            && qFuzzyCompare(studioEngine.masterMic(), 30.0)
+            && studioEngine.lastChangedPath() == QStringLiteral("system.micMaxVol")
+            && hydrationEdits == editsBeforeMicCeilingTest + 1;
+        studioEngine.setMicMaxVol(82);
+        const bool raisedMicCeilingValid =
+            qFuzzyCompare(studioEngine.micMaxVol(), 82.0)
+            && qFuzzyCompare(studioEngine.masterMic(), 30.0)
+            && hydrationEdits == editsBeforeMicCeilingTest + 2;
+        if (!loweredMicCeilingValid || !raisedMicCeilingValid)
             return 7;
 
         // Restore authoritative fixture state for the QML/runtime half of this test.

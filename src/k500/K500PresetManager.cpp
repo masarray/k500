@@ -14,6 +14,7 @@ constexpr int ActiveMemoryInterBlockMs = 35;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int RecallHandshakeTimeoutMs = 3000;
 constexpr int UseInitTimeoutMs = 2200;
+constexpr int BtIdentityTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
@@ -51,6 +52,14 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
                 m_useInitVolumeKnown = false;
                 emit useInitVolumeChanged();
             }
+            // No reconnect/readback bit has been captured for Adj Manner VR OFF.
+            // Keep it explicitly unknown after transport loss; only RSP 0xF8
+            // confirms a value set in the current session.
+            if (m_adjMannerVrOffKnown || m_adjMannerVrOff) {
+                m_adjMannerVrOff = false;
+                m_adjMannerVrOffKnown = false;
+                emit adjMannerVrOffChanged();
+            }
             if (busy()) {
                 clearTimeout();
                 m_operation = Operation::None;
@@ -79,7 +88,10 @@ QString K500PresetManager::operationName(Operation operation)
     switch (operation) {
     case Operation::Recall: return QStringLiteral("Recall");
     case Operation::UseInit: return QStringLiteral("Use Init Volume");
+    case Operation::AdjManner: return QStringLiteral("Adj Manner VR OFF");
+    case Operation::BtName: return QStringLiteral("BT Name");
     case Operation::Save: return QStringLiteral("Save");
+    case Operation::Rename: return QStringLiteral("Rename Mode");
     case Operation::Upload: return QStringLiteral("Upload");
     case Operation::MassUpload: return QStringLiteral("Mass Upload");
     case Operation::None: break;
@@ -145,6 +157,14 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
         m_useInitVolumeKnown = m_previousUseInitVolumeKnown;
         emit useInitVolumeChanged();
     }
+    if (failedOperation == Operation::AdjManner
+        && (m_adjMannerVrOff != m_previousAdjMannerVrOff
+            || m_adjMannerVrOffKnown != m_previousAdjMannerVrOffKnown)) {
+        m_adjMannerVrOff = m_previousAdjMannerVrOff;
+        m_adjMannerVrOffKnown = m_previousAdjMannerVrOffKnown;
+        emit adjMannerVrOffChanged();
+    }
+    m_requestedModeName.clear();
     setProgress(QStringLiteral("%1 failed").arg(kind));
     emit busyChanged();
     emit operationFailed(kind, message);
@@ -229,12 +249,11 @@ void K500PresetManager::sendRecallHandshake()
 
 void K500PresetManager::setUseInitVolume(bool enabled)
 {
-    // USE_INIT_DEVICE_TRUTH_V1
-    // Never treat a host-side preference as the K500's actual state. Physical
-    // capture proves only the setter/ACK pair:
+    // USE_INIT_DEVICE_TRUTH_V1 + USE_INIT_DEVICE_TRUTH_V2
+    // Never treat a host-side preference as K500 truth. C0 data[7] bit 0x04
+    // hydrates the connect/Recall state; the setter/ACK pair remains:
     // OFF AA 03 00 12 00 03 E8, ON AA 03 00 12 01 03 E7, ACK RSP 0xED.
-    // Until a dedicated connect OFF-vs-ON capture identifies the readback bit,
-    // the value is unknown after connect and becomes known only after device ACK.
+    // A local edit becomes current-session truth only after that valid ACK.
     if (!connected()) {
         const QString error = QStringLiteral("Use Init Volume memerlukan K500 connected; device state tidak boleh dipalsukan dari preference PC.");
         if (m_manager) m_manager->setError(error);
@@ -266,6 +285,95 @@ void K500PresetManager::setUseInitVolume(bool enabled)
                QStringLiteral("Timeout menunggu RSP 0xED untuk Use Init Volume."));
 }
 
+void K500PresetManager::setAdjMannerVrOff(bool enabled)
+{
+    // ADJ_MANNER_VR_OFF_ACK_V1 — the supplied toggle capture proves CMD 0x07
+    // and response 0xF8, but no reconnect readback field. Treat the ACK as
+    // current-session device truth and return to unknown after disconnect.
+    if (!connected()) {
+        const QString error = QStringLiteral("Adj Manner VR OFF memerlukan K500 connected.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("Adj Manner VR OFF"), error);
+        return;
+    }
+    if (m_adjMannerVrOffKnown && enabled == m_adjMannerVrOff && !busy())
+        return;
+
+    QString error;
+    if (!beginOperation(Operation::AdjManner, &error)) {
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("Adj Manner VR OFF"), error);
+        return;
+    }
+
+    m_previousAdjMannerVrOff = m_adjMannerVrOff;
+    m_previousAdjMannerVrOffKnown = m_adjMannerVrOffKnown;
+    m_adjMannerVrOff = enabled;
+    m_adjMannerVrOffKnown = false;
+    emit adjMannerVrOffChanged();
+    m_step = Step::AwaitAdjMannerAck;
+    setProgress(QStringLiteral("Adj Manner VR OFF %1").arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF")));
+    if (!send(K500Protocol::adjMannerVrOff(enabled),
+              QStringLiteral("Adj Manner VR OFF %1 · CMD 0x07").arg(enabled ? QStringLiteral("ON") : QStringLiteral("OFF"))))
+        return;
+    armTimeout(UseInitTimeoutMs, QStringLiteral("Adj Manner VR OFF"),
+               QStringLiteral("Timeout menunggu RSP 0xF8 untuk Adj Manner VR OFF."));
+}
+
+void K500PresetManager::setBtName(const QString &name)
+{
+    if (!usbStoreAvailable()) {
+        const QString error = QStringLiteral("BT Name rename hanya dipromosikan untuk USB HID yang tercapture.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+    const QByteArray frame = K500Protocol::btNameSet(name);
+    if (frame.isEmpty()) {
+        const QString error = QStringLiteral("BT Name harus 1..8 karakter ASCII printable.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+
+    QString error;
+    if (!beginOperation(Operation::BtName, &error)) {
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+
+    m_step = Step::AwaitBtNameAck;
+    setProgress(QStringLiteral("BT Name · writing '%1'").arg(name.trimmed()));
+    if (!send(frame, QStringLiteral("BT Name SET · CMD 0x4E")))
+        return;
+    armTimeout(BtIdentityTimeoutMs, QStringLiteral("BT Name"),
+               QStringLiteral("Timeout menunggu RSP 0xB1 untuk BT Name."));
+}
+
+void K500PresetManager::resetBtName()
+{
+    if (!usbStoreAvailable()) {
+        const QString error = QStringLiteral("BT Name reset hanya dipromosikan untuk USB HID yang tercapture.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+    QString error;
+    if (!beginOperation(Operation::BtName, &error)) {
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("BT Name"), error);
+        return;
+    }
+
+    m_step = Step::AwaitBtNameAck;
+    setProgress(QStringLiteral("BT Name · reset"));
+    if (!send(K500Protocol::btNameReset(), QStringLiteral("BT Name RESET · CMD 0x4E")))
+        return;
+    armTimeout(BtIdentityTimeoutMs, QStringLiteral("BT Name"),
+               QStringLiteral("Timeout menunggu RSP 0xB1 untuk BT Name reset."));
+}
+
 void K500PresetManager::saveCurrentToSlot(int slotOneBased)
 {
     if (!usbStoreAvailable()) {
@@ -286,6 +394,44 @@ void K500PresetManager::saveCurrentToSlot(int slotOneBased)
     m_storeChain = {};
     setProgress(QStringLiteral("Preparing slot %1 · fresh device readback").arg(m_requestedSlot));
     startReadback(ReadbackPurpose::SavePrepare);
+}
+
+void K500PresetManager::renameActiveMode(const QString &name)
+{
+    if (!usbStoreAvailable()) {
+        const QString error = QStringLiteral("Persistent Mode Rename hanya diaktifkan melalui USB HID.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("Rename Mode"), error);
+        return;
+    }
+    if (m_activeSlot < 1 || m_activeSlot > 10) {
+        const QString error = QStringLiteral("Active device slot belum diketahui; Recall slot terlebih dahulu.");
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("Rename Mode"), error);
+        return;
+    }
+
+    QString nameError;
+    const QByteArray probe = K500PresetProtocol::withModeName(
+        QByteArray(K500PresetProtocol::DeviceSlotImageLength, char(0)), name, &nameError);
+    if (probe.isEmpty()) {
+        if (m_manager) m_manager->setError(nameError);
+        emit operationFailed(QStringLiteral("Rename Mode"), nameError);
+        return;
+    }
+
+    QString error;
+    if (!beginOperation(Operation::Rename, &error)) {
+        if (m_manager) m_manager->setError(error);
+        emit operationFailed(QStringLiteral("Rename Mode"), error);
+        return;
+    }
+
+    m_requestedSlot = m_activeSlot;
+    m_requestedModeName = name.trimmed();
+    m_storeChain = {};
+    setProgress(QStringLiteral("Rename slot %1 · fresh device readback").arg(m_requestedSlot));
+    startReadback(ReadbackPurpose::RenamePrepare);
 }
 
 void K500PresetManager::massUploadSlotImages(const QVariantList &entries)
@@ -403,6 +549,23 @@ void K500PresetManager::onResponse(const K500Response &response)
         return;
     }
 
+    if (m_step == Step::AwaitAdjMannerAck && response.rsp == 0xF8) {
+        clearTimeout();
+        m_adjMannerVrOffKnown = true;
+        emit adjMannerVrOffChanged();
+        setProgress(QStringLiteral("Adj Manner VR OFF %1 · device acknowledged")
+                        .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
+        finishOperation(QStringLiteral("Adj Manner VR OFF"));
+        return;
+    }
+
+    if (m_step == Step::AwaitBtNameAck && response.rsp == 0xB1) {
+        clearTimeout();
+        setProgress(QStringLiteral("BT Name · device acknowledged · refreshing identity"));
+        startReadback(ReadbackPurpose::BtIdentity);
+        return;
+    }
+
     if (m_step == Step::AwaitMassBeginAck && response.rsp == 0xBE) {
         clearTimeout();
         sendNextStoreChunk();
@@ -502,9 +665,38 @@ void K500PresetManager::finishReadback()
             finishOperation(QStringLiteral("Mass Upload"), resolvedSlot);
             return;
         }
+        if (m_operation == Operation::Rename) {
+            setProgress(QStringLiteral("Rename slot %1 · committed and 939-byte resync complete").arg(resolvedSlot));
+            m_requestedModeName.clear();
+            finishOperation(QStringLiteral("Rename Mode"), resolvedSlot);
+            return;
+        }
 
         setProgress(QStringLiteral("Recall slot %1 · 939-byte resync complete").arg(resolvedSlot));
         finishOperation(QStringLiteral("Recall"), resolvedSlot);
+        return;
+    }
+
+    if (m_readbackPurpose == ReadbackPurpose::BtIdentity) {
+        setProgress(QStringLiteral("BT Name · 939-byte identity refresh complete"));
+        finishOperation(QStringLiteral("BT Name"));
+        return;
+    }
+
+    if (m_readbackPurpose == ReadbackPurpose::RenamePrepare) {
+        // MODE_NAME_STORE_CAPTURED_V1 — begin from exact current device truth
+        // and patch only slot-image bytes 0x0280..0x028F before the native
+        // 0x41/0x42/0x43 store sequence.
+        QString renameError;
+        m_storeImage = K500PresetProtocol::withModeName(
+            m_readbackMemory.left(K500PresetProtocol::DeviceSlotImageLength),
+            m_requestedModeName, &renameError);
+        if (m_storeImage.isEmpty()) {
+            failOperation(QStringLiteral("Rename Mode"), renameError);
+            return;
+        }
+        m_storeChain = {};
+        beginStoreSlot(false);
         return;
     }
 
@@ -532,7 +724,8 @@ void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
     m_commitFrame.clear();
     const QString storeKind = m_operation == Operation::MassUpload
         ? QStringLiteral("Mass upload")
-        : (m_operation == Operation::Upload ? QStringLiteral("Upload") : QStringLiteral("Save"));
+        : (m_operation == Operation::Upload ? QStringLiteral("Upload")
+           : (m_operation == Operation::Rename ? QStringLiteral("Rename") : QStringLiteral("Save")));
     setProgress(QStringLiteral("%1 slot %2 · begin 0x41")
                     .arg(storeKind)
                     .arg(m_requestedSlot));
@@ -552,7 +745,8 @@ void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
     // and does not wait for 0xBE. Only Mass Upload uses the begin ACK chain.
     m_step = Step::SingleStoreBeginDelay;
     QTimer::singleShot(SingleStoreBeginSettleMs, this, [this] {
-        if ((m_operation == Operation::Save || m_operation == Operation::Upload)
+        if ((m_operation == Operation::Save || m_operation == Operation::Rename
+             || m_operation == Operation::Upload)
             && m_step == Step::SingleStoreBeginDelay)
             sendNextStoreChunk();
     });
@@ -620,6 +814,20 @@ void K500PresetManager::acceptStoreCommit()
             return;
         QTimer::singleShot(RecallSettleMs, this, [this] {
             if (m_operation == Operation::MassUpload && m_step == Step::RecallDelay)
+                sendRecallHandshake();
+        });
+        return;
+    }
+
+    if (m_operation == Operation::Rename) {
+        const int renamedSlot = m_requestedSlot;
+        setProgress(QStringLiteral("Rename slot %1 committed · recalling same slot for verification").arg(renamedSlot));
+        m_step = Step::RecallDelay;
+        if (!send(K500PresetProtocol::recallMode(renamedSlot),
+                  QStringLiteral("Rename final recall slot %1 · mask 0x03").arg(renamedSlot)))
+            return;
+        QTimer::singleShot(RecallSettleMs, this, [this] {
+            if (m_operation == Operation::Rename && m_step == Step::RecallDelay)
                 sendRecallHandshake();
         });
         return;

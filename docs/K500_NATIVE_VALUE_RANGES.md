@@ -82,6 +82,62 @@ with the same raw integer level `0..4`; the following command byte is fixed
 Lowering Music Max below the current Top Music value clamps Top Music in the
 same native `CMD 0x02` block. Raising Music Max does not raise Top Music.
 
+## System startup / recording — native capture observed
+
+The focused 2026-10-04 USB captures close these manufacturer UI domains:
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Music Init | 0 | 84 | scalar | Native packet capture, CMD 0x02 |
+| Mic Init | 0 | 84 | scalar | Native packet capture, CMD 0x05 |
+| Effect Init | 0 | 84 | scalar | Native packet capture, CMD 0x0A |
+| USB Record Volume | 1 | 6 | UI step | Native packet capture, CMD 0x3E selector 0x03 |
+
+USB Record stores `raw = UI - 1`, therefore raw `0..5` represents UI `1..6`.
+
+Mic Max and UDisk Record were subsequently closed by the final 2026-10-04
+operational capture batch below; do not revive the older read-only assumption.
+
+Adj Manner / VR OFF is a boolean setter (`CMD 0x07`) rather than a numeric
+range. Its reconnect/readback location remains unproven.
+
+## Final System operational controls — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Mic Max | 0 | 84 | scalar | Native USB capture, CMD 0x05 |
+| UDisk Record Volume | 1 | 6 | UI step | Native USB capture, CMD 0x3E |
+| Dance Mic Threshold | -60 | 0 | dB | Native USB capture, CMD 0x22 |
+| Dance Mic Hold Time | 1 | 30 | s | Native USB capture, CMD 0x22 |
+| BT Name | 1 | 8 | printable ASCII chars | Native USB capture, CMD 0x4E |
+
+Mic Max is a hard ceiling for Top Mic:
+`TopMic = min(TopMic, MicMax)`.
+
+Dance Mic threshold uses `raw = dB + 60`. Hold Time uses raw seconds.
+Both values travel together in one CMD 0x22 frame.
+
+BT Name's captured field is exactly 8 bytes, NUL-padded. Do not expand the
+writable UI to the longer readback buffer without new packet evidence.
+
+## Output Delay — native capture observed
+
+| Parameter | Minimum | Maximum | Unit | Evidence |
+| --- | ---: | ---: | --- | --- |
+| Main L Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Main R Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Surround L Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Surround R Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Center Output Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+| Subwoofer Output Delay | 0 | 50 | ms | Native USB capture, CMD 0x0E |
+
+Encoding is uint16 little-endian milliseconds. Main uses L at output-data
+16..17 and R at 18..19. **Surround reverses native wire order**: R is at
+16..17 and L at 18..19. Center/Sub use 16..17 only.
+
+The native distance readout is display-only at approximately
+`distance_m = delay_ms * 0.34`; no distance field is sent.
+
 ## Common PEQ
 
 | Parameter | Minimum | Maximum | Unit | Evidence |

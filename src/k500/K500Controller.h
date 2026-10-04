@@ -109,6 +109,9 @@ private:
     K500MusicBlockState m_music;
     K500MicBlockState m_mic;
     K500EffectBlockState m_effect;
+    int m_danceMicThresholdDb = -50;
+    int m_danceMicHoldSec = 6;
+    bool m_danceMicSeedKnown = false;
     K500ReverbBlockState m_reverb;
     QByteArray m_reverbRaw;
     K500EchoBlockState m_echo;

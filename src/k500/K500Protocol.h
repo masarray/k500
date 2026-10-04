@@ -34,6 +34,9 @@ struct K500MicBlockState
 {
     int topMicVol = 35;
     int micInitVol = 25;
+    // MIC_MAX_NATIVE_CEILING_V1 — 2026-10-04 physical sweep proves this
+    // scalar shares CMD 0x05 and clamps topMicVol when lowered below it.
+    int micMaxVol = 84;
     int fbxLevel = 0;
     int micAVol = 96;
     int micBVol = 96;
@@ -94,6 +97,7 @@ struct K500OutputBlockState
     double releaseSec = 0.1;
     int lDelayMs = 0;
     int rDelayMs = 0;
+    int outputDelayMs = 0;
 };
 
 namespace K500Protocol {
@@ -141,6 +145,20 @@ constexpr double MusicBassMaxDb = 12.0;
 
 constexpr int MicFbxMinLevel = 0;
 constexpr int MicFbxMaxLevel = 4;
+
+constexpr int StartupLevelMin = 0;
+constexpr int StartupLevelMax = TopVolumeMax;
+constexpr int UsbRecordVolMin = 1;
+constexpr int UsbRecordVolMax = 6;
+constexpr int UDiskRecordVolMin = 1;
+constexpr int UDiskRecordVolMax = 6;
+constexpr int DanceMicThresholdMinDb = -60;
+constexpr int DanceMicThresholdMaxDb = 0;
+constexpr int DanceMicHoldMinSec = 1;
+constexpr int DanceMicHoldMaxSec = 30;
+constexpr int OutputDelayMinMs = 0;
+constexpr int OutputDelayMaxMs = 50;
+constexpr int BtNameMaxLength = 8;
 } // namespace NativeRange
 
 QByteArray heartbeat();
@@ -159,6 +177,13 @@ QByteArray musicBass(double bassDb);
 quint8 musicNoiseGateRaw(double gateDb);
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars);
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
+QByteArray effectInitLevel(int initLevel, int topEffectVol);
+QByteArray usbRecordVolume(int levelOneBased);
+QByteArray uDiskRecordVolume(int levelOneBased);
+QByteArray danceMicTrigger(int thresholdDb, int holdSeconds);
+QByteArray btNameSet(const QString &name);
+QByteArray btNameReset();
+QByteArray adjMannerVrOff(bool enabled);
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData);
 QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceData);
 bool setEqBypass(K500EqBypassImage &image, const QString &section, bool enabled);

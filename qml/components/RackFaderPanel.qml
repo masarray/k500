@@ -90,7 +90,13 @@ StudioPanel {
             return ""
         }
         if (t === "Startup Limits") {
+            // SYSTEM_CAPTURE_20261004_V1 — expose only physically captured
+            // startup fields. Mic Max deliberately remains unmapped/read-only.
+            if (l === "MUSIC INIT") return "system.musicInitVol"
             if (l === "MUSIC MAX") return "system.musicMaxVol"
+            if (l === "MIC INIT") return "system.micInitVol"
+            if (l === "MIC MAX") return "system.micMaxVol"
+            if (l === "EFFECT INIT") return "system.effectInitLevel"
             return ""
         }
 
@@ -116,6 +122,10 @@ StudioPanel {
         if (!path.length || !engine) return
         if (path === "system.musicMaxVol") {
             engine.musicMaxVol = value
+            return
+        }
+        if (path === "system.micMaxVol") {
+            engine.micMaxVol = value
             return
         }
         engine.editDevicePath(path, value)
@@ -673,12 +683,13 @@ StudioPanel {
                         Layout.minimumWidth: 48
                         Layout.fillHeight: true
                         property real localValue: Number(modelData.value)
-                        // MUSIC_MAX_FADER_DEVICE_SYNC_V2 — native change/reconnect
-                        // must replace the local drag value. Assignment during a
-                        // drag intentionally breaks the original model binding.
+                        // MUSIC_MAX_FADER_DEVICE_SYNC_V2 + STARTUP_LIMIT_DEVICE_SYNC_V1 —
+                        // every captured startup
+                        // control is hydrated from K500 truth after connect/recall.
+                        // Do not overwrite an in-progress drag, but otherwise let
+                        // authoritative readback replace the local presentation.
                         onModelDataChanged: {
                             if (root.title === "Startup Limits"
-                                && String(modelData.label) === "MUSIC MAX"
                                 && (!rackFader || !rackFader.dragging))
                                 localValue = Number(modelData.value)
                         }

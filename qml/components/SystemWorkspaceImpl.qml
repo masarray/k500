@@ -109,19 +109,55 @@ Item {
         var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
         return names && names.length === 10 ? names : root.defaultDeviceSlots
     }
-    // MODE_NAME_UI_V1 — mirrors the selected hardware slot name only.
-    // Persistent rename stays disabled until the donor write packet is captured.
+    // MODE_NAME_STORE_CAPTURED_V1 — table readback is hardware truth. Persistent
+    // rename is allowed only for the ACTIVE slot because the native transaction
+    // stores the current 0x0290 image after patching its 16-byte name field.
     readonly property string selectedDeviceModeName: {
         if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
             return ""
         return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
     }
+    property string modeNameDraft: ""
+    function normalizedModeNameDraft() {
+        return String(root.modeNameDraft || "").trim()
+    }
+    function validModeNameDraft() {
+        var name = root.normalizedModeNameDraft()
+        return name.length >= 1 && name.length <= 16 && /^[ -~]+$/.test(name)
+    }
+    readonly property bool deviceModeRenameReady: root.deviceConnected
+                                                   && root.presetManager
+                                                   && root.presetManager.usbStoreAvailable
+                                                   && !root.presetManager.busy
+                                                   && root.activeDeviceSlot >= 0
+                                                   && root.selectedDeviceSlot === root.activeDeviceSlot
+                                                   && root.validModeNameDraft()
+                                                   && root.normalizedModeNameDraft() !== String(root.selectedDeviceModeName || "").trim()
+
+    readonly property string currentBtName: root.deviceConnected ? String(root.systemValue("btName","")) : ""
+    property string btNameDraft: ""
+    function normalizedBtNameDraft() { return String(root.btNameDraft || "").trim() }
+    function validBtNameDraft() {
+        var name = root.normalizedBtNameDraft()
+        return name.length >= 1 && name.length <= 8 && /^[ -~]+$/.test(name)
+    }
+    readonly property bool btNameWriteReady: root.deviceConnected
+                                             && root.presetManager
+                                             && root.presetManager.usbStoreAvailable
+                                             && !root.presetManager.busy
+                                             && root.validBtNameDraft()
+                                             && root.normalizedBtNameDraft() !== String(root.currentBtName || "").trim()
     readonly property int lowerRackHeight: 304
+
+    onSelectedDeviceModeNameChanged: root.modeNameDraft = root.selectedDeviceModeName
+    onCurrentBtNameChanged: root.btNameDraft = root.currentBtName
 
     Component.onCompleted: {
         root.bindFileBridgeEngine()
         if (root.activeDeviceSlot >= 0)
             root.selectedDeviceSlot = root.activeDeviceSlot
+        root.modeNameDraft = root.selectedDeviceModeName
+        root.btNameDraft = root.currentBtName
     }
     onFileBridgeChanged: root.bindFileBridgeEngine()
 
@@ -504,7 +540,8 @@ Item {
                         }
 
                         // Native KTV parity: selected hardware Mode Name.
-                        // Read-only until persistent rename traffic is donor-verified.
+                        // Captured transaction = patch active slot image 0x0280..0x028F,
+                        // then native Store 0x41/0x42/0x43 and Recall/readback verify.
                         RowLayout {
                             Layout.fillWidth:true
                             spacing:7
@@ -524,19 +561,26 @@ Item {
                                 border.width:1
                                 border.color:root.deviceConnected?Theme.borderSoft:"#20272D"
                                 TextInput {
+                                    id: modeNameInput
                                     anchors.fill:parent
                                     anchors.leftMargin:9
                                     anchors.rightMargin:9
                                     verticalAlignment:TextInput.AlignVCenter
-                                    text:root.selectedDeviceModeName
-                                    readOnly:true
+                                    text:root.modeNameDraft
+                                    readOnly:!root.deviceConnected
+                                             || !root.presetManager
+                                             || !root.presetManager.usbStoreAvailable
+                                             || root.presetManager.busy
+                                             || root.selectedDeviceSlot !== root.activeDeviceSlot
                                     selectByMouse:true
                                     maximumLength:16
-                                    color:root.deviceConnected?Theme.amber:Theme.textDim
+                                    color:readOnly?Theme.textDim:Theme.amber
+                                    selectionColor:Theme.accentSoft
                                     font.family:Theme.monoFamily
                                     font.pixelSize:9
                                     font.weight:Font.Bold
                                     clip:true
+                                    onTextEdited:root.modeNameDraft=text
                                 }
                                 Text {
                                     anchors.left:parent.left
@@ -549,12 +593,12 @@ Item {
                                     font.pixelSize:8
                                 }
                             }
-                            Text {
-                                text:"READ ONLY"
-                                color:Theme.textDim
-                                font.family:Theme.monoFamily
-                                font.pixelSize:7
-                                font.weight:Font.Bold
+                            SoftButton {
+                                Layout.preferredWidth:64
+                                text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Rename"
+                                compact:true
+                                enabled:root.deviceModeRenameReady
+                                onClicked:root.presetManager.renameActiveMode(root.normalizedModeNameDraft())
                             }
                         }
 
@@ -595,6 +639,49 @@ Item {
                                 font.family:Theme.monoFamily;font.pixelSize:8
                                 elide:Text.ElideRight
                                 Layout.maximumWidth:180
+                            }
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth:true
+                            spacing:5
+                            Rectangle{
+                                id:adjMannerVrCheck
+                                width:13;height:13;radius:2
+                                readonly property bool known:root.presetManager&&root.presetManager.adjMannerVrOffKnown
+                                readonly property bool active:known&&root.presetManager.adjMannerVrOff
+                                color:active?Theme.accent:(known?"#4A5055":"#17120A")
+                                border.width:1
+                                border.color:active?Theme.accentSoft:(known?"#60676C":Theme.amber)
+                                Text{anchors.centerIn:parent;visible:adjMannerVrCheck.active;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
+                                Text{anchors.centerIn:parent;visible:!adjMannerVrCheck.known;text:"?";color:Theme.amber;font.pixelSize:9;font.weight:Font.Bold}
+                                // Readback is not captured, so this square is a
+                                // status indicator only. OFF/ON below are explicit
+                                // commands; never infer a toggle direction from "?".
+                            }
+                            Text{text:"Adj Manner VR OFF";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
+                            Text{
+                                text:!root.deviceConnected?"CONNECT TO SET"
+                                     :root.presetManager&&root.presetManager.adjMannerVrOffKnown
+                                        ?(root.presetManager.adjMannerVrOff?"DEVICE ON":"DEVICE OFF")
+                                        :"DEVICE STATE UNKNOWN"
+                                color:root.deviceConnected&&root.presetManager&&!root.presetManager.adjMannerVrOffKnown?Theme.amber:Theme.textDim
+                                font.family:Theme.monoFamily;font.pixelSize:7
+                            }
+                            Item{Layout.fillWidth:true}
+                            SoftButton{
+                                Layout.preferredWidth:40
+                                text:"OFF"
+                                compact:true
+                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
+                                onClicked:root.presetManager.setAdjMannerVrOff(false)
+                            }
+                            SoftButton{
+                                Layout.preferredWidth:40
+                                text:"ON"
+                                compact:true
+                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
+                                onClicked:root.presetManager.setAdjMannerVrOff(true)
                             }
                         }
 
@@ -649,20 +736,47 @@ Item {
                                 Layout.fillWidth:true
                                 Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
                                 Item{Layout.fillWidth:true}
-                                Text{text:"READ ONLY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
+                                Text{text:"LIVE · CMD 4E";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
                             }
-                            Rectangle {
+                            RowLayout {
                                 Layout.fillWidth:true
-                                Layout.preferredHeight:29
-                                radius:6
-                                color:"#080C10"
-                                border.width:1
-                                border.color:Theme.borderSoft
-                                Text{
-                                    anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter
-                                    text:root.deviceConnected ? String(root.systemValue("btName","NOT READ")) : "CONNECT K500 TO READ"
-                                    color:root.deviceConnected ? Theme.amber : Theme.textDim
-                                    font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold
+                                spacing:6
+                                Rectangle {
+                                    Layout.fillWidth:true
+                                    Layout.preferredHeight:29
+                                    radius:6
+                                    color:"#080C10"
+                                    border.width:1
+                                    border.color:root.btNameWriteReady?Theme.accentSoft:Theme.borderSoft
+                                    TextInput{
+                                        anchors.fill:parent
+                                        anchors.leftMargin:9
+                                        anchors.rightMargin:9
+                                        verticalAlignment:TextInput.AlignVCenter
+                                        text:root.btNameDraft
+                                        maximumLength:8
+                                        readOnly:!root.deviceConnected||!root.presetManager||root.presetManager.busy
+                                        selectByMouse:true
+                                        color:readOnly?Theme.textDim:Theme.amber
+                                        font.family:Theme.monoFamily
+                                        font.pixelSize:10
+                                        font.weight:Font.Bold
+                                        onTextEdited:root.btNameDraft=text
+                                    }
+                                }
+                                SoftButton{
+                                    Layout.preferredWidth:58
+                                    text:"Rename"
+                                    compact:true
+                                    enabled:root.btNameWriteReady
+                                    onClicked:root.presetManager.setBtName(root.normalizedBtNameDraft())
+                                }
+                                SoftButton{
+                                    Layout.preferredWidth:48
+                                    text:"Reset"
+                                    compact:true
+                                    enabled:root.deviceConnected&&root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
+                                    onClicked:root.presetManager.resetBtName()
                                 }
                             }
                             Text{text:"BLE NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
@@ -692,8 +806,8 @@ Item {
                                     anchors.leftMargin:9
                                     anchors.rightMargin:9
                                     spacing:7
-                                    Text{text:"READ ONLY";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:"Rename / reset mapping not verified";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                    Text{text:"BT CAPTURED";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
+                                    Text{Layout.fillWidth:true;text:"BT rename/reset verified · BLE remains read only";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
                                 }
                             }
                             Item{Layout.fillHeight:true}
@@ -763,8 +877,8 @@ Item {
                                     anchors.margins:9
                                     spacing:3
                                     Text{text:"READ ONLY · DEVICE MANAGED";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:"Lock state, credentials and password writes are not yet donor-verified.";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;wrapMode:Text.WordWrap}
-                                    Text{Layout.fillWidth:true;text:"Controls stay unavailable until the native write mapping is proven.";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                    Text{Layout.fillWidth:true;text:"Lock/password and Admin/User credentials are intentionally outside the daily-use scope.";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;wrapMode:Text.WordWrap}
+                                    Text{Layout.fillWidth:true;text:"Device-managed only · no guessed credential traffic will be implemented.";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
                                 }
                             }
                             Item{Layout.fillHeight:true}
@@ -787,11 +901,11 @@ Item {
                 Layout.preferredWidth:466
                 title:"Startup Limits"
                 channels:[
-                    {label:"MUSIC INIT",value:Number(root.systemValue("musicInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0},
+                    {label:"MUSIC INIT",value:Number(root.systemValue("musicInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
                     {label:"MUSIC MAX",value:Number(root.engine.musicMaxVol),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
-                    {label:"MIC INIT",value:Number(root.systemValue("micInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"MIC MAX",value:Number(root.systemValue("micMaxVol",84)),from:0,to:84,step:1,unit:"",decimals:0},
-                    {label:"EFFECT INIT",value:Number(root.systemValue("effectInitLevel",25)),from:0,to:84,step:1,unit:"",decimals:0}
+                    {label:"MIC INIT",value:Number(root.systemValue("micInitVol",25)),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
+                    {label:"MIC MAX",value:Number(root.engine.micMaxVol),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady},
+                    {label:"EFFECT INIT",value:Number(root.systemValue("effectInitLevel",25)),from:0,to:84,step:1,unit:"",decimals:0,editable:root.deviceConnected && root.engine.deviceStateReady}
                 ]
             }
 
@@ -815,17 +929,30 @@ Item {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
                                         model:[
-                                            {label:"UDISK REC",value:Number(root.systemValue("uDiskRecordVol",4)),from:1,to:6},
-                                            {label:"USB REC",value:Number(root.systemValue("usbRecordVol",4)),from:1,to:6}
+                                            {label:"UDISK REC",value:Number(root.systemValue("uDiskRecordVol",4)),from:1,to:6,path:"system.uDiskRecordVol",editable:root.deviceConnected && root.engine.deviceStateReady,badge:"LIVE"},
+                                            {label:"USB REC",value:Number(root.systemValue("usbRecordVol",4)),from:1,to:6,path:"system.usbRecordVol",editable:root.deviceConnected && root.engine.deviceStateReady,badge:"LIVE"}
                                         ]
                                         delegate:ColumnLayout {
                                             id: recChannel
                                             required property var modelData
                                             property real localValue: Number(modelData.value)
+                                            readonly property bool channelEditable:Boolean(modelData.editable)
+                                            onModelDataChanged:if(!recFader||!recFader.dragging)localValue=Number(modelData.value)
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:recFader.highlighted?recFader.accentColor:Theme.textDim;style:recFader.highlighted?Text.Outline:Text.Normal;styleColor:recFader.highlighted?Qt.rgba(recFader.accentColor.r,recFader.accentColor.g,recFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:recFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
-                                            StudioFader{id:recFader;Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value;onValueEdited:function(v){recChannel.localValue=v}}
-                                            Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:recFader.highlighted?recFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Text{anchors.centerIn:parent;text:recChannel.localValue;color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textDim;style:recFader.highlighted?Text.Outline:Text.Normal;styleColor:recFader.highlighted?Qt.rgba(recFader.accentColor.r,recFader.accentColor.g,recFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:recFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
+                                            StudioFader{
+                                                id:recFader
+                                                Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
+                                                enabled:recChannel.channelEditable
+                                                opacity:enabled?1.0:0.52
+                                                value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value
+                                                onValueEdited:function(v){
+                                                    recChannel.localValue=v
+                                                    if(recChannel.channelEditable&&String(modelData.path||"").length>0)
+                                                        root.engine.editDevicePath(String(modelData.path),v)
+                                                }
+                                            }
+                                            Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:recFader.highlighted?recFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Text{anchors.centerIn:parent;text:recChannel.localValue;color:recChannel.channelEditable?Theme.amber:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
                                         }
                                     }
                                 }
@@ -839,15 +966,33 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
-                                        model:[{label:"THRESHOLD",value:-50,from:-80,to:0,unit:"dB"},{label:"HOLD TIME",value:6,from:0,to:30,unit:"s"}]
+                                        model:[
+                                            {label:"THRESHOLD",value:Number(root.systemValue("danceMicThresholdDb",-50)),from:-60,to:0,unit:"dB",path:"system.danceMicThresholdDb"},
+                                            {label:"HOLD TIME",value:Number(root.systemValue("danceMicHoldSec",6)),from:1,to:30,unit:"s",path:"system.danceMicHoldSec"}
+                                        ]
                                         delegate:ColumnLayout {
                                             id: triggerChannel
                                             required property var modelData
                                             property real localValue: Number(modelData.value)
+                                            readonly property bool channelEditable:root.deviceConnected
+                                                                 && root.engine.deviceStateReady
+                                                                 && Boolean(root.systemValue("danceMicTriggerKnown",false))
+                                            onModelDataChanged:if(!triggerFader||!triggerFader.dragging)localValue=Number(modelData.value)
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textDim;style:triggerFader.highlighted?Text.Outline:Text.Normal;styleColor:triggerFader.highlighted?Qt.rgba(triggerFader.accentColor.r,triggerFader.accentColor.g,triggerFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
-                                            StudioFader{id:triggerFader;Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter;value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value;onValueEdited:function(v){triggerChannel.localValue=v}}
-                                            Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:52;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:triggerFader.highlighted?triggerFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Row{anchors.centerIn:parent;spacing:3;Text{text:triggerChannel.localValue;color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Text{text:modelData.unit;color:triggerFader.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}}}
+                                            StudioFader{
+                                                id:triggerFader
+                                                Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
+                                                enabled:triggerChannel.channelEditable
+                                                opacity:enabled?1.0:0.52
+                                                value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value
+                                                onValueEdited:function(v){
+                                                    triggerChannel.localValue=v
+                                                    if(triggerChannel.channelEditable)
+                                                        root.engine.editDevicePath(String(modelData.path),v)
+                                                }
+                                            }
+                                            Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:52;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:triggerFader.highlighted?triggerFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Row{anchors.centerIn:parent;spacing:3;Text{text:triggerChannel.localValue;color:triggerChannel.channelEditable?Theme.amber:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Text{text:modelData.unit;color:triggerFader.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}}}
                                         }
                                     }
                                 }

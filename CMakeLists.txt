@@ -168,6 +168,16 @@ if(WIN32)
     target_link_libraries(k500_p3_transport_shutdown_test PRIVATE Qt6::Core setupapi hid psapi)
 endif()
 
+add_executable(k500_protocol_selftest
+    src/k500/ProtocolSelfTestMain.cpp
+    src/k500/K500Protocol.cpp
+    src/k500/K500Protocol.h
+    src/k500/K500Frame.cpp
+    src/k500/K500Frame.h
+)
+target_include_directories(k500_protocol_selftest PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src/k500")
+target_link_libraries(k500_protocol_selftest PRIVATE Qt6::Core)
+
 add_executable(k500_p2_selftest
     src/k500/P2SelfTestMain.cpp
     src/k500/K500Frame.cpp

@@ -122,6 +122,49 @@ int main(int argc, char **argv)
         || !onlyChanged(edit.patch, QSet<int>{0x0024,K500PresetCodec::ChecksumOffset}))
         return fail(QStringLiteral("Main L output dB persistence regressed"));
 
+    // OUTPUT_DELAY_CMD0E_CAPTURED_V1 — preset persistence keeps semantic
+    // channel order even though Surround's native CMD 0x0E wire order is reversed.
+    QByteArray delaySource = source;
+    for (const int offset : {0x0034,0x0035,0x0036,0x0037,0x005C,0x005D,
+                             0x0070,0x0071,0x00D8,0x00D9,0x00DA,0x00DB})
+        delaySource[offset] = char(0);
+    delaySource = K500PresetCodec::updateChecksum(delaySource);
+
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.main.lDelayMs"), 20);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x0034) != 20
+        || !onlyChanged(edit.patch, QSet<int>{0x0034,K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Main L delay persistence regressed"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.main.rDelayMs"), 50);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x0036) != 50
+        || !onlyChanged(edit.patch, QSet<int>{0x0036,K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Main R delay persistence regressed"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.surround.lDelayMs"), 20);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x00D8) != 20
+        || !onlyChanged(edit.patch, QSet<int>{0x00D8,K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Surround L semantic delay persistence regressed"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.surround.rDelayMs"), 14);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x00DA) != 14
+        || !onlyChanged(edit.patch, QSet<int>{0x00DA,K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Surround R semantic delay persistence regressed"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.center.outputDelayMs"), 30);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x005C) != 30
+        || !onlyChanged(edit.patch, QSet<int>{0x005C,K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Center output delay persistence regressed"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.sub.outputDelayMs"), 40);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x0070) != 40
+        || !onlyChanged(edit.patch, QSet<int>{0x0070,K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Subwoofer output delay persistence regressed"));
+
+    // Programmatic persistence must clamp to the captured 0..50 ms domain.
+    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.main.lDelayMs"), 999);
+    if (!accepted(edit) || u16(edit.patch.bytes, 0x0034) != 50)
+        return fail(QStringLiteral("Output delay maximum clamp regressed"));
+
     // Verified file-only effect detail can persist even though native LIVE write stays unsupported.
     edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("effects.reverb.decayMs"), 1900);
     if (!accepted(edit) || u16(edit.patch.bytes, 0x00C8) != 1900)

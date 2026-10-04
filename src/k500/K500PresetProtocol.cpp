@@ -58,6 +58,34 @@ quint8 imageChecksum8(const QByteArray &image)
     return static_cast<quint8>(0u - sum);
 }
 
+QByteArray withModeName(const QByteArray &image, const QString &name, QString *error)
+{
+    if (!validImage(image)) {
+        if (error) *error = QStringLiteral("Device mode rename requires an exact 0x0290-byte slot image.");
+        return {};
+    }
+
+    const QString normalized = name.trimmed();
+    if (normalized.isEmpty() || normalized.size() > DeviceSlotModeNameLength) {
+        if (error) *error = QStringLiteral("Device mode name must contain 1..16 printable ASCII characters.");
+        return {};
+    }
+    for (const QChar ch : normalized) {
+        const ushort code = ch.unicode();
+        if (code < 0x20 || code > 0x7E) {
+            if (error) *error = QStringLiteral("Device mode name capture only proves printable ASCII.");
+            return {};
+        }
+    }
+
+    QByteArray field = normalized.toLatin1();
+    field.append(QByteArray(DeviceSlotModeNameLength - field.size(), char(' ')));
+
+    QByteArray out = image;
+    out.replace(DeviceSlotModeNameOffset, DeviceSlotModeNameLength, field);
+    return out;
+}
+
 QByteArray storeBegin(const QByteArray &image, const K500StoreChain &chain)
 {
     if (!validImage(image))
@@ -145,6 +173,26 @@ bool selfTest(QString *error)
         return false;
 
     QByteArray zeroImage(DeviceSlotImageLength, char(0));
+
+    // MODE_NAME_STORE_CAPTURED_V1 — supplied KONSER NYANYI -> KONSER SOLO
+    // capture places the 16-byte, space-padded name at slot-image 0x0280..0x028F.
+    QString renameError;
+    const QByteArray renamed = withModeName(zeroImage, QStringLiteral("KONSER SOLO"), &renameError);
+    if (!renameError.isEmpty() || renamed.size() != DeviceSlotImageLength
+        || renamed.mid(DeviceSlotModeNameOffset, DeviceSlotModeNameLength)
+               != QByteArray("KONSER SOLO     ", DeviceSlotModeNameLength))
+        return fail(QStringLiteral("captured device mode name field mismatch"));
+    for (int i = 0; i < DeviceSlotImageLength; ++i) {
+        if (i >= DeviceSlotModeNameOffset && i < DeviceSlotModeNameOffset + DeviceSlotModeNameLength)
+            continue;
+        if (renamed.at(i) != zeroImage.at(i))
+            return fail(QStringLiteral("mode rename changed bytes outside 0x0280..0x028F"));
+    }
+    if (!withModeName(zeroImage, QStringLiteral("THIS NAME IS LONGER"), &renameError).isEmpty())
+        return fail(QStringLiteral("mode rename accepted >16 characters"));
+    if (!withModeName(zeroImage, QString::fromUtf8("KONSER É"), &renameError).isEmpty())
+        return fail(QStringLiteral("mode rename accepted unproven non-ASCII text"));
+
     if (!expect(storeBegin(zeroImage),
                 {0xAA,0x08,0x41,0x90,0x02,0x00,0x00,0x00,0x00,0x00,0x25},
                 QStringLiteral("store begin zero image")))

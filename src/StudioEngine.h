@@ -119,6 +119,7 @@ class StudioEngine final : public QObject
     Q_PROPERTY(double masterMusic READ masterMusic WRITE setMasterMusic NOTIFY masterMusicChanged)
     Q_PROPERTY(double musicMaxVol READ musicMaxVol WRITE setMusicMaxVol NOTIFY musicMaxVolChanged)
     Q_PROPERTY(double masterMic READ masterMic WRITE setMasterMic NOTIFY masterMicChanged)
+    Q_PROPERTY(double micMaxVol READ micMaxVol WRITE setMicMaxVol NOTIFY micMaxVolChanged)
     Q_PROPERTY(double masterFx READ masterFx WRITE setMasterFx NOTIFY masterFxChanged)
     Q_PROPERTY(QString lastChangedPath READ lastChangedPath NOTIFY stateEdited)
 
@@ -213,6 +214,7 @@ public:
     double masterMusic() const { return m_masterMusic; }
     double musicMaxVol() const { return m_musicMaxVol; }
     double masterMic() const { return m_masterMic; }
+    double micMaxVol() const { return m_micMaxVol; }
     double masterFx() const { return m_masterFx; }
     QString lastChangedPath() const { return m_lastChangedPath; }
 
@@ -248,6 +250,7 @@ public slots:
     void setMasterMusic(double value);
     void setMusicMaxVol(double value);
     void setMasterMic(double value);
+    void setMicMaxVol(double value);
     void setMasterFx(double value);
 
 signals:
@@ -270,6 +273,7 @@ signals:
     void masterMusicChanged();
     void musicMaxVolChanged();
     void masterMicChanged();
+    void micMaxVolChanged();
     void masterFxChanged();
     void stateEdited(const QString &path, const QVariant &value);
 
@@ -319,6 +323,7 @@ private:
     double m_masterMusic = 35.0;
     double m_musicMaxVol = 84.0;
     double m_masterMic = 35.0;
+    double m_micMaxVol = 84.0;
     double m_masterFx = 35.0;
     QString m_lastChangedPath;
 };

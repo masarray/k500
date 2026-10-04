@@ -100,6 +100,94 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Failure/timeout does not leave UI claiming an unverified state.
 - [ ] Reconnect confirms expected device behavior.
 
+## Capture-mapped System controls — 2026-10-04
+
+- [ ] Music Init 0/25/84 writes change only the intended CMD 0x02 scalar and later Top Music edits do not roll it back.
+- [ ] Mic Init 0/25/84 writes change only the intended CMD 0x05 scalar and later Top Mic edits do not roll it back.
+- [ ] Effect Init 0/25/84 uses CMD 0x0A / RSP 0xF5 and later Top Effect edits preserve the new Init value.
+- [ ] USB Record 1/4/6 uses CMD 0x3E selector 0x03 and reconnect readback returns the same UI value.
+- [ ] Mic Max and UDisk Record use their capture-mapped live writes and reconnect to the same device values.
+- [ ] Adj Manner VR OFF ON/OFF receives RSP 0xF8.
+- [ ] After reconnect, Adj Manner VR OFF returns to DEVICE STATE UNKNOWN rather than claiming a stale local value.
+- [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
+- [ ] With Use Init OFF, Recall does not locally synthesize those master values; the UI follows the 939-byte K500 readback.
+
+## Final daily-use operational controls — 2026-10-04
+
+### Mic Max
+
+- [ ] Mic Max 84, 50, 30 and 0 produce the captured Top Mic CMD 0x05 layout.
+- [ ] Lowering Mic Max below current Master Mic clamps Master Mic in the same device write.
+- [ ] Raising Mic Max does not raise Master Mic automatically.
+- [ ] Programmatic Master Mic edits above Mic Max are clamped before serialization and canonical DesiredState.
+- [ ] Reconnect/readback restores the same Mic Max and Master Mic values.
+
+### Recording volumes
+
+- [ ] UDisk Record UI 1/4/6 uses the captured CMD 0x3E `<raw> 00 00` form.
+- [ ] USB Record UI 1/4/6 keeps the distinct captured CMD 0x3E `03 <raw> 54` form.
+- [ ] Editing UDisk Record does not alter USB Record.
+- [ ] Editing USB Record does not alter UDisk Record.
+- [ ] Full reconnect/readback restores both hardware values.
+
+### Dance Mic trigger
+
+- [ ] Threshold -60/-50/0 dB serializes as raw 0/10/60 in CMD 0x22.
+- [ ] Hold Time 1/6/30 s serializes as raw seconds in CMD 0x22.
+- [ ] Editing Threshold preserves the current hardware Hold Time in the same pair frame.
+- [ ] Editing Hold Time preserves the current hardware Threshold in the same pair frame.
+- [ ] RSP 0xDD is observed for accepted native writes.
+- [ ] If the paired 0x0093/0x0094 seed does not decode inside captured ranges, both controls stay disabled and no guessed CMD 0x22 is sent.
+- [ ] Reconnect on normal hardware produces a valid paired seed and the UI matches the native application.
+
+### BT identity
+
+- [ ] BT Name `ARI` sends captured CMD 0x4E SET and receives RSP 0xB1.
+- [ ] BT Reset sends captured CMD 0x4E RESET and receives RSP 0xB1.
+- [ ] Rename accepts only 1..8 printable ASCII characters.
+- [ ] BT identity actions are available only on the USB transport qualified by the capture.
+- [ ] After ACK, a full 939-byte readback completes before normal LIVE operation resumes.
+- [ ] UI displays the BT Name returned by hardware readback, not an optimistic local string.
+- [ ] Reconnect confirms the BT Name/Reset result.
+- [ ] BLE Name remains unchanged and read-only.
+
+### Credential scope
+
+- [ ] Lock/password and Admin/User credential controls remain unavailable.
+- [ ] No credential command is guessed or emitted.
+- [ ] These device-managed controls are not release-blocking for the daily-use operational scope.
+
+## Output Delay — final physical capture batch
+
+- [ ] Main L Delay 0/20/50 ms writes only data[16..17] of Main CMD 0x0E.
+- [ ] Main R Delay 0/20/50 ms writes only data[18..19] of Main CMD 0x0E.
+- [ ] Main L/R readback after reconnect matches the native application.
+- [ ] With the documented native reference state, reconnect hydrates Surround **L=14 ms / 4.8 m** and **R=20 ms / 6.8 m** without swapping them.
+- [ ] Surround **L** Delay writes native data[18..19], not data[16..17].
+- [ ] Surround **R** Delay writes native data[16..17], not data[18..19].
+- [ ] Surround L/R labels remain semantically correct in SonKuPik despite the reversed wire order.
+- [ ] Center Output Delay 0/20/30/40/50 ms writes only data[16..17].
+- [ ] Subwoofer Output Delay 0/20/30/40/50 ms writes only data[16..17].
+- [ ] All six controls clamp to the native 0..50 ms range.
+- [ ] Device ACK is RSP 0xF1 for accepted Output block writes.
+- [ ] Volume, mixer, compressor, HPF/LPF and every reserved byte remain unchanged while editing delay.
+- [ ] Reconnect restores Main L/R, Surround L/R, Center and Sub delay from hardware truth.
+- [ ] Native distance display equivalence is sensible: 20 ms ≈ 6.8 m and 50 ms ≈ 17.0 m; distance is not transmitted separately.
+
+## Persistent Equipment Mode rename
+
+Use a sacrificial active slot and a <=16-character printable-ASCII test name.
+
+- [ ] Rename is enabled only for the ACTIVE slot and only on USB Store transport.
+- [ ] A fresh 939-byte readback occurs before the Store transaction.
+- [ ] Only slot-image bytes 0x0280..0x028F differ before Store.
+- [ ] CMD 0x41 -> eleven CMD 0x42 chunks -> CMD 0x43 completes with expected ACKs.
+- [ ] The same slot is recalled and a full 939-byte readback completes before LIVE resumes.
+- [ ] Device slot table displays the renamed value from hardware readback.
+- [ ] Reconnect and power-cycle confirm persistence.
+- [ ] DSP/audio settings in the renamed slot remain unchanged.
+- [ ] Non-target slots remain unchanged.
+
 ## Current-device permanent Save
 
 - [ ] USB HID is used; destructive Store remains gated appropriately.

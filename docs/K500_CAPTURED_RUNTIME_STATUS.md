@@ -104,6 +104,39 @@ SonKuPik must hydrate the checkbox from this C0 bit on initial connect and Recal
 handshakes. QSettings/PC preferences must never override it. After a local CMD 0x12
 change, a valid RSP 0xED also establishes the current-session value immediately.
 
+## Use Init Volume — Recall semantics captured 2026-10-04
+
+Two focused Mode 01 Recall captures prove what the device does with the stored
+Init values:
+
+| Capture | Size | SHA-256 |
+| --- | ---: | --- |
+| RECALL_MODE_01_With_USE_INIT_VOL_Ticked.pcapng | 6504 | 19840ab1db50bcaf852200e0f6e3e4ad1abe822bbd66675ffb6cd2a81b59bd55 |
+| RECALL_MODE_01_With_USE_INIT_VOL_Unticked.pcapng | 5512 | 11e70490a5ea4d00749fdafdd65539cdf309f5c669e51ad307619631f2aeb5d3 |
+
+With Use Init enabled, Recall Mode 01 produces:
+
+```text
+Top Music  = 40 = stored Music Init
+Top Mic    = 35 = stored Mic Init
+Top Effect = 30 = stored Effect Init
+```
+
+With Use Init disabled, the paired capture leaves all three active masters at 25.
+
+The reconstructed 939-byte snapshots differ only at the active-master bytes:
+
+```text
+activeMemory[0x0000]  40 vs 25
+activeMemory[0x0001]  35 vs 25
+activeMemory[0x0002]  30 vs 25
+```
+
+Contract: the K500 owns this copy/apply behavior. SonKuPik must not synthesize
+master values from the Init fields during Recall. It must keep the established
+Recall -> C0 -> full 939-byte readback -> hydrate flow and accept the device's
+post-Recall result.
+
 ## Change control
 
 Any future mapping from these runtime status fields must include exact captured vectors in a hardware-free self-test and a repo guard so the semantics cannot silently regress.
