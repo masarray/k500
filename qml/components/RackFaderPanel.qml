@@ -95,6 +95,7 @@ StudioPanel {
             if (l === "MUSIC INIT") return "system.musicInitVol"
             if (l === "MUSIC MAX") return "system.musicMaxVol"
             if (l === "MIC INIT") return "system.micInitVol"
+            if (l === "MIC MAX") return "system.micMaxVol"
             if (l === "EFFECT INIT") return "system.effectInitLevel"
             return ""
         }
@@ -121,6 +122,10 @@ StudioPanel {
         if (!path.length || !engine) return
         if (path === "system.musicMaxVol") {
             engine.musicMaxVol = value
+            return
+        }
+        if (path === "system.micMaxVol") {
+            engine.micMaxVol = value
             return
         }
         engine.editDevicePath(path, value)
