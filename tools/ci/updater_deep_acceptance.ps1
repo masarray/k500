@@ -47,22 +47,33 @@ function Remove-RegKey {
 $packageRoot = (Resolve-Path $PackageDir).Path
 $buildRoot = (Resolve-Path $BuildDir).Path
 $userSetupPath = (Resolve-Path $UserSetup).Path
-$helperPath = Join-Path $packageRoot 'SonKuPik-K500-Updater.exe'
+$productionHelper = Join-Path $packageRoot 'SonKuPik-K500-Updater.exe'
 $appFixture = Join-Path $packageRoot 'SonKuPik-K500.exe'
 $fixtureRoot = Join-Path $buildRoot 'packaging'
 New-Item -ItemType Directory -Force -Path $fixtureRoot | Out-Null
 
-if (-not (Test-Path $helperPath)) { throw "Updater helper missing: $helperPath" }
+if (-not (Test-Path $productionHelper)) { throw "Production updater helper missing: $productionHelper" }
 if (-not (Test-Path $appFixture)) { throw "Packaged application missing: $appFixture" }
 
-Write-Host "==> Compile deep updater failure/migration fixtures"
+Write-Host "==> Compile CI-only helper plus deep updater failure/migration fixtures"
+# The production helper is already self-tested by the RC workflow. Migration
+# needs an elevation-free CI twin compiled from the exact same source; the macro
+# changes only runElevatedAndWait when SONKUPIK_UPDATE_HELPER_TEST=1 so hosted
+# runners never need an interactive UAC desktop.
+$helperPath = Join-Path $fixtureRoot 'SonKuPik-K500-Updater-CI.exe'
+& cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /DSONKUPIK_UPDATE_HELPER_CI=1 ("/Fe" + $helperPath) packaging/windows/update_helper.cpp /link /SUBSYSTEM:WINDOWS shell32.lib bcrypt.lib user32.lib
+if ($LASTEXITCODE -ne 0) { throw "CI updater helper compilation failed" }
+
+$helperSelfTest = Start-Process -FilePath $helperPath -ArgumentList '--self-test' -Wait -PassThru
+if ($helperSelfTest.ExitCode -ne 0) { throw "CI updater helper self-test failed: $($helperSelfTest.ExitCode)" }
+
 $fakeInstaller = Join-Path $fixtureRoot 'P3-Fake-Installer.exe'
 $fakeMachineUninstaller = Join-Path $fixtureRoot 'P3-Fake-Machine-Uninstaller.exe'
 
-& cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fe$fakeInstaller tests/windows/update_failure_installer_fixture.cpp /link /SUBSYSTEM:WINDOWS advapi32.lib shell32.lib
+& cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE ("/Fe" + $fakeInstaller) tests/windows/update_failure_installer_fixture.cpp /link /SUBSYSTEM:WINDOWS advapi32.lib shell32.lib
 if ($LASTEXITCODE -ne 0) { throw "Failure installer fixture compilation failed" }
 
-& cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE /Fe$fakeMachineUninstaller tests/windows/update_migration_uninstaller_fixture.cpp /link /SUBSYSTEM:WINDOWS advapi32.lib
+& cl /nologo /std:c++20 /EHsc /DUNICODE /D_UNICODE ("/Fe" + $fakeMachineUninstaller) tests/windows/update_migration_uninstaller_fixture.cpp /link /SUBSYSTEM:WINDOWS advapi32.lib
 if ($LASTEXITCODE -ne 0) { throw "Migration uninstaller fixture compilation failed" }
 
 $env:SONKUPIK_UPDATE_HELPER_TEST = '1'
