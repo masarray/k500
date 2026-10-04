@@ -190,7 +190,10 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_music.topMusicVol = qMin(m_music.topMusicVol, m_music.musicMaxVol);
     m_music.sourceRaw = fileU8(memory, 0x000E, 2);
     m_music.key = static_cast<int>(fileU8(memory, 0x0011, 7)) - 7;
-    m_music.input1GainDb = static_cast<int>(fileU8(memory, 0x001E, 9)) - 12;
+    // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — file scalar 0x001E translates
+    // exactly to activeMemory[0x0016], the physical Mic CMD 0x11 tail donor.
+    m_music.input1GainDb = static_cast<int>(byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicInput1Gain, 9)) - 12;
     m_music.input2GainDb = static_cast<int>(fileU8(memory, 0x001F, 9)) - 12;
     m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, 0x0020, 9)) - 12;
     m_music.uDiskGainDb = static_cast<int>(fileU8(memory, 0x0021, 8)) - 12;
@@ -797,13 +800,26 @@ void K500Controller::queueCrossover(const QString &section, const QString &path,
         deferWrite(path, QStringLiteral("Music crossover requires scalar 0x1B readback"));
         return;
     }
+    if (section == QStringLiteral("mic") && !deviceReadbackReady()) {
+        deferWrite(path, QStringLiteral("Mic crossover requires Music Input1 donor readback"));
+        return;
+    }
 
     const CrossoverState state = m_crossovers.value(section);
     const bool hpf = kind == QStringLiteral("hpf");
     const double frequency = hpf ? state.hpfHz : state.lpfHz;
     const QString filter = hpf ? state.hpType : state.lpType;
-    const quint8 stateByte = section == QStringLiteral("music") && m_deviceScalars.size() > 0x1B
-        ? byteAt(m_deviceScalars, 0x1B, 0x32) : 0x00;
+
+    quint8 stateByte = 0x00;
+    if (section == QStringLiteral("music") && m_deviceScalars.size() > 0x1B) {
+        stateByte = byteAt(m_deviceScalars, 0x1B, 0x32);
+    } else if (section == QStringLiteral("mic")) {
+        // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — native Mic CMD 0x11 mirrors
+        // the CURRENT Music Input1 Gain raw, not an immutable connect-time
+        // scalar. Use canonical current intent so a prior Input1 edit cannot be
+        // rolled back by a later Mic crossover write.
+        stateByte = K500Frame::clampByte(qRound(m_music.input1GainDb + 12.0));
+    }
     const QByteArray frame = K500Protocol::crossoverWrite(section, kind, frequency, filter, stateByte);
     if (frame.isEmpty()) {
         rejectUnsupported(path);

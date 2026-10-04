@@ -233,7 +233,7 @@ QByteArray crossoverWrite(const QString &section,
                           const QString &kind,
                           double frequencyHz,
                           const QString &filterLabel,
-                          quint8 musicStateByte)
+                          quint8 preservedStateByte)
 {
     const int selector = crossoverSelector(section, kind);
     if (selector < 0)
@@ -247,7 +247,16 @@ QByteArray crossoverWrite(const QString &section,
     body.append(char(selector));
     body.append(char(crossoverFilterCode(filterLabel)));
     appendU16Le(body, frequency);
-    body.append(char(section == QStringLiteral("music") ? musicStateByte : 0x00));
+
+    // MIC_CROSSOVER_TAIL_DONOR_20261004_V1
+    // Physical Mic LP donor-isolation capture proves the final CMD 0x11 data
+    // byte is not a generic non-Music zero: it mirrors current Music Input1
+    // Gain raw (dB + 12). Music already carries its own captured state byte.
+    const bool carriesPreservedState = section == QStringLiteral("music")
+        || section == QStringLiteral("mic")
+        || section == QStringLiteral("micA")
+        || section == QStringLiteral("micB");
+    body.append(char(carriesPreservedState ? preservedStateByte : 0x00));
     return K500Frame::build(body);
 }
 
@@ -736,6 +745,14 @@ bool selfTest(QString *error)
     if (crossoverFilterLabel(0x02, false) != QStringLiteral("LP Butter 12")) return fail(QStringLiteral("Music LP Butter12 decode mismatch"));
 
     if (!expect(crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0, QStringLiteral("HP Butter 12"), 0x32), {0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}, QStringLiteral("music crossover"))) return false;
+    // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — exact physical LP vectors while
+    // Music Input1 raw is 0x0C (0 dB) and 0x09 (-3 dB).
+    if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("lpf"), 16000.0, QStringLiteral("LP Butter 24"), 0x0C),
+                {0xAA, 0x06, 0x11, 0x01, 0x06, 0x80, 0x3E, 0x0C, 0x18},
+                QStringLiteral("mic LP donor Input1 raw 0x0C"))) return false;
+    if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("lpf"), 16000.0, QStringLiteral("LP LR 24"), 0x09),
+                {0xAA, 0x06, 0x11, 0x01, 0x07, 0x80, 0x3E, 0x09, 0x1A},
+                QStringLiteral("mic LP donor Input1 raw 0x09"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x00, 0x02, 0xE8, 0x03, 0x00, 0xFC}, QStringLiteral("mic HPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("main"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x05, 0x02, 0xE8, 0x03, 0x00, 0xF7}, QStringLiteral("main LPF selector"))) return false;
     if (!crossoverWrite(QStringLiteral("reverb"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("Reverb crossover must use captured CMD 0x0B block"));

@@ -168,6 +168,9 @@ constexpr int BtNameMaxLength = 8;
 namespace ReadbackOffset {
 constexpr int MusicNoiseGate = 0x0005;
 constexpr int MicLpType = 0x0014;
+// MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — physical donor-isolation capture
+// proves Mic CMD 0x11 final data byte mirrors Music Input1 Gain raw.
+constexpr int MusicInput1Gain = 0x0016;
 constexpr int MusicBass = 0x00DF;
 } // namespace ReadbackOffset
 
@@ -181,7 +184,7 @@ QByteArray crossoverWrite(const QString &section,
                           const QString &kind,
                           double frequencyHz,
                           const QString &filterLabel,
-                          quint8 musicStateByte = 0x32);
+                          quint8 preservedStateByte = 0x00);
 QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &deviceScalars);
 QByteArray musicBass(double bassDb);
 quint8 musicNoiseGateRaw(double gateDb);
