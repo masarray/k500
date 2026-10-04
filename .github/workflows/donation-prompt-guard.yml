@@ -34,6 +34,14 @@ jobs:
           dialog = Path('qml/components/DonationPrompt.qml').read_text(encoding='utf-8')
           links = Path('qml/theme/SupportLinks.qml').read_text(encoding='utf-8')
           cmake = Path('CMakeLists.txt').read_text(encoding='utf-8')
+          qris_path = Path('resources/support/qris-sonkupik.png')
+          qris = qris_path.read_bytes()
+
+          assert qris[:8] == b'\x89PNG\r\n\x1a\n', 'QRIS asset must be a real PNG'
+          assert len(qris) > 100_000, 'QRIS asset is unexpectedly small'
+          width = int.from_bytes(qris[16:20], 'big')
+          height = int.from_bytes(qris[20:24], 'big')
+          assert width >= 600 and height >= 600, f'QRIS asset too small: {width}x{height}'
 
           for token in [
               'support/donationPrompt/v1/observedDays',
@@ -61,6 +69,10 @@ jobs:
           assert 'Qt.openUrlExternally(SupportLinks.tokopediaUrl)' in dialog
 
           assert 'qrc:/support/qris-sonkupik.png' in links
+          assert 'SONKUPIK, AUDIO DEVELOPER, DIGITAL & KREATIF' in links
+          assert 'ID1026551401775' in links
+          assert 'merchantCity' not in links
+          assert 'sourceClipRect: SupportLinks.qrisCrop' in dialog
           assert 'https://' not in controller
           assert 'QNetwork' not in controller
           assert 'resources/support/qris-sonkupik.png' in cmake

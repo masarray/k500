@@ -150,8 +150,8 @@ Popup {
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 304
-            Layout.preferredHeight: 304
+            Layout.preferredWidth: 320
+            Layout.preferredHeight: 320
             radius: 14
             color: "#F7F9FA"
             border.width: 1
@@ -161,6 +161,7 @@ Popup {
                 anchors.fill: parent
                 anchors.margins: 12
                 source: root.qrisReady ? SupportLinks.qrisSource : ""
+                sourceClipRect: SupportLinks.qrisCrop
                 fillMode: Image.PreserveAspectFit
                 // QR modules must stay pixel-crisp after scaling.
                 smooth: false
@@ -216,7 +217,7 @@ Popup {
             Text {
                 Layout.fillWidth: true
                 horizontalAlignment: Text.AlignHCenter
-                text: "NMID " + SupportLinks.merchantNmid + "  ·  " + SupportLinks.merchantCity
+                text: "NMID " + SupportLinks.merchantNmid
                 color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.monoFamily

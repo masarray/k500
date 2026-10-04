@@ -12,6 +12,10 @@ QtObject {
     // merchant-issued PNG and bundled by CMake.
     readonly property string merchantName: "SONKUPIK, AUDIO DEVELOPER, DIGITAL & KREATIF"
     readonly property string merchantNmid: "ID1026551401775"
-    readonly property string merchantCity: "BOGOR"
     readonly property url qrisSource: "qrc:/support/qris-sonkupik.png"
+
+    // QRIS_CROP_20260718_V1 — crop the owner-supplied 1240x1748 official
+    // merchant poster to its QR region for reliable phone scanning at a compact
+    // dialog size. Merchant identity remains rendered separately below.
+    readonly property rect qrisCrop: Qt.rect(138, 438, 964, 964)
 }

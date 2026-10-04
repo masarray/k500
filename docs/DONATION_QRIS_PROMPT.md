@@ -15,25 +15,34 @@ This feature is intentionally isolated from K500 hardware and preset state.
 
 The repository never fabricates a QRIS payload from merchant labels or NMID text.
 
-Production auto-prompting requires this exact verified static merchant image:
+Production auto-prompting requires the owner-supplied static merchant image:
 
 ```text
 resources/support/qris-sonkupik.png
 ```
 
-When that file is absent, CMake does not package a QRIS resource and the
-production donation prompt remains disabled. The rest of SonKuPik K500 works
-normally.
+The current accepted asset is a 1240 × 1748 official QRIS merchant poster
+showing:
 
-Before adding or replacing the PNG:
+- Merchant: `SONKUPIK, AUDIO DEVELOPER, DIGITAL & KREATIF`
+- NMID: `ID1026551401775`
+
+The compact popup crops only the QR region from that original poster; it never
+regenerates or rewrites the payment payload. Merchant identity and NMID are
+rendered separately below the QR for a clear visual cross-check.
+
+CMake remains fail-closed: if the PNG is ever removed, production auto-prompting
+disables itself while the rest of SonKuPik K500 continues normally.
+
+For any future QRIS replacement:
 
 1. obtain the official static QRIS directly from the authorized merchant/provider;
 2. scan it using at least two independent banking/e-wallet applications;
-3. verify the displayed merchant identity;
-4. place the verified PNG at the exact path above;
-5. configure and rebuild so CMake embeds `:/support/qris-sonkupik.png`;
-6. run the prompt in QA mode with `--donation-prompt-preview`;
-7. scan the QR from the built application before release.
+3. verify the displayed merchant identity and NMID;
+4. replace the PNG at the exact path above;
+5. review/update the crop rectangle if the poster geometry changed;
+6. configure and rebuild so CMake embeds `:/support/qris-sonkupik.png`;
+7. run `--donation-prompt-preview` and scan the QR from the built application before release.
 
 ## Deterministic validation
 
