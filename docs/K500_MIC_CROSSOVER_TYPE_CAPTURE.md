@@ -60,17 +60,20 @@ Thus selector `0x01` is Mic LP and the type byte follows the shared enum.
 
 ### Important trailing-byte boundary
 
-The final data byte is `0x09` in this 16 kHz capture. Older verified non-Music `CMD 0x11` vectors at 1 kHz carry `0x00`.
+The final data byte is `0x09` in this 16 kHz capture. Historical generic
+non-Music vectors used `0x00`, but repository history shows that value came
+from the original software builder rather than an independent physical Mic
+capture.
 
-That contradiction is useful evidence: the final byte is not safe to generalize as a constant `0x00` or `0x09`. Its donor/meaning must be isolated before Mic LP WRITE is promoted as fully preservation-safe.
-
-This capture therefore promotes **Mic LP READ truth only**. It records the observed WRITE selector/type bytes, but does not authorize hard-coding the trailing `0x09`.
+The later donor-isolation capture below resolves the field: Mic `CMD 0x11`
+mirrors the current Music Input1 Gain raw byte (`dB + 12`). Therefore `0x09`
+is correct specifically when Input1 Gain is -3 dB; it is not a constant.
 
 ## Explicit non-claims
 
 - **Mic HP Type readback is not mapped by this capture.** A neighboring byte may look plausible, but no Mic HP dropdown transition was performed here.
 - Main/Surround/Center/Sub filter-type readback is not inferred from Mic.
-- The Mic LP trailing `CMD 0x11` byte is dynamic/unresolved.
+- The Mic LP trailing `CMD 0x11` byte is dynamic and capture-resolved to Music Input1 Gain raw.
 - No new persistent/file offset is inferred from the live offset.
 
 ## Application contract
@@ -79,7 +82,7 @@ This capture therefore promotes **Mic LP READ truth only**. It records the obser
 2. Update both Mic A and Mic B LP presentation without emitting an edit.
 3. Preserve the existing Mic HP presentation/assumption until dedicated HP reconnect evidence exists.
 4. Canonical state may mark Mic LP Type as captured truth while Mic HP remains assumed.
-5. Do not change the existing Mic WRITE trailing-byte strategy from this capture alone.
+5. Mic CMD 0x11 WRITE must preserve the current Music Input1 Gain raw byte; never hard-code `0x00` or `0x09`.
 
 
 ## Cross-mode donor-isolation capture — 2026-10-04
@@ -159,3 +162,52 @@ then trigger a Mic LP type write. Highest-value first pass:
 If the final Mic `CMD 0x11` byte follows `0x09 -> 0x0C`, the donor is
 identified. If it remains `0x09`, those three easy scalar candidates are
 eliminated and the remaining EQ-byte candidates can be tested deliberately.
+
+
+## Mic CMD 0x11 tail donor isolated — 2026-10-04
+
+Additional physical capture:
+
+| Capture | SHA-256 |
+| --- | --- |
+| `2 Mic LP tail 0x09 — eliminasi tiga kandidat termudah.pcapng` | `e3d58b92d9ddfa922a09dd2628b4c982e1036f30a4033c65dddca5b9a41a3cd3` |
+
+The experiment varied the three easiest cross-mode candidates independently and
+triggered the same Mic LP type toggle after each change.
+
+### Music Input1 Gain
+
+Input1 was moved from -3 dB to 0 dB, so its Top-Music raw value changed
+`0x09 -> 0x0C`. Mic LP then emitted:
+
+```text
+Butter24  AA 06 00 11 01 06 80 3E 0C 18
+LR24      AA 06 00 11 01 07 80 3E 0C 17
+```
+
+After Input1 returned to -3 dB, the Mic tail returned to `0x09`.
+
+### Negative controls
+
+With Input1 restored to raw `0x09`:
+
+- Input2 Gain was changed independently to raw `0x0C`; Mic LP tail remained `0x09`.
+- Bluetooth Gain was changed independently to raw `0x0C`; Mic LP tail remained `0x09`.
+
+Therefore the donor is isolated, not merely correlated:
+
+```text
+Mic CMD 0x11 final data byte = Music Input1 Gain raw
+                             = round(Input1GainDb + 12)
+                             = activeMemory[0x0016]
+```
+
+This is the same scalar stored as file/preset offset `0x001E`; the live
+Retrieve-All image translates it to direct active offset `0x0016`.
+
+### Preservation rule
+
+A Mic HP/LP write must serialize the **current canonical Music Input1 Gain**,
+not a connect-time constant. This matters after a live Input1 edit: replaying
+the old snapshot byte could silently roll Input1 back when the user later
+changes Mic crossover.

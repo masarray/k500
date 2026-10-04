@@ -67,8 +67,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | Mic EQ Link | ✅ | ✅ captured CMD 0x3C | complete | no |
 | Mic HPF/LPF frequency | ✅ | ✅ | complete | no |
 | Mic HPF filter type on CONNECT | ❌ assumed/defaulted | n/a | partial | **YES — dedicated HP reconnect sweep** |
-| Mic LPF filter type on CONNECT | ✅ direct activeMemory[0x0014], 0..5 physically swept | observed CMD 0x11 selector 0x01; trailing state byte unresolved | capture-mapped READ only | no further READ capture |
-| Mic Noise Gate | ✅ active memory 0x0016 | ❌ no donor-verified write | partial | **YES — write delta** |
+| Mic LPF filter type on CONNECT | ✅ direct activeMemory[0x0014], 0..5 physically swept | ✅ CMD 0x11 selector 0x01; final byte preserves Music Input1 raw from activeMemory[0x0016] | capture-mapped READ/WRITE | no |
+| Mic Noise Gate | ✅ file scalar 0x0016 -> activeMemory[0x000E] | ❌ no donor-verified write | partial | **YES — write delta** |
 | FBX / anti-feedback level | ✅ direct activeMemory[0x001B], range 0..4 | ✅ CMD 0x05 direct byte + RSP 0xFA | complete | no |
 
 ## Reverb
@@ -161,7 +161,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass READ/WRITE are now closed.
 2. **Mic Noise Gate write**.
 3. **Mic HP filter-type reconnect truth** plus remaining Main/Surround/Center/Sub filter-type readback. Mic LP READ is now closed at direct 0x0014.
-4. **Preservation-safety donors** — isolate the Top-Music CMD 0x02 trailing-byte source and the Mic CMD 0x11 final state-byte source. The 2026-10-04 captures prove both are state-dependent enough that adjacency/constant guesses are unsafe.
+4. **Top-Music preservation tail only** — Mic `CMD 0x11` final state-byte donor is now closed as Music Input1 Gain raw / direct `activeMemory[0x0016]`. Top-Music `CMD 0x02` trailing-byte source still needs one focused capture.
 5. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas/readback evidence.
 
 ### P1 — useful next

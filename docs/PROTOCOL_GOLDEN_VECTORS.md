@@ -160,7 +160,17 @@ Butter 18  AA 06 11 01 04 80 3E 09 1D
 Butter 24  AA 06 11 01 05 80 3E 09 1C
 ```
 
-This proves selector `0x01` + the type enum and strongly establishes `0x09` for Mic-LP type edits at 16 kHz across multiple device modes. The source/meaning of `0x09` is still not isolated, so the generic Mic crossover writer must not yet assume it is frequency-independent.
+A focused donor-isolation capture closes the final byte. It mirrors current Music Input1 Gain raw (`dB + 12`, direct `activeMemory[0x0016]`):
+
+```text
+Input1 -3 dB (raw 09), Mic LP LR24      AA 06 11 01 07 80 3E 09 1A
+Input1  0 dB (raw 0C), Mic LP Butter24 AA 06 11 01 06 80 3E 0C 18
+Input1  0 dB (raw 0C), Mic LP LR24     AA 06 11 01 07 80 3E 0C 17
+```
+
+Changing Input2 or Bluetooth gain to raw `0x0C` while Input1 remained `0x09`
+left the Mic tail at `0x09`, isolating Input1 as the donor. The writer must
+preserve current canonical Input1 state rather than hard-code any observed byte.
 
 ## Top Music device-seed safety
 
