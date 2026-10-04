@@ -449,6 +449,7 @@ def check_release_contracts() -> None:
     require(
         "tools/ci/updater_deep_acceptance.ps1",
         "RC_DEEP_UPDATER_ACCEPTANCE_V1",
+        "SONKUPIK_UPDATE_HELPER_CI=1",
         "verified per-user helper update",
         "installer-nonzero",
         "failed-health-check",
