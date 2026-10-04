@@ -245,12 +245,10 @@ Item {
                                 RackFilterPanel {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title: "Band Limits / Delay"
-                                    // OUTPUT_DELAY_UI_PARITY_EVIDENCE_GATE_V1
-                                    // Native exposes Main L/R delay. Until a donor delta capture proves the
-                                    // write/read offsets, show the native control slots but keep them inert.
+                                    // OUTPUT_DELAY_CMD0E_CAPTURED_V1 — Main L/R are fully mapped.
                                     fields:[
-                                        {label:"L DELAY",value:Number(root.nestedValue("outputs","main","lDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
-                                        {label:"R DELAY",value:Number(root.nestedValue("outputs","main","rDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
+                                        {label:"L DELAY",value:Number(root.nestedValue("outputs","main","lDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
+                                        {label:"R DELAY",value:Number(root.nestedValue("outputs","main","rDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
                                         {label:"HPF",value:root.engine.mainEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.mainEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
@@ -330,7 +328,7 @@ Item {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
-                                        {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
+                                        {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
                                         {label:"HPF",value:root.engine.centerEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.centerEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
@@ -369,7 +367,7 @@ Item {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
                                     title:"Band Limits / Delay"
                                     fields:[
-                                        {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0,editable:false},
+                                        {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
                                         {label:"HPF",value:root.engine.subEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.subEqBands.lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
                                     ]
