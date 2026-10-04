@@ -270,6 +270,8 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     main.compRatio = fileU8(memory, 0x0031, 1);
     main.attackMs = fileU8(memory, 0x0032, 10);
     main.releaseSec = fileU8(memory, 0x0033, 1) / 10.0;
+    main.lDelayMs = fileU16(memory, 0x0034, 0);
+    main.rDelayMs = fileU16(memory, 0x0036, 0);
     m_outputs.insert(QStringLiteral("main"), main);
     m_outputRaw.insert(QStringLiteral("main"), outputSeed(memory, 0x0024));
 
@@ -299,6 +301,7 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     center.compRatio = fileU8(memory, 0x0059, 1);
     center.attackMs = fileU8(memory, 0x005A, 10);
     center.releaseSec = fileU8(memory, 0x005B, 1) / 10.0;
+    center.outputDelayMs = fileU16(memory, 0x005C, 0);
     m_outputs.insert(QStringLiteral("center"), center);
     m_outputRaw.insert(QStringLiteral("center"), outputSeed(memory, 0x004C));
 
@@ -312,6 +315,7 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     sub.compRatio = fileU8(memory, 0x006D, 1);
     sub.attackMs = fileU8(memory, 0x006E, 10);
     sub.releaseSec = fileU8(memory, 0x006F, 1) / 10.0;
+    sub.outputDelayMs = fileU16(memory, 0x0070, 0);
     m_outputs.insert(QStringLiteral("sub"), sub);
     m_outputRaw.insert(QStringLiteral("sub"), outputSeed(memory, 0x0060));
 
@@ -405,6 +409,15 @@ void K500Controller::handleStateEdit(const QString &path, const QVariant &value)
         normalizedValue = qBound(K500Protocol::NativeRange::DanceMicHoldMinSec,
                                  qRound(value.toDouble()),
                                  K500Protocol::NativeRange::DanceMicHoldMaxSec);
+    else if (path == QStringLiteral("outputs.main.lDelayMs")
+             || path == QStringLiteral("outputs.main.rDelayMs")
+             || path == QStringLiteral("outputs.surround.lDelayMs")
+             || path == QStringLiteral("outputs.surround.rDelayMs")
+             || path == QStringLiteral("outputs.center.outputDelayMs")
+             || path == QStringLiteral("outputs.sub.outputDelayMs"))
+        normalizedValue = qBound(K500Protocol::NativeRange::OutputDelayMinMs,
+                                 qRound(value.toDouble()),
+                                 K500Protocol::NativeRange::OutputDelayMaxMs);
     QString canonicalReason;
     if (!m_canonicalState.stageDesired(path, normalizedValue, nullptr, &canonicalReason)) {
         deferWrite(path, canonicalReason);
@@ -842,8 +855,18 @@ bool K500Controller::updateOutputState(const QString &section, const QString &fi
     else if (field == QStringLiteral("compRatio")) state.compRatio = qRound(value.toDouble());
     else if (field == QStringLiteral("attackMs")) state.attackMs = qRound(value.toDouble());
     else if (field == QStringLiteral("releaseSec")) state.releaseSec = value.toDouble();
-    else if (field == QStringLiteral("lDelayMs")) state.lDelayMs = qRound(value.toDouble());
-    else if (field == QStringLiteral("rDelayMs")) state.rDelayMs = qRound(value.toDouble());
+    else if (field == QStringLiteral("lDelayMs"))
+        state.lDelayMs = qBound(K500Protocol::NativeRange::OutputDelayMinMs,
+                                qRound(value.toDouble()),
+                                K500Protocol::NativeRange::OutputDelayMaxMs);
+    else if (field == QStringLiteral("rDelayMs"))
+        state.rDelayMs = qBound(K500Protocol::NativeRange::OutputDelayMinMs,
+                                qRound(value.toDouble()),
+                                K500Protocol::NativeRange::OutputDelayMaxMs);
+    else if (field == QStringLiteral("outputDelayMs"))
+        state.outputDelayMs = qBound(K500Protocol::NativeRange::OutputDelayMinMs,
+                                     qRound(value.toDouble()),
+                                     K500Protocol::NativeRange::OutputDelayMaxMs);
     else return false;
     return true;
 }
@@ -938,6 +961,12 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
         captured(prefix + QStringLiteral("compRatio"), s.compRatio);
         captured(prefix + QStringLiteral("attackMs"), s.attackMs);
         derived(prefix + QStringLiteral("releaseSec"), s.releaseSec);
+        if (it.key() == QStringLiteral("main") || it.key() == QStringLiteral("surround")) {
+            captured(prefix + QStringLiteral("lDelayMs"), s.lDelayMs);
+            captured(prefix + QStringLiteral("rDelayMs"), s.rDelayMs);
+        } else {
+            captured(prefix + QStringLiteral("outputDelayMs"), s.outputDelayMs);
+        }
         captured(prefix + QStringLiteral("lDelayMs"), s.lDelayMs);
         captured(prefix + QStringLiteral("rDelayMs"), s.rDelayMs);
     }
