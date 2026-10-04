@@ -232,8 +232,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0012, 26); // mic init
         putFileU8(memory, 0x0013, 82); // mic max
         putFileU8(memory, 0x001D, 27); // effect init
-        putFileU8(memory, 0x0093, 10); // Dance Mic threshold raw -> -50 dB
-        putFileU8(memory, 0x0094, 6);  // Dance Mic hold -> 6 sec
+        // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — direct live flag,
+        // deliberately poisons the former Dance Mic 0x0094 structural assumption.
+        memory[K500Protocol::ReadbackOffset::AdjMannerVrOff] = char(0x01);
         putFileU8(memory, 0x0095, 8);  // U-Disk record -> UI 9
         putFileU8(memory, 0x0096, 10); // USB record -> UI 11
 
@@ -436,8 +437,8 @@ int main(int argc, char *argv[])
             && musicEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("Bypass")
             && micAEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 18")
             && micBEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 18")
-            && micAEq.value(QStringLiteral("hpType")).toString() == micAHpTypeBeforeHydration
-            && micBEq.value(QStringLiteral("hpType")).toString() == micBHpTypeBeforeHydration
+            && micAEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 12")
+            && micBEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 12")
             && !musicEq.value(QStringLiteral("bypass")).toBool()
             && !mainEq.value(QStringLiteral("bypass")).toBool()
             && system.value(QStringLiteral("musicInitVol")).toInt() == 25
@@ -447,9 +448,10 @@ int main(int argc, char *argv[])
             && system.value(QStringLiteral("effectInitLevel")).toInt() == 27
             && system.value(QStringLiteral("uDiskRecordVol")).toInt() == 9
             && system.value(QStringLiteral("usbRecordVol")).toInt() == 11
-            && system.value(QStringLiteral("danceMicTriggerKnown")).toBool()
-            && system.value(QStringLiteral("danceMicThresholdDb")).toInt() == -50
-            && system.value(QStringLiteral("danceMicHoldSec")).toInt() == 6
+            && !system.value(QStringLiteral("danceMicTriggerKnown")).toBool()
+            && system.value(QStringLiteral("adjMannerVrOffKnown")).toBool()
+            && system.value(QStringLiteral("adjMannerVrOff")).toBool()
+            && !system.value(QStringLiteral("manualVrEnabled")).toBool()
             && system.value(QStringLiteral("deviceModeIndex")).toInt() == 4
             && system.value(QStringLiteral("activeModeName")).toString() == QStringLiteral("KARAOKE ARTIST")
             && system.value(QStringLiteral("btName")).toString() == QStringLiteral("KTV_BT_TEST")
@@ -501,7 +503,6 @@ int main(int argc, char *argv[])
             && hydratedSubBand.value(QStringLiteral("typeName")).toString() == QStringLiteral("HIGH SHELF")
             && qFuzzyCompare(mainEq.value(QStringLiteral("hpfHz")).toDouble(), 45.0)
             && qFuzzyCompare(mainEq.value(QStringLiteral("lpfHz")).toDouble(), 19000.0)
-            && micAEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 12")
             && mainEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 18")
             && mainEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 18")
             && surroundEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 24")
