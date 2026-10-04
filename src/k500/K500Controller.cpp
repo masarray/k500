@@ -276,8 +276,8 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     main.compRatio = fileU8(memory, 0x0031, 1);
     main.attackMs = fileU8(memory, 0x0032, 10);
     main.releaseSec = fileU8(memory, 0x0033, 1) / 10.0;
-    main.lDelayMs = fileU16(memory, 0x0034, 0);
-    main.rDelayMs = fileU16(memory, 0x0036, 0);
+    main.lDelayMs = fileU16(memory, 0x00D4, 0);
+    main.rDelayMs = fileU16(memory, 0x00D6, 0);
     m_outputs.insert(QStringLiteral("main"), main);
     m_outputRaw.insert(QStringLiteral("main"), outputSeed(memory, 0x0024));
 
@@ -307,7 +307,7 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     center.compRatio = fileU8(memory, 0x0059, 1);
     center.attackMs = fileU8(memory, 0x005A, 10);
     center.releaseSec = fileU8(memory, 0x005B, 1) / 10.0;
-    center.outputDelayMs = fileU16(memory, 0x005C, 0);
+    center.outputDelayMs = fileU16(memory, 0x00DC, 0);
     m_outputs.insert(QStringLiteral("center"), center);
     m_outputRaw.insert(QStringLiteral("center"), outputSeed(memory, 0x004C));
 
@@ -321,7 +321,7 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     sub.compRatio = fileU8(memory, 0x006D, 1);
     sub.attackMs = fileU8(memory, 0x006E, 10);
     sub.releaseSec = fileU8(memory, 0x006F, 1) / 10.0;
-    sub.outputDelayMs = fileU16(memory, 0x0070, 0);
+    sub.outputDelayMs = fileU16(memory, 0x00DE, 0);
     m_outputs.insert(QStringLiteral("sub"), sub);
     m_outputRaw.insert(QStringLiteral("sub"), outputSeed(memory, 0x0060));
 
@@ -334,25 +334,34 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
         state.lpType = lpType;
         m_crossovers.insert(key, state);
     };
-    // MIC_LP_TYPE_READBACK_20261004_V1 — six reconnect snapshots prove the
-    // LP dropdown at direct activeMemory[0x0014]. Mic HP remains evidence-gated.
-    const quint8 micLpTypeRaw = byteAt(
-        memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    // OUTPUT_CROSSOVER_TYPE_READBACK_20261004_V1 — State-A reconnect maps
+    // the shared Mic HP/LP type bytes directly from active memory.
+    const quint8 micHpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF);
+    const quint8 micLpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    const bool micHpTypeKnown = K500Protocol::crossoverFilterCodeValid(micHpTypeRaw);
     m_micLpTypeKnown = K500Protocol::crossoverFilterCodeValid(micLpTypeRaw);
     seedCrossover(QStringLiteral("mic"), 0x0098, 0x009A,
-                  QStringLiteral("HP LR 24"),
-                  m_micLpTypeKnown
-                      ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false)
-                      : QStringLiteral("LP LR 24"));
+                  micHpTypeKnown ? K500Protocol::crossoverFilterLabel(micHpTypeRaw, true)
+                                 : QStringLiteral("HP LR 24"),
+                  m_micLpTypeKnown ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false)
+                                   : QStringLiteral("LP LR 24"));
     // MUSIC_CROSSOVER_TYPE_READBACK_V1 — physical Music reconnect captures:
     // activeMemory[0x0007] = HP Type, activeMemory[0x0008] = LP Type.
     seedCrossover(QStringLiteral("music"), 0x009C, 0x009E,
                   K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0007), true),
                   K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false));
-    seedCrossover(QStringLiteral("main"), 0x00A0, 0x00A4, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
-    seedCrossover(QStringLiteral("surround"), 0x00A8, 0x00AC, QStringLiteral("HP Bessel 12"), QStringLiteral("LP Bessel 12"));
-    seedCrossover(QStringLiteral("center"), 0x00B0, 0x00B4, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
-    seedCrossover(QStringLiteral("sub"), 0x00B8, 0x00BC, QStringLiteral("HP Butter 24"), QStringLiteral("LP Butter 24"));
+    seedCrossover(QStringLiteral("main"), 0x00A0, 0x00A4,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainLpType), false));
+    seedCrossover(QStringLiteral("surround"), 0x00A8, 0x00AC,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundLpType), false));
+    seedCrossover(QStringLiteral("center"), 0x00B0, 0x00B4,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterLpType), false));
+    seedCrossover(QStringLiteral("sub"), 0x00B8, 0x00BC,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubLpType), false));
     seedCrossover(QStringLiteral("reverb"), 0x00C0, 0x00C2, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
     seedCrossover(QStringLiteral("echo"), 0x00C4, 0x00C6, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
 
