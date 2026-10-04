@@ -1,0 +1,133 @@
+{
+  "date": "2026-10-04",
+  "candidate": "05_POP_KENANGAN_R2.k500",
+  "internalName": "POP KENANGAN V2",
+  "sourceR1Blob": "0c736688f4f4e6ed4993e60b9ad6cd146c5d3fe6",
+  "candidateBlob": "f98b20468dc8468dbdac601d5b5371788a158972",
+  "status": "hardware-audition candidate",
+  "audioResearch": {
+    "file": "05 POP KENANGAN.wav",
+    "durationSeconds": 168.48,
+    "tempoInterpretation": "~72.8-73.0 BPM (the onset detector's ~145 BPM solution is the double-time grid)",
+    "quarterMs": 824.3,
+    "eighthMs": 412.2,
+    "dottedSixteenthMs": 309.1,
+    "one64thMs": 51.5,
+    "dotted64thMs": 77.3,
+    "threeBeatsMs": 2472.9
+  },
+  "temporalDesign": {
+    "echoDelayMs": {
+      "before": 310,
+      "after": 310,
+      "reason": "already essentially dotted-1/16 at ~72.8 BPM; preserve"
+    },
+    "reverbDecayMs": {
+      "before": 2200,
+      "after": 2470,
+      "reason": "~3 quarter-note beats at song tempo"
+    },
+    "reverbPredelayMs": {
+      "before": 60,
+      "after": 75,
+      "reason": "near dotted-1/64 at tempo; separates dry vocal from longer tail"
+    },
+    "reverbHpfHz": {
+      "before": 220,
+      "after": 240,
+      "reason": "reduce low-mid accumulation in longer tail"
+    }
+  },
+  "routingDesign": {
+    "mainReverb": [
+      95,
+      96
+    ],
+    "center": {
+      "mic": [
+        94,
+        97
+      ],
+      "reverb": [
+        87,
+        82
+      ],
+      "echo": [
+        43,
+        38
+      ]
+    },
+    "surround": {
+      "mic": [
+        80,
+        74
+      ],
+      "reverb": [
+        96,
+        100
+      ],
+      "echo": [
+        58,
+        55
+      ],
+      "delayL": [
+        10,
+        12
+      ],
+      "delayR": [
+        14,
+        18
+      ]
+    }
+  },
+  "simulationR2minusR1Db": {
+    "musicMain": {
+      "body120_250": 0.06,
+      "mud250_500": 0.008,
+      "cue1000_2500": 0.024,
+      "iRing2500_4500": 0.094,
+      "detail5000_7000": 0.182,
+      "air10000_14000": 0.174
+    },
+    "micDryMain": {
+      "body120_250": -0.762,
+      "mud250_500": -0.699,
+      "cue1000_2500": 0.068,
+      "iRing2500_4500": -0.085,
+      "detail5000_7000": 0.174,
+      "air10000_14000": 0.113
+    },
+    "vocalMain": {
+      "body120_250": -0.938,
+      "mud250_500": -0.777,
+      "cue1000_2500": 0.102,
+      "iRing2500_4500": 0,
+      "detail5000_7000": 0.292,
+      "air10000_14000": 0.182
+    },
+    "vocalCenter": {
+      "body120_250": -0.8,
+      "mud250_500": -0.882,
+      "cue1000_2500": -0.018,
+      "iRing2500_4500": -0.079,
+      "detail5000_7000": 0.366,
+      "air10000_14000": 0.254
+    },
+    "vocalSurround": {
+      "body120_250": -1.43,
+      "mud250_500": -0.932,
+      "cue1000_2500": -0.047,
+      "iRing2500_4500": -0.159,
+      "detail5000_7000": -0.004,
+      "air10000_14000": -0.134
+    }
+  },
+  "invariants": [
+    "Echo delay remains 310 ms because it already matches dotted-1/16 at the measured tempo.",
+    "Music 66 Hz remains +8.0 dB; no additional deep-bass escalation.",
+    "Sub path unchanged.",
+    "Main EQ unchanged.",
+    "FX internal levels unchanged.",
+    "All Alt/reserved/unknown bytes preserved."
+  ]
+}
