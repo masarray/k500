@@ -694,9 +694,13 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     QVariantMap echo{
         {QStringLiteral("level"), static_cast<int>(fileU8(memory, 0x007B))},
         {QStringLiteral("repeat"), static_cast<int>(fileU8(memory, 0x007C))},
+        {QStringLiteral("direct"), static_cast<int>(fileU8(memory, 0x0080))},
+        {QStringLiteral("rightDelayPercent"), static_cast<int>(fileU8(memory, 0x0081)) - 50},
+        {QStringLiteral("rightPredelayPercent"), static_cast<int>(fileU8(memory, 0x0082)) - 50},
         {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00C4))},
         {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00C6))},
         {QStringLiteral("leftDelayMs"), static_cast<int>(fileU16(memory, 0x00CC))},
+        {QStringLiteral("leftPredelayMs"), static_cast<int>(fileU16(memory, 0x00CE))},
     };
 
     m_deviceState = {

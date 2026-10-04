@@ -136,6 +136,13 @@ constexpr int EchoDirectMin = 0;
 constexpr int EchoDirectMax = 100;
 constexpr int EchoDelayMinMs = 0;
 constexpr int EchoDelayMaxMs = 1000;
+// ECHO_TIMING_ENDPOINTS_20261004_V1 — physical native UI endpoint sweeps.
+constexpr int EchoRightDelayMinPercent = -50;
+constexpr int EchoRightDelayMaxPercent = 50;
+constexpr int EchoRightPredelayMinPercent = -50;
+constexpr int EchoRightPredelayMaxPercent = 50;
+constexpr int EchoLeftPredelayMinMs = 0;
+constexpr int EchoLeftPredelayMaxMs = 100;
 
 constexpr int MusicNoiseGateOffDb = -91; // UI sentinel displayed as OFF
 constexpr int MusicNoiseGateMinDb = -90;

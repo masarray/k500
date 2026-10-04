@@ -334,6 +334,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0074, 55);
         putFileU8(memory, 0x007B, 44);
         putFileU8(memory, 0x007C, 6);
+        putFileU8(memory, 0x0080, 88); // Echo Direct
+        putFileU8(memory, 0x0081, 62); // Echo Right Delay = +12%
+        putFileU8(memory, 0x0082, 35); // Echo Right Predelay = -15%
         putFileU16(memory, 0x00C0, 220);
         putFileU16(memory, 0x00C2, 12000);
         putFileU16(memory, 0x00C4, 700);
@@ -341,6 +344,7 @@ int main(int argc, char *argv[])
         putFileU16(memory, 0x00C8, 1850);
         putFileU16(memory, 0x00CA, 28);
         putFileU16(memory, 0x00CC, 236);
+        putFileU16(memory, 0x00CE, 73); // Echo Left Predelay
 
         // Compact live EQ representations from three different sections.
         putLiveEqBand(memory, 0x014B, 2, 355, 10, 0x80, 111); // Music B3 Bell -11.1
@@ -470,7 +474,11 @@ int main(int argc, char *argv[])
             && reverb.value(QStringLiteral("predelayMs")).toInt() == 28
             && echo.value(QStringLiteral("level")).toInt() == 44
             && echo.value(QStringLiteral("repeat")).toInt() == 6
+            && echo.value(QStringLiteral("direct")).toInt() == 88
+            && echo.value(QStringLiteral("rightDelayPercent")).toInt() == 12
+            && echo.value(QStringLiteral("rightPredelayPercent")).toInt() == -15
             && echo.value(QStringLiteral("leftDelayMs")).toInt() == 236
+            && echo.value(QStringLiteral("leftPredelayMs")).toInt() == 73
             && qFuzzyCompare(hydratedMusicBand.value(QStringLiteral("frequency")).toDouble(), 355.0)
             && qFuzzyCompare(hydratedMusicBand.value(QStringLiteral("gain")).toDouble(), -11.1)
             && qFuzzyCompare(hydratedMicBand.value(QStringLiteral("frequency")).toDouble(), 125.0)

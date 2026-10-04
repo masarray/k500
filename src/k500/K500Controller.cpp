@@ -852,8 +852,14 @@ bool K500Controller::updateEchoState(const QString &field, const QVariant &value
     if (field == QStringLiteral("level")) m_echo.level = qBound(K500Protocol::NativeRange::EchoLevelMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoLevelMax);
     else if (field == QStringLiteral("repeat")) m_echo.repeat = qBound(K500Protocol::NativeRange::EchoRepeatMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoRepeatMax);
     else if (field == QStringLiteral("direct")) m_echo.direct = qBound(K500Protocol::NativeRange::EchoDirectMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoDirectMax);
-    else if (field == QStringLiteral("rightDelayPercent")) m_echo.rightDelayPercent = qBound(-50, qRound(value.toDouble()), 50);
-    else if (field == QStringLiteral("rightPredelayPercent")) m_echo.rightPredelayPercent = qBound(-50, qRound(value.toDouble()), 50);
+    else if (field == QStringLiteral("rightDelayPercent"))
+        m_echo.rightDelayPercent = qBound(K500Protocol::NativeRange::EchoRightDelayMinPercent,
+                                          qRound(value.toDouble()),
+                                          K500Protocol::NativeRange::EchoRightDelayMaxPercent);
+    else if (field == QStringLiteral("rightPredelayPercent"))
+        m_echo.rightPredelayPercent = qBound(K500Protocol::NativeRange::EchoRightPredelayMinPercent,
+                                             qRound(value.toDouble()),
+                                             K500Protocol::NativeRange::EchoRightPredelayMaxPercent);
     else if (field == QStringLiteral("hpfHz")) {
         m_echo.hpfHz = qBound(K500Protocol::NativeRange::FxHpfMinHz, qRound(value.toDouble()), K500Protocol::NativeRange::FxHpfMaxHz);
         m_crossovers[QStringLiteral("echo")].hpfHz = m_echo.hpfHz;
@@ -863,7 +869,10 @@ bool K500Controller::updateEchoState(const QString &field, const QVariant &value
         m_crossovers[QStringLiteral("echo")].lpfHz = m_echo.lpfHz;
     }
     else if (field == QStringLiteral("leftDelayMs")) m_echo.leftDelayMs = qBound(K500Protocol::NativeRange::EchoDelayMinMs, qRound(value.toDouble()), K500Protocol::NativeRange::EchoDelayMaxMs);
-    else if (field == QStringLiteral("leftPredelayMs")) m_echo.leftPredelayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else if (field == QStringLiteral("leftPredelayMs"))
+        m_echo.leftPredelayMs = qBound(K500Protocol::NativeRange::EchoLeftPredelayMinMs,
+                                      qRound(value.toDouble()),
+                                      K500Protocol::NativeRange::EchoLeftPredelayMaxMs);
     else return false;
     return true;
 }

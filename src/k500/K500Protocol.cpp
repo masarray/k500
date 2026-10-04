@@ -554,13 +554,19 @@ QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceDa
                                               NativeRange::EchoRepeatMax)));
     data[6] = char(K500Frame::clampByte(qBound(NativeRange::EchoDirectMin, state.direct,
                                               NativeRange::EchoDirectMax)));
-    data[7] = char(K500Frame::clampByte(qBound(-50, state.rightDelayPercent, 50) + 50));
-    data[8] = char(K500Frame::clampByte(qBound(-50, state.rightPredelayPercent, 50) + 50));
+    data[7] = char(K500Frame::clampByte(
+        qBound(NativeRange::EchoRightDelayMinPercent, state.rightDelayPercent,
+               NativeRange::EchoRightDelayMaxPercent) + 50));
+    data[8] = char(K500Frame::clampByte(
+        qBound(NativeRange::EchoRightPredelayMinPercent, state.rightPredelayPercent,
+               NativeRange::EchoRightPredelayMaxPercent) + 50));
     writeU16Le(data, 9, qBound(NativeRange::FxHpfMinHz, state.hpfHz, NativeRange::FxHpfMaxHz));
     writeU16Le(data, 11, qBound(NativeRange::FxLpfMinHz, state.lpfHz, NativeRange::FxLpfMaxHz));
     writeU16Le(data, 13, qBound(NativeRange::EchoDelayMinMs, state.leftDelayMs,
                                 NativeRange::EchoDelayMaxMs));
-    writeU16Le(data, 15, qBound(0, state.leftPredelayMs, 65535));
+    writeU16Le(data, 15, qBound(NativeRange::EchoLeftPredelayMinMs,
+                                state.leftPredelayMs,
+                                NativeRange::EchoLeftPredelayMaxMs));
 
     QByteArray body;
     body.reserve(24);
@@ -1058,29 +1064,56 @@ bool selfTest(QString *error)
 
     K500EchoBlockState echoLow = echo;
     echoLow.level = -1; echoLow.repeat = -1; echoLow.direct = -1;
+    echoLow.rightDelayPercent = -999; echoLow.rightPredelayPercent = -999;
     echoLow.hpfHz = -1; echoLow.lpfHz = 1; echoLow.leftDelayMs = -1;
+    echoLow.leftPredelayMs = -1;
     K500EchoBlockState echoMin = echoLow;
     echoMin.level = NativeRange::EchoLevelMin;
     echoMin.repeat = NativeRange::EchoRepeatMin;
     echoMin.direct = NativeRange::EchoDirectMin;
+    echoMin.rightDelayPercent = NativeRange::EchoRightDelayMinPercent;
+    echoMin.rightPredelayPercent = NativeRange::EchoRightPredelayMinPercent;
     echoMin.hpfHz = NativeRange::FxHpfMinHz;
     echoMin.lpfHz = NativeRange::FxLpfMinHz;
     echoMin.leftDelayMs = NativeRange::EchoDelayMinMs;
+    echoMin.leftPredelayMs = NativeRange::EchoLeftPredelayMinMs;
     if (echoBlock(echoLow, echoSeed) != echoBlock(echoMin, echoSeed))
         return fail(QStringLiteral("Echo native minimum clamp mismatch"));
 
     K500EchoBlockState echoHigh = echo;
     echoHigh.level = 999; echoHigh.repeat = 999; echoHigh.direct = 999;
+    echoHigh.rightDelayPercent = 999; echoHigh.rightPredelayPercent = 999;
     echoHigh.hpfHz = 99999; echoHigh.lpfHz = 99999; echoHigh.leftDelayMs = 99999;
+    echoHigh.leftPredelayMs = 99999;
     K500EchoBlockState echoMax = echoHigh;
     echoMax.level = NativeRange::EchoLevelMax;
     echoMax.repeat = NativeRange::EchoRepeatMax;
     echoMax.direct = NativeRange::EchoDirectMax;
+    echoMax.rightDelayPercent = NativeRange::EchoRightDelayMaxPercent;
+    echoMax.rightPredelayPercent = NativeRange::EchoRightPredelayMaxPercent;
     echoMax.hpfHz = NativeRange::FxHpfMaxHz;
     echoMax.lpfHz = NativeRange::FxLpfMaxHz;
     echoMax.leftDelayMs = NativeRange::EchoDelayMaxMs;
+    echoMax.leftPredelayMs = NativeRange::EchoLeftPredelayMaxMs;
     if (echoBlock(echoHigh, echoSeed) != echoBlock(echoMax, echoSeed))
         return fail(QStringLiteral("Echo native maximum clamp mismatch"));
+
+    // ECHO_TIMING_ENDPOINTS_20261004_V1 — exact physical endpoint vectors.
+    QByteArray endpointSeed = bytes({0x01,0x64,0x02,0x64,0x02,0x40,0x64,0x00,0x00,0x26,0x02,0x68,0x10,0x18,0x01,0x00,0x00,0xC8,0x00,0x00,0x00,0x00});
+    K500EchoBlockState endpoint;
+    endpoint.level = 100; endpoint.repeat = 2; endpoint.direct = 100;
+    endpoint.hpfHz = 550; endpoint.lpfHz = 4200; endpoint.leftDelayMs = 280;
+    endpoint.rightDelayPercent = -50; endpoint.rightPredelayPercent = -50;
+    endpoint.leftPredelayMs = 0;
+    if (!expect(K500Frame::toUsbFrame(echoBlock(endpoint, endpointSeed)),
+                {0xAA,0x17,0x00,0x0D,0x01,0x64,0x02,0x64,0x02,0x40,0x64,0x00,0x00,0x26,0x02,0x68,0x10,0x18,0x01,0x00,0x00,0xC8,0x00,0x00,0x00,0x00,0xEA},
+                QStringLiteral("Echo timing minima capture"))) return false;
+    endpoint.rightDelayPercent = 50;
+    endpoint.rightPredelayPercent = 50;
+    endpoint.leftPredelayMs = 100;
+    if (!expect(K500Frame::toUsbFrame(echoBlock(endpoint, endpointSeed)),
+                {0xAA,0x17,0x00,0x0D,0x01,0x64,0x02,0x64,0x02,0x40,0x64,0x64,0x64,0x26,0x02,0x68,0x10,0x18,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00,0x22},
+                QStringLiteral("Echo timing maxima capture"))) return false;
 
     // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — physical Music reconnect captures:
     // FD = Music EQ ACTIVE, 7D = Music EQ BYPASSED (delta 0x80).

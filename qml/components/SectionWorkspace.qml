@@ -168,15 +168,14 @@ Item {
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Tone"
+                                    // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Reverb UI
+                                    // exposes HPF/LPF cutoff only; there is no filter-type selector.
+                                    showTypes: false
                                     fields: [
                                         {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:root.engine.reverbEqBands.hpfMinHz,to:root.engine.reverbEqBands.hpfMaxHz,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:root.engine.reverbEqBands.lpfMinHz,to:root.engine.reverbEqBands.lpfMaxHz,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType: root.engine.reverbEqBands.hpType
-                                    lpType: root.engine.reverbEqBands.lpType
                                     onFieldEdited: function(index,value){ if(index===0)root.engine.reverbEqBands.setHpfHz(value);else root.engine.reverbEqBands.setLpfHz(value) }
-                                    onHpTypeEdited: function(value){ root.engine.reverbEqBands.setHpType(value) }
-                                    onLpTypeEdited: function(value){ root.engine.reverbEqBands.setLpType(value) }
                                 }
                             }
                         }
@@ -205,15 +204,14 @@ Item {
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Tone"
+                                    // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Echo UI
+                                    // exposes HPF/LPF cutoff only; there is no filter-type selector.
+                                    showTypes: false
                                     fields: [
                                         {label:"HPF",value:root.engine.echoEqBands.hpfHz,from:root.engine.echoEqBands.hpfMinHz,to:root.engine.echoEqBands.hpfMaxHz,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.echoEqBands.lpfHz,from:root.engine.echoEqBands.lpfMinHz,to:root.engine.echoEqBands.lpfMaxHz,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType: root.engine.echoEqBands.hpType
-                                    lpType: root.engine.echoEqBands.lpType
                                     onFieldEdited: function(index,value){ if(index===0)root.engine.echoEqBands.setHpfHz(value);else root.engine.echoEqBands.setLpfHz(value) }
-                                    onHpTypeEdited: function(value){ root.engine.echoEqBands.setHpType(value) }
-                                    onLpTypeEdited: function(value){ root.engine.echoEqBands.setLpType(value) }
                                 }
                             }
                         }
