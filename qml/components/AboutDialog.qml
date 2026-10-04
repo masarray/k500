@@ -274,8 +274,10 @@ Popup {
                     spacing: 12
 
                     Rectangle {
+                        // ABOUT_LINK_COLUMNS_ALIGNED_V3
                         Layout.preferredWidth: 38
                         Layout.preferredHeight: 38
+                        Layout.alignment: Qt.AlignVCenter
                         radius: 10
                         color: "#231011"
                         border.width: 1
@@ -302,9 +304,12 @@ Popup {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: -1
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 0
                         Text {
+                            Layout.fillWidth: true
                             text: "YOUTUBE"
+                            horizontalAlignment: Text.AlignLeft
                             color: "#FF7A81"
                             renderType: Text.NativeRendering
                             font.family: Theme.monoFamily
@@ -314,7 +319,9 @@ Popup {
                             font.letterSpacing: .85
                         }
                         Text {
+                            Layout.fillWidth: true
                             text: "SonKuPik"
+                            horizontalAlignment: Text.AlignLeft
                             color: youtubeMouse.containsMouse ? Theme.text : Theme.textSoft
                             renderType: Text.NativeRendering
                             font.family: Theme.fontFamily
@@ -324,14 +331,21 @@ Popup {
                         }
                     }
 
-                    Text {
-                        text: "↗"
-                        color: youtubeMouse.containsMouse ? Theme.accent : Theme.textFaint
-                        renderType: Text.NativeRendering
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 16
-                        font.weight: Font.DemiBold
-                        font.hintingPreference: Font.PreferFullHinting
+                    Item {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 38
+                        Layout.alignment: Qt.AlignVCenter
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "↗"
+                            color: youtubeMouse.containsMouse ? Theme.accent : Theme.textFaint
+                            renderType: Text.NativeRendering
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 16
+                            font.weight: Font.DemiBold
+                            font.hintingPreference: Font.PreferFullHinting
+                        }
                     }
                 }
 
@@ -365,6 +379,7 @@ Popup {
                     Rectangle {
                         Layout.preferredWidth: 38
                         Layout.preferredHeight: 38
+                        Layout.alignment: Qt.AlignVCenter
                         radius: 10
                         color: "#0B1B11"
                         border.width: 1
@@ -393,9 +408,12 @@ Popup {
 
                     ColumnLayout {
                         Layout.fillWidth: true
-                        spacing: -1
+                        Layout.alignment: Qt.AlignVCenter
+                        spacing: 0
                         Text {
+                            Layout.fillWidth: true
                             text: "TOKOPEDIA"
+                            horizontalAlignment: Text.AlignLeft
                             color: "#63D47C"
                             renderType: Text.NativeRendering
                             font.family: Theme.monoFamily
@@ -405,7 +423,9 @@ Popup {
                             font.letterSpacing: .85
                         }
                         Text {
+                            Layout.fillWidth: true
                             text: "Beli KTV Pro K500"
+                            horizontalAlignment: Text.AlignLeft
                             color: tokopediaMouse.containsMouse ? Theme.text : Theme.textSoft
                             renderType: Text.NativeRendering
                             font.family: Theme.fontFamily
@@ -415,14 +435,21 @@ Popup {
                         }
                     }
 
-                    Text {
-                        text: "↗"
-                        color: tokopediaMouse.containsMouse ? Theme.accent : Theme.textFaint
-                        renderType: Text.NativeRendering
-                        font.family: Theme.fontFamily
-                        font.pixelSize: 16
-                        font.weight: Font.DemiBold
-                        font.hintingPreference: Font.PreferFullHinting
+                    Item {
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 38
+                        Layout.alignment: Qt.AlignVCenter
+
+                        Text {
+                            anchors.centerIn: parent
+                            text: "↗"
+                            color: tokopediaMouse.containsMouse ? Theme.accent : Theme.textFaint
+                            renderType: Text.NativeRendering
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 16
+                            font.weight: Font.DemiBold
+                            font.hintingPreference: Font.PreferFullHinting
+                        }
                     }
                 }
 
