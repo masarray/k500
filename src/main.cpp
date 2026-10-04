@@ -279,6 +279,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0031, 4);
         putFileU8(memory, 0x0032, 12);
         putFileU8(memory, 0x0033, 3);  // 0.3 sec
+        putFileU16(memory, 0x0034, 50); // Main L delay
+        putFileU16(memory, 0x0036, 20); // Main R delay
         putFileU16(memory, 0x00A0, 45);
         putFileU16(memory, 0x00A4, 19000);
 
@@ -306,6 +308,7 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0059, 6);
         putFileU8(memory, 0x005A, 14);
         putFileU8(memory, 0x005B, 5);
+        putFileU16(memory, 0x005C, 30); // Center output delay
 
         // Sub output + crossover.
         putFileU8(memory, 0x0060, 87); // +6 dB
@@ -317,6 +320,7 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x006D, 7);
         putFileU8(memory, 0x006E, 15);
         putFileU8(memory, 0x006F, 6);
+        putFileU16(memory, 0x0070, 40); // Sub output delay
         putFileU16(memory, 0x00B8, 42);
         putFileU16(memory, 0x00BC, 96);
 
@@ -427,11 +431,15 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(mainOutput.value(QStringLiteral("lVolDb")).toDouble(), 12.0)
             && qFuzzyCompare(mainOutput.value(QStringLiteral("rVolDb")).toDouble(), 10.0)
             && mainOutput.value(QStringLiteral("compThresholdDb")).toInt() == -14
+            && mainOutput.value(QStringLiteral("lDelayMs")).toInt() == 50
+            && mainOutput.value(QStringLiteral("rDelayMs")).toInt() == 20
             && qFuzzyCompare(surroundOutput.value(QStringLiteral("lVolDb")).toDouble(), 9.0)
             && surroundOutput.value(QStringLiteral("lDelayMs")).toInt() == 17
             && surroundOutput.value(QStringLiteral("rDelayMs")).toInt() == 19
             && qFuzzyCompare(centerOutput.value(QStringLiteral("outputVolDb")).toDouble(), 7.0)
+            && centerOutput.value(QStringLiteral("outputDelayMs")).toInt() == 30
             && qFuzzyCompare(subOutput.value(QStringLiteral("outputVolDb")).toDouble(), 6.0)
+            && subOutput.value(QStringLiteral("outputDelayMs")).toInt() == 40
             && subOutput.value(QStringLiteral("hpfHz")).toInt() == 42
             && subOutput.value(QStringLiteral("lpfHz")).toInt() == 96
             && reverb.value(QStringLiteral("level")).toInt() == 55
