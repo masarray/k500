@@ -132,25 +132,25 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | Music Init Vol | ✅ 0x000B | ✅ Top Music CMD 0x02 second scalar | capture-mapped | no |
 | Music Max Vol | ✅ 0x000C | ✅ Top Music CMD 0x02 + hard ceiling clamp | complete | no |
 | Mic Init Vol | ✅ 0x0012 | ✅ Top Mic CMD 0x05 second scalar | capture-mapped | no |
-| Mic Max Vol | ✅ 0x0013 | ❌ preserved-only | partial | **YES** |
+| Mic Max Vol | ✅ 0x0013 | ✅ Top Mic CMD 0x05 third scalar + hard ceiling | capture-mapped | no |
 | Effect Init Level | ✅ 0x001D | ✅ dedicated CMD 0x0A + F5 ACK | capture-mapped | no |
-| UDisk Record Vol | ✅ 0x0095 + 1 | ❌ selector unproven; UI read-only | partial | **YES** |
+| UDisk Record Vol | ✅ 0x0095 + 1 | ✅ CMD 0x3E raw=UI-1, tail 00 00 | capture-mapped | no |
 | USB Record Vol | ✅ 0x0096 + 1 | ✅ CMD 0x3E selector 0x03, raw=UI-1 | capture-mapped | no |
-| Dance/Mic Trigger Threshold | ❌ UI currently hardcoded | ❌ | missing | **YES** |
-| Dance/Mic Trigger Hold Time | ❌ UI currently hardcoded | ❌ | missing | **YES** |
+| Dance/Mic Trigger Threshold | 🟨 0x0093 structural seed, range-guarded | ✅ CMD 0x22 raw=dB+60 | capture-mapped write | no further daily-use capture |
+| Dance/Mic Trigger Hold Time | 🟨 0x0094 structural seed, range-guarded | ✅ CMD 0x22 raw seconds | capture-mapped write | no further daily-use capture |
 | Adj Manner / VR OFF | ❌ reconnect/readback unknown | ✅ CMD 0x07 + F8 ACK | partial | **YES — readback only if persistent status desired** |
 
 ## Identity / security
 
 | Function | READ | WRITE | Status | Capture needed |
 | --- | --- | --- | --- | --- |
-| BT Name | ✅ active memory 0x0385 | ❌ rename/reset | partial | **YES** |
-| BLE Name | ✅ active memory 0x0398 | ❌ rename/reset | partial | **YES** |
-| BT/BLE Reset | ❌ | ❌ | missing | **YES** |
-| Lock state | ❌ | ❌ | missing | **YES, cautious** |
-| Lock password / Modify | ❌ | ❌ | missing | **YES, cautious/destructive** |
-| Admin/User mode state | ❌ | ❌ | missing | **YES, cautious** |
-| Admin password / Modify | ❌ | ❌ | missing | **YES, cautious/destructive** |
+| BT Name | ✅ active memory 0x0385 | ✅ CMD 0x4E SET/RESET + B1 ACK + readback | capture-mapped | no |
+| BLE Name | ✅ active memory 0x0398 | ⛔ intentionally read-only; do not infer from BT | non-blocking | no |
+| BT Reset | ✅ readback after operation | ✅ CMD 0x4E op 0x00 | capture-mapped | no |
+| Lock state | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
+| Lock password / Modify | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
+| Admin/User mode state | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
+| Admin password / Modify | ❌ | ⛔ intentionally unsupported | out of daily-use scope | no |
 
 ## Highest-value capture order
 
@@ -158,8 +158,8 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 1. **Music Tone remaining WRITE** — Mid, Mid Frequency, Treble. Noise Gate and Bass write-side are already captured; next capture their connect/readback truth.
 2. **Mic Noise Gate write**.
-3. **System Startup Limits remaining** — Mic Max only. Music Init, Music Max, Mic Init and Effect Init are mapped.
-4. **Recording + Mic Trigger** — UDisk Rec, Threshold, Hold Time. USB Record is mapped.
+3. **System Startup Limits** — daily-use set complete: Music Init/Max, Mic Init/Max, Effect Init mapped.
+4. **Recording + Mic Trigger** — daily-use set complete: UDisk Rec, USB Rec, Threshold and Hold Time mapped.
 5. **Remaining non-Music crossover filter-type readback** — Mic/Main/Surround/Center/Sub still need their own connect-state mapping.
 6. **Reverb HPF/LPF type** and **Echo HPF/LPF type** — dedicated write deltas.
 
@@ -167,14 +167,14 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 
 7. Main L/R delay, Center delay, Sub delay.
 8. Adj Manner / VR OFF **readback** only if reconnect-persistent status is required; setter/ACK is mapped.
-9. BT Name and BLE Name rename/reset.
+9. BT Name rename/reset is mapped. BLE identity remains intentionally read-only; no inference planned.
 10. Equipment Mode rename needs no further packet capture; perform physical acceptance of the mapped Store workflow instead.
 
 ### P2 — last / potentially destructive
 
 11. Reset All Settings.
-12. Lock state/password flows.
-13. Admin/User mode and password flows.
+12. Lock state/password flows — **scope closed / intentionally unsupported**.
+13. Admin/User mode and password flows — **scope closed / intentionally unsupported**.
 
 ## Recommended capture method
 
