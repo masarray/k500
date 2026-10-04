@@ -242,12 +242,12 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
     else if (field == QStringLiteral("compRatio")) b.addU8(base + 0x0D, u8Value(value));
     else if (field == QStringLiteral("attackMs")) b.addU8(base + 0x0E, u8Value(value));
     else if (field == QStringLiteral("releaseSec")) b.addU8(base + 0x0F, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
-    else if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs")) b.addU16(0x0034, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs")) b.addU16(0x0036, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs")) b.addU16(0x00D4, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs")) b.addU16(0x00D6, std::clamp(qRound(value.toDouble()), 0, 50));
     else if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs")) b.addU16(0x00D8, std::clamp(qRound(value.toDouble()), 0, 50));
     else if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs")) b.addU16(0x00DA, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs")) b.addU16(0x005C, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs")) b.addU16(0x0070, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs")) b.addU16(0x00DC, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs")) b.addU16(0x00DE, std::clamp(qRound(value.toDouble()), 0, 50));
     else return {};
     return finish(source, std::move(b));
 }
