@@ -68,8 +68,16 @@ jobs:
 
           $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw "Could not resolve accepted prerelease $tag" }
-          if ($release.draft -or -not $release.prerelease -or $release.tag_name -ne $tag) {
-            throw 'Accepted tag is not the expected immutable GitHub prerelease.'
+          if ($release.draft -or $release.tag_name -ne $tag) {
+            throw 'Accepted RC tag is not the expected immutable GitHub release.'
+          }
+          # RELEASE_CLASSIFICATION_DRIFT_TOLERANCE_V1
+          # The prerelease checkbox is mutable GitHub metadata and does not alter
+          # the accepted installer bytes. Keep promotion fail-closed on RC tag,
+          # exact commit, RC manifest and recorded SHA-256; warn rather than
+          # invalidating already accepted bytes if the checkbox drifted.
+          if (-not $release.prerelease) {
+            Write-Warning "Accepted RC $tag is currently classified prerelease=false; continuing with exact tag/commit/hash provenance."
           }
           if ([string]$release.target_commitish -ne $commit) {
             throw "Prerelease target commit $($release.target_commitish) does not match accepted commit $commit"
