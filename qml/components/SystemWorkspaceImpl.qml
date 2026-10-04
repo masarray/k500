@@ -171,6 +171,21 @@ Item {
         return fallback
     }
 
+    // SYSTEM_LIVE_STABLE_DELEGATE_V1 — Recording and Dance Mic controls use
+    // immutable metadata lists. Device readback changes only local values inside
+    // existing delegates, so a reconciliation snapshot cannot destroy a drag.
+    readonly property var recordingChannels: [
+        {label:"UDISK REC",key:"uDiskRecordVol",fallback:4,from:1,to:6,path:"system.uDiskRecordVol",badge:"LIVE"},
+        {label:"USB REC",key:"usbRecordVol",fallback:4,from:1,to:6,path:"system.usbRecordVol",badge:"LIVE"}
+    ]
+    readonly property var micTriggerChannels: [
+        {label:"THRESHOLD",key:"danceMicThresholdDb",fallback:-50,from:-60,to:0,unit:"dB",path:"system.danceMicThresholdDb"},
+        {label:"HOLD TIME",key:"danceMicHoldSec",fallback:6,from:1,to:30,unit:"s",path:"system.danceMicHoldSec"}
+    ]
+    function stableSystemValue(spec) {
+        return Number(root.systemValue(String(spec.key || ""), Number(spec.fallback || 0)))
+    }
+
     onSelectedDeviceModeNameChanged: root.modeNameDraft = root.selectedDeviceModeName
     onCurrentBtNameChanged: root.btNameDraft = root.currentBtName
 
@@ -950,16 +965,21 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
-                                        model:[
-                                            {label:"UDISK REC",value:Number(root.systemValue("uDiskRecordVol",4)),from:1,to:6,path:"system.uDiskRecordVol",editable:root.deviceConnected && root.engine.deviceStateReady,badge:"LIVE"},
-                                            {label:"USB REC",value:Number(root.systemValue("usbRecordVol",4)),from:1,to:6,path:"system.usbRecordVol",editable:root.deviceConnected && root.engine.deviceStateReady,badge:"LIVE"}
-                                        ]
+                                        model: root.recordingChannels.length
                                         delegate:ColumnLayout {
                                             id: recChannel
-                                            required property var modelData
-                                            property real localValue: Number(modelData.value)
-                                            readonly property bool channelEditable:Boolean(modelData.editable)
-                                            onModelDataChanged:if(!recFader||!recFader.dragging)localValue=Number(modelData.value)
+                                            required property int index
+                                            readonly property var modelData: root.recordingChannels[index]
+                                            property real localValue: root.stableSystemValue(modelData)
+                                            readonly property bool channelEditable: root.deviceConnected && root.engine.deviceStateReady
+                                            onModelDataChanged: if(!recFader || !recFader.dragging) localValue = root.stableSystemValue(modelData)
+                                            Connections {
+                                                target: root.engine
+                                                function onDeviceStateChanged() {
+                                                    if (!recFader.dragging)
+                                                        recChannel.localValue = root.stableSystemValue(recChannel.modelData)
+                                                }
+                                            }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textDim;style:recFader.highlighted?Text.Outline:Text.Normal;styleColor:recFader.highlighted?Qt.rgba(recFader.accentColor.r,recFader.accentColor.g,recFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:recFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
                                             StudioFader{
@@ -967,7 +987,7 @@ Item {
                                                 Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:recChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
-                                                value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value
+                                                value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
                                                 onValueEdited:function(v){
                                                     recChannel.localValue=v
                                                     if(recChannel.channelEditable&&String(modelData.path||"").length>0)
@@ -988,18 +1008,23 @@ Item {
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
-                                        model:[
-                                            {label:"THRESHOLD",value:Number(root.systemValue("danceMicThresholdDb",-50)),from:-60,to:0,unit:"dB",path:"system.danceMicThresholdDb"},
-                                            {label:"HOLD TIME",value:Number(root.systemValue("danceMicHoldSec",6)),from:1,to:30,unit:"s",path:"system.danceMicHoldSec"}
-                                        ]
+                                        model: root.micTriggerChannels.length
                                         delegate:ColumnLayout {
                                             id: triggerChannel
-                                            required property var modelData
-                                            property real localValue: Number(modelData.value)
+                                            required property int index
+                                            readonly property var modelData: root.micTriggerChannels[index]
+                                            property real localValue: root.stableSystemValue(modelData)
                                             readonly property bool channelEditable:root.deviceConnected
                                                                  && root.engine.deviceStateReady
                                                                  && Boolean(root.systemValue("danceMicTriggerKnown",false))
-                                            onModelDataChanged:if(!triggerFader||!triggerFader.dragging)localValue=Number(modelData.value)
+                                            onModelDataChanged: if(!triggerFader || !triggerFader.dragging) localValue = root.stableSystemValue(modelData)
+                                            Connections {
+                                                target: root.engine
+                                                function onDeviceStateChanged() {
+                                                    if (!triggerFader.dragging)
+                                                        triggerChannel.localValue = root.stableSystemValue(triggerChannel.modelData)
+                                                }
+                                            }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textDim;style:triggerFader.highlighted?Text.Outline:Text.Normal;styleColor:triggerFader.highlighted?Qt.rgba(triggerFader.accentColor.r,triggerFader.accentColor.g,triggerFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
                                             StudioFader{
@@ -1007,7 +1032,7 @@ Item {
                                                 Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:triggerChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
-                                                value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:modelData.value
+                                                value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
                                                 onValueEdited:function(v){
                                                     triggerChannel.localValue=v
                                                     if(triggerChannel.channelEditable)
