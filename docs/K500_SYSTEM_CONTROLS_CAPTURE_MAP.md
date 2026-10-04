@@ -180,3 +180,125 @@ These neighbouring controls remain intentionally unpromoted:
 - Dance/Mic Trigger Threshold and Hold Time — no byte-verified mapping yet.
 
 Do not infer any of them from selector adjacency or command-family similarity.
+
+
+# Final operational capture batch — 2026-10-04
+
+This batch closes the remaining System controls needed for ordinary daily use.
+Credential/administrative controls are explicitly outside product scope.
+
+## Capture identities
+
+| Capture | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `KTV_BTName_RESET.pcapng` | 1296 | `c5c0357721b036ba4b3f9726118f14b34aeb2d02945f7c3a67114abbd8992532` |
+| `KTV_BTName_BLANK_to_ARI.pcapng` | 2040 | `ad4b1b1e8eb7a1e953550ff92945f4550648456880591d10a9eb18430171b15d` |
+| `DanceMicTime_6s_30s_1s.pcapng` | 10720 | `e6d1ad19f9f9e8d5fd926658bda83100a6212721c1398cfa40e0b59cd43b66b6` |
+| `DanceMicThres_min50dB_0dB_min60dB.pcapng` | 16424 | `bd3c68de7cefdccc2204aefd49923052688bfe59b86c5332d0bdb23684ce3a50` |
+| `UDiskRecordVol_4-6maxVal-3-1minVal.pcapng` | 2536 | `1fc34360225ad9dfbfe0cb8ee421484e6f1a97061f2b62e0b157934a4fa4cd5e` |
+| `MicMaxVol_84Max-50-30-0.pcapng` | 13944 | `48884d622d0e427a38605136517e66c739093f7bf12c775e4606caab13792eae` |
+
+## Mic Max Volume
+
+Mic Max is the third writable scalar in Top Mic `CMD 0x05`. Native range is
+`0..84`. Lowering Mic Max below Top Mic clamps Top Mic in the SAME block.
+
+Exact USB vectors:
+
+```text
+Max 50  AA 0E 00 05 23 23 32 0B 00 00 60 60 27 03 0A 02 00 74
+Max 30  AA 0E 00 05 1E 23 1E 0B 00 00 60 60 27 03 0A 02 00 8D
+Max  0  AA 0E 00 05 00 23 00 0B 00 00 60 60 27 03 0A 02 00 C9
+```
+
+ACK is `RSP 0xFA`.
+
+Contract: `TopMic = min(TopMic, MicMax)`. Raising Mic Max does not raise Top Mic.
+
+## UDisk Record Volume
+
+UDisk Record also uses `CMD 0x3E`, but its captured payload is distinct from
+USB Record. UI `1..6` maps to raw `0..5`.
+
+```text
+UI 6  AA 04 00 3E 05 00 00 B9
+UI 1  AA 04 00 3E 00 00 00 BE
+```
+
+ACK is `RSP 0xC1`.
+
+Do not collapse the two record controls into a guessed common selector:
+USB Record is `3E 03 <raw> 54`, while UDisk Record is
+`3E <raw> 00 00`.
+
+## Dance Mic Trigger — Threshold + Hold
+
+Both controls are a single full-pair `CMD 0x22` write:
+
+```text
+AA 07 00 22 01 <thresholdRaw> <holdSec> 0B 00 00 checksum
+```
+
+Threshold:
+- native UI range: `-60..0 dB`
+- encoding: `thresholdRaw = dB + 60`
+
+Hold:
+- native UI range: `1..30 s`
+- encoding: raw seconds
+
+Representative vectors:
+
+```text
+-50 dB / 6 s  AA 07 00 22 01 0A 06 0B 00 00 BB
+  0 dB / 6 s  AA 07 00 22 01 3C 06 0B 00 00 89
+-60 dB / 1 s  AA 07 00 22 01 00 01 0B 00 00 CA
+-60 dB /30 s  AA 07 00 22 01 00 1E 0B 00 00 AD
+```
+
+ACK is `RSP 0xDD`.
+
+Because changing either control transmits BOTH values, SonKuPik must have a valid
+paired seed before writing. The scalar layout has exactly two previously
+unassigned bytes between Mic EQ Link (`0x0092`) and record volumes
+(`0x0095/0x0096`): `0x0093/0x0094`. The implementation accepts these as
+the pair seed only when both decode into the captured domains
+(`threshold raw 0..60`, `hold 1..30`). Otherwise the faders remain disabled
+and no guessed write is emitted. This read-side location is structural evidence,
+not a dedicated reconnect capture, and must stay documented as such.
+
+## BT Name rename/reset
+
+BT Name uses dedicated `CMD 0x4E`; it is not part of preset Store.
+
+```text
+SET "ARI"  AA 0B 00 4E 01 41 52 49 00 00 00 00 00 03 C7
+RESET      AA 0B 00 4E 00 00 00 00 00 00 00 00 00 03 A4
+```
+
+Captured structure:
+
+```text
+CMD 0x4E
+operation 0x01 = SET
+operation 0x00 = RESET
+name field = exactly 8 bytes, NUL padded
+route mask = 0x03
+ACK = RSP 0xB1
+```
+
+The promoted UI accepts only 1..8 printable ASCII characters for SET. BT Name
+operations are USB-only because the supplied evidence is USB capture. After ACK,
+SonKuPik performs a full 939-byte refresh and displays the hardware BT name from
+the established active-memory readback. BLE rename/reset is NOT inferred from
+this BT command and remains read-only.
+
+## Daily-use scope closure
+
+The following uncommon credential controls are intentionally unsupported:
+
+- Lock Key state/password/Modify;
+- Admin/User mode credentials/password/Modify.
+
+They are not considered release-blocking reverse-engineering TODOs. The product
+must keep them device-managed and must never invent credential frames.
