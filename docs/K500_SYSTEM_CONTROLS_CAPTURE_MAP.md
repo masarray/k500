@@ -182,6 +182,9 @@ These neighbouring controls remain intentionally unpromoted:
 Do not infer any of them from selector adjacency or command-family similarity.
 
 
+> Output Delay for Main/Surround/Center/Subwoofer is captured separately in
+> `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`, including the Surround R-first/L-second wire-order exception.
+
 # Final operational capture batch — 2026-10-04
 
 This batch closes the remaining System controls needed for ordinary daily use.
