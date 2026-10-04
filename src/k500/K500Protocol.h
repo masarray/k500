@@ -161,6 +161,19 @@ constexpr int OutputDelayMaxMs = 50;
 constexpr int BtNameMaxLength = 8;
 } // namespace NativeRange
 
+// CAPTURED_ACTIVE_MEMORY_OFFSETS_20261004_V1
+// These are direct indices into the 939-byte active-memory image returned by
+// CMD 0x40. They are NOT .k500/file scalar offsets and must never pass through
+// fileU8()/fileU16() translation.
+namespace ReadbackOffset {
+constexpr int MusicNoiseGate = 0x0005;
+constexpr int MusicHpType = 0x0007;
+constexpr int MusicLpType = 0x0008;
+constexpr int MicLpType = 0x0014;
+constexpr int TopMusicTailScalar = 0x001B;
+constexpr int MusicBass = 0x00DF;
+} // namespace ReadbackOffset
+
 QByteArray heartbeat();
 QByteArray handshake();
 QByteArray mute(bool enabled);
@@ -175,6 +188,10 @@ QByteArray crossoverWrite(const QString &section,
 QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &deviceScalars);
 QByteArray musicBass(double bassDb);
 quint8 musicNoiseGateRaw(double gateDb);
+bool musicNoiseGateRawValid(quint8 raw);
+int musicNoiseGateDbFromRaw(quint8 raw);
+bool musicBassRawValid(quint8 raw);
+double musicBassDbFromRaw(quint8 raw);
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars);
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray effectInitLevel(int initLevel, int topEffectVol);
@@ -195,6 +212,7 @@ QByteArray outputBlock(const QString &section,
 QByteArray micEqLink(bool enabled);
 
 quint8 crossoverFilterCode(const QString &label);
+bool crossoverFilterCodeValid(quint8 code);
 // MUSIC_CROSSOVER_TYPE_READBACK_V1 — manufacturer reconnect captures map
 // Music HP Type to activeMemory[0x0007] and LP Type to activeMemory[0x0008].
 // Decode the shared native 0..7 filter enum into the UI labels used by K500.

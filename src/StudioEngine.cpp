@@ -440,6 +440,26 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     syncDouble(m_bluetoothGain, static_cast<int>(fileU8(memory, 0x0020)) - 12, [this] { emit bluetoothGainChanged(); });
     syncDouble(m_uDiskGain, static_cast<int>(fileU8(memory, 0x0021)) - 12, [this] { emit uDiskGainChanged(); });
     syncDouble(m_digitalGain, static_cast<int>(fileU8(memory, 0x0022)) - 12, [this] { emit digitalGainChanged(); });
+
+    // MUSIC_TONE_READBACK_20261004_V1 — direct active-memory truth from paired
+    // reconnect captures. Never translate these offsets through fileU8().
+    const quint8 musicNoiseGateRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicNoiseGate, 0xFF);
+    const bool musicNoiseGateKnown =
+        K500Protocol::musicNoiseGateRawValid(musicNoiseGateRaw);
+    if (musicNoiseGateKnown) {
+        syncDouble(m_noiseGate,
+                   K500Protocol::musicNoiseGateDbFromRaw(musicNoiseGateRaw),
+                   [this] { emit noiseGateChanged(); });
+    }
+    const quint8 musicBassRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicBass, 0xFF);
+    const bool musicBassKnown = K500Protocol::musicBassRawValid(musicBassRaw);
+    if (musicBassKnown) {
+        syncDouble(m_bass, K500Protocol::musicBassDbFromRaw(musicBassRaw),
+                   [this] { emit bassChanged(); });
+    }
+
     syncDouble(m_hpfHz, fileU16(memory, 0x009C), [this] { emit hpfHzChanged(); });
     syncDouble(m_lpfHz, fileU16(memory, 0x009E), [this] { emit lpfHzChanged(); });
 
@@ -447,15 +467,24 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     // direct active-memory offsets 0x0007=Music HP Type and 0x0008=Music LP Type.
     // These bytes are authoritative device state and must replace stale/default UI.
     syncString(m_hpType,
-               K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0007), true),
+               K500Protocol::crossoverFilterLabel(
+                   byteAt(memory, K500Protocol::ReadbackOffset::MusicHpType), true),
                [this] { emit hpTypeChanged(); });
     syncString(m_lpType,
-               K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false),
+               K500Protocol::crossoverFilterLabel(
+                   byteAt(memory, K500Protocol::ReadbackOffset::MusicLpType), false),
                [this] { emit lpTypeChanged(); });
 
     // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — these three bytes are a shared
     // EQ-enable image. Set bit = active, clear bit = bypass.
     const K500EqBypassImage eqBypass{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
+
+    // MIC_LP_TYPE_READBACK_20261004_V1 — direct activeMemory[0x0014].
+    // HP remains deliberately untouched until its own reconnect capture exists.
+    const quint8 micLpTypeRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    const bool micLpTypeKnown = K500Protocol::crossoverFilterCodeValid(micLpTypeRaw);
+
     QVariantMap eqState;
     for (const LiveEqDescriptor &section : LiveEqSections) {
         const QString key = QString::fromLatin1(section.key);
@@ -497,6 +526,13 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         if (key == QStringLiteral("music")) {
             hpType = m_hpType;
             lpType = m_lpType;
+        } else if ((key == QStringLiteral("micA") || key == QStringLiteral("micB")) && model) {
+            // Promote only the captured Mic LP byte. Preserve the existing HP
+            // presentation/default so LP evidence cannot masquerade as HP truth.
+            hpType = model->hpType();
+            lpType = micLpTypeKnown
+                ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false)
+                : model->lpType();
         } else if (model) {
             // Other sections remain evidence-gated until their own reconnect
             // captures identify authoritative type bytes.
@@ -594,7 +630,15 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("btGainDb"), static_cast<int>(fileU8(memory, 0x0020)) - 12},
         {QStringLiteral("uDiskGainDb"), static_cast<int>(fileU8(memory, 0x0021)) - 12},
         {QStringLiteral("digitalGainDb"), static_cast<int>(fileU8(memory, 0x0022)) - 12},
+        {QStringLiteral("noiseGateKnown"), musicNoiseGateKnown},
+        {QStringLiteral("bassKnown"), musicBassKnown},
     };
+    if (musicNoiseGateKnown)
+        music.insert(QStringLiteral("noiseGateDb"),
+                     K500Protocol::musicNoiseGateDbFromRaw(musicNoiseGateRaw));
+    if (musicBassKnown)
+        music.insert(QStringLiteral("bassDb"),
+                     K500Protocol::musicBassDbFromRaw(musicBassRaw));
 
     QVariantMap mainOutput{
         {QStringLiteral("lVolDb"), outputDb(fileU8(memory, 0x0024))},

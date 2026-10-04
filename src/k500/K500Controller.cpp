@@ -195,10 +195,13 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, 0x0020, 9)) - 12;
     m_music.uDiskGainDb = static_cast<int>(fileU8(memory, 0x0021, 8)) - 12;
     m_music.digitalGainDb = static_cast<int>(fileU8(memory, 0x0022, 8)) - 12;
-    // Music Noise Gate readback offset is not yet capture-proven. Preserve the
-    // device scalar for unrelated Top-Music writes until this session explicitly
-    // edits the gate; do not pretend 0x001B is authoritative gate truth.
-    m_music.noiseGateRaw = -1;
+    // MUSIC_TONE_READBACK_20261004_V1 — paired reconnect snapshots prove
+    // direct activeMemory[0x0005], raw 0=OFF and raw 1..41=-90..-50 dB.
+    // This is a direct active-memory byte, not a translated file scalar.
+    const quint8 musicNoiseGateRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicNoiseGate, 0xFF);
+    m_music.noiseGateRaw = K500Protocol::musicNoiseGateRawValid(musicNoiseGateRaw)
+        ? static_cast<int>(musicNoiseGateRaw) : -1;
 
     m_mic.micMaxVol = fileU8(memory, 0x0013, K500Protocol::TopVolumeMax);
     m_mic.topMicVol = qMin<int>(fileU8(memory, 0x0009, 35), m_mic.micMaxVol);
@@ -328,7 +331,16 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
         state.lpType = lpType;
         m_crossovers.insert(key, state);
     };
-    seedCrossover(QStringLiteral("mic"), 0x0098, 0x009A, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
+    // MIC_LP_TYPE_READBACK_20261004_V1 — six reconnect snapshots prove the
+    // LP dropdown at direct activeMemory[0x0014]. Mic HP remains evidence-gated.
+    const quint8 micLpTypeRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    m_micLpTypeKnown = K500Protocol::crossoverFilterCodeValid(micLpTypeRaw);
+    seedCrossover(QStringLiteral("mic"), 0x0098, 0x009A,
+                  QStringLiteral("HP LR 24"),
+                  m_micLpTypeKnown
+                      ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false)
+                      : QStringLiteral("LP LR 24"));
     // MUSIC_CROSSOVER_TYPE_READBACK_V1 — physical Music reconnect captures:
     // activeMemory[0x0007] = HP Type, activeMemory[0x0008] = LP Type.
     seedCrossover(QStringLiteral("music"), 0x009C, 0x009E,
@@ -357,6 +369,7 @@ void K500Controller::clearDeviceState()
     m_danceMicThresholdDb = -50;
     m_danceMicHoldSec = 6;
     m_danceMicSeedKnown = false;
+    m_micLpTypeKnown = false;
     m_eqBypass = K500EqBypassImage{};
     m_eqBypassReady = false;
     m_outputs.clear();
@@ -921,6 +934,16 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
     derived(QStringLiteral("music.bluetoothGainDb"), m_music.bluetoothGainDb);
     derived(QStringLiteral("music.uDiskGainDb"), m_music.uDiskGainDb);
     derived(QStringLiteral("music.digitalGainDb"), m_music.digitalGainDb);
+    if (m_music.noiseGateRaw >= 0) {
+        derived(QStringLiteral("music.noiseGateDb"),
+                K500Protocol::musicNoiseGateDbFromRaw(
+                    static_cast<quint8>(m_music.noiseGateRaw)));
+    }
+    const quint8 musicBassRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicBass, 0xFF);
+    if (K500Protocol::musicBassRawValid(musicBassRaw))
+        derived(QStringLiteral("music.bassDb"),
+                K500Protocol::musicBassDbFromRaw(musicBassRaw));
 
     captured(QStringLiteral("mic.micAVol"), m_mic.micAVol);
     captured(QStringLiteral("mic.micBVol"), m_mic.micBVol);
@@ -976,9 +999,17 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
         captured(prefix + QStringLiteral("hpfHz"), it->hpfHz);
         captured(prefix + QStringLiteral("lpfHz"), it->lpfHz);
         if (it.key() == QStringLiteral("music")) {
-            // Music type bytes are now capture-backed device truth.
+            // Music type bytes are capture-backed device truth.
             captured(prefix + QStringLiteral("hpType"), it->hpType);
             captured(prefix + QStringLiteral("lpType"), it->lpType);
+        } else if (it.key() == QStringLiteral("mic")) {
+            // Only Mic LP has reconnect evidence in this batch. Do not promote
+            // Mic HP merely because the two dropdowns share CMD 0x11.
+            assumed(prefix + QStringLiteral("hpType"), it->hpType);
+            if (m_micLpTypeKnown)
+                captured(prefix + QStringLiteral("lpType"), it->lpType);
+            else
+                assumed(prefix + QStringLiteral("lpType"), it->lpType);
         } else {
             assumed(prefix + QStringLiteral("hpType"), it->hpType);
             assumed(prefix + QStringLiteral("lpType"), it->lpType);

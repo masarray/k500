@@ -249,8 +249,10 @@ int main(int argc, char *argv[])
         putFileU16(memory, 0x009E, 18000); // Music LPF
         // MUSIC_CROSSOVER_TYPE_READBACK_V1 — direct active-memory bytes from
         // physical reconnect captures, not .k500 file-offset defaults.
-        memory[0x0007] = char(0x07); // Music HP Type = HP LR 24
-        memory[0x0008] = char(0x00); // Music LP Type = Bypass
+        memory[K500Protocol::ReadbackOffset::MusicHpType] = char(0x07); // HP LR 24
+        memory[K500Protocol::ReadbackOffset::MusicLpType] = char(0x00); // Bypass
+        memory[K500Protocol::ReadbackOffset::MusicNoiseGate] = char(0x29); // -50 dB
+        memory[K500Protocol::ReadbackOffset::MusicBass] = char(0xF0); // +12.0 dB
 
         // Mic state and dynamics.
         putFileU8(memory, 0x0014, 96);
@@ -267,6 +269,7 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0092, 1);  // EQ link
         putFileU16(memory, 0x0098, 90);
         putFileU16(memory, 0x009A, 16000);
+        memory[K500Protocol::ReadbackOffset::MicLpType] = char(0x03); // LP Bessel 18
 
         // Main output.
         putFileU8(memory, 0x0024, 99); // +12 dB
@@ -362,6 +365,8 @@ int main(int argc, char *argv[])
         putFixedAscii(memory, 0x0385, 0x13, QByteArray("KTV_BT_TEST"));
         putFixedAscii(memory, 0x0398, 0x13, QByteArray("KTV_BLE_TEST"));
 
+        const QString micAHpTypeBeforeHydration = studioEngine.micAEqBands()->hpType();
+        const QString micBHpTypeBeforeHydration = studioEngine.micBEqBands()->hpType();
         int hydrationEdits = 0;
         QObject::connect(&studioEngine, &StudioEngine::stateEdited,
                          [&hydrationEdits](const QString &, const QVariant &) { ++hydrationEdits; });
@@ -381,6 +386,8 @@ int main(int argc, char *argv[])
         const QVariantMap echo = effects.value(QStringLiteral("echo")).toMap();
         const QVariantMap eq = state.value(QStringLiteral("eq")).toMap();
         const QVariantMap musicEq = eq.value(QStringLiteral("music")).toMap();
+        const QVariantMap micAEq = eq.value(QStringLiteral("micA")).toMap();
+        const QVariantMap micBEq = eq.value(QStringLiteral("micB")).toMap();
         const QVariantMap mainEq = eq.value(QStringLiteral("main")).toMap();
         const QVariantMap hydratedMusicBand = studioEngine.musicEqBands()->get(2);
         const QVariantMap hydratedMicBand = studioEngine.micAEqBands()->get(0);
@@ -398,6 +405,8 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.masterFx(), 49.0)
             && qFuzzyCompare(studioEngine.effectInitLevel(), 27.0)
             && studioEngine.musicKey() == 3
+            && qFuzzyCompare(studioEngine.noiseGate(), -50.0)
+            && qFuzzyCompare(studioEngine.bass(), 12.0)
             && qFuzzyCompare(studioEngine.input1Gain(), 3.0)
             && qFuzzyCompare(studioEngine.input2Gain(), -1.0)
             && qFuzzyCompare(studioEngine.bluetoothGain(), 5.0)
@@ -409,6 +418,10 @@ int main(int argc, char *argv[])
             && studioEngine.lpType() == QStringLiteral("Bypass")
             && musicEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
             && musicEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("Bypass")
+            && micAEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 18")
+            && micBEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 18")
+            && micAEq.value(QStringLiteral("hpType")).toString() == micAHpTypeBeforeHydration
+            && micBEq.value(QStringLiteral("hpType")).toString() == micBHpTypeBeforeHydration
             && !musicEq.value(QStringLiteral("bypass")).toBool()
             && !mainEq.value(QStringLiteral("bypass")).toBool()
             && system.value(QStringLiteral("musicInitVol")).toInt() == 25
@@ -434,6 +447,10 @@ int main(int argc, char *argv[])
             && mic.value(QStringLiteral("compRatio")).toInt() == 3
             && qFuzzyCompare(mic.value(QStringLiteral("releaseSec")).toDouble(), 0.2)
             && music.value(QStringLiteral("source")).toString() == QStringLiteral("Digital")
+            && music.value(QStringLiteral("noiseGateKnown")).toBool()
+            && music.value(QStringLiteral("noiseGateDb")).toInt() == -50
+            && music.value(QStringLiteral("bassKnown")).toBool()
+            && qFuzzyCompare(music.value(QStringLiteral("bassDb")).toDouble(), 12.0)
             && qFuzzyCompare(mainOutput.value(QStringLiteral("lVolDb")).toDouble(), 12.0)
             && qFuzzyCompare(mainOutput.value(QStringLiteral("rVolDb")).toDouble(), 10.0)
             && mainOutput.value(QStringLiteral("compThresholdDb")).toInt() == -14
