@@ -2,6 +2,53 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — CI consolidation
+
+### Changed
+
+- Replaced milestone/feature workflow fan-out with one normal **K500 CI** pipeline.
+- Normal Windows CI now compiles once and executes the complete hardware-free regression suite from that same build.
+- Added a fast cross-platform repository contract suite for preset integrity, protocol/readback invariants, UI ownership, updater provenance and CI topology.
+- Pull-request concurrency cancels obsolete exact-head runs; feature branches no longer run duplicate push CI.
+- P4 AddressSanitizer/fuzz/soak is manual hardening instead of an automatic per-commit runner.
+- Updater RC qualification now requires one successful exact-main `K500 CI` run instead of six independent workflow names.
+- Legacy milestone workflows were retired from active Actions; their historical implementation remains available through Git history.
+
+## Unreleased — Final K500 protocol and hardware-ownership closure
+
+### Added
+
+- Closed capture-backed reconnect truth for Music Noise Gate and Music Bass and hydrate them directly from the authoritative 939-byte K500 active-memory image.
+- Closed Mic and output crossover filter-type readback for the capture-proven sections while preserving evidence gates for unsupported filter-type controls.
+- Closed Main/Surround/Center/Sub output-delay readback and write parity, including the native Surround channel-order exception.
+- Closed Adj Manner / VR OFF readback from direct `activeMemory[0x008C]` plus the independent inverse C0 handshake bit, while keeping `CMD 0x07 / RSP 0xF8` as the setter/ACK path.
+- Added front-panel VR ownership semantics: when physical screwdriver trim controls own Music tone and the captured Reverb/Echo trim subset, those software editors remain visible but read-only and visually hardware-owned.
+- Adj Manner changes now perform an explicit post-ACK 939-byte ownership resync before LIVE resumes.
+
+### Fixed
+
+- Retired the old speculative Dance Mic reconnect seed after physical evidence proved file scalar `0x0094` belongs to Adj Manner VR OFF. Dance Mic write encoding remains captured, but live editing fails closed until an independent paired reconnect seed is proven.
+- Corrected canonical evidence promotion for capture-proven Mic/Main/Surround/Center/Sub crossover types instead of leaving physically mapped output types marked assumed.
+- Preserved parallel QRIS/support work from current `main` while integrating the protocol branch, including the shared `src/main.cpp` changes.
+
+### Release qualification
+
+- RC4 predates this final protocol/public-release closure and is therefore not eligible for v1.1.0 stable promotion.
+- The next immutable public candidate is **v1.1.0-rc.5** from the exact post-merge `main` commit.
+- Stable v1.1.0 remains fail-closed until the exact RC5 machine and per-user installer bytes are accepted and recorded in the updater acceptance provenance gate.
+
+## Unreleased — Final musicality preset library
+
+### Changed
+
+- Promoted the hardware-evidenced 2026-10-04 musicality updates for Modes 01, 03, and 05 into the bundled official K500 preset bank.
+- Mode 01 now ships the hardware-accepted Main Balance V2 tonal balance.
+- Mode 03 now ships the auditioned KAR DANGDUT R1 music-balance refinement.
+- Mode 05 now ships the hardware-accepted tempo-aware Pop Kenangan R2: 310 ms echo retained, ~2470 ms reverb decay, 75 ms predelay, clearer center vocal and wider wet halo.
+- Modes 02, 04, and 06–10 intentionally retain their previous official bytes; their evolved R1 files remain research candidates pending mode-specific real-K500 audition.
+- Updated release and consolidated CI guards so packaged, cached and GitHub-synced official presets converge on the evidence-approved mixed bank.
+
+
 ## Unreleased — Voluntary QRIS support prompt
 
 ### Added

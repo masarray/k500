@@ -201,6 +201,11 @@ quint8 crossoverFilterCode(const QString &label)
     return 0x02;
 }
 
+bool crossoverFilterCodeValid(quint8 code)
+{
+    return code <= 0x07;
+}
+
 QString crossoverFilterLabel(quint8 code, bool highPass)
 {
     // MUSIC_CROSSOVER_TYPE_READBACK_V1
@@ -228,7 +233,7 @@ QByteArray crossoverWrite(const QString &section,
                           const QString &kind,
                           double frequencyHz,
                           const QString &filterLabel,
-                          quint8 musicStateByte)
+                          quint8 preservedStateByte)
 {
     const int selector = crossoverSelector(section, kind);
     if (selector < 0)
@@ -242,7 +247,16 @@ QByteArray crossoverWrite(const QString &section,
     body.append(char(selector));
     body.append(char(crossoverFilterCode(filterLabel)));
     appendU16Le(body, frequency);
-    body.append(char(section == QStringLiteral("music") ? musicStateByte : 0x00));
+
+    // MIC_CROSSOVER_TAIL_DONOR_20261004_V1
+    // Physical Mic LP donor-isolation capture proves the final CMD 0x11 data
+    // byte is not a generic non-Music zero: it mirrors current Music Input1
+    // Gain raw (dB + 12). Music already carries its own captured state byte.
+    const bool carriesPreservedState = section == QStringLiteral("music")
+        || section == QStringLiteral("mic")
+        || section == QStringLiteral("micA")
+        || section == QStringLiteral("micB");
+    body.append(char(carriesPreservedState ? preservedStateByte : 0x00));
     return K500Frame::build(body);
 }
 
@@ -256,6 +270,32 @@ quint8 musicNoiseGateRaw(double gateDb)
     const int db = qBound(NativeRange::MusicNoiseGateMinDb, qRound(gateDb),
                           NativeRange::MusicNoiseGateMaxDb);
     return K500Frame::clampByte(db + 91);
+}
+
+bool musicNoiseGateRawValid(quint8 raw)
+{
+    return raw <= 41;
+}
+
+int musicNoiseGateDbFromRaw(quint8 raw)
+{
+    // Caller should gate on musicNoiseGateRawValid(). Clamp defensively so a
+    // malformed byte cannot escape the native semantic domain.
+    const int safe = qBound(0, static_cast<int>(raw), 41);
+    return safe == 0 ? NativeRange::MusicNoiseGateOffDb : safe - 91;
+}
+
+bool musicBassRawValid(quint8 raw)
+{
+    return raw <= 240;
+}
+
+double musicBassDbFromRaw(quint8 raw)
+{
+    // Caller should gate on musicBassRawValid(). The captured active-memory
+    // image stores the same 0.1 dB affine encoding as CMD 0x0C.
+    const int safe = qBound(0, static_cast<int>(raw), 240);
+    return (safe - 120) / 10.0;
 }
 
 QByteArray musicBass(double bassDb)
@@ -299,9 +339,18 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
     body.append(char(K500Frame::clampByte(qRound(state.uDiskGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qRound(state.digitalGainDb + 12.0))));
     body.append(char(K500Frame::clampByte(qBound(-7, state.key, 7) + 7)));
+    // MUSIC_TONE_READBACK_20261004_V1 — reconnect captures prove the gate is
+    // direct activeMemory[0x0005], so an unrelated Top-Music edit must preserve
+    // that byte rather than the historical guessed 0x001B donor.
     body.append(char(state.noiseGateRaw >= 0
                          ? K500Frame::clampByte(qBound(0, state.noiseGateRaw, 41))
-                         : mirrored(0x1B, 0x00)));
+                         : mirrored(ReadbackOffset::MusicNoiseGate, 0x00)));
+
+    // TOP_MUSIC_TAIL_SOURCE_PENDING_20261004 — keep the pre-existing writer
+    // behavior for compatibility, but do NOT promote activeMemory[0x0007] as
+    // captured tail truth: 0x0007 is now proven Music HP Type, and the latest
+    // native CMD 0x02 capture can carry a different tail value. A dedicated
+    // donor-isolation capture is required before changing this preservation path.
     body.append(char(mirrored(0x07, 0x02)));
     return K500Frame::build(body);
 }
@@ -505,13 +554,19 @@ QByteArray echoBlock(const K500EchoBlockState &state, const QByteArray &deviceDa
                                               NativeRange::EchoRepeatMax)));
     data[6] = char(K500Frame::clampByte(qBound(NativeRange::EchoDirectMin, state.direct,
                                               NativeRange::EchoDirectMax)));
-    data[7] = char(K500Frame::clampByte(qBound(-50, state.rightDelayPercent, 50) + 50));
-    data[8] = char(K500Frame::clampByte(qBound(-50, state.rightPredelayPercent, 50) + 50));
+    data[7] = char(K500Frame::clampByte(
+        qBound(NativeRange::EchoRightDelayMinPercent, state.rightDelayPercent,
+               NativeRange::EchoRightDelayMaxPercent) + 50));
+    data[8] = char(K500Frame::clampByte(
+        qBound(NativeRange::EchoRightPredelayMinPercent, state.rightPredelayPercent,
+               NativeRange::EchoRightPredelayMaxPercent) + 50));
     writeU16Le(data, 9, qBound(NativeRange::FxHpfMinHz, state.hpfHz, NativeRange::FxHpfMaxHz));
     writeU16Le(data, 11, qBound(NativeRange::FxLpfMinHz, state.lpfHz, NativeRange::FxLpfMaxHz));
     writeU16Le(data, 13, qBound(NativeRange::EchoDelayMinMs, state.leftDelayMs,
                                 NativeRange::EchoDelayMaxMs));
-    writeU16Le(data, 15, qBound(0, state.leftPredelayMs, 65535));
+    writeU16Le(data, 15, qBound(NativeRange::EchoLeftPredelayMinMs,
+                                state.leftPredelayMs,
+                                NativeRange::EchoLeftPredelayMaxMs));
 
     QByteArray body;
     body.reserve(24);
@@ -696,6 +751,14 @@ bool selfTest(QString *error)
     if (crossoverFilterLabel(0x02, false) != QStringLiteral("LP Butter 12")) return fail(QStringLiteral("Music LP Butter12 decode mismatch"));
 
     if (!expect(crossoverWrite(QStringLiteral("music"), QStringLiteral("hpf"), 95.0, QStringLiteral("HP Butter 12"), 0x32), {0xAA, 0x06, 0x11, 0x02, 0x02, 0x5F, 0x00, 0x32, 0x54}, QStringLiteral("music crossover"))) return false;
+    // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — exact physical LP vectors while
+    // Music Input1 raw is 0x0C (0 dB) and 0x09 (-3 dB).
+    if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("lpf"), 16000.0, QStringLiteral("LP Butter 24"), 0x0C),
+                {0xAA, 0x06, 0x11, 0x01, 0x06, 0x80, 0x3E, 0x0C, 0x18},
+                QStringLiteral("mic LP donor Input1 raw 0x0C"))) return false;
+    if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("lpf"), 16000.0, QStringLiteral("LP LR 24"), 0x09),
+                {0xAA, 0x06, 0x11, 0x01, 0x07, 0x80, 0x3E, 0x09, 0x1A},
+                QStringLiteral("mic LP donor Input1 raw 0x09"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("mic"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")), {0xAA, 0x06, 0x11, 0x00, 0x02, 0xE8, 0x03, 0x00, 0xFC}, QStringLiteral("mic HPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("main"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x05, 0x02, 0xE8, 0x03, 0x00, 0xF7}, QStringLiteral("main LPF selector"))) return false;
     if (!crossoverWrite(QStringLiteral("reverb"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("Reverb crossover must use captured CMD 0x0B block"));
@@ -705,6 +768,22 @@ bool selfTest(QString *error)
     if (!expect(crossoverWrite(QStringLiteral("sub"), QStringLiteral("lpf"), 1000.0, QStringLiteral("LP Butter 12")), {0xAA, 0x06, 0x11, 0x0F, 0x02, 0xE8, 0x03, 0x00, 0xED}, QStringLiteral("sub LPF selector"))) return false;
     if (!expect(crossoverWrite(QStringLiteral("center"), QStringLiteral("lpf"), 1474.0, QStringLiteral("Bypass")), {0xAA, 0x06, 0x11, 0x0D, 0x00, 0xC2, 0x05, 0x00, 0x15}, QStringLiteral("center LPF bypass preserves cutoff"))) return false;
     if (!crossoverWrite(QStringLiteral("unknown"), QStringLiteral("hpf"), 1000.0, QStringLiteral("HP Butter 12")).isEmpty()) return fail(QStringLiteral("unsupported crossover section must not produce a frame"));
+
+    if (!musicNoiseGateRawValid(0) || !musicNoiseGateRawValid(41)
+        || musicNoiseGateRawValid(42)
+        || musicNoiseGateDbFromRaw(0) != NativeRange::MusicNoiseGateOffDb
+        || musicNoiseGateDbFromRaw(1) != -90
+        || musicNoiseGateDbFromRaw(41) != -50)
+        return fail(QStringLiteral("Music Noise Gate readback decoder mismatch"));
+    if (!musicBassRawValid(0) || !musicBassRawValid(240)
+        || musicBassRawValid(241)
+        || !qFuzzyCompare(musicBassDbFromRaw(0) + 100.0, 88.0)
+        || !qFuzzyCompare(musicBassDbFromRaw(120) + 100.0, 100.0)
+        || !qFuzzyCompare(musicBassDbFromRaw(240) + 100.0, 112.0))
+        return fail(QStringLiteral("Music Bass readback decoder mismatch"));
+    if (!crossoverFilterCodeValid(0) || !crossoverFilterCodeValid(7)
+        || crossoverFilterCodeValid(8))
+        return fail(QStringLiteral("crossover filter-code validity mismatch"));
 
     K500MusicBlockState music;
     if (!expect(topMusicBlock(music, {}), {0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09, 0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}, QStringLiteral("top music default"))) return false;
@@ -761,6 +840,19 @@ bool selfTest(QString *error)
                 {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
                 QStringLiteral("Music Noise Gate -50 capture"))) return false;
 
+    // MUSIC_TONE_READBACK_20261004_V1 — poison the historical 0x001B gate
+    // donor while leaving the legacy tail seed untouched. This regression locks
+    // only the newly proven gate source; it intentionally does not claim a new
+    // Top-Music tail source.
+    K500MusicBlockState reconnectGateCapture = gateCapture;
+    reconnectGateCapture.noiseGateRaw = -1;
+    QByteArray reconnectGateScalars = gateScalars;
+    reconnectGateScalars[ReadbackOffset::MusicNoiseGate] = char(0x29);
+    reconnectGateScalars[0x1B] = char(0x7F); // poison old guessed gate donor
+    if (!expect(topMusicBlock(reconnectGateCapture, reconnectGateScalars),
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
+                QStringLiteral("Music Gate reconnect readback donor"))) return false;
+
     if (!expect(musicBass(-12.0), {0xAA,0x06,0x0C,0x02,0x00,0x00,0x00,0x09,0xE3},
                 QStringLiteral("Music Bass -12 capture"))) return false;
     if (!expect(musicBass(0.0), {0xAA,0x06,0x0C,0x02,0x00,0x78,0x00,0x09,0x6B},
@@ -770,7 +862,10 @@ bool selfTest(QString *error)
     QByteArray scalars(0x40, char(0));
     // Poison the old mirrored offset: captured Music Init now comes from
     // hydrated/editable state while the still-unproven neighbours stay seeded.
-    scalars[0x03] = char(0x7F); scalars[0x04] = char(0x52); scalars[0x1B] = char(0x0B); scalars[0x07] = char(0x06);
+    scalars[0x03] = char(0x7F); scalars[0x04] = char(0x52);
+    scalars[ReadbackOffset::MusicNoiseGate] = char(0x0B);
+    scalars[0x1B] = char(0x7F); // poison historical guessed gate donor
+    scalars[0x07] = char(0x06); // legacy tail seed, still evidence-gated
     music.topMusicVol = 70; music.musicInitVol = 49; music.musicMaxVol = 82; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
     if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music captured init scalar"))) return false;
 
@@ -969,29 +1064,56 @@ bool selfTest(QString *error)
 
     K500EchoBlockState echoLow = echo;
     echoLow.level = -1; echoLow.repeat = -1; echoLow.direct = -1;
+    echoLow.rightDelayPercent = -999; echoLow.rightPredelayPercent = -999;
     echoLow.hpfHz = -1; echoLow.lpfHz = 1; echoLow.leftDelayMs = -1;
+    echoLow.leftPredelayMs = -1;
     K500EchoBlockState echoMin = echoLow;
     echoMin.level = NativeRange::EchoLevelMin;
     echoMin.repeat = NativeRange::EchoRepeatMin;
     echoMin.direct = NativeRange::EchoDirectMin;
+    echoMin.rightDelayPercent = NativeRange::EchoRightDelayMinPercent;
+    echoMin.rightPredelayPercent = NativeRange::EchoRightPredelayMinPercent;
     echoMin.hpfHz = NativeRange::FxHpfMinHz;
     echoMin.lpfHz = NativeRange::FxLpfMinHz;
     echoMin.leftDelayMs = NativeRange::EchoDelayMinMs;
+    echoMin.leftPredelayMs = NativeRange::EchoLeftPredelayMinMs;
     if (echoBlock(echoLow, echoSeed) != echoBlock(echoMin, echoSeed))
         return fail(QStringLiteral("Echo native minimum clamp mismatch"));
 
     K500EchoBlockState echoHigh = echo;
     echoHigh.level = 999; echoHigh.repeat = 999; echoHigh.direct = 999;
+    echoHigh.rightDelayPercent = 999; echoHigh.rightPredelayPercent = 999;
     echoHigh.hpfHz = 99999; echoHigh.lpfHz = 99999; echoHigh.leftDelayMs = 99999;
+    echoHigh.leftPredelayMs = 99999;
     K500EchoBlockState echoMax = echoHigh;
     echoMax.level = NativeRange::EchoLevelMax;
     echoMax.repeat = NativeRange::EchoRepeatMax;
     echoMax.direct = NativeRange::EchoDirectMax;
+    echoMax.rightDelayPercent = NativeRange::EchoRightDelayMaxPercent;
+    echoMax.rightPredelayPercent = NativeRange::EchoRightPredelayMaxPercent;
     echoMax.hpfHz = NativeRange::FxHpfMaxHz;
     echoMax.lpfHz = NativeRange::FxLpfMaxHz;
     echoMax.leftDelayMs = NativeRange::EchoDelayMaxMs;
+    echoMax.leftPredelayMs = NativeRange::EchoLeftPredelayMaxMs;
     if (echoBlock(echoHigh, echoSeed) != echoBlock(echoMax, echoSeed))
         return fail(QStringLiteral("Echo native maximum clamp mismatch"));
+
+    // ECHO_TIMING_ENDPOINTS_20261004_V1 — exact physical endpoint vectors.
+    QByteArray endpointSeed = bytes({0x01,0x64,0x02,0x64,0x02,0x40,0x64,0x00,0x00,0x26,0x02,0x68,0x10,0x18,0x01,0x00,0x00,0xC8,0x00,0x00,0x00,0x00});
+    K500EchoBlockState endpoint;
+    endpoint.level = 100; endpoint.repeat = 2; endpoint.direct = 100;
+    endpoint.hpfHz = 550; endpoint.lpfHz = 4200; endpoint.leftDelayMs = 280;
+    endpoint.rightDelayPercent = -50; endpoint.rightPredelayPercent = -50;
+    endpoint.leftPredelayMs = 0;
+    if (!expect(K500Frame::toUsbFrame(echoBlock(endpoint, endpointSeed)),
+                {0xAA,0x17,0x00,0x0D,0x01,0x64,0x02,0x64,0x02,0x40,0x64,0x00,0x00,0x26,0x02,0x68,0x10,0x18,0x01,0x00,0x00,0xC8,0x00,0x00,0x00,0x00,0xEA},
+                QStringLiteral("Echo timing minima capture"))) return false;
+    endpoint.rightDelayPercent = 50;
+    endpoint.rightPredelayPercent = 50;
+    endpoint.leftPredelayMs = 100;
+    if (!expect(K500Frame::toUsbFrame(echoBlock(endpoint, endpointSeed)),
+                {0xAA,0x17,0x00,0x0D,0x01,0x64,0x02,0x64,0x02,0x40,0x64,0x64,0x64,0x26,0x02,0x68,0x10,0x18,0x01,0x64,0x00,0xC8,0x00,0x00,0x00,0x00,0xBE},
+                QStringLiteral("Echo timing endpoint composition"))) return false;
 
     // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — physical Music reconnect captures:
     // FD = Music EQ ACTIVE, 7D = Music EQ BYPASSED (delta 0x80).

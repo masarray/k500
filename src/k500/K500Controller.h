@@ -112,6 +112,7 @@ private:
     int m_danceMicThresholdDb = -50;
     int m_danceMicHoldSec = 6;
     bool m_danceMicSeedKnown = false;
+    bool m_micLpTypeKnown = false;
     K500ReverbBlockState m_reverb;
     QByteArray m_reverbRaw;
     K500EchoBlockState m_echo;

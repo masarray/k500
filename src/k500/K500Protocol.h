@@ -106,6 +106,10 @@ constexpr int TopVolumeMax = 84;
 constexpr int ReverbDataLength = 15;
 constexpr int EchoDataLength = 22;
 constexpr int OutputDataLength = 35;
+// Canonical manufacturer active-memory geometry. Keep transport/readback
+// consumers on these shared constants instead of duplicating magic numbers.
+constexpr int ActiveMemorySize = 0x03AB;       // 939 bytes, 0x0000..0x03AA
+constexpr int ActiveMemoryBlockSize = 0x003A;  // 58-byte CMD 0x40 chunks
 
 // K500_NATIVE_VALUE_CONTRACT_V1
 // These bounds mirror the manufacturer UI / captured native behavior. They are
@@ -136,6 +140,13 @@ constexpr int EchoDirectMin = 0;
 constexpr int EchoDirectMax = 100;
 constexpr int EchoDelayMinMs = 0;
 constexpr int EchoDelayMaxMs = 1000;
+// ECHO_TIMING_ENDPOINTS_20261004_V1 — physical native UI endpoint sweeps.
+constexpr int EchoRightDelayMinPercent = -50;
+constexpr int EchoRightDelayMaxPercent = 50;
+constexpr int EchoRightPredelayMinPercent = -50;
+constexpr int EchoRightPredelayMaxPercent = 50;
+constexpr int EchoLeftPredelayMinMs = 0;
+constexpr int EchoLeftPredelayMaxMs = 100;
 
 constexpr int MusicNoiseGateOffDb = -91; // UI sentinel displayed as OFF
 constexpr int MusicNoiseGateMinDb = -90;
@@ -161,6 +172,36 @@ constexpr int OutputDelayMaxMs = 50;
 constexpr int BtNameMaxLength = 8;
 } // namespace NativeRange
 
+// CAPTURED_ACTIVE_MEMORY_OFFSETS_20261004_V1
+// These are direct indices into the 939-byte active-memory image returned by
+// CMD 0x40. They are NOT .k500/file scalar offsets and must never pass through
+// fileU8()/fileU16() translation.
+namespace ReadbackOffset {
+constexpr int MusicNoiseGate = 0x0005;
+constexpr int MicHpType = 0x0013;
+constexpr int MicLpType = 0x0014;
+constexpr int MainHpType = 0x002C;
+constexpr int MainLpType = 0x002E;
+constexpr int SurroundHpType = 0x0040;
+constexpr int SurroundLpType = 0x0042;
+constexpr int CenterHpType = 0x0054;
+constexpr int CenterLpType = 0x0056;
+constexpr int SubHpType = 0x0068;
+constexpr int SubLpType = 0x006A;
+constexpr int MainLDelay = 0x00CB;
+constexpr int MainRDelay = 0x00CD;
+constexpr int SurroundLDelay = 0x00CF;
+constexpr int SurroundRDelay = 0x00D1;
+constexpr int CenterDelay = 0x00D3;
+constexpr int SubDelay = 0x00D5;
+// ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — paired reconnect captures.
+constexpr int AdjMannerVrOff = 0x008C;
+// MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — physical donor-isolation capture
+// proves Mic CMD 0x11 final data byte mirrors Music Input1 Gain raw.
+constexpr int MusicInput1Gain = 0x0016;
+constexpr int MusicBass = 0x00DF;
+} // namespace ReadbackOffset
+
 QByteArray heartbeat();
 QByteArray handshake();
 QByteArray mute(bool enabled);
@@ -171,10 +212,14 @@ QByteArray crossoverWrite(const QString &section,
                           const QString &kind,
                           double frequencyHz,
                           const QString &filterLabel,
-                          quint8 musicStateByte = 0x32);
+                          quint8 preservedStateByte = 0x00);
 QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &deviceScalars);
 QByteArray musicBass(double bassDb);
 quint8 musicNoiseGateRaw(double gateDb);
+bool musicNoiseGateRawValid(quint8 raw);
+int musicNoiseGateDbFromRaw(quint8 raw);
+bool musicBassRawValid(quint8 raw);
+double musicBassDbFromRaw(quint8 raw);
 QByteArray topMicBlock(const K500MicBlockState &state, const QByteArray &deviceScalars);
 QByteArray topEffectBlock(const K500EffectBlockState &state, const QByteArray &deviceScalars);
 QByteArray effectInitLevel(int initLevel, int topEffectVol);
@@ -195,6 +240,7 @@ QByteArray outputBlock(const QString &section,
 QByteArray micEqLink(bool enabled);
 
 quint8 crossoverFilterCode(const QString &label);
+bool crossoverFilterCodeValid(quint8 code);
 // MUSIC_CROSSOVER_TYPE_READBACK_V1 — manufacturer reconnect captures map
 // Music HP Type to activeMemory[0x0007] and LP Type to activeMemory[0x0008].
 // Decode the shared native 0..7 filter enum into the UI labels used by K500.

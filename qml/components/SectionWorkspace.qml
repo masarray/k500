@@ -12,6 +12,12 @@ Item {
     readonly property int rightPanelWidth: 216
     readonly property int masterWidth: rightPanelWidth
 
+    readonly property var systemState: engine && engine.deviceState
+                                       ? engine.deviceState.system : null
+    readonly property bool manualVrActive: systemState
+                                           && Boolean(systemState.adjMannerVrOffKnown)
+                                           && !Boolean(systemState.adjMannerVrOff)
+
     // LOWER_RACK_SPACE_UTILIZATION_V2
     // Keep the rack height fixed while reserving useful horizontal travel.
     // RIGHT_COLUMN_WIDTH_PARITY_V1
@@ -156,9 +162,9 @@ Item {
                                     // Manufacturer UI: LEVEL 0..100, DECAY 500..5000 ms,
                                     // PRE 0..100 ms, DIRECT 0..100.
                                     channels: [
-                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:500,to:5000,step:5,unit:"ms",decimals:0},
-                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:100,step:1,unit:"ms",decimals:0},
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","reverb","level",100)),from:0,to:100,step:1,unit:"%",decimals:0,editable:!root.manualVrActive,accentColor:root.manualVrActive?Theme.green:Theme.accent},
+                                        {label:"DECAY",value:Number(root.nestedValue("effects","reverb","decayMs",1575)),from:500,to:5000,step:5,unit:"ms",decimals:0,editable:!root.manualVrActive,accentColor:root.manualVrActive?Theme.green:Theme.accent},
+                                        {label:"PRE",value:Number(root.nestedValue("effects","reverb","predelayMs",25)),from:0,to:100,step:1,unit:"ms",decimals:0,editable:!root.manualVrActive,accentColor:root.manualVrActive?Theme.green:Theme.accent},
                                         {label:"DIRECT",value:Number(root.nestedValue("effects","reverb","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
@@ -168,15 +174,14 @@ Item {
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Tone"
+                                    // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Reverb UI
+                                    // exposes HPF/LPF cutoff only; there is no filter-type selector.
+                                    showTypes: false
                                     fields: [
                                         {label:"HPF",value:root.engine.reverbEqBands.hpfHz,from:root.engine.reverbEqBands.hpfMinHz,to:root.engine.reverbEqBands.hpfMaxHz,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.reverbEqBands.lpfHz,from:root.engine.reverbEqBands.lpfMinHz,to:root.engine.reverbEqBands.lpfMaxHz,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType: root.engine.reverbEqBands.hpType
-                                    lpType: root.engine.reverbEqBands.lpType
                                     onFieldEdited: function(index,value){ if(index===0)root.engine.reverbEqBands.setHpfHz(value);else root.engine.reverbEqBands.setLpfHz(value) }
-                                    onHpTypeEdited: function(value){ root.engine.reverbEqBands.setHpType(value) }
-                                    onLpTypeEdited: function(value){ root.engine.reverbEqBands.setLpType(value) }
                                 }
                             }
                         }
@@ -193,9 +198,9 @@ Item {
                                     // ECHO_CMD0D_CAPTURED_V2 — all four visible controls are live
                                     // native fields; REPEAT uses the captured 0..10 scalar range.
                                     channels: [
-                                        {label:"LEVEL",value:Number(root.nestedValue("effects","echo","level",100)),from:0,to:100,step:1,unit:"%",decimals:0},
-                                        {label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",2)),from:0,to:10,step:1,unit:"",decimals:0},
-                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",300)),from:0,to:1000,step:1,unit:"ms",decimals:0},
+                                        {label:"LEVEL",value:Number(root.nestedValue("effects","echo","level",100)),from:0,to:100,step:1,unit:"%",decimals:0,editable:!root.manualVrActive,accentColor:root.manualVrActive?Theme.green:Theme.accent},
+                                        {label:"REPEAT",value:Number(root.nestedValue("effects","echo","repeat",2)),from:0,to:10,step:1,unit:"",decimals:0,editable:!root.manualVrActive,accentColor:root.manualVrActive?Theme.green:Theme.accent},
+                                        {label:"DELAY",value:Number(root.nestedValue("effects","echo","leftDelayMs",300)),from:0,to:1000,step:1,unit:"ms",decimals:0,editable:!root.manualVrActive,accentColor:root.manualVrActive?Theme.green:Theme.accent},
                                         {label:"DIRECT",value:Number(root.nestedValue("effects","echo","direct",100)),from:0,to:100,step:1,unit:"%",decimals:0}
                                     ]
                                 }
@@ -205,15 +210,14 @@ Item {
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
                                     title: "Tone"
+                                    // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Echo UI
+                                    // exposes HPF/LPF cutoff only; there is no filter-type selector.
+                                    showTypes: false
                                     fields: [
                                         {label:"HPF",value:root.engine.echoEqBands.hpfHz,from:root.engine.echoEqBands.hpfMinHz,to:root.engine.echoEqBands.hpfMaxHz,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.engine.echoEqBands.lpfHz,from:root.engine.echoEqBands.lpfMinHz,to:root.engine.echoEqBands.lpfMaxHz,step:1,unit:"Hz",decimals:0}
                                     ]
-                                    hpType: root.engine.echoEqBands.hpType
-                                    lpType: root.engine.echoEqBands.lpType
                                     onFieldEdited: function(index,value){ if(index===0)root.engine.echoEqBands.setHpfHz(value);else root.engine.echoEqBands.setLpfHz(value) }
-                                    onHpTypeEdited: function(value){ root.engine.echoEqBands.setHpType(value) }
-                                    onLpTypeEdited: function(value){ root.engine.echoEqBands.setLpType(value) }
                                 }
                             }
                         }

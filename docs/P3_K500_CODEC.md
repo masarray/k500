@@ -78,7 +78,7 @@ The v1.0 official library is bundled into the application and may also receive v
 
 Mode 01 distribution is intentionally pinned to the official `KONSER NYANYI` file:
 
-`SHA-256 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
+`SHA-256 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4`
 
 The exact native `CONCERT HIFI V4` donor remains rollback/provenance evidence for the pre-v1 recovery. The current official preset was created by surgical donor-based edits rather than a reconstructed/normalized serialization.
 

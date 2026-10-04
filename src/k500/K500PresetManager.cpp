@@ -8,8 +8,6 @@
 #include <algorithm>
 
 namespace {
-constexpr int ActiveMemorySize = 0x03AB;
-constexpr int ActiveMemoryBlockSize = 0x003A;
 constexpr int ActiveMemoryInterBlockMs = 35;
 constexpr int ReadbackTimeoutMs = 2600;
 constexpr int RecallHandshakeTimeoutMs = 3000;
@@ -34,6 +32,12 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
     // DeviceManager; P2 responses are consumed only while its stage is Ready.
     connect(&m_manager->m_io, &K500WinIo::bytesReceived,
             this, &K500PresetManager::onBytesReceived);
+    // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — hydrate the exact direct
+    // active-memory flag on initial connect, Recall and authoritative reconciliation.
+    connect(m_manager, &K500DeviceManager::activeMemoryReady,
+            this, &K500PresetManager::hydrateAdjMannerFromMemory);
+    connect(m_manager, &K500DeviceManager::reconciliationMemoryReady,
+            this, &K500PresetManager::hydrateAdjMannerFromMemory);
     connect(m_manager, &K500DeviceManager::statusChanged, this, [this] {
         emit connectedChanged();
         if (!connected()) {
@@ -52,9 +56,8 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
                 m_useInitVolumeKnown = false;
                 emit useInitVolumeChanged();
             }
-            // No reconnect/readback bit has been captured for Adj Manner VR OFF.
-            // Keep it explicitly unknown after transport loss; only RSP 0xF8
-            // confirms a value set in the current session.
+            // Offline state is never device truth. Reconnect C0/full readback will
+            // restore Adj Manner from the capture-proven hardware flag.
             if (m_adjMannerVrOffKnown || m_adjMannerVrOff) {
                 m_adjMannerVrOff = false;
                 m_adjMannerVrOffKnown = false;
@@ -287,9 +290,9 @@ void K500PresetManager::setUseInitVolume(bool enabled)
 
 void K500PresetManager::setAdjMannerVrOff(bool enabled)
 {
-    // ADJ_MANNER_VR_OFF_ACK_V1 — the supplied toggle capture proves CMD 0x07
-    // and response 0xF8, but no reconnect readback field. Treat the ACK as
-    // current-session device truth and return to unknown after disconnect.
+    // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — CMD 0x07/RSP 0xF8 is the
+    // captured setter, while reconnect truth is independently available through
+    // C0 data[19] bit0 and direct activeMemory[0x008C].
     if (!connected()) {
         const QString error = QStringLiteral("Adj Manner VR OFF memerlukan K500 connected.");
         if (m_manager) m_manager->setError(error);
@@ -494,6 +497,25 @@ void K500PresetManager::onBytesReceived(const QByteArray &bytes)
         onResponse(response);
 }
 
+void K500PresetManager::hydrateAdjMannerFromMemory(const QByteArray &memory)
+{
+    const int offset = K500Protocol::ReadbackOffset::AdjMannerVrOff;
+    if (memory.size() <= offset)
+        return;
+
+    const quint8 raw = static_cast<quint8>(static_cast<unsigned char>(memory.at(offset)));
+    if (raw > 1)
+        return;
+
+    const bool enabled = raw == 1;
+    if (m_adjMannerVrOffKnown && m_adjMannerVrOff == enabled)
+        return;
+
+    m_adjMannerVrOff = enabled;
+    m_adjMannerVrOffKnown = true;
+    emit adjMannerVrOffChanged();
+}
+
 void K500PresetManager::onResponse(const K500Response &response)
 {
     // The C0 handshake reports active slot zero-based. Capture it during both
@@ -513,6 +535,14 @@ void K500PresetManager::onResponse(const K500Response &response)
             m_useInitVolume = deviceUseInit;
             m_useInitVolumeKnown = true;
             emit useInitVolumeChanged();
+        }
+
+        bool deviceAdjMannerVrOff = false;
+        if (K500ResponseParser::tryDecodeAdjMannerVrOff(response, &deviceAdjMannerVrOff)
+            && (!m_adjMannerVrOffKnown || m_adjMannerVrOff != deviceAdjMannerVrOff)) {
+            m_adjMannerVrOff = deviceAdjMannerVrOff;
+            m_adjMannerVrOffKnown = true;
+            emit adjMannerVrOffChanged();
         }
     }
 
@@ -553,9 +583,9 @@ void K500PresetManager::onResponse(const K500Response &response)
         clearTimeout();
         m_adjMannerVrOffKnown = true;
         emit adjMannerVrOffChanged();
-        setProgress(QStringLiteral("Adj Manner VR OFF %1 · device acknowledged")
+        setProgress(QStringLiteral("Adj Manner VR OFF %1 · acknowledged · refreshing 939-byte ownership truth")
                         .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
-        finishOperation(QStringLiteral("Adj Manner VR OFF"));
+        startReadback(ReadbackPurpose::AdjManner);
         return;
     }
 
@@ -589,7 +619,7 @@ void K500PresetManager::onResponse(const K500Response &response)
 void K500PresetManager::startReadback(ReadbackPurpose purpose)
 {
     m_readbackPurpose = purpose;
-    m_readbackMemory = QByteArray(ActiveMemorySize, char(0));
+    m_readbackMemory = QByteArray(K500Protocol::ActiveMemorySize, char(0));
     m_readOffset = 0;
     m_pendingReadLength = 0;
     m_step = Step::Readback;
@@ -600,15 +630,15 @@ void K500PresetManager::sendNextReadBlock()
 {
     if (m_step != Step::Readback)
         return;
-    if (m_readOffset >= ActiveMemorySize) {
+    if (m_readOffset >= K500Protocol::ActiveMemorySize) {
         finishReadback();
         return;
     }
 
-    m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_readOffset);
+    m_pendingReadLength = qMin(K500Protocol::ActiveMemoryBlockSize, K500Protocol::ActiveMemorySize - m_readOffset);
     const quint8 mode = m_manager->m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
     setProgress(QStringLiteral("%1 · reading K500 %2/%3")
-                    .arg(operationName(m_operation)).arg(m_readOffset).arg(ActiveMemorySize));
+                    .arg(operationName(m_operation)).arg(m_readOffset).arg(K500Protocol::ActiveMemorySize));
     if (!send(K500Protocol::readBlock(static_cast<quint16>(m_readOffset),
                                       static_cast<quint16>(m_pendingReadLength), mode),
               QStringLiteral("P2 read 0x%1 len %2")
@@ -634,7 +664,7 @@ void K500PresetManager::acceptReadBlock(const QByteArray &data)
     m_readOffset += m_pendingReadLength;
     m_pendingReadLength = 0;
 
-    if (m_readOffset >= ActiveMemorySize) {
+    if (m_readOffset >= K500Protocol::ActiveMemorySize) {
         finishReadback();
         return;
     }
@@ -646,7 +676,7 @@ void K500PresetManager::acceptReadBlock(const QByteArray &data)
 
 void K500PresetManager::finishReadback()
 {
-    if (m_readbackMemory.size() != ActiveMemorySize || m_readOffset < ActiveMemorySize) {
+    if (m_readbackMemory.size() != K500Protocol::ActiveMemorySize || m_readOffset < K500Protocol::ActiveMemorySize) {
         failOperation(operationName(m_operation), QStringLiteral("P2 full readback tidak lengkap."));
         return;
     }
@@ -680,6 +710,12 @@ void K500PresetManager::finishReadback()
     if (m_readbackPurpose == ReadbackPurpose::BtIdentity) {
         setProgress(QStringLiteral("BT Name · 939-byte identity refresh complete"));
         finishOperation(QStringLiteral("BT Name"));
+        return;
+    }
+
+    if (m_readbackPurpose == ReadbackPurpose::AdjManner) {
+        setProgress(QStringLiteral("Adj Manner VR OFF · 939-byte ownership resync complete"));
+        finishOperation(QStringLiteral("Adj Manner VR OFF"));
         return;
     }
 

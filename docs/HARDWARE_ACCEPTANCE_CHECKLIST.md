@@ -73,6 +73,42 @@ Test USB for every stable release that materially changes these paths. Use the B
 
 Fields that remain read-only in the parity matrix are not acceptance failures; they are intentional protocol boundaries.
 
+## Music Tone + Mic LP readback — 2026-10-04
+
+- [ ] Reconnect with Music Noise Gate OFF hydrates OFF from direct `activeMemory[0x0005]=0`.
+- [ ] Reconnect at -90 dB and -50 dB hydrates -90/-50 from raw 1/41 without any startup replay write.
+- [ ] Editing an unrelated Top-Music field preserves the hardware Noise Gate value; no stale `0x001B` fallback is replayed as the gate.
+- [ ] The unresolved Top-Music trailing byte is not presented as capture-mapped truth and is not remapped from one-state correlation.
+- [ ] Reconnect Music Bass at -12/0/+12 dB hydrates -12/0/+12 from direct `activeMemory[0x00DF]=0/120/240`.
+- [ ] Reconnect Mic LP at Bypass/Bessel12/Butter12/Bessel18/Butter18/Butter24 hydrates enum 0/1/2/3/4/5 from direct `activeMemory[0x0014]`.
+- [ ] Mic A and Mic B LP presentation follow the shared Mic LP device field while hydration emits zero `stateEdited` events.
+- [ ] Mic HP reconnect hydrates Bessel12 from direct `activeMemory[0x0013]=1` in State A; Mic LP remains direct `0x0014`.
+- [ ] Mic LP type edits preserve current Music Input1 Gain raw in the final CMD `0x11` byte: -3 dB -> `0x09`, 0 dB -> `0x0C`.
+- [ ] Change Input2/BT gain while Input1 is unchanged and confirm the Mic CMD `0x11` tail does not follow those controls.
+- [ ] After a live Input1 edit, a later Mic HP/LP edit must not roll Input1 back to its connect-time value.
+
+## Output crossover-type reconnect — 2026-10-04
+
+- [ ] Mic reconnect hydrates HP/LP type from direct activeMemory[0x0013]/[0x0014].
+- [ ] Main reconnect hydrates HP/LP type from direct activeMemory[0x002C]/[0x002E].
+- [ ] Surround reconnect hydrates HP/LP type from direct activeMemory[0x0040]/[0x0042].
+- [ ] Center reconnect hydrates HP/LP type from direct activeMemory[0x0054]/[0x0056].
+- [ ] Sub reconnect hydrates HP/LP type from direct activeMemory[0x0068]/[0x006A].
+- [ ] State A exactly reproduces Mic 1/2, Main 3/4, Surround 5/6, Center 7/1 and the actually captured Sub 7/2.
+- [ ] Main/Center/Sub delay UI is **not** hydrated from those type offsets.
+- [ ] Distinct-delay reconnect 5/10/15/20/25/30 hydrates Main L/R, Surround L/R, Center and Sub from active `0x00CB/0x00CD/0x00CF/0x00D1/0x00D3/0x00D5`.
+- [ ] Preset persistence uses file scalars `0x00D4/0x00D6/0x00D8/0x00DA/0x00DC/0x00DE` and never the old low filter-type offsets.
+
+## Echo timing endpoints + FX frequency-only UI — 2026-10-04
+
+- [ ] Echo Right Delay clamps to -50..+50% and serializes `data[7] = percent + 50`.
+- [ ] Echo Right Predelay clamps to -50..+50% and serializes `data[8] = percent + 50`.
+- [ ] Echo Left Predelay clamps to 0..100 ms and serializes `data[15..16]` uint16 LE.
+- [ ] Reconnect hydration exposes Echo Direct, Right Delay, Right Predelay, Left Delay and Left Predelay from hardware truth.
+- [ ] Reverb Tone panel shows HPF/LPF frequency only; no HP/LP Type dropdown is present.
+- [ ] Echo Tone panel shows HPF/LPF frequency only; no HP/LP Type dropdown is present.
+- [ ] Programmatic/offline Reverb/Echo HP/LP type edits fail closed rather than mutating unproven bytes.
+
 ## Section-navigation crash regression
 
 The v1 baseline uses fixed EQ graph/model lifetimes. If a change touches QML section/workspace lifecycle, run repeated transitions including:
@@ -108,7 +144,10 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] USB Record 1/4/6 uses CMD 0x3E selector 0x03 and reconnect readback returns the same UI value.
 - [ ] Mic Max and UDisk Record use their capture-mapped live writes and reconnect to the same device values.
 - [ ] Adj Manner VR OFF ON/OFF receives RSP 0xF8.
-- [ ] After reconnect, Adj Manner VR OFF returns to DEVICE STATE UNKNOWN rather than claiming a stale local value.
+- [ ] Reconnect hydrates unticked/OFF as activeMemory[0x008C]=0 and ticked/ON as 1.
+- [ ] C0 reconnect state agrees: data[19] bit0 set = FRONT VR ACTIVE, clear = SOFTWARE CONTROL.
+- [ ] With FRONT VR ACTIVE, Music Bass/Mid/Mid Freq/Treble plus captured Reverb/Echo trim-owned controls are software-read-only and visually hardware-owned.
+- [ ] With VR OFF ON, those software editors regain ownership without Adj Manner rewriting their values.
 - [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
 - [ ] With Use Init OFF, Recall does not locally synthesize those master values; the UI follows the 939-byte K500 readback.
 
@@ -137,8 +176,8 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Editing Threshold preserves the current hardware Hold Time in the same pair frame.
 - [ ] Editing Hold Time preserves the current hardware Threshold in the same pair frame.
 - [ ] RSP 0xDD is observed for accepted native writes.
-- [ ] If the paired 0x0093/0x0094 seed does not decode inside captured ranges, both controls stay disabled and no guessed CMD 0x22 is sent.
-- [ ] Reconnect on normal hardware produces a valid paired seed and the UI matches the native application.
+- [ ] Dance Mic remains fail-closed after the Adj Manner capture invalidated the old 0x0093/0x0094 structural seed.
+- [ ] No CMD 0x22 is emitted until an independently proven reconnect seed is available.
 
 ### BT identity
 

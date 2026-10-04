@@ -98,6 +98,20 @@ bool K500ResponseParser::tryDecodeUseInitVolume(const K500Response &response, bo
     return true;
 }
 
+bool K500ResponseParser::tryDecodeAdjMannerVrOff(const K500Response &response, bool *enabled)
+{
+    if (!enabled || !response.checksumOk || response.rsp != 0xC0
+        || response.data.size() <= 19)
+        return false;
+
+    // Physical reconnect pair:
+    // unticked/OFF -> data[19]=0x43 (bit0 set, fascia VR active)
+    // ticked/ON    -> data[19]=0x42 (bit0 clear, fascia VR disabled)
+    const quint8 flags = u8(response.data.at(19));
+    *enabled = (flags & 0x01u) == 0;
+    return true;
+}
+
 bool K500ResponseParser::tryDecodeMuted(const K500Response &response, bool *muted)
 {
     if (!muted || !response.checksumOk || response.rsp != 0xC0
@@ -155,6 +169,20 @@ bool K500ResponseParser::selfTest(QString *error)
         return fail(QStringLiteral("captured Use Init OFF handshake decode mismatch"));
     if (!tryDecodeUseInitVolume(useInitOnHandshake, &useInitEnabled) || !useInitEnabled)
         return fail(QStringLiteral("captured Use Init ON handshake decode mismatch"));
+
+    // Adj Manner reconnect-state pair. The only semantic delta is C0 data[19]
+    // 0x43 (unticked/OFF, fascia VR active) -> 0x42 (ticked/ON, VR disabled).
+    K500Response adjMannerOffHandshake;
+    adjMannerOffHandshake.rsp = 0xC0;
+    adjMannerOffHandshake.data = QByteArray::fromHex("0417010205005A800100F5010000000811AB03430000");
+    adjMannerOffHandshake.checksumOk = true;
+    K500Response adjMannerOnHandshake = adjMannerOffHandshake;
+    adjMannerOnHandshake.data = QByteArray::fromHex("0417010205005A800100F5010000000811AB03420000");
+    bool adjMannerVrOff = true;
+    if (!tryDecodeAdjMannerVrOff(adjMannerOffHandshake, &adjMannerVrOff) || adjMannerVrOff)
+        return fail(QStringLiteral("captured Adj Manner VR OFF unticked handshake decode mismatch"));
+    if (!tryDecodeAdjMannerVrOff(adjMannerOnHandshake, &adjMannerVrOff) || !adjMannerVrOff)
+        return fail(QStringLiteral("captured Adj Manner VR OFF ticked handshake decode mismatch"));
 
     // Mute connect-state capture pair: files are connect -> change -> disconnect,
     // therefore 0x84 was device-unmuted before setting Mute ON, and 0x86 was

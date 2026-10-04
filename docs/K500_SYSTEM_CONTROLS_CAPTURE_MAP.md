@@ -94,18 +94,91 @@ read-only even though it is adjacent in active memory.
 
 ## Adj Manner / VR OFF
 
-Exact toggle vectors:
+Adj Manner is an **ownership switch** for the front-panel screwdriver trim
+potentiometers, not a tone preset rewrite.
+
+Setter/ACK remains:
 
 ```text
 OFF / unticked  AA 03 00 07 00 00 F6
 ON  / ticked    AA 03 00 07 01 00 F5
+ACK             RSP 0xF8
 ```
 
-Device ACK is `RSP 0xF8`.
+Paired reconnect evidence supplied on 2026-10-04:
 
-No connect-time or 939-byte readback location was proven for this state. The
-application therefore treats a valid `RSP 0xF8` as current-session truth only
-and returns the UI to **DEVICE STATE UNKNOWN** after disconnect/reconnect.
+| Capture | Bytes | SHA-256 |
+| --- | ---: | --- |
+| `Reconnect_AdjManner_VROFF_OFF.pcapng` | 5,016 | `1f2cab60928e88a421f93e2fa2ac9034686016326d2c6025087df6a12aeea230` |
+| `Reconnect_AdjManner_VROFF_ON.pcapng` | 5,264 | `6b9d3cd469c9c0126a4737dd84e94dcec5f7da2bbae09e4b7eb80f545ff6660` |
+
+Both files reconstruct a complete checksum-valid 939-byte active-memory image.
+The two images differ at exactly one byte:
+
+```text
+activeMemory[0x008C]
+
+VR OFF unticked / OFF = 0x00
+VR OFF ticked   / ON  = 0x01
+```
+
+Because `0x008C` is in the low scalar region, the corresponding file/preset
+scalar is `0x0094`.
+
+The C0 handshake independently carries the same ownership state. The paired
+captures isolate bit 0 at `C0 data[19]`:
+
+```text
+OFF / unticked: data[19] = 0x43, bit0 = 1
+ON  / ticked:   data[19] = 0x42, bit0 = 0
+
+manualVrEnabled = (data[19] & 0x01) != 0
+adjMannerVrOff  = (data[19] & 0x01) == 0
+```
+
+### User-visible ownership semantics
+
+- **VR OFF unticked / OFF**: fascia trim-pots are active. Software must not
+  send edits for the trim-owned controls; the native application renders those
+  controls darker/green and read-only.
+- **VR OFF ticked / ON**: fascia trim-pots are disabled and software regains
+  ownership of those controls.
+- Changing Adj Manner itself does **not** rewrite the parameter values; the
+  reconnect images are otherwise byte-identical.
+
+The supplied manufacturer screenshots identify the trim-owned groups as:
+
+- Music: Bass, Mid, Mid Freq, Treble.
+- Mic: Bass, Mid, Mid Freq, Treble.
+- Reverb: Level, Decay, Predelay.
+- Echo: Effect Level, Left Delay, Repeat.
+
+Reverb Direct/HPF/LPF and Echo Direct/Right Delay/Right Predelay/HPF/LPF are
+not shown with the manual-VR treatment and remain software controls.
+
+### Important manual-value telemetry boundary
+
+This pair maps the **ownership state**, not the fourteen analog VR readings.
+The screenshots prove those manual readings are a separate value domain. For
+example, with fascia VR active the native UI displays Reverb Level 50 / Decay
+2450 ms / Predelay 50 ms while the normal stored digital scalar block in the
+same reconnect snapshot carries different software values. Echo shows the same
+separation.
+
+Therefore SonKuPik may safely lock the trim-owned editors and display the
+hardware-owner treatment now, but must not invent live analog values or pretend
+the normal digital scalars are the screwdriver positions. Exact native-style
+slider motion while a screwdriver turns a trim-pot needs a dedicated
+pot-movement telemetry capture.
+
+### Dance Mic collision correction
+
+The reconnect delta also disproves the previous structural assumption that
+file `0x0094` was Dance Mic Hold. It is definitively Adj Manner VR OFF.
+Consequently the old speculative Dance pair at `0x0093/0x0094` is retired and
+Dance writes fail closed until their reconnect seed is independently proven.
+No adjacent offset is promoted merely because one static snapshot happens to
+look plausible.
 
 ## Persistent Equipment Mode rename
 
@@ -176,7 +249,6 @@ These neighbouring controls remain intentionally unpromoted:
 
 - **Mic Max Volume** — READ known, WRITE not captured.
 - **UDisk Record Volume** — READ known, WRITE selector not captured.
-- **Adj Manner / VR OFF readback** — setter/ACK known, reconnect truth unknown.
 - Dance/Mic Trigger Threshold and Hold Time — no byte-verified mapping yet.
 
 Do not infer any of them from selector adjacency or command-family similarity.
@@ -262,13 +334,12 @@ Representative vectors:
 ACK is `RSP 0xDD`.
 
 Because changing either control transmits BOTH values, SonKuPik must have a valid
-paired seed before writing. The scalar layout has exactly two previously
-unassigned bytes between Mic EQ Link (`0x0092`) and record volumes
-(`0x0095/0x0096`): `0x0093/0x0094`. The implementation accepts these as
-the pair seed only when both decode into the captured domains
-(`threshold raw 0..60`, `hold 1..30`). Otherwise the faders remain disabled
-and no guessed write is emitted. This read-side location is structural evidence,
-not a dedicated reconnect capture, and must stay documented as such.
+paired seed before writing. The later Adj Manner reconnect pair **invalidates**
+the former structural `0x0093/0x0094` seed: file `0x0094` is now physically
+proven to be Adj Manner VR OFF (active `0x008C`). Therefore Dance Mic remains
+fail-closed for live editing until an independent reconnect delta maps both
+Threshold and Hold. The captured `CMD 0x22` write format remains valid; only
+the unsafe read-side seed was retired.
 
 ## BT Name rename/reset
 

@@ -1,27 +1,15 @@
 name: P4 Sanitizer Fuzz
 
+# Manual-only deep hardening. Normal PR/main regression belongs to K500 CI.
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'src/k500/K500ResponseParser.*'
-      - 'src/k500/K500Frame.*'
-      - 'src/k500/K500PresetCodec.*'
-      - 'src/k500/K500WinIo.*'
-      - 'src/k500/WinResourceGuards.h'
-      - 'src/k500/P4*SelfTestMain.cpp'
-      - 'tests/p4/**'
-      - '.github/workflows/p4-sanitizer-fuzz.yml'
-  pull_request:
-    paths:
-      - 'src/k500/K500ResponseParser.*'
-      - 'src/k500/K500Frame.*'
-      - 'src/k500/K500PresetCodec.*'
-      - 'src/k500/K500WinIo.*'
-      - 'src/k500/WinResourceGuards.h'
-      - 'src/k500/P4*SelfTestMain.cpp'
-      - 'tests/p4/**'
-      - '.github/workflows/p4-sanitizer-fuzz.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: k500-p4-hardening
+  cancel-in-progress: true
 
 jobs:
   sanitizer-fuzz-soak:

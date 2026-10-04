@@ -190,15 +190,21 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_music.topMusicVol = qMin(m_music.topMusicVol, m_music.musicMaxVol);
     m_music.sourceRaw = fileU8(memory, 0x000E, 2);
     m_music.key = static_cast<int>(fileU8(memory, 0x0011, 7)) - 7;
-    m_music.input1GainDb = static_cast<int>(fileU8(memory, 0x001E, 9)) - 12;
+    // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — file scalar 0x001E translates
+    // exactly to activeMemory[0x0016], the physical Mic CMD 0x11 tail donor.
+    m_music.input1GainDb = static_cast<int>(byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicInput1Gain, 9)) - 12;
     m_music.input2GainDb = static_cast<int>(fileU8(memory, 0x001F, 9)) - 12;
     m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, 0x0020, 9)) - 12;
     m_music.uDiskGainDb = static_cast<int>(fileU8(memory, 0x0021, 8)) - 12;
     m_music.digitalGainDb = static_cast<int>(fileU8(memory, 0x0022, 8)) - 12;
-    // Music Noise Gate readback offset is not yet capture-proven. Preserve the
-    // device scalar for unrelated Top-Music writes until this session explicitly
-    // edits the gate; do not pretend 0x001B is authoritative gate truth.
-    m_music.noiseGateRaw = -1;
+    // MUSIC_TONE_READBACK_20261004_V1 — paired reconnect snapshots prove
+    // direct activeMemory[0x0005], raw 0=OFF and raw 1..41=-90..-50 dB.
+    // This is a direct active-memory byte, not a translated file scalar.
+    const quint8 musicNoiseGateRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicNoiseGate, 0xFF);
+    m_music.noiseGateRaw = K500Protocol::musicNoiseGateRawValid(musicNoiseGateRaw)
+        ? static_cast<int>(musicNoiseGateRaw) : -1;
 
     m_mic.micMaxVol = fileU8(memory, 0x0013, K500Protocol::TopVolumeMax);
     m_mic.topMicVol = qMin<int>(fileU8(memory, 0x0009, 35), m_mic.micMaxVol);
@@ -219,16 +225,11 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_effect.topEffectVol = fileU8(memory, 0x000A, 35);
     m_effect.effectInitLevel = fileU8(memory, 0x001D, 25);
 
-    // DANCE_MIC_READBACK_STRUCTURAL_V1 — safe seed gate for the full-pair CMD 0x22.
-    const int danceThresholdRaw = static_cast<int>(fileU8(memory, 0x0093, 0xFF));
-    const int danceHoldRaw = static_cast<int>(fileU8(memory, 0x0094, 0xFF));
-    m_danceMicSeedKnown = danceThresholdRaw >= 0 && danceThresholdRaw <= 60
-                          && danceHoldRaw >= K500Protocol::NativeRange::DanceMicHoldMinSec
-                          && danceHoldRaw <= K500Protocol::NativeRange::DanceMicHoldMaxSec;
-    if (m_danceMicSeedKnown) {
-        m_danceMicThresholdDb = danceThresholdRaw - 60;
-        m_danceMicHoldSec = danceHoldRaw;
-    }
+    // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1 — the old
+    // structural seed at file[0x0093/0x0094] is invalid: paired reconnect
+    // captures prove file[0x0094] / active[0x008C] is Adj Manner VR OFF.
+    // Fail closed until Dance Mic receives its own controlled reconnect delta.
+    m_danceMicSeedKnown = false;
 
     // REVERB_CMD0B_CAPTURED_V1 — state and raw image are hydrated before LIVE.
     m_reverb.level = fileU8(memory, 0x0074, 100);
@@ -270,8 +271,8 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     main.compRatio = fileU8(memory, 0x0031, 1);
     main.attackMs = fileU8(memory, 0x0032, 10);
     main.releaseSec = fileU8(memory, 0x0033, 1) / 10.0;
-    main.lDelayMs = fileU16(memory, 0x0034, 0);
-    main.rDelayMs = fileU16(memory, 0x0036, 0);
+    main.lDelayMs = fileU16(memory, 0x00D4, 0);
+    main.rDelayMs = fileU16(memory, 0x00D6, 0);
     m_outputs.insert(QStringLiteral("main"), main);
     m_outputRaw.insert(QStringLiteral("main"), outputSeed(memory, 0x0024));
 
@@ -301,7 +302,7 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     center.compRatio = fileU8(memory, 0x0059, 1);
     center.attackMs = fileU8(memory, 0x005A, 10);
     center.releaseSec = fileU8(memory, 0x005B, 1) / 10.0;
-    center.outputDelayMs = fileU16(memory, 0x005C, 0);
+    center.outputDelayMs = fileU16(memory, 0x00DC, 0);
     m_outputs.insert(QStringLiteral("center"), center);
     m_outputRaw.insert(QStringLiteral("center"), outputSeed(memory, 0x004C));
 
@@ -315,7 +316,7 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     sub.compRatio = fileU8(memory, 0x006D, 1);
     sub.attackMs = fileU8(memory, 0x006E, 10);
     sub.releaseSec = fileU8(memory, 0x006F, 1) / 10.0;
-    sub.outputDelayMs = fileU16(memory, 0x0070, 0);
+    sub.outputDelayMs = fileU16(memory, 0x00DE, 0);
     m_outputs.insert(QStringLiteral("sub"), sub);
     m_outputRaw.insert(QStringLiteral("sub"), outputSeed(memory, 0x0060));
 
@@ -328,16 +329,34 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
         state.lpType = lpType;
         m_crossovers.insert(key, state);
     };
-    seedCrossover(QStringLiteral("mic"), 0x0098, 0x009A, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
+    // OUTPUT_CROSSOVER_TYPE_READBACK_20261004_V1 — State-A reconnect maps
+    // the shared Mic HP/LP type bytes directly from active memory.
+    const quint8 micHpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF);
+    const quint8 micLpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    const bool micHpTypeKnown = K500Protocol::crossoverFilterCodeValid(micHpTypeRaw);
+    m_micLpTypeKnown = K500Protocol::crossoverFilterCodeValid(micLpTypeRaw);
+    seedCrossover(QStringLiteral("mic"), 0x0098, 0x009A,
+                  micHpTypeKnown ? K500Protocol::crossoverFilterLabel(micHpTypeRaw, true)
+                                 : QStringLiteral("HP LR 24"),
+                  m_micLpTypeKnown ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false)
+                                   : QStringLiteral("LP LR 24"));
     // MUSIC_CROSSOVER_TYPE_READBACK_V1 — physical Music reconnect captures:
     // activeMemory[0x0007] = HP Type, activeMemory[0x0008] = LP Type.
     seedCrossover(QStringLiteral("music"), 0x009C, 0x009E,
                   K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0007), true),
                   K500Protocol::crossoverFilterLabel(byteAt(memory, 0x0008), false));
-    seedCrossover(QStringLiteral("main"), 0x00A0, 0x00A4, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
-    seedCrossover(QStringLiteral("surround"), 0x00A8, 0x00AC, QStringLiteral("HP Bessel 12"), QStringLiteral("LP Bessel 12"));
-    seedCrossover(QStringLiteral("center"), 0x00B0, 0x00B4, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
-    seedCrossover(QStringLiteral("sub"), 0x00B8, 0x00BC, QStringLiteral("HP Butter 24"), QStringLiteral("LP Butter 24"));
+    seedCrossover(QStringLiteral("main"), 0x00A0, 0x00A4,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainLpType), false));
+    seedCrossover(QStringLiteral("surround"), 0x00A8, 0x00AC,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundLpType), false));
+    seedCrossover(QStringLiteral("center"), 0x00B0, 0x00B4,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterLpType), false));
+    seedCrossover(QStringLiteral("sub"), 0x00B8, 0x00BC,
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubHpType), true),
+                  K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubLpType), false));
     seedCrossover(QStringLiteral("reverb"), 0x00C0, 0x00C2, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
     seedCrossover(QStringLiteral("echo"), 0x00C4, 0x00C6, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
 
@@ -357,6 +376,7 @@ void K500Controller::clearDeviceState()
     m_danceMicThresholdDb = -50;
     m_danceMicHoldSec = 6;
     m_danceMicSeedKnown = false;
+    m_micLpTypeKnown = false;
     m_eqBypass = K500EqBypassImage{};
     m_eqBypassReady = false;
     m_outputs.clear();
@@ -784,13 +804,26 @@ void K500Controller::queueCrossover(const QString &section, const QString &path,
         deferWrite(path, QStringLiteral("Music crossover requires scalar 0x1B readback"));
         return;
     }
+    if (section == QStringLiteral("mic") && !deviceReadbackReady()) {
+        deferWrite(path, QStringLiteral("Mic crossover requires Music Input1 donor readback"));
+        return;
+    }
 
     const CrossoverState state = m_crossovers.value(section);
     const bool hpf = kind == QStringLiteral("hpf");
     const double frequency = hpf ? state.hpfHz : state.lpfHz;
     const QString filter = hpf ? state.hpType : state.lpType;
-    const quint8 stateByte = section == QStringLiteral("music") && m_deviceScalars.size() > 0x1B
-        ? byteAt(m_deviceScalars, 0x1B, 0x32) : 0x00;
+
+    quint8 stateByte = 0x00;
+    if (section == QStringLiteral("music") && m_deviceScalars.size() > 0x1B) {
+        stateByte = byteAt(m_deviceScalars, 0x1B, 0x32);
+    } else if (section == QStringLiteral("mic")) {
+        // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — native Mic CMD 0x11 mirrors
+        // the CURRENT Music Input1 Gain raw, not an immutable connect-time
+        // scalar. Use canonical current intent so a prior Input1 edit cannot be
+        // rolled back by a later Mic crossover write.
+        stateByte = K500Frame::clampByte(qRound(m_music.input1GainDb + 12.0));
+    }
     const QByteArray frame = K500Protocol::crossoverWrite(section, kind, frequency, filter, stateByte);
     if (frame.isEmpty()) {
         rejectUnsupported(path);
@@ -823,8 +856,14 @@ bool K500Controller::updateEchoState(const QString &field, const QVariant &value
     if (field == QStringLiteral("level")) m_echo.level = qBound(K500Protocol::NativeRange::EchoLevelMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoLevelMax);
     else if (field == QStringLiteral("repeat")) m_echo.repeat = qBound(K500Protocol::NativeRange::EchoRepeatMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoRepeatMax);
     else if (field == QStringLiteral("direct")) m_echo.direct = qBound(K500Protocol::NativeRange::EchoDirectMin, qRound(value.toDouble()), K500Protocol::NativeRange::EchoDirectMax);
-    else if (field == QStringLiteral("rightDelayPercent")) m_echo.rightDelayPercent = qBound(-50, qRound(value.toDouble()), 50);
-    else if (field == QStringLiteral("rightPredelayPercent")) m_echo.rightPredelayPercent = qBound(-50, qRound(value.toDouble()), 50);
+    else if (field == QStringLiteral("rightDelayPercent"))
+        m_echo.rightDelayPercent = qBound(K500Protocol::NativeRange::EchoRightDelayMinPercent,
+                                          qRound(value.toDouble()),
+                                          K500Protocol::NativeRange::EchoRightDelayMaxPercent);
+    else if (field == QStringLiteral("rightPredelayPercent"))
+        m_echo.rightPredelayPercent = qBound(K500Protocol::NativeRange::EchoRightPredelayMinPercent,
+                                             qRound(value.toDouble()),
+                                             K500Protocol::NativeRange::EchoRightPredelayMaxPercent);
     else if (field == QStringLiteral("hpfHz")) {
         m_echo.hpfHz = qBound(K500Protocol::NativeRange::FxHpfMinHz, qRound(value.toDouble()), K500Protocol::NativeRange::FxHpfMaxHz);
         m_crossovers[QStringLiteral("echo")].hpfHz = m_echo.hpfHz;
@@ -834,7 +873,10 @@ bool K500Controller::updateEchoState(const QString &field, const QVariant &value
         m_crossovers[QStringLiteral("echo")].lpfHz = m_echo.lpfHz;
     }
     else if (field == QStringLiteral("leftDelayMs")) m_echo.leftDelayMs = qBound(K500Protocol::NativeRange::EchoDelayMinMs, qRound(value.toDouble()), K500Protocol::NativeRange::EchoDelayMaxMs);
-    else if (field == QStringLiteral("leftPredelayMs")) m_echo.leftPredelayMs = qBound(0, qRound(value.toDouble()), 65535);
+    else if (field == QStringLiteral("leftPredelayMs"))
+        m_echo.leftPredelayMs = qBound(K500Protocol::NativeRange::EchoLeftPredelayMinMs,
+                                      qRound(value.toDouble()),
+                                      K500Protocol::NativeRange::EchoLeftPredelayMaxMs);
     else return false;
     return true;
 }
@@ -910,6 +952,10 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
              static_cast<int>(fileU8(memory, 0x0095)) + 1);
     captured(QStringLiteral("system.usbRecordVol"),
              static_cast<int>(fileU8(memory, 0x0096)) + 1);
+    const quint8 adjMannerRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::AdjMannerVrOff, 0xFF);
+    if (adjMannerRaw <= 1)
+        captured(QStringLiteral("system.adjMannerVrOff"), adjMannerRaw == 1);
     if (m_danceMicSeedKnown) {
         derived(QStringLiteral("system.danceMicThresholdDb"), m_danceMicThresholdDb);
         derived(QStringLiteral("system.danceMicHoldSec"), m_danceMicHoldSec);
@@ -921,6 +967,16 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
     derived(QStringLiteral("music.bluetoothGainDb"), m_music.bluetoothGainDb);
     derived(QStringLiteral("music.uDiskGainDb"), m_music.uDiskGainDb);
     derived(QStringLiteral("music.digitalGainDb"), m_music.digitalGainDb);
+    if (m_music.noiseGateRaw >= 0) {
+        derived(QStringLiteral("music.noiseGateDb"),
+                K500Protocol::musicNoiseGateDbFromRaw(
+                    static_cast<quint8>(m_music.noiseGateRaw)));
+    }
+    const quint8 musicBassRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicBass, 0xFF);
+    if (K500Protocol::musicBassRawValid(musicBassRaw))
+        derived(QStringLiteral("music.bassDb"),
+                K500Protocol::musicBassDbFromRaw(musicBassRaw));
 
     captured(QStringLiteral("mic.micAVol"), m_mic.micAVol);
     captured(QStringLiteral("mic.micBVol"), m_mic.micBVol);
@@ -976,10 +1032,41 @@ void K500Controller::recordConfirmedState(const QByteArray &memory)
         captured(prefix + QStringLiteral("hpfHz"), it->hpfHz);
         captured(prefix + QStringLiteral("lpfHz"), it->lpfHz);
         if (it.key() == QStringLiteral("music")) {
-            // Music type bytes are now capture-backed device truth.
             captured(prefix + QStringLiteral("hpType"), it->hpType);
             captured(prefix + QStringLiteral("lpType"), it->lpType);
+        } else if (it.key() == QStringLiteral("mic")) {
+            const bool hpKnown = K500Protocol::crossoverFilterCodeValid(
+                byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF));
+            const bool lpKnown = K500Protocol::crossoverFilterCodeValid(
+                byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF));
+            if (hpKnown) captured(prefix + QStringLiteral("hpType"), it->hpType);
+            else assumed(prefix + QStringLiteral("hpType"), it->hpType);
+            if (lpKnown) captured(prefix + QStringLiteral("lpType"), it->lpType);
+            else assumed(prefix + QStringLiteral("lpType"), it->lpType);
+        } else if (it.key() == QStringLiteral("main")
+                   || it.key() == QStringLiteral("surround")
+                   || it.key() == QStringLiteral("center")
+                   || it.key() == QStringLiteral("sub")) {
+            int hpOffset = K500Protocol::ReadbackOffset::MainHpType;
+            int lpOffset = K500Protocol::ReadbackOffset::MainLpType;
+            if (it.key() == QStringLiteral("surround")) {
+                hpOffset = K500Protocol::ReadbackOffset::SurroundHpType;
+                lpOffset = K500Protocol::ReadbackOffset::SurroundLpType;
+            } else if (it.key() == QStringLiteral("center")) {
+                hpOffset = K500Protocol::ReadbackOffset::CenterHpType;
+                lpOffset = K500Protocol::ReadbackOffset::CenterLpType;
+            } else if (it.key() == QStringLiteral("sub")) {
+                hpOffset = K500Protocol::ReadbackOffset::SubHpType;
+                lpOffset = K500Protocol::ReadbackOffset::SubLpType;
+            }
+            const bool hpKnown = K500Protocol::crossoverFilterCodeValid(byteAt(memory, hpOffset, 0xFF));
+            const bool lpKnown = K500Protocol::crossoverFilterCodeValid(byteAt(memory, lpOffset, 0xFF));
+            if (hpKnown) captured(prefix + QStringLiteral("hpType"), it->hpType);
+            else assumed(prefix + QStringLiteral("hpType"), it->hpType);
+            if (lpKnown) captured(prefix + QStringLiteral("lpType"), it->lpType);
+            else assumed(prefix + QStringLiteral("lpType"), it->lpType);
         } else {
+            // Reverb/Echo have no native HP/LP Type selectors.
             assumed(prefix + QStringLiteral("hpType"), it->hpType);
             assumed(prefix + QStringLiteral("lpType"), it->lpType);
         }

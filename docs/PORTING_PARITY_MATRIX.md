@@ -49,6 +49,8 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | PEQ: Mic A/B, Music, Main, Surround, Center, Sub, Reverb, Echo | STABLE USB ✅ | donor-verified command family; unsupported detail fields stay read-only |
 | Verified crossover selectors | STABLE USB ✅ | `CMD 0x11` golden vectors |
 | Music HP/LP filter type readback | CAPTURE-MAPPED 🟧 | READ activeMemory[0x0007]/[0x0008] + existing CMD 0x11 write enum |
+| Mic HP/LP filter type readback | CAPTURE-MAPPED 🟧 | READ direct activeMemory[0x0013]/[0x0014]; LP has physical multi-state sweep, HP closed by State-A reconnect; Mic CMD 0x11 tail donor = current Music Input1 raw |
+| Main/Surround/Center/Sub HP/LP filter type readback | CAPTURE-MAPPED 🟧 | State-A reconnect: Main 0x002C/0x002E, Surround 0x0040/0x0042, Center 0x0054/0x0056, Sub 0x0068/0x006A |
 | Top Mic `CMD 0x05` | STABLE USB ✅ | mirrored unrelated scalars + captured FBX 0..4 direct byte |
 | Top Effect `CMD 0x09` | STABLE USB ✅ | current hydrated Effect Init preservation |
 | Music Init / Mic Init live write | CAPTURE-MAPPED 🟧 | CMD 0x02 / 0x05 writable second scalar; 0..84 |
@@ -56,22 +58,22 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | USB Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E selector 0x03; UI 1..6 -> raw 0..5 |
 | UDisk Record Volume | CAPTURE-MAPPED 🟧 | CMD 0x3E raw UI-1 + 00 00; RSP 0xC1 |
 | Mic Max Volume | CAPTURE-MAPPED 🟧 | Top Mic CMD 0x05 third scalar; 0..84 hard ceiling for Top Mic |
-| Dance Mic Trigger | CAPTURE-MAPPED 🟧 | paired CMD 0x22; threshold -60..0 dB + hold 1..30 s; guarded structural seed |
+| Dance Mic Trigger | CAPTURE-MAPPED WRITE 🟧 | paired CMD 0x22 captured; reconnect seed intentionally gated because file 0x0094 is now proven Adj Manner VR OFF |
 | BT Name rename/reset | CAPTURE-MAPPED 🟧 | USB CMD 0x4E SET/RESET + RSP 0xB1 + 939-byte identity refresh |
 | BLE Name rename/reset | READ ONLY 🟦 | readback exists; deliberately not inferred from BT CMD 0x4E |
-| Adj Manner / VR OFF setter | CAPTURE-MAPPED 🟧 | CMD 0x07 + RSP 0xF8; reconnect state remains unknown |
+| Adj Manner / VR OFF | CAPTURE-MAPPED 🟧 | READ active 0x008C / file 0x0094 + inverse C0 data[19] bit0; WRITE CMD 0x07 + RSP 0xF8; fascia-vs-software ownership gated in UI |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Main L/R Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16=L/data18=R, uint16 LE ms, 0..50 |
+| Main L/R Output Delay | CAPTURE-MAPPED 🟧 | READ file 0x00D4/0x00D6 -> active 0x00CB/0x00CD; WRITE CMD 0x0E data16=L/data18=R, 0..50 ms |
 | Surround output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Surround L/R Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E native wire exception: data16=R/data18=L, uint16 LE ms, 0..50 |
+| Surround L/R Output Delay | CAPTURE-MAPPED 🟧 | READ file 0x00D8/0x00DA -> active 0x00CF/0x00D1; WRITE exception data16=R/data18=L, 0..50 ms |
 | Center output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Center Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
+| Center Output Delay | CAPTURE-MAPPED 🟧 | READ file 0x00DC -> active 0x00D3; WRITE CMD 0x0E data16, 0..50 ms |
 | Sub output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
-| Subwoofer Output Delay | CAPTURE-MAPPED 🟧 | CMD 0x0E data16, uint16 LE ms, 0..50 |
-| Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native ranges guarded |
-| Echo detail level/repeat/direct/delay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D |
-| Music Noise Gate / Bass live write | CAPTURE-MAPPED 🟧 | captured CMD 0x02 gate field + CMD 0x0C Bass; connect readback pending |
+| Subwoofer Output Delay | CAPTURE-MAPPED 🟧 | READ file 0x00DE -> active 0x00D5; WRITE CMD 0x0E data16, 0..50 ms |
+| Reverb detail level/direct/decay/predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0B; native UI is frequency-only (no HP/LP Type) |
+| Echo detail level/repeat/direct/left delay/left predelay/right delay/right predelay/HPF/LPF live write | CAPTURE-MAPPED 🟧 | captured full-image CMD 0x0D; right timing -50..+50%, left predelay 0..100 ms; no HP/LP Type control |
+| Music Noise Gate / Bass READ+WRITE | CAPTURE-MAPPED 🟧 | Gate READ direct 0x0005 + CMD 0x02; Bass READ direct 0x00DF + CMD 0x0C; reconnect truth captured 2026-10-04 |
 | Mic FBX / anti-feedback level | CAPTURE-MAPPED 🟧 | READ activeMemory[0x001B], WRITE CMD 0x05 levels 0..4, RSP 0xFA |
 | Mic gate live write | READ ONLY 🟦 | no verified live command; do not guess |
 | Equipment Mode Recall 1–10 | STABLE USB ✅ | `0x01 -> settle -> 0x3F/C0 -> 939-byte resync` |
@@ -88,7 +90,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Multi-file batch validation | LOCKED SW ✅ | whole-batch fail-closed P4.2 regression |
 | Unified SONKUPIK + LOCAL preset library | LOCKED SW ✅ | source provenance separated; both use same validator |
 | Official GitHub preset sync/cache | LOCKED SW ✅ | validation before cache promotion; offline fallback |
-| Official Mode 01 `KONSER NYANYI` | LOCKED SW ✅ | current official file SHA-256 `4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`; evolved from the physically proven native `CONCERT HIFI V4` donor lineage |
+| Official Mode 01 `KONSER NYANYI` | LOCKED SW ✅ | current official file SHA-256 `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4`; evolved from the physically proven native `CONCERT HIFI V4` donor lineage |
 | Support Report diagnostics | LOCKED SW ✅ | bounded schema + payload/path redaction guard |
 | Inno Setup Windows installer | LOCKED SW ✅ | actual silent install + installed-app runtime tests |
 | Smart Installer distribution | LOCKED SW ✅ | machine/per-user installer runtime self-tests; portable retired from v1.1 public distribution |
@@ -162,7 +164,7 @@ Remote official files do not bypass the codec/validator and never overwrite Loca
 
 Current official Mode 01 is `KONSER NYANYI`:
 
-`4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1`
+`761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4`
 
 Its rollback/provenance lineage retains the physically proven native `CONCERT HIFI V4` donor (`9aebeb908295abda1182ddbadc3aa537ea16b4cfea241b64b5a5180e66670e74`). The current official file and the historical donor must not be conflated. Checksum validity alone is not proof of native-equivalent behavior.
 

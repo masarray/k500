@@ -139,6 +139,18 @@ void addCrossoverType(Builder &builder, const EqDescriptor &d, bool hpf, quint16
 EditResult applyCrossover(const QByteArray &source, const QString &section,
                           const QString &field, const QVariant &value)
 {
+    // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Reverb/Echo expose HPF/LPF
+    // cutoff frequencies only. There is no HP/LP filter-type control, so both
+    // live and offline editing must fail closed rather than mutate footer bytes.
+    if ((section == QStringLiteral("reverb") || section == QStringLiteral("echo"))
+        && (field == QStringLiteral("hpType") || field == QStringLiteral("lpType"))) {
+        EditResult r;
+        r.supported = true;
+        r.patch.error = QStringLiteral("%1 has no native HP/LP filter-type control; cutoff frequency only.")
+                            .arg(section);
+        return r;
+    }
+
     QVector<const EqDescriptor *> targets;
     if (section == QStringLiteral("mic") || section == QStringLiteral("micA") || section == QStringLiteral("micB")) {
         targets << eqDescriptor(QStringLiteral("micA")) << eqDescriptor(QStringLiteral("micB"));
@@ -230,12 +242,12 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
     else if (field == QStringLiteral("compRatio")) b.addU8(base + 0x0D, u8Value(value));
     else if (field == QStringLiteral("attackMs")) b.addU8(base + 0x0E, u8Value(value));
     else if (field == QStringLiteral("releaseSec")) b.addU8(base + 0x0F, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
-    else if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs")) b.addU16(0x0034, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs")) b.addU16(0x0036, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs")) b.addU16(0x00D4, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs")) b.addU16(0x00D6, std::clamp(qRound(value.toDouble()), 0, 50));
     else if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs")) b.addU16(0x00D8, std::clamp(qRound(value.toDouble()), 0, 50));
     else if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs")) b.addU16(0x00DA, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs")) b.addU16(0x005C, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs")) b.addU16(0x0070, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs")) b.addU16(0x00DC, std::clamp(qRound(value.toDouble()), 0, 50));
+    else if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs")) b.addU16(0x00DE, std::clamp(qRound(value.toDouble()), 0, 50));
     else return {};
     return finish(source, std::move(b));
 }

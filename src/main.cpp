@@ -235,8 +235,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0012, 26); // mic init
         putFileU8(memory, 0x0013, 82); // mic max
         putFileU8(memory, 0x001D, 27); // effect init
-        putFileU8(memory, 0x0093, 10); // Dance Mic threshold raw -> -50 dB
-        putFileU8(memory, 0x0094, 6);  // Dance Mic hold -> 6 sec
+        // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — direct live flag,
+        // deliberately poisons the former Dance Mic 0x0094 structural assumption.
+        memory[K500Protocol::ReadbackOffset::AdjMannerVrOff] = char(0x01);
         putFileU8(memory, 0x0095, 8);  // U-Disk record -> UI 9
         putFileU8(memory, 0x0096, 10); // USB record -> UI 11
 
@@ -254,6 +255,8 @@ int main(int argc, char *argv[])
         // physical reconnect captures, not .k500 file-offset defaults.
         memory[0x0007] = char(0x07); // Music HP Type = HP LR 24
         memory[0x0008] = char(0x00); // Music LP Type = Bypass
+        memory[K500Protocol::ReadbackOffset::MusicNoiseGate] = char(0x29); // -50 dB
+        memory[K500Protocol::ReadbackOffset::MusicBass] = char(0xF0); // +12.0 dB
 
         // Mic state and dynamics.
         putFileU8(memory, 0x0014, 96);
@@ -270,6 +273,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0092, 1);  // EQ link
         putFileU16(memory, 0x0098, 90);
         putFileU16(memory, 0x009A, 16000);
+        memory[K500Protocol::ReadbackOffset::MicHpType] = char(0x01); // HP Bessel 12
+        memory[K500Protocol::ReadbackOffset::MicLpType] = char(0x03); // LP Bessel 18
 
         // Main output.
         putFileU8(memory, 0x0024, 99); // +12 dB
@@ -282,8 +287,10 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0031, 4);
         putFileU8(memory, 0x0032, 12);
         putFileU8(memory, 0x0033, 3);  // 0.3 sec
-        putFileU16(memory, 0x0034, 50); // Main L delay
-        putFileU16(memory, 0x0036, 20); // Main R delay
+        memory[K500Protocol::ReadbackOffset::MainHpType] = char(0x03); // HP Bessel 18
+        memory[K500Protocol::ReadbackOffset::MainLpType] = char(0x04); // LP Butter 18
+        putFileU16(memory, 0x00D4, 50); // Main L delay
+        putFileU16(memory, 0x00D6, 20); // Main R delay
         putFileU16(memory, 0x00A0, 45);
         putFileU16(memory, 0x00A4, 19000);
 
@@ -298,6 +305,8 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0045, 5);
         putFileU8(memory, 0x0046, 13);
         putFileU8(memory, 0x0047, 4);
+        memory[K500Protocol::ReadbackOffset::SurroundHpType] = char(0x05); // HP Bessel 24
+        memory[K500Protocol::ReadbackOffset::SurroundLpType] = char(0x06); // LP Butter 24
         // SURROUND_DELAY_ACTUAL_REFERENCE_V1 — native KTV screenshot/capture
         // reference state: L=14 ms (4.8 m), R=20 ms (6.8 m). These are
         // hydrated hardware values, not application defaults.
@@ -314,7 +323,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0059, 6);
         putFileU8(memory, 0x005A, 14);
         putFileU8(memory, 0x005B, 5);
-        putFileU16(memory, 0x005C, 30); // Center output delay
+        memory[K500Protocol::ReadbackOffset::CenterHpType] = char(0x07); // HP LR 24
+        memory[K500Protocol::ReadbackOffset::CenterLpType] = char(0x01); // LP Bessel 12
+        putFileU16(memory, 0x00DC, 30); // Center output delay
 
         // Sub output + crossover.
         putFileU8(memory, 0x0060, 87); // +6 dB
@@ -326,7 +337,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x006D, 7);
         putFileU8(memory, 0x006E, 15);
         putFileU8(memory, 0x006F, 6);
-        putFileU16(memory, 0x0070, 40); // Sub output delay
+        memory[K500Protocol::ReadbackOffset::SubHpType] = char(0x07); // HP LR 24
+        memory[K500Protocol::ReadbackOffset::SubLpType] = char(0x02); // LP Butter 12
+        putFileU16(memory, 0x00DE, 40); // Sub output delay
         putFileU16(memory, 0x00B8, 42);
         putFileU16(memory, 0x00BC, 96);
 
@@ -334,6 +347,9 @@ int main(int argc, char *argv[])
         putFileU8(memory, 0x0074, 55);
         putFileU8(memory, 0x007B, 44);
         putFileU8(memory, 0x007C, 6);
+        putFileU8(memory, 0x0080, 88); // Echo Direct
+        putFileU8(memory, 0x0081, 62); // Echo Right Delay = +12%
+        putFileU8(memory, 0x0082, 35); // Echo Right Predelay = -15%
         putFileU16(memory, 0x00C0, 220);
         putFileU16(memory, 0x00C2, 12000);
         putFileU16(memory, 0x00C4, 700);
@@ -341,6 +357,7 @@ int main(int argc, char *argv[])
         putFileU16(memory, 0x00C8, 1850);
         putFileU16(memory, 0x00CA, 28);
         putFileU16(memory, 0x00CC, 236);
+        putFileU16(memory, 0x00CE, 73); // Echo Left Predelay
 
         // Compact live EQ representations from three different sections.
         putLiveEqBand(memory, 0x014B, 2, 355, 10, 0x80, 111); // Music B3 Bell -11.1
@@ -384,7 +401,12 @@ int main(int argc, char *argv[])
         const QVariantMap echo = effects.value(QStringLiteral("echo")).toMap();
         const QVariantMap eq = state.value(QStringLiteral("eq")).toMap();
         const QVariantMap musicEq = eq.value(QStringLiteral("music")).toMap();
+        const QVariantMap micAEq = eq.value(QStringLiteral("micA")).toMap();
+        const QVariantMap micBEq = eq.value(QStringLiteral("micB")).toMap();
         const QVariantMap mainEq = eq.value(QStringLiteral("main")).toMap();
+        const QVariantMap surroundEq = eq.value(QStringLiteral("surround")).toMap();
+        const QVariantMap centerEq = eq.value(QStringLiteral("center")).toMap();
+        const QVariantMap subEq = eq.value(QStringLiteral("sub")).toMap();
         const QVariantMap hydratedMusicBand = studioEngine.musicEqBands()->get(2);
         const QVariantMap hydratedMicBand = studioEngine.micAEqBands()->get(0);
         const QVariantMap hydratedSubBand = studioEngine.subEqBands()->get(4);
@@ -401,6 +423,8 @@ int main(int argc, char *argv[])
             && qFuzzyCompare(studioEngine.masterFx(), 49.0)
             && qFuzzyCompare(studioEngine.effectInitLevel(), 27.0)
             && studioEngine.musicKey() == 3
+            && qFuzzyCompare(studioEngine.noiseGate(), -50.0)
+            && qFuzzyCompare(studioEngine.bass(), 12.0)
             && qFuzzyCompare(studioEngine.input1Gain(), 3.0)
             && qFuzzyCompare(studioEngine.input2Gain(), -1.0)
             && qFuzzyCompare(studioEngine.bluetoothGain(), 5.0)
@@ -412,6 +436,10 @@ int main(int argc, char *argv[])
             && studioEngine.lpType() == QStringLiteral("Bypass")
             && musicEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
             && musicEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("Bypass")
+            && micAEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 18")
+            && micBEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 18")
+            && micAEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 12")
+            && micBEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 12")
             && !musicEq.value(QStringLiteral("bypass")).toBool()
             && !mainEq.value(QStringLiteral("bypass")).toBool()
             && system.value(QStringLiteral("musicInitVol")).toInt() == 25
@@ -421,9 +449,10 @@ int main(int argc, char *argv[])
             && system.value(QStringLiteral("effectInitLevel")).toInt() == 27
             && system.value(QStringLiteral("uDiskRecordVol")).toInt() == 9
             && system.value(QStringLiteral("usbRecordVol")).toInt() == 11
-            && system.value(QStringLiteral("danceMicTriggerKnown")).toBool()
-            && system.value(QStringLiteral("danceMicThresholdDb")).toInt() == -50
-            && system.value(QStringLiteral("danceMicHoldSec")).toInt() == 6
+            && !system.value(QStringLiteral("danceMicTriggerKnown")).toBool()
+            && system.value(QStringLiteral("adjMannerVrOffKnown")).toBool()
+            && system.value(QStringLiteral("adjMannerVrOff")).toBool()
+            && !system.value(QStringLiteral("manualVrEnabled")).toBool()
             && system.value(QStringLiteral("deviceModeIndex")).toInt() == 4
             && system.value(QStringLiteral("activeModeName")).toString() == QStringLiteral("KARAOKE ARTIST")
             && system.value(QStringLiteral("btName")).toString() == QStringLiteral("KTV_BT_TEST")
@@ -437,6 +466,10 @@ int main(int argc, char *argv[])
             && mic.value(QStringLiteral("compRatio")).toInt() == 3
             && qFuzzyCompare(mic.value(QStringLiteral("releaseSec")).toDouble(), 0.2)
             && music.value(QStringLiteral("source")).toString() == QStringLiteral("Digital")
+            && music.value(QStringLiteral("noiseGateKnown")).toBool()
+            && music.value(QStringLiteral("noiseGateDb")).toInt() == -50
+            && music.value(QStringLiteral("bassKnown")).toBool()
+            && qFuzzyCompare(music.value(QStringLiteral("bassDb")).toDouble(), 12.0)
             && qFuzzyCompare(mainOutput.value(QStringLiteral("lVolDb")).toDouble(), 12.0)
             && qFuzzyCompare(mainOutput.value(QStringLiteral("rVolDb")).toDouble(), 10.0)
             && mainOutput.value(QStringLiteral("compThresholdDb")).toInt() == -14
@@ -456,7 +489,11 @@ int main(int argc, char *argv[])
             && reverb.value(QStringLiteral("predelayMs")).toInt() == 28
             && echo.value(QStringLiteral("level")).toInt() == 44
             && echo.value(QStringLiteral("repeat")).toInt() == 6
+            && echo.value(QStringLiteral("direct")).toInt() == 88
+            && echo.value(QStringLiteral("rightDelayPercent")).toInt() == 12
+            && echo.value(QStringLiteral("rightPredelayPercent")).toInt() == -15
             && echo.value(QStringLiteral("leftDelayMs")).toInt() == 236
+            && echo.value(QStringLiteral("leftPredelayMs")).toInt() == 73
             && qFuzzyCompare(hydratedMusicBand.value(QStringLiteral("frequency")).toDouble(), 355.0)
             && qFuzzyCompare(hydratedMusicBand.value(QStringLiteral("gain")).toDouble(), -11.1)
             && qFuzzyCompare(hydratedMicBand.value(QStringLiteral("frequency")).toDouble(), 125.0)
@@ -467,6 +504,14 @@ int main(int argc, char *argv[])
             && hydratedSubBand.value(QStringLiteral("typeName")).toString() == QStringLiteral("HIGH SHELF")
             && qFuzzyCompare(mainEq.value(QStringLiteral("hpfHz")).toDouble(), 45.0)
             && qFuzzyCompare(mainEq.value(QStringLiteral("lpfHz")).toDouble(), 19000.0)
+            && mainEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 18")
+            && mainEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 18")
+            && surroundEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP Bessel 24")
+            && surroundEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 24")
+            && centerEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
+            && centerEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Bessel 12")
+            && subEq.value(QStringLiteral("hpType")).toString() == QStringLiteral("HP LR 24")
+            && subEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 12")
             && hydrationEdits == 0;
         if (!hydrationValid)
             return 7;

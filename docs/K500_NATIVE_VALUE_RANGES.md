@@ -31,22 +31,25 @@ Reverb page at both endpoints.
 The FX filter bounds also match the older filterRangeForEqKey() contract:
 HPF 20..1000 Hz, LPF 4000..16000 Hz.
 
-## Echo — retained captured/legacy contract
+## Echo — capture-mapped native contract
 
-The earlier K500 editor/reverse-engineering work used the same FX-filter domain
-for Echo and the Qt native bridge already carries captured CMD 0x0D mappings.
+The Qt native bridge uses the full `CMD 0x0D` image. The 2026-10-04 physical
+endpoint sweeps close the previously uncertain right-channel and predelay ranges.
 
 | Parameter | Minimum | Maximum | Unit | Evidence |
 | --- | ---: | ---: | --- | --- |
-| Echo Level | 0 | 100 | scalar/% | Captured/legacy contract |
-| Echo Repeat | 0 | 10 | scalar | Captured/legacy contract |
-| Echo Left Delay | 0 | 1000 | ms | Captured/legacy contract |
-| Echo Highpass | 20 | 1000 | Hz | Captured/legacy FX filter contract |
-| Echo Lowpass | 4000 | 16000 | Hz | Captured/legacy FX filter contract |
-| Echo Direct | 0 | 100 | scalar/% | Captured/legacy contract |
+| Echo Level | 0 | 100 | scalar/% | Captured contract |
+| Echo Repeat | 0 | 10 | scalar | Captured contract |
+| Echo Left Delay | 0 | 1000 | ms | Captured contract |
+| Echo Left Predelay | 0 | 100 | ms | **Native endpoint USB capture** |
+| Echo Right Delay | -50 | +50 | % | **Native endpoint USB capture; raw=UI+50** |
+| Echo Right Predelay | -50 | +50 | % | **Native endpoint USB capture; raw=UI+50** |
+| Echo Highpass | 20 | 1000 | Hz | Captured FX frequency contract |
+| Echo Lowpass | 4000 | 16000 | Hz | Captured FX frequency contract |
+| Echo Direct | 0 | 100 | scalar/% | Captured contract |
 
-Fields not listed here (for example hidden/right-channel timing metadata) remain
-device-owned/unverified unless a dedicated capture proves their user-facing range.
+Reverb and Echo expose HPF/LPF **frequency only** in the manufacturer UI. They
+do not have HP/LP filter-type selectors.
 
 ## Music Tone — native capture observed
 
@@ -98,8 +101,10 @@ USB Record stores `raw = UI - 1`, therefore raw `0..5` represents UI `1..6`.
 Mic Max and UDisk Record were subsequently closed by the final 2026-10-04
 operational capture batch below; do not revive the older read-only assumption.
 
-Adj Manner / VR OFF is a boolean setter (`CMD 0x07`) rather than a numeric
-range. Its reconnect/readback location remains unproven.
+Adj Manner / VR OFF is a boolean ownership switch rather than a numeric range.
+Paired reconnect captures prove direct `activeMemory[0x008C]` /
+file scalar `0x0094`: 0 = front-panel VR active, 1 = VR OFF/software ownership.
+The same state is independently visible through inverse C0 `data[19]` bit 0.
 
 ## Final System operational controls — native capture observed
 
@@ -115,7 +120,9 @@ Mic Max is a hard ceiling for Top Mic:
 `TopMic = min(TopMic, MicMax)`.
 
 Dance Mic threshold uses `raw = dB + 60`. Hold Time uses raw seconds.
-Both values travel together in one CMD 0x22 frame.
+Both values travel together in one CMD 0x22 frame. Their write encoding is
+captured, but the old speculative reconnect seed at `0x0093/0x0094` is retired
+because `0x0094` is physically proven Adj Manner VR OFF.
 
 BT Name's captured field is exactly 8 bytes, NUL-padded. Do not expand the
 writable UI to the longer readback buffer without new packet evidence.
@@ -161,7 +168,9 @@ out-of-domain native writes.
 ## Reconciliation / live-edit rule
 
 Ordinary live edits must not force the application through a full 939-byte
-authoritative resync. Full active-memory hydration remains the authority barrier
+authoritative resync. Adj Manner is an explicit exception because it changes
+hardware ownership: after CMD 0x07 / RSP 0xF8 the application performs one
+fresh 939-byte readback before LIVE resumes. Full active-memory hydration remains the authority barrier
 for connect/reconnect/Recall/recovery and explicit qualification. Transport
 acceptance is still not hardware confirmation, but verification must not make
 normal knob/fader editing look like a disconnect/reconnect cycle.

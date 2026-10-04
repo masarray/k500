@@ -19,7 +19,7 @@ The current official Mode 01 is:
 ```text
 resources/presets/01_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
-SHA-256: 4d1f2dd4f5431de1df1819931ecf65be4242e2bc9ae4e9dbabdbee3504004cf1
+SHA-256: 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
 ```
 
 It was evolved surgically from the exact native `CONCERT HIFI V4` donor. Preserve the native donor as rollback/provenance evidence; future official changes require listening evidence, a byte-diff audit, and an updated golden reference.
@@ -35,10 +35,13 @@ Read:
 3. `docs/PORTING_PARITY_MATRIX.md`
 4. `docs/PROTOCOL_GOLDEN_VECTORS.md`
 5. `docs/K500_CAPTURE_TODO_MAP.md`
-6. `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`
-7. `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`
-8. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
-9. `CONTRIBUTING.md`
+6. `docs/MUSIC_TONE_CAPTURE_MAP.md`
+7. `docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md`
+8. `docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md`
+9. `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`
+10. `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`
+11. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
+12. `CONTRIBUTING.md`
 
 ### `.k500` preset analysis, sonic tuning, simulation, graphs, or new presets
 
@@ -271,3 +274,20 @@ Before merge:
 - for v1.1+ updater releases, never rebuild after RC acceptance: promotion must verify and reuse the exact accepted RC binary hashes recorded in `docs/V1_1_UPDATER_RC_ACCEPTANCE.md`.
 
 A new AI thread should prefer repository evidence over remembered chat context. If a fact conflicts, the current stable code, golden vectors, exact donor files, and evidence-backed documentation are authoritative.
+
+
+## CI architecture invariant
+
+The repository uses **tests as regression units, not GitHub workflows as regression units**.
+
+- Normal pull requests and `main` use the single `K500 CI` workflow.
+- New bug/feature coverage belongs in an executable self-test or `tools/ci/contracts.py`.
+- Do not create one workflow per milestone, protocol field, UI control, or bug.
+- Compile the Windows tree once, then run all hardware-free self-tests against that exact build.
+- PR exact-head concurrency cancels obsolete runs.
+- Heavy ASan/fuzz/soak is manual hardening, not default PR CI.
+- RC/stable workflows remain manual and immutable.
+- The active workflow budget is intentionally <= 4 files under `.github/workflows`.
+- Any proposal to add another active workflow must first prove that it cannot be expressed as a test/job in `windows-build.yml`.
+
+Read `docs/CI_ARCHITECTURE.md` before changing CI.

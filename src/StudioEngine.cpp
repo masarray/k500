@@ -440,6 +440,26 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     syncDouble(m_bluetoothGain, static_cast<int>(fileU8(memory, 0x0020)) - 12, [this] { emit bluetoothGainChanged(); });
     syncDouble(m_uDiskGain, static_cast<int>(fileU8(memory, 0x0021)) - 12, [this] { emit uDiskGainChanged(); });
     syncDouble(m_digitalGain, static_cast<int>(fileU8(memory, 0x0022)) - 12, [this] { emit digitalGainChanged(); });
+
+    // MUSIC_TONE_READBACK_20261004_V1 — direct active-memory truth from paired
+    // reconnect captures. Never translate these offsets through fileU8().
+    const quint8 musicNoiseGateRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicNoiseGate, 0xFF);
+    const bool musicNoiseGateKnown =
+        K500Protocol::musicNoiseGateRawValid(musicNoiseGateRaw);
+    if (musicNoiseGateKnown) {
+        syncDouble(m_noiseGate,
+                   K500Protocol::musicNoiseGateDbFromRaw(musicNoiseGateRaw),
+                   [this] { emit noiseGateChanged(); });
+    }
+    const quint8 musicBassRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::MusicBass, 0xFF);
+    const bool musicBassKnown = K500Protocol::musicBassRawValid(musicBassRaw);
+    if (musicBassKnown) {
+        syncDouble(m_bass, K500Protocol::musicBassDbFromRaw(musicBassRaw),
+                   [this] { emit bassChanged(); });
+    }
+
     syncDouble(m_hpfHz, fileU16(memory, 0x009C), [this] { emit hpfHzChanged(); });
     syncDouble(m_lpfHz, fileU16(memory, 0x009E), [this] { emit lpfHzChanged(); });
 
@@ -456,6 +476,14 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     // EQ_ENABLE_ACTIVE_LOW_BYPASS_V1 — these three bytes are a shared
     // EQ-enable image. Set bit = active, clear bit = bypass.
     const K500EqBypassImage eqBypass{byteAt(memory, 0x027D), byteAt(memory, 0x027E), byteAt(memory, 0x027F)};
+
+    // OUTPUT_CROSSOVER_TYPE_READBACK_20261004_V1 — State-A reconnect maps
+    // the primary HP/LP filter enums directly from active memory.
+    const quint8 micHpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicHpType, 0xFF);
+    const quint8 micLpTypeRaw = byteAt(memory, K500Protocol::ReadbackOffset::MicLpType, 0xFF);
+    const bool micHpTypeKnown = K500Protocol::crossoverFilterCodeValid(micHpTypeRaw);
+    const bool micLpTypeKnown = K500Protocol::crossoverFilterCodeValid(micLpTypeRaw);
+
     QVariantMap eqState;
     for (const LiveEqDescriptor &section : LiveEqSections) {
         const QString key = QString::fromLatin1(section.key);
@@ -497,9 +525,22 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         if (key == QStringLiteral("music")) {
             hpType = m_hpType;
             lpType = m_lpType;
+        } else if ((key == QStringLiteral("micA") || key == QStringLiteral("micB")) && model) {
+            hpType = micHpTypeKnown ? K500Protocol::crossoverFilterLabel(micHpTypeRaw, true) : model->hpType();
+            lpType = micLpTypeKnown ? K500Protocol::crossoverFilterLabel(micLpTypeRaw, false) : model->lpType();
+        } else if (key == QStringLiteral("main")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::MainLpType), false);
+        } else if (key == QStringLiteral("surround")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SurroundLpType), false);
+        } else if (key == QStringLiteral("center")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::CenterLpType), false);
+        } else if (key == QStringLiteral("sub")) {
+            hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubHpType), true);
+            lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubLpType), false);
         } else if (model) {
-            // Other sections remain evidence-gated until their own reconnect
-            // captures identify authoritative type bytes.
             hpType = model->hpType();
             lpType = model->lpType();
         }
@@ -532,16 +573,17 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         }
     }
 
-    // DANCE_MIC_READBACK_STRUCTURAL_V1 — CMD 0x22 proves the pair encoding.
-    // The only two unassigned scalar bytes between Mic EQ Link (0x0092) and
-    // Record volumes (0x0095/0x0096) are 0x0093/0x0094. Accept them as a
-    // usable seed only when BOTH bytes are inside the physically captured
-    // domains; otherwise expose trigger state as unknown and keep live writes gated.
-    const int danceThresholdRaw = static_cast<int>(fileU8(memory, 0x0093, 0xFF));
-    const int danceHoldRaw = static_cast<int>(fileU8(memory, 0x0094, 0xFF));
-    const bool danceTriggerKnown = danceThresholdRaw >= 0 && danceThresholdRaw <= 60
-                                   && danceHoldRaw >= K500Protocol::NativeRange::DanceMicHoldMinSec
-                                   && danceHoldRaw <= K500Protocol::NativeRange::DanceMicHoldMaxSec;
+    // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1 — file[0x0094]
+    // is capture-proven Adj Manner VR OFF, so the former structural Dance seed
+    // is invalid. Keep Dance trigger unknown rather than reinterpret a hardware flag.
+    const bool danceTriggerKnown = false;
+    const int danceThresholdRaw = 10; // presentation fallback only (-50 dB)
+    const int danceHoldRaw = 6;       // presentation fallback only
+
+    const quint8 adjMannerRaw = byteAt(
+        memory, K500Protocol::ReadbackOffset::AdjMannerVrOff, 0xFF);
+    const bool adjMannerKnown = adjMannerRaw <= 1;
+    const bool adjMannerVrOff = adjMannerKnown && adjMannerRaw == 1;
 
     QVariantMap system{
         {QStringLiteral("topMusicVol"), static_cast<int>(fileU8(memory, 0x0008))},
@@ -557,6 +599,9 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("danceMicTriggerKnown"), danceTriggerKnown},
         {QStringLiteral("danceMicThresholdDb"), danceTriggerKnown ? danceThresholdRaw - 60 : -50},
         {QStringLiteral("danceMicHoldSec"), danceTriggerKnown ? danceHoldRaw : 6},
+        {QStringLiteral("adjMannerVrOffKnown"), adjMannerKnown},
+        {QStringLiteral("adjMannerVrOff"), adjMannerVrOff},
+        {QStringLiteral("manualVrEnabled"), adjMannerKnown && !adjMannerVrOff},
         {QStringLiteral("deviceModeIndex"), modeIndex},
         {QStringLiteral("deviceModeNames"), modeNames},
         {QStringLiteral("activeModeName"), activeName},
@@ -594,7 +639,15 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("btGainDb"), static_cast<int>(fileU8(memory, 0x0020)) - 12},
         {QStringLiteral("uDiskGainDb"), static_cast<int>(fileU8(memory, 0x0021)) - 12},
         {QStringLiteral("digitalGainDb"), static_cast<int>(fileU8(memory, 0x0022)) - 12},
+        {QStringLiteral("noiseGateKnown"), musicNoiseGateKnown},
+        {QStringLiteral("bassKnown"), musicBassKnown},
     };
+    if (musicNoiseGateKnown)
+        music.insert(QStringLiteral("noiseGateDb"),
+                     K500Protocol::musicNoiseGateDbFromRaw(musicNoiseGateRaw));
+    if (musicBassKnown)
+        music.insert(QStringLiteral("bassDb"),
+                     K500Protocol::musicBassDbFromRaw(musicBassRaw));
 
     QVariantMap mainOutput{
         {QStringLiteral("lVolDb"), outputDb(fileU8(memory, 0x0024))},
@@ -603,8 +656,8 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x002A))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x002C))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x002E))},
-        {QStringLiteral("lDelayMs"), static_cast<int>(fileU16(memory, 0x0034))},
-        {QStringLiteral("rDelayMs"), static_cast<int>(fileU16(memory, 0x0036))},
+        {QStringLiteral("lDelayMs"), static_cast<int>(fileU16(memory, 0x00D4))},
+        {QStringLiteral("rDelayMs"), static_cast<int>(fileU16(memory, 0x00D6))},
     };
     mergeMap(mainOutput, compState(memory, 0x0030));
 
@@ -626,7 +679,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x0052))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x0054))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x0056))},
-        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x005C))},
+        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x00DC))},
     };
     mergeMap(centerOutput, compState(memory, 0x0058));
 
@@ -636,7 +689,7 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         {QStringLiteral("musicLevel"), static_cast<int>(fileU8(memory, 0x0066))},
         {QStringLiteral("reverbLevel"), static_cast<int>(fileU8(memory, 0x0068))},
         {QStringLiteral("echoLevel"), static_cast<int>(fileU8(memory, 0x006A))},
-        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x0070))},
+        {QStringLiteral("outputDelayMs"), static_cast<int>(fileU16(memory, 0x00DE))},
         {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00B8))},
         {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00BC))},
     };
@@ -652,9 +705,13 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     QVariantMap echo{
         {QStringLiteral("level"), static_cast<int>(fileU8(memory, 0x007B))},
         {QStringLiteral("repeat"), static_cast<int>(fileU8(memory, 0x007C))},
+        {QStringLiteral("direct"), static_cast<int>(fileU8(memory, 0x0080))},
+        {QStringLiteral("rightDelayPercent"), static_cast<int>(fileU8(memory, 0x0081)) - 50},
+        {QStringLiteral("rightPredelayPercent"), static_cast<int>(fileU8(memory, 0x0082)) - 50},
         {QStringLiteral("hpfHz"), static_cast<int>(fileU16(memory, 0x00C4))},
         {QStringLiteral("lpfHz"), static_cast<int>(fileU16(memory, 0x00C6))},
         {QStringLiteral("leftDelayMs"), static_cast<int>(fileU16(memory, 0x00CC))},
+        {QStringLiteral("leftPredelayMs"), static_cast<int>(fileU16(memory, 0x00CE))},
     };
 
     m_deviceState = {

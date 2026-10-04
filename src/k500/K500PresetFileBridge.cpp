@@ -22,11 +22,11 @@ struct BuiltInPresetDefinition {
 };
 
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
-    {"KONSER NYANYI",     "Fresh, large and forgiving concert karaoke",       "01_KONSER_NYANYI.k500",       ":/presets/01_KONSER_NYANYI.k500"},
+    {"KONSER NYANYI",     "Balanced, punchy and forgiving concert karaoke",       "01_KONSER_NYANYI.k500",       ":/presets/01_KONSER_NYANYI.k500"},
     {"MC HOST RADIO",     "Dry and controlled broadcast utility",             "02_MC_HOST_RADIO.k500",       ":/presets/02_MC_HOST_RADIO.k500"},
-    {"KAR DANGDUT",       "Dangdut vocal FX with Hi-Fi Core V3 music",        "03_KAR_DANGDUT.k500", ":/presets/03_KAR_DANGDUT.k500"},
+    {"KAR DANGDUT",       "Punchy dangdut groove with smooth vocal space",        "03_KAR_DANGDUT.k500", ":/presets/03_KAR_DANGDUT.k500"},
     {"POP ROCK BALLAD",   "Pop/slow-rock ambience with singer control",       "04_POP_ROCK_BALLAD.k500",            ":/presets/04_POP_ROCK_BALLAD.k500"},
-    {"POP KENANGAN V2",   "Warm romantic 70s/80s slow-pop",                   "05_POP_KENANGAN_V2.k500",    ":/presets/05_POP_KENANGAN_V2.k500"},
+    {"POP KENANGAN V2",   "Tempo-aware romantic slow-pop with lush vocal halo",                   "05_POP_KENANGAN_V2.k500",    ":/presets/05_POP_KENANGAN_V2.k500"},
     {"SHOLAWAT SYAHDU",   "Fresh soft slow-tempo sholawat ambience",          "06_SHOLAWAT_SYAHDU.k500",   ":/presets/06_SHOLAWAT_SYAHDU.k500"},
     {"JAZZ LOUNGE",       "Intimate classy lounge vocal with restrained echo","07_JAZZ_LOUNGE.k500",            ":/presets/07_JAZZ_LOUNGE.k500"},
     {"BLUES CLUB",        "Warm vintage blues with a single slap repeat",     "08_BLUES_CLUB.k500",           ":/presets/08_BLUES_CLUB.k500"},

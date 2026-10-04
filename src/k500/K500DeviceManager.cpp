@@ -25,9 +25,6 @@ constexpr int DiagnosticLogLimit = 240;
 constexpr int AuthoritativeReconcileIdleMs = 700;
 constexpr int AuthoritativeReconcileRetryMs = 120;
 
-// Exact donor/native active-memory readback used by the web editor.
-constexpr int ActiveMemorySize = 0x03AB;       // 0x0000..0x03AA = 939 bytes
-constexpr int ActiveMemoryBlockSize = 0x003A;  // 58-byte CMD 0x40 chunks
 constexpr int ActiveMemoryInterBlockMs = 35;
 
 K500TransactionScheduler::Family schedulerFamilyForPath(const QString &path)
@@ -663,10 +660,10 @@ void K500DeviceManager::requestActiveMemoryReadback()
 {
     m_responseTimer.stop();
     m_stage = Stage::AwaitMemoryBlock;
-    m_activeMemory = QByteArray(ActiveMemorySize, char(0));
+    m_activeMemory = QByteArray(K500Protocol::ActiveMemorySize, char(0));
     m_memoryReadOffset = 0;
     m_pendingReadLength = 0;
-    setPortLabel(QStringLiteral("%1 · reading KTV 0/%2").arg(m_io.label()).arg(ActiveMemorySize));
+    setPortLabel(QStringLiteral("%1 · reading KTV 0/%2").arg(m_io.label()).arg(K500Protocol::ActiveMemorySize));
     requestNextMemoryBlock();
 }
 
@@ -674,12 +671,12 @@ void K500DeviceManager::requestNextMemoryBlock()
 {
     if (m_stage != Stage::AwaitMemoryBlock)
         return;
-    if (m_memoryReadOffset >= ActiveMemorySize) {
+    if (m_memoryReadOffset >= K500Protocol::ActiveMemorySize) {
         finishConnected();
         return;
     }
 
-    m_pendingReadLength = qMin(ActiveMemoryBlockSize, ActiveMemorySize - m_memoryReadOffset);
+    m_pendingReadLength = qMin(K500Protocol::ActiveMemoryBlockSize, K500Protocol::ActiveMemorySize - m_memoryReadOffset);
     const int offset = m_memoryReadOffset;
     // USB_READBLOCK_TRAILING_EVIDENCE_GATE_V1
     // Keep SonKuPik's established USB wire byte at 0x00. The 2026-09-20 native
@@ -688,7 +685,7 @@ void K500DeviceManager::requestNextMemoryBlock()
     // retains its captured/established 0x63 byte.
     const quint8 mode = m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
     setPortLabel(QStringLiteral("%1 · reading KTV %2/%3")
-                     .arg(m_io.label()).arg(offset).arg(ActiveMemorySize));
+                     .arg(m_io.label()).arg(offset).arg(K500Protocol::ActiveMemorySize));
     if (!writeFrame(K500Protocol::readBlock(static_cast<quint16>(offset),
                                              static_cast<quint16>(m_pendingReadLength), mode),
                     QStringLiteral("Read 0x%1 len %2")
@@ -717,7 +714,7 @@ void K500DeviceManager::acceptMemoryBlock(const QByteArray &data)
     m_memoryReadOffset += m_pendingReadLength;
     m_pendingReadLength = 0;
 
-    if (m_memoryReadOffset >= ActiveMemorySize) {
+    if (m_memoryReadOffset >= K500Protocol::ActiveMemorySize) {
         finishConnected();
         return;
     }
@@ -728,9 +725,9 @@ void K500DeviceManager::acceptMemoryBlock(const QByteArray &data)
 
 void K500DeviceManager::finishConnected()
 {
-    if (m_activeMemory.size() < ActiveMemorySize || m_memoryReadOffset < ActiveMemorySize) {
+    if (m_activeMemory.size() < K500Protocol::ActiveMemorySize || m_memoryReadOffset < K500Protocol::ActiveMemorySize) {
         setError(QStringLiteral("K500 active-memory readback tidak lengkap (%1/%2 byte).")
-                     .arg(m_memoryReadOffset).arg(ActiveMemorySize));
+                     .arg(m_memoryReadOffset).arg(K500Protocol::ActiveMemorySize));
         resetConnectionState(true);
         setStatus(QStringLiteral("error"));
         return;

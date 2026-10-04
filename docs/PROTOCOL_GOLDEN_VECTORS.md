@@ -45,7 +45,7 @@ E3 data[2] bit 0x04  Playback: 0=stopped/paused, 1=playing
 C0 data[15] bit 0x04 Playback: 0=stopped/paused, 1=playing
 ```
 
-## Music Tone captured writes
+## Music Tone captured READ/WRITE
 
 Music Noise Gate is the captured field inside Top Music `CMD 0x02` immediately
 after Music Key. Its native domain is OFF, then -90..-50 dB:
@@ -68,7 +68,19 @@ Music Bass uses `CMD 0x0C`, selector `0x02`, and 0.1 dB encoding:
 ```
 
 `raw = round((dB + 12) * 10)`, native range `-12..+12 dB`.
-The write mapping is captured; connect/readback offsets remain evidence-gated.
+
+2026-10-04 reconnect captures close the READ side:
+
+```text
+activeMemory[0x0005] = Music Noise Gate
+  0 = OFF
+  1..41 = -90..-50 dB
+
+activeMemory[0x00DF] = Music Bass
+  raw 0..240 => dB = (raw - 120) / 10
+```
+
+Both are direct active-memory offsets, not translated `.k500` file offsets. Known-state reconnect comparisons isolate only the named byte. The Top-Music trailing byte remains a separate evidence-gated preservation field; do not infer its donor from either offset.
 
 ## PEQ
 
@@ -108,6 +120,23 @@ The complete 0..7 sequence is physically captured for Music HP. Music LP
 independently proves 0=Bypass and 2=Butter12; remaining LP labels reuse the
 same shared enum and remain explicitly documented as protocol-family inference.
 
+### Mic HP/LP type READ truth
+
+The 2026-10-04 Mic LP reconnect sweep proves direct `activeMemory[0x0014]`. The first sweep's operator note mislabelled the final raw-5 state; later independent Mic LP toggles plus the State-A reconnect resolve the same shared enum used by the writer:
+
+```text
+0 Bypass
+1 Bessel 12
+2 Butter 12
+3 Bessel 18
+4 Butter 18
+5 Bessel 24
+6 Butter 24
+7 LR 24 / Link Riley 24
+```
+
+The later State-A reconnect independently closes Mic HP at direct `activeMemory[0x0013]` and reconfirms Mic LP at `0x0014`.
+
 Reference 1000 Hz, Butterworth 12 unless noted:
 
 ```text
@@ -121,13 +150,43 @@ Center LPF                           AA 06 11 0D 02 E8 03 00 EF
 Sub LPF                              AA 06 11 0F 02 E8 03 00 ED
 ```
 
-Music uses current scalar `0x1B` as the final state byte. Verified non-Music crossover writes use `0x00`.
+Music uses current scalar `0x1B` as the final state byte for its `CMD 0x11` crossover write.
+
+Do **not** treat the historical generic non-Music `0x00` builder byte as physical Mic evidence. The initial protocol builder hard-coded `0x00`. Two physical 2026-10-04 Mic LP captures, including a three-Equipment-Mode donor-isolation run, carry `0x09` at 16 kHz:
+
+```text
+Bessel 12  AA 06 11 01 01 80 3E 09 20
+Butter 12  AA 06 11 01 02 80 3E 09 1F
+Bessel 18  AA 06 11 01 03 80 3E 09 1E
+Butter 18  AA 06 11 01 04 80 3E 09 1D
+Bessel 24  AA 06 11 01 05 80 3E 09 1C
+```
+
+A later cross-mode Mic LP toggle also closes the type-enum ambiguity by physically emitting raw `0x06` for Butter 24 and raw `0x07` for LR 24. A focused donor-isolation capture then closes the final preservation byte. It mirrors current Music Input1 Gain raw (`dB + 12`, direct `activeMemory[0x0016]`):
+
+```text
+Input1 -3 dB (raw 09), Mic LP LR24      AA 06 11 01 07 80 3E 09 1A
+Input1  0 dB (raw 0C), Mic LP Butter24 AA 06 11 01 06 80 3E 0C 18
+Input1  0 dB (raw 0C), Mic LP LR24     AA 06 11 01 07 80 3E 0C 17
+```
+
+Changing Input2 or Bluetooth gain to raw `0x0C` while Input1 remained `0x09`
+left the Mic tail at `0x09`, isolating Input1 as the donor. The writer must
+preserve current canonical Input1 state rather than hard-code any observed byte.
 
 ## Top Music device-seed safety
 
 `CMD 0x02` is a block write. Unmapped fields are seeded from device scalar cache,
-never stale UI defaults. Music Noise Gate is capture-verified writable; until the
-user edits it, its byte remains device-seeded.
+never stale UI defaults. Music Noise Gate is capture-verified writable and its
+reconnect donor is now direct `activeMemory[0x0005]`; unrelated Top-Music edits
+must preserve that captured gate byte.
+
+`TOP_MUSIC_TAIL_SOURCE_PENDING_20261004`: the unrelated trailing byte after Noise
+Gate is still evidence-gated. Historical captures show `0x13`, the latest device
+state shows `0x00`, and `activeMemory[0x0007]` is independently proven Music HP
+Type. The implementation must not promote a replacement donor from one-state
+correlation; the legacy preservation path remains compatibility-only until a
+focused donor-isolation capture exists.
 
 Music Init is also now capture-verified writable and is carried by hydrated
 `K500MusicBlockState.musicInitVol`, not by replaying a stale scalar cache.
