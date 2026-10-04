@@ -971,13 +971,27 @@ Item {
                                             required property int index
                                             readonly property var modelData: root.recordingChannels[index]
                                             property real localValue: root.stableSystemValue(modelData)
+                                            // SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1 — preserve the
+                                            // active gesture, but never lose a newer device snapshot.
+                                            property bool deferredModelSync: false
                                             readonly property bool channelEditable: root.deviceConnected && root.engine.deviceStateReady
-                                            onModelDataChanged: if(!recFader || !recFader.dragging) localValue = root.stableSystemValue(modelData)
+                                            onModelDataChanged: {
+                                                if (recFader && recFader.dragging) {
+                                                    deferredModelSync = true
+                                                } else {
+                                                    localValue = root.stableSystemValue(modelData)
+                                                    deferredModelSync = false
+                                                }
+                                            }
                                             Connections {
                                                 target: root.engine
                                                 function onDeviceStateChanged() {
-                                                    if (!recFader.dragging)
+                                                    if (recFader.dragging) {
+                                                        recChannel.deferredModelSync = true
+                                                    } else {
                                                         recChannel.localValue = root.stableSystemValue(recChannel.modelData)
+                                                        recChannel.deferredModelSync = false
+                                                    }
                                                 }
                                             }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
@@ -988,6 +1002,12 @@ Item {
                                                 enabled:recChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
                                                 value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
+                                                onDraggingChanged:{
+                                                    if(!dragging && recChannel.deferredModelSync){
+                                                        recChannel.localValue=root.stableSystemValue(recChannel.modelData)
+                                                        recChannel.deferredModelSync=false
+                                                    }
+                                                }
                                                 onValueEdited:function(v){
                                                     recChannel.localValue=v
                                                     if(recChannel.channelEditable&&String(modelData.path||"").length>0)
@@ -1014,15 +1034,27 @@ Item {
                                             required property int index
                                             readonly property var modelData: root.micTriggerChannels[index]
                                             property real localValue: root.stableSystemValue(modelData)
+                                            property bool deferredModelSync: false
                                             readonly property bool channelEditable:root.deviceConnected
                                                                  && root.engine.deviceStateReady
                                                                  && Boolean(root.systemValue("danceMicTriggerKnown",false))
-                                            onModelDataChanged: if(!triggerFader || !triggerFader.dragging) localValue = root.stableSystemValue(modelData)
+                                            onModelDataChanged: {
+                                                if (triggerFader && triggerFader.dragging) {
+                                                    deferredModelSync = true
+                                                } else {
+                                                    localValue = root.stableSystemValue(modelData)
+                                                    deferredModelSync = false
+                                                }
+                                            }
                                             Connections {
                                                 target: root.engine
                                                 function onDeviceStateChanged() {
-                                                    if (!triggerFader.dragging)
+                                                    if (triggerFader.dragging) {
+                                                        triggerChannel.deferredModelSync = true
+                                                    } else {
                                                         triggerChannel.localValue = root.stableSystemValue(triggerChannel.modelData)
+                                                        triggerChannel.deferredModelSync = false
+                                                    }
                                                 }
                                             }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
@@ -1033,6 +1065,12 @@ Item {
                                                 enabled:triggerChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
                                                 value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
+                                                onDraggingChanged:{
+                                                    if(!dragging && triggerChannel.deferredModelSync){
+                                                        triggerChannel.localValue=root.stableSystemValue(triggerChannel.modelData)
+                                                        triggerChannel.deferredModelSync=false
+                                                    }
+                                                }
                                                 onValueEdited:function(v){
                                                     triggerChannel.localValue=v
                                                     if(triggerChannel.channelEditable)

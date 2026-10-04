@@ -201,7 +201,10 @@ def check_ui_contracts() -> None:
         "root.micTriggerChannels.length",
         "FRONT VR ACTIVE",
         "SOFTWARE CONTROL",
+        "SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1",
     )
+    require_count("qml/components/SystemWorkspaceImpl.qml", "property bool deferredModelSync: false", 2)
+    require_count("qml/components/SystemWorkspaceImpl.qml", "onDraggingChanged:", 2)
     require(
         "qml/components/MusicTonePanel.qml",
         "manualVrActive",
