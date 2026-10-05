@@ -285,6 +285,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/UpdateDialog.qml
         qml/components/SectionDrawer.qml
         qml/components/SoftButton.qml
+        qml/components/SystemToggleRow.qml
         qml/components/LucideIcon.qml
         qml/components/StudioComboBox.qml
         qml/components/StudioPanel.qml
