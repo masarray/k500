@@ -1,10 +1,9 @@
 import QtQuick
 import QtQuick.Layouts
 
-// SYSTEM_SETTING_TOGGLE_ROW_V1
-// Reusable hardware-backed boolean setting. The whole row is clickable.
-// When hardware is not READY, click is still acknowledged via blockedClicked()
-// so the UI can explain the gate without falsifying device state.
+// SYSTEM_SETTING_TOGGLE_ROW_V2
+// Reusable boolean setting for local-editor and hardware-backed states.
+// Normal state stays visually quiet; transient work gets the only status copy.
 Rectangle {
     id: root
 
@@ -22,16 +21,16 @@ Rectangle {
 
     implicitHeight: 50
     radius: 8
-    color: root.checked ? "#102329"
-                        : interactionMouse.pressed ? "#151D23"
+    color: root.checked ? "#0F181D"
+                        : interactionMouse.pressed ? "#141C21"
                         : interactionMouse.containsMouse ? "#111920"
                         : "#0D1318"
     border.width: 1
     border.color: root.pending ? Theme.amber
-                               : root.checked ? Theme.accentSoft
-                               : interactionMouse.containsMouse ? "#394852"
+                               : interactionMouse.containsMouse ? "#34434D"
+                               : root.checked ? "#2A3740"
                                : Theme.borderSoft
-    opacity: root.available || root.checked ? 1.0 : 0.84
+    opacity: root.available || root.checked ? 1.0 : 0.80
 
     Behavior on color { ColorAnimation { duration: 90 } }
     Behavior on border.color { ColorAnimation { duration: 90 } }
@@ -49,9 +48,9 @@ Rectangle {
             Layout.preferredHeight: 26
             Layout.alignment: Qt.AlignVCenter
             radius: 7
-            color: root.checked ? "#123038" : "#0A0F13"
+            color: root.checked ? "#101C21" : "#0A0F13"
             border.width: 1
-            border.color: root.checked ? Theme.accentSoft : "#29343C"
+            border.color: "#29343C"
 
             LucideIcon {
                 anchors.centerIn: parent
@@ -71,7 +70,7 @@ Rectangle {
             Text {
                 Layout.fillWidth: true
                 text: root.title
-                color: root.checked ? Theme.text : Theme.textSoft
+                color: Theme.text
                 font.family: Theme.fontFamily
                 font.pixelSize: 9
                 font.weight: Font.DemiBold
@@ -92,7 +91,7 @@ Rectangle {
                 }
 
                 Text {
-                    visible: root.statusText.length > 0
+                    visible: root.pending || root.statusText.length > 0
                     Layout.maximumWidth: 112
                     text: root.pending ? "APPLYING…" : root.statusText
                     color: root.pending ? Theme.amber : root.statusColor
@@ -105,10 +104,10 @@ Rectangle {
         }
 
         Rectangle {
-            Layout.preferredWidth: 38
-            Layout.preferredHeight: 20
+            Layout.preferredWidth: 42
+            Layout.preferredHeight: 22
             Layout.alignment: Qt.AlignVCenter
-            radius: 10
+            radius: 11
             color: root.pending ? "#30270E"
                                 : root.checked ? "#153A40"
                                 : "#070C10"
@@ -118,9 +117,9 @@ Rectangle {
                                        : root.available ? "#46545E" : "#303A42"
 
             Rectangle {
-                width: 14
-                height: 14
-                radius: 7
+                width: 16
+                height: 16
+                radius: 8
                 y: 3
                 x: root.checked ? parent.width - width - 3 : 3
                 color: root.pending ? Theme.amber

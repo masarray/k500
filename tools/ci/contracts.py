@@ -223,13 +223,12 @@ def check_ui_contracts() -> None:
         "SYSTEM_LIVE_STABLE_DELEGATE_V1",
         "root.recordingChannels.length",
         "root.micTriggerChannels.length",
-        "FRONT VR ACTIVE",
-        "SOFTWARE CONTROL",
         "SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1",
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
         "SYSTEM_TOGGLE_DUAL_AUTHORITY_V2",
+        "SYSTEM_CALM_TOGGLE_COPY_V1",
         "SYSTEM_DEVICE_MODE_INIT_TOGGLE_V4",
         "SYSTEM_MANUAL_ADJUSTMENT_CARD_V2",
         "SystemToggleRow {",
@@ -238,8 +237,17 @@ def check_ui_contracts() -> None:
         "requestUseInitVolumeToggle",
         "requestAdjMannerVrToggle",
         "setOfflineAdjMannerVrOff",
-        "\"FILE EDIT\"",
+        "\"SYNCING…\"",
+    )
+    forbid(
+        "qml/components/SystemWorkspaceImpl.qml",
         "\"LOCAL EDIT\"",
+        "\"FILE EDIT\"",
+        "\"SOFTWARE CONTROL\"",
+        "\"FRONT VR ACTIVE\"",
+        "\"LIVE · CMD 4E\"",
+        "\"BT CAPTURED\"",
+        "\"READ 19 · WRITE 8\"",
     )
     require(
         "src/k500/K500PresetEditMapper.cpp",
@@ -265,8 +273,9 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemToggleRow.qml",
-        "SYSTEM_SETTING_TOGGLE_ROW_V1",
+        "SYSTEM_SETTING_TOGGLE_ROW_V2",
         "signal toggleRequested(bool checked)",
+        "root.pending || root.statusText.length > 0",
         "signal blockedClicked()",
         "root.toggleRequested(!root.checked)",
         "root.blockedClicked()",
