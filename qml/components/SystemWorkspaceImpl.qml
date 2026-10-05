@@ -731,11 +731,15 @@ Item {
                         }
 
                         // SYSTEM_DEVICE_MODE_INIT_TOGGLE_V4
+                        // SYSTEM_CALM_TOGGLE_COPY_V1 — normal state is conveyed
+                        // by the switch itself; copy appears only for transient work.
                         SystemToggleRow {
                             Layout.fillWidth:true
                             Layout.preferredHeight:48
                             title:"Use Init Vol"
-                            detail:"Apply stored startup volume for this device mode"
+                            detail:root.deviceConnected
+                                   ? "Use stored startup volume"
+                                   : "Device setting · not stored in preset"
                             iconName:"settings-2"
                             checked:root.deviceConnected
                                     ? (!!root.presetManager
@@ -747,13 +751,9 @@ Item {
                                     && !!root.presetManager
                                     && root.presetManager.busy
                             statusText:root.systemControlHintTarget === "init" ? root.systemControlHint
-                                       : !root.deviceConnected ? "LOCAL EDIT"
-                                       : !root.presetManager.useInitVolumeKnown ? "READING DEVICE"
-                                       : checked ? "ON" : "OFF"
-                            statusColor:root.systemControlHintTarget === "init" ? Theme.amber
-                                        : !root.deviceConnected ? Theme.accent
-                                        : !root.presetManager.useInitVolumeKnown ? Theme.amber
-                                        : checked ? Theme.green : Theme.textDim
+                                       : root.deviceConnected
+                                         && !root.presetManager.useInitVolumeKnown ? "SYNCING…" : ""
+                            statusColor:Theme.amber
                             onToggleRequested:root.requestUseInitVolumeToggle()
                             onBlockedClicked:root.blockedOnlineToggleHint("init")
                         }
@@ -809,8 +809,6 @@ Item {
                                 Layout.fillWidth:true
                                 Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
                                 Item{Layout.fillWidth:true}
-                                Text{text:"READ 19 · WRITE 8";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.DemiBold}
-                                Text{text:"LIVE · CMD 4E";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
                             }
                             RowLayout {
                                 Layout.fillWidth:true
@@ -879,13 +877,14 @@ Item {
                                 color:"#10161B"
                                 border.width:1
                                 border.color:Theme.borderSoft
-                                RowLayout {
-                                    anchors.fill:parent
+                                Text {
+                                    anchors.left:parent.left
                                     anchors.leftMargin:9
-                                    anchors.rightMargin:9
-                                    spacing:7
-                                    Text{text:"BT CAPTURED";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:"BT rename/reset verified · BLE remains read only";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                    anchors.verticalCenter:parent.verticalCenter
+                                    text:"BT rename: max 8 characters · BLE read-only"
+                                    color:Theme.textDim
+                                    font.family:Theme.fontFamily
+                                    font.pixelSize:8
                                 }
                             }
                             Item{Layout.fillHeight:true}
@@ -953,10 +952,10 @@ Item {
                                 ColumnLayout {
                                     anchors.fill:parent
                                     anchors.margins:9
-                                    spacing:3
-                                    Text{text:"READ ONLY · DEVICE MANAGED";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
-                                    Text{Layout.fillWidth:true;text:"Lock/password and Admin/User credentials are intentionally outside the daily-use scope.";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;wrapMode:Text.WordWrap}
-                                    Text{Layout.fillWidth:true;text:"Device-managed only · no guessed credential traffic will be implemented.";color:Theme.textFaint;font.family:Theme.monoFamily;font.pixelSize:7;elide:Text.ElideRight}
+                                    spacing:4
+                                    Text{text:"DEVICE MANAGED";color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.DemiBold}
+                                    Text{Layout.fillWidth:true;text:"Lock and Admin settings are read-only in K500.";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8;wrapMode:Text.WordWrap}
+                                    Item{Layout.fillHeight:true}
                                 }
                             }
                             Item{Layout.fillHeight:true}
@@ -968,7 +967,7 @@ Item {
                 StudioPanel {
                     Layout.fillWidth:true
                     Layout.fillHeight:true
-                    Layout.minimumHeight:104
+                    Layout.minimumHeight:96
                     accentTop:false
 
                     ColumnLayout {
@@ -977,7 +976,7 @@ Item {
 
                         Item {
                             Layout.fillWidth:true
-                            Layout.preferredHeight:35
+                            Layout.preferredHeight:33
                             Text {
                                 anchors.left:parent.left
                                 anchors.leftMargin:12
@@ -1002,9 +1001,11 @@ Item {
                                 anchors.leftMargin:10
                                 anchors.rightMargin:10
                                 anchors.verticalCenter:parent.verticalCenter
-                                height:54
+                                height:50
                                 title:"VR / Trim Pot Off"
-                                detail:"Disable front-panel VR adjustment"
+                                detail:!root.deviceConnected && root.offlineEditMode
+                                       ? "Saved with preset"
+                                       : "Disable front-panel adjustment"
                                 iconName:"sliders-horizontal"
                                 checked:root.deviceConnected
                                         ? (!!root.presetManager
@@ -1016,14 +1017,9 @@ Item {
                                         && !!root.presetManager
                                         && root.presetManager.busy
                                 statusText:root.systemControlHintTarget === "vr" ? root.systemControlHint
-                                           : !root.deviceConnected
-                                             ? (root.offlineEditMode ? "FILE EDIT" : "LOCAL EDIT")
-                                           : !root.presetManager.adjMannerVrOffKnown ? "READING DEVICE"
-                                           : checked ? "SOFTWARE CONTROL" : "FRONT VR ACTIVE"
-                                statusColor:root.systemControlHintTarget === "vr" ? Theme.amber
-                                            : !root.deviceConnected ? Theme.accent
-                                            : !root.presetManager.adjMannerVrOffKnown ? Theme.amber
-                                            : checked ? Theme.accent : Theme.green
+                                           : root.deviceConnected
+                                             && !root.presetManager.adjMannerVrOffKnown ? "SYNCING…" : ""
+                                statusColor:Theme.amber
                                 onToggleRequested:root.requestAdjMannerVrToggle()
                                 onBlockedClicked:root.blockedOnlineToggleHint("vr")
                             }
