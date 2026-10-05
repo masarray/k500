@@ -227,6 +227,24 @@ def check_ui_contracts() -> None:
         "SOFTWARE CONTROL",
         "SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1",
     )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_TOGGLE_INTERACTION_STATE_V1",
+        "SYSTEM_DEVICE_MODE_INIT_TOGGLE_V4",
+        "SYSTEM_MANUAL_ADJUSTMENT_CARD_V2",
+        "SystemToggleRow {",
+        "requestUseInitVolumeToggle",
+        "requestAdjMannerVrToggle",
+    )
+    require(
+        "qml/components/SystemToggleRow.qml",
+        "SYSTEM_SETTING_TOGGLE_ROW_V1",
+        "signal toggleRequested(bool checked)",
+        "signal blockedClicked()",
+        "root.toggleRequested(!root.checked)",
+        "root.blockedClicked()",
+    )
+    require("CMakeLists.txt", "qml/components/SystemToggleRow.qml")
     require_count("qml/components/SystemWorkspaceImpl.qml", "property bool deferredModelSync: false", 2)
     require_count("qml/components/SystemWorkspaceImpl.qml", "onDraggingChanged:", 2)
     require(
