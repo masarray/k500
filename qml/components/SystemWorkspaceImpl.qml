@@ -639,41 +639,97 @@ Item {
                             }
                         }
 
+                        // SYSTEM_BOOLEAN_TOGGLE_UX_V1
+                        // Match the proven EQ BYPASS interaction language: one boolean
+                        // setting owns exactly one pill toggle. Unknown/offline device
+                        // truth is disabled and explained in text instead of rendered
+                        // as an ambiguous checkbox/question-mark glyph.
                         RowLayout {
                             Layout.fillWidth:true
-                            spacing:5
-                            Rectangle{
-                                id:initVolumeCheck
-                                width:13;height:13;radius:2
+                            spacing:8
+
+                            Rectangle {
+                                id:initVolumeToggle
+                                Layout.preferredWidth:142
+                                Layout.preferredHeight:28
+                                radius:8
+
                                 readonly property bool known:root.presetManager&&root.presetManager.useInitVolumeKnown
-                                readonly property bool active:known&&root.presetManager.useInitVolume
-                                color:active?Theme.accent:(known?"#4A5055":"#17120A")
+                                readonly property bool active:root.deviceConnected&&known&&root.presetManager.useInitVolume
+                                readonly property bool interactive:root.deviceConnected&&known&&root.presetManager&&!root.presetManager.busy
+
+                                color:active?"#102C30":(initVolumeMouse.containsMouse&&interactive?"#121B21":"#0C1217")
                                 border.width:1
-                                border.color:active?Theme.accentSoft:(known?"#60676C":Theme.amber)
-                                Text{anchors.centerIn:parent;visible:initVolumeCheck.active;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
-                                Text{anchors.centerIn:parent;visible:!initVolumeCheck.known;text:"?";color:Theme.amber;font.pixelSize:9;font.weight:Font.Bold}
-                                MouseArea{
+                                border.color:active?Theme.accent:(known&&root.deviceConnected?"#2A353D":"#263038")
+                                opacity:interactive||active?1.0:0.62
+                                Behavior on color{ColorAnimation{duration:90}}
+                                Behavior on border.color{ColorAnimation{duration:90}}
+                                Behavior on opacity{NumberAnimation{duration:90}}
+
+                                RowLayout {
                                     anchors.fill:parent
+                                    anchors.leftMargin:10
+                                    anchors.rightMargin:7
+                                    spacing:7
+
+                                    Text {
+                                        Layout.fillWidth:true
+                                        Layout.fillHeight:true
+                                        text:"USE INIT VOLUME"
+                                        color:initVolumeToggle.active?Theme.accent:Theme.textSoft
+                                        verticalAlignment:Text.AlignVCenter
+                                        horizontalAlignment:Text.AlignHCenter
+                                        font.family:Theme.fontFamily
+                                        font.pixelSize:9
+                                        font.weight:Font.DemiBold
+                                    }
+
+                                    Rectangle {
+                                        Layout.preferredWidth:31
+                                        Layout.preferredHeight:16
+                                        Layout.alignment:Qt.AlignVCenter
+                                        radius:8
+                                        color:initVolumeToggle.active?"#174148":"#070B0E"
+                                        border.width:1
+                                        border.color:initVolumeToggle.active?Theme.accent:"#36424A"
+
+                                        Rectangle {
+                                            width:12;height:12;radius:6;y:2
+                                            x:initVolumeToggle.active?17:2
+                                            color:initVolumeToggle.active?Theme.accent:"#77858E"
+                                            Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
+                                            Behavior on color{ColorAnimation{duration:90}}
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id:initVolumeMouse
+                                    anchors.fill:parent
+                                    hoverEnabled:true
+                                    enabled:initVolumeToggle.interactive
                                     cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-                                    onClicked:root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
+                                    onClicked:root.presetManager.setUseInitVolume(!initVolumeToggle.active)
                                 }
                             }
-                            Text{text:"Use init volume";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
-                            Text{
-                                text:!root.deviceConnected?"CONNECT TO SET"
-                                     :root.presetManager&&root.presetManager.useInitVolumeKnown
-                                        ?(root.presetManager.useInitVolume?"DEVICE ON":"DEVICE OFF")
-                                        :"DEVICE STATE UNKNOWN"
-                                color:root.deviceConnected&&root.presetManager&&!root.presetManager.useInitVolumeKnown?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily;font.pixelSize:7
+
+                            Text {
+                                text:!root.deviceConnected?"CONNECT DEVICE"
+                                     :!initVolumeToggle.known?"SYNCING DEVICE"
+                                     :(initVolumeToggle.active?"DEVICE ON":"DEVICE OFF")
+                                color:root.deviceConnected&&!initVolumeToggle.known?Theme.amber:Theme.textDim
+                                font.family:Theme.monoFamily
+                                font.pixelSize:8
                             }
+
                             Item{Layout.fillWidth:true}
+
                             Text{
                                 visible:root.presetManager&&String(root.presetManager.progress||"").length>0
                                 text:String(root.presetManager?root.presetManager.progress:"")
                                 color:root.presetManager&&root.presetManager.busy?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily;font.pixelSize:8
+                                font.family:Theme.monoFamily
+                                font.pixelSize:8
                                 elide:Text.ElideRight
                                 Layout.maximumWidth:180
                             }
@@ -681,49 +737,88 @@ Item {
 
                         RowLayout {
                             Layout.fillWidth:true
-                            spacing:5
-                            Rectangle{
-                                id:adjMannerVrCheck
-                                width:13;height:13;radius:2
+                            spacing:8
+
+                            Rectangle {
+                                id:adjMannerVrToggle
+                                Layout.preferredWidth:104
+                                Layout.preferredHeight:28
+                                radius:8
+
                                 readonly property bool known:root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                readonly property bool active:known&&root.presetManager.adjMannerVrOff
-                                color:active?Theme.accent:(known?"#4A5055":"#17120A")
-                                border.width:1
-                                border.color:active?Theme.accentSoft:(known?"#60676C":Theme.amber)
-                                Text{anchors.centerIn:parent;visible:adjMannerVrCheck.active;text:"✓";color:"#071012";font.pixelSize:10;font.weight:Font.Bold}
-                                Text{anchors.centerIn:parent;visible:!adjMannerVrCheck.known;text:"?";color:Theme.amber;font.pixelSize:9;font.weight:Font.Bold}
+                                readonly property bool active:root.deviceConnected&&known&&root.presetManager.adjMannerVrOff
+                                readonly property bool interactive:root.deviceConnected&&known&&root.presetManager&&!root.presetManager.busy
+
                                 // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 —
                                 // reconnect truth comes from C0 + activeMemory[0x008C].
-                                // Checked means the fascia trim-pots are disabled.
+                                // Enabled means the fascia trim-pots are disabled.
+                                color:active?"#102C30":(adjMannerVrMouse.containsMouse&&interactive?"#121B21":"#0C1217")
+                                border.width:1
+                                border.color:active?Theme.accent:(known&&root.deviceConnected?"#2A353D":"#263038")
+                                opacity:interactive||active?1.0:0.62
+                                Behavior on color{ColorAnimation{duration:90}}
+                                Behavior on border.color{ColorAnimation{duration:90}}
+                                Behavior on opacity{NumberAnimation{duration:90}}
+
+                                RowLayout {
+                                    anchors.fill:parent
+                                    anchors.leftMargin:10
+                                    anchors.rightMargin:7
+                                    spacing:7
+
+                                    Text {
+                                        Layout.fillWidth:true
+                                        Layout.fillHeight:true
+                                        text:"VR OFF"
+                                        color:adjMannerVrToggle.active?Theme.accent:Theme.textSoft
+                                        verticalAlignment:Text.AlignVCenter
+                                        horizontalAlignment:Text.AlignHCenter
+                                        font.family:Theme.fontFamily
+                                        font.pixelSize:9
+                                        font.weight:Font.DemiBold
+                                    }
+
+                                    Rectangle {
+                                        Layout.preferredWidth:31
+                                        Layout.preferredHeight:16
+                                        Layout.alignment:Qt.AlignVCenter
+                                        radius:8
+                                        color:adjMannerVrToggle.active?"#174148":"#070B0E"
+                                        border.width:1
+                                        border.color:adjMannerVrToggle.active?Theme.accent:"#36424A"
+
+                                        Rectangle {
+                                            width:12;height:12;radius:6;y:2
+                                            x:adjMannerVrToggle.active?17:2
+                                            color:adjMannerVrToggle.active?Theme.accent:"#77858E"
+                                            Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
+                                            Behavior on color{ColorAnimation{duration:90}}
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id:adjMannerVrMouse
+                                    anchors.fill:parent
+                                    hoverEnabled:true
+                                    enabled:adjMannerVrToggle.interactive
+                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
+                                    onClicked:root.presetManager.setAdjMannerVrOff(!adjMannerVrToggle.active)
+                                }
                             }
-                            Text{text:"Adj Manner VR OFF";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9}
-                            Text{
-                                text:!root.deviceConnected?"CONNECT TO SET"
-                                     :root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                        ?(root.presetManager.adjMannerVrOff
-                                            ?"SOFTWARE CONTROL"
-                                            :"FRONT VR ACTIVE")
-                                        :"SYNCING DEVICE"
-                                color:root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                      ?(root.presetManager.adjMannerVrOff?Theme.accent:Theme.green)
-                                      :Theme.amber
-                                font.family:Theme.monoFamily;font.pixelSize:7
+
+                            Text {
+                                text:!root.deviceConnected?"CONNECT DEVICE"
+                                     :!adjMannerVrToggle.known?"SYNCING DEVICE"
+                                     :(adjMannerVrToggle.active?"SOFTWARE CONTROL":"FRONT VR ACTIVE")
+                                color:root.deviceConnected&&adjMannerVrToggle.known
+                                      ?(adjMannerVrToggle.active?Theme.accent:Theme.green)
+                                      :(root.deviceConnected?Theme.amber:Theme.textDim)
+                                font.family:Theme.monoFamily
+                                font.pixelSize:8
                             }
+
                             Item{Layout.fillWidth:true}
-                            SoftButton{
-                                Layout.preferredWidth:40
-                                text:"OFF"
-                                compact:true
-                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-                                onClicked:root.presetManager.setAdjMannerVrOff(false)
-                            }
-                            SoftButton{
-                                Layout.preferredWidth:40
-                                text:"ON"
-                                compact:true
-                                enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-                                onClicked:root.presetManager.setAdjMannerVrOff(true)
-                            }
                         }
 
                         RowLayout {
