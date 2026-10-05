@@ -429,14 +429,22 @@ bool K500PresetFileBridge::loadBuiltInPreset(int index)
         entry.value(QStringLiteral("fileName")).toString());
 }
 
-void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &value)
+bool K500PresetFileBridge::persistMappedEdit(const QString &path,
+                                                   const QVariant &value,
+                                                   bool rejectUnsupported)
 {
     if (!m_editTracking || !loaded())
-        return;
+        return false;
 
     const auto edit = K500PresetEditMapper::applyEngineEdit(m_sourceBytes, path, value);
-    if (!edit.supported)
-        return;
+    if (!edit.supported) {
+        if (rejectUnsupported) {
+            const QString reason = QStringLiteral("Edit path belum memiliki mapping file yang terverifikasi.");
+            setError(QStringLiteral("%1: %2").arg(path, reason));
+            emit persistenceRejected(path, reason);
+        }
+        return false;
+    }
 
     if (!edit.patch.ok) {
         const QString reason = edit.patch.error.isEmpty()
@@ -444,16 +452,18 @@ void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &val
             : edit.patch.error;
         setError(QStringLiteral("%1: %2").arg(path, reason));
         emit persistenceRejected(path, reason);
-        return;
+        return false;
     }
 
-    if (edit.patch.bytes == m_sourceBytes)
-        return;
+    if (edit.patch.bytes == m_sourceBytes) {
+        setError({});
+        return true;
+    }
     if (!K500PresetCodec::validateChecksum(edit.patch.bytes)) {
         const QString reason = QStringLiteral("Serializer menghasilkan checksum tidak valid; perubahan ditolak.");
         setError(reason);
         emit persistenceRejected(path, reason);
-        return;
+        return false;
     }
 
     m_sourceBytes = edit.patch.bytes;
@@ -461,6 +471,28 @@ void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &val
     setError({});
     emit sourceChanged();
     emit persistedEdit(path, edit.patch.changedOffsets.size());
+    return true;
+}
+
+void K500PresetFileBridge::onEngineEdit(const QString &path, const QVariant &value)
+{
+    if (!m_editTracking || !loaded())
+        return;
+    persistMappedEdit(path, value, false);
+}
+
+bool K500PresetFileBridge::setOfflineAdjMannerVrOff(bool enabled)
+{
+    // Never reinterpret this as a deferred hardware command. It mutates only
+    // the currently previewed working .k500 document.
+    if (!editPersistenceEnabled()) {
+        const QString path = QStringLiteral("system.adjMannerVrOff");
+        const QString reason = QStringLiteral("Preview preset terlebih dahulu untuk mengedit file offline.");
+        setError(reason);
+        emit persistenceRejected(path, reason);
+        return false;
+    }
+    return persistMappedEdit(QStringLiteral("system.adjMannerVrOff"), enabled, true);
 }
 
 bool K500PresetFileBridge::saveFile(const QUrl &url)
