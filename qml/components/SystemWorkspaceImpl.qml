@@ -639,28 +639,27 @@ Item {
                             }
                         }
 
-                        // SYSTEM_BOOLEAN_TOGGLE_UX_V1
-                        // Match the proven EQ BYPASS interaction language: one boolean
-                        // setting owns exactly one pill toggle. Unknown/offline device
-                        // truth is disabled and explained in text instead of rendered
-                        // as an ambiguous checkbox/question-mark glyph.
+                        // SYSTEM_BOOLEAN_TOGGLE_UX_V2
+                        // One-row compact boolean controls. Device connectivity, not
+                        // readback-known state, gates writes: this preserves the native
+                        // setters' proven behavior while avoiding a dead UI during sync.
                         RowLayout {
                             Layout.fillWidth:true
                             spacing:8
 
                             Rectangle {
                                 id:initVolumeToggle
-                                Layout.preferredWidth:142
+                                Layout.preferredWidth:146
                                 Layout.preferredHeight:28
                                 radius:8
 
                                 readonly property bool known:root.presetManager&&root.presetManager.useInitVolumeKnown
-                                readonly property bool active:root.deviceConnected&&known&&root.presetManager.useInitVolume
-                                readonly property bool interactive:root.deviceConnected&&known&&root.presetManager&&!root.presetManager.busy
+                                readonly property bool active:known&&root.presetManager&&root.presetManager.useInitVolume
+                                readonly property bool interactive:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
 
                                 color:active?"#102C30":(initVolumeMouse.containsMouse&&interactive?"#121B21":"#0C1217")
                                 border.width:1
-                                border.color:active?Theme.accent:(known&&root.deviceConnected?"#2A353D":"#263038")
+                                border.color:active?Theme.accent:(root.deviceConnected?"#2A353D":"#263038")
                                 opacity:interactive||active?1.0:0.62
                                 Behavior on color{ColorAnimation{duration:90}}
                                 Behavior on border.color{ColorAnimation{duration:90}}
@@ -709,52 +708,25 @@ Item {
                                     hoverEnabled:true
                                     enabled:initVolumeToggle.interactive
                                     cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    onClicked:root.presetManager.setUseInitVolume(!initVolumeToggle.active)
+                                    onClicked:root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
                                 }
                             }
 
-                            Text {
-                                text:!root.deviceConnected?"CONNECT DEVICE"
-                                     :!initVolumeToggle.known?"SYNCING DEVICE"
-                                     :(initVolumeToggle.active?"DEVICE ON":"DEVICE OFF")
-                                color:root.deviceConnected&&!initVolumeToggle.known?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily
-                                font.pixelSize:8
-                            }
-
-                            Item{Layout.fillWidth:true}
-
-                            Text{
-                                visible:root.presetManager&&String(root.presetManager.progress||"").length>0
-                                text:String(root.presetManager?root.presetManager.progress:"")
-                                color:root.presetManager&&root.presetManager.busy?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily
-                                font.pixelSize:8
-                                elide:Text.ElideRight
-                                Layout.maximumWidth:180
-                            }
-                        }
-
-                        RowLayout {
-                            Layout.fillWidth:true
-                            spacing:8
-
                             Rectangle {
                                 id:adjMannerVrToggle
-                                Layout.preferredWidth:104
+                                Layout.preferredWidth:108
                                 Layout.preferredHeight:28
                                 radius:8
 
                                 readonly property bool known:root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                readonly property bool active:root.deviceConnected&&known&&root.presetManager.adjMannerVrOff
-                                readonly property bool interactive:root.deviceConnected&&known&&root.presetManager&&!root.presetManager.busy
+                                readonly property bool active:known&&root.presetManager&&root.presetManager.adjMannerVrOff
+                                readonly property bool interactive:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
 
                                 // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 —
                                 // reconnect truth comes from C0 + activeMemory[0x008C].
-                                // Enabled means the fascia trim-pots are disabled.
                                 color:active?"#102C30":(adjMannerVrMouse.containsMouse&&interactive?"#121B21":"#0C1217")
                                 border.width:1
-                                border.color:active?Theme.accent:(known&&root.deviceConnected?"#2A353D":"#263038")
+                                border.color:active?Theme.accent:(root.deviceConnected?"#2A353D":"#263038")
                                 opacity:interactive||active?1.0:0.62
                                 Behavior on color{ColorAnimation{duration:90}}
                                 Behavior on border.color{ColorAnimation{duration:90}}
@@ -803,22 +775,32 @@ Item {
                                     hoverEnabled:true
                                     enabled:adjMannerVrToggle.interactive
                                     cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    onClicked:root.presetManager.setAdjMannerVrOff(!adjMannerVrToggle.active)
+                                    onClicked:root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
                                 }
                             }
 
                             Text {
                                 text:!root.deviceConnected?"CONNECT DEVICE"
-                                     :!adjMannerVrToggle.known?"SYNCING DEVICE"
+                                     :(!initVolumeToggle.known||!adjMannerVrToggle.known)?"SYNCING DEVICE"
                                      :(adjMannerVrToggle.active?"SOFTWARE CONTROL":"FRONT VR ACTIVE")
-                                color:root.deviceConnected&&adjMannerVrToggle.known
-                                      ?(adjMannerVrToggle.active?Theme.accent:Theme.green)
-                                      :(root.deviceConnected?Theme.amber:Theme.textDim)
+                                color:!root.deviceConnected?Theme.textDim
+                                      :(!initVolumeToggle.known||!adjMannerVrToggle.known)?Theme.amber
+                                      :(adjMannerVrToggle.active?Theme.accent:Theme.green)
                                 font.family:Theme.monoFamily
                                 font.pixelSize:8
                             }
 
                             Item{Layout.fillWidth:true}
+
+                            Text{
+                                visible:root.presetManager&&String(root.presetManager.progress||"").length>0
+                                text:String(root.presetManager?root.presetManager.progress:"")
+                                color:root.presetManager&&root.presetManager.busy?Theme.amber:Theme.textDim
+                                font.family:Theme.monoFamily
+                                font.pixelSize:8
+                                elide:Text.ElideRight
+                                Layout.maximumWidth:150
+                            }
                         }
 
                         RowLayout {
