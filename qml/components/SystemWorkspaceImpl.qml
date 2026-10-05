@@ -639,17 +639,16 @@ Item {
                             }
                         }
 
-                        // SYSTEM_BOOLEAN_TOGGLE_UX_V2
-                        // One-row compact boolean controls. Device connectivity, not
-                        // readback-known state, gates writes: this preserves the native
-                        // setters' proven behavior while avoiding a dead UI during sync.
+                        // SYSTEM_DEVICE_MODE_INIT_TOGGLE_V3
+                        // Keep the startup/init-volume setting with Device Mode.
+                        // Manual VR ownership lives in its own dedicated card.
                         RowLayout {
                             Layout.fillWidth:true
                             spacing:8
 
                             Rectangle {
                                 id:initVolumeToggle
-                                Layout.preferredWidth:146
+                                Layout.preferredWidth:128
                                 Layout.preferredHeight:28
                                 radius:8
 
@@ -670,11 +669,10 @@ Item {
                                     anchors.leftMargin:10
                                     anchors.rightMargin:7
                                     spacing:7
-
                                     Text {
                                         Layout.fillWidth:true
                                         Layout.fillHeight:true
-                                        text:"USE INIT VOLUME"
+                                        text:"USE INIT VOL"
                                         color:initVolumeToggle.active?Theme.accent:Theme.textSoft
                                         verticalAlignment:Text.AlignVCenter
                                         horizontalAlignment:Text.AlignHCenter
@@ -682,7 +680,6 @@ Item {
                                         font.pixelSize:9
                                         font.weight:Font.DemiBold
                                     }
-
                                     Rectangle {
                                         Layout.preferredWidth:31
                                         Layout.preferredHeight:16
@@ -691,7 +688,6 @@ Item {
                                         color:initVolumeToggle.active?"#174148":"#070B0E"
                                         border.width:1
                                         border.color:initVolumeToggle.active?Theme.accent:"#36424A"
-
                                         Rectangle {
                                             width:12;height:12;radius:6;y:2
                                             x:initVolumeToggle.active?17:2
@@ -712,80 +708,11 @@ Item {
                                 }
                             }
 
-                            Rectangle {
-                                id:adjMannerVrToggle
-                                Layout.preferredWidth:108
-                                Layout.preferredHeight:28
-                                radius:8
-
-                                readonly property bool known:root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                readonly property bool active:known&&root.presetManager&&root.presetManager.adjMannerVrOff
-                                readonly property bool interactive:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-
-                                // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 —
-                                // reconnect truth comes from C0 + activeMemory[0x008C].
-                                color:active?"#102C30":(adjMannerVrMouse.containsMouse&&interactive?"#121B21":"#0C1217")
-                                border.width:1
-                                border.color:active?Theme.accent:(root.deviceConnected?"#2A353D":"#263038")
-                                opacity:interactive||active?1.0:0.62
-                                Behavior on color{ColorAnimation{duration:90}}
-                                Behavior on border.color{ColorAnimation{duration:90}}
-                                Behavior on opacity{NumberAnimation{duration:90}}
-
-                                RowLayout {
-                                    anchors.fill:parent
-                                    anchors.leftMargin:10
-                                    anchors.rightMargin:7
-                                    spacing:7
-
-                                    Text {
-                                        Layout.fillWidth:true
-                                        Layout.fillHeight:true
-                                        text:"VR OFF"
-                                        color:adjMannerVrToggle.active?Theme.accent:Theme.textSoft
-                                        verticalAlignment:Text.AlignVCenter
-                                        horizontalAlignment:Text.AlignHCenter
-                                        font.family:Theme.fontFamily
-                                        font.pixelSize:9
-                                        font.weight:Font.DemiBold
-                                    }
-
-                                    Rectangle {
-                                        Layout.preferredWidth:31
-                                        Layout.preferredHeight:16
-                                        Layout.alignment:Qt.AlignVCenter
-                                        radius:8
-                                        color:adjMannerVrToggle.active?"#174148":"#070B0E"
-                                        border.width:1
-                                        border.color:adjMannerVrToggle.active?Theme.accent:"#36424A"
-
-                                        Rectangle {
-                                            width:12;height:12;radius:6;y:2
-                                            x:adjMannerVrToggle.active?17:2
-                                            color:adjMannerVrToggle.active?Theme.accent:"#77858E"
-                                            Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
-                                            Behavior on color{ColorAnimation{duration:90}}
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id:adjMannerVrMouse
-                                    anchors.fill:parent
-                                    hoverEnabled:true
-                                    enabled:adjMannerVrToggle.interactive
-                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    onClicked:root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
-                                }
-                            }
-
                             Text {
                                 text:!root.deviceConnected?"CONNECT DEVICE"
-                                     :(!initVolumeToggle.known||!adjMannerVrToggle.known)?"SYNCING DEVICE"
-                                     :(adjMannerVrToggle.active?"SOFTWARE CONTROL":"FRONT VR ACTIVE")
-                                color:!root.deviceConnected?Theme.textDim
-                                      :(!initVolumeToggle.known||!adjMannerVrToggle.known)?Theme.amber
-                                      :(adjMannerVrToggle.active?Theme.accent:Theme.green)
+                                     :!initVolumeToggle.known?"SYNCING DEVICE"
+                                     :(initVolumeToggle.active?"DEVICE ON":"DEVICE OFF")
+                                color:root.deviceConnected&&!initVolumeToggle.known?Theme.amber:Theme.textDim
                                 font.family:Theme.monoFamily
                                 font.pixelSize:8
                             }
@@ -826,7 +753,7 @@ Item {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 Layout.preferredWidth: 355
-                spacing: 12
+                spacing: 8
 
                 // P2_SYSTEM_READONLY_AFFORDANCE_V1
                 // These native-app surfaces are display-only until donor captures
@@ -834,7 +761,7 @@ Item {
                 // Never render enabled controls for an operation we cannot perform.
                 StudioPanel {
                     Layout.fillWidth:true
-                    Layout.preferredHeight:212
+                    Layout.preferredHeight:196
                     accentTop:false
                     ColumnLayout {
                         anchors.fill:parent
@@ -940,7 +867,7 @@ Item {
 
                 StudioPanel {
                     Layout.fillWidth:true
-                    Layout.fillHeight:true
+                    Layout.preferredHeight:176
                     accentTop:false
                     ColumnLayout {
                         anchors.fill:parent
@@ -1005,6 +932,135 @@ Item {
                                 }
                             }
                             Item{Layout.fillHeight:true}
+                        }
+                    }
+                }
+
+                // SYSTEM_MANUAL_ADJUSTMENT_CARD_V1
+                // Keep manual front-panel adjustment ownership visually separate
+                // from Device Mode and from read-only Lock/Admin credentials.
+                StudioPanel {
+                    Layout.fillWidth:true
+                    Layout.fillHeight:true
+                    Layout.minimumHeight:96
+                    accentTop:false
+
+                    ColumnLayout {
+                        anchors.fill:parent
+                        spacing:0
+
+                        Item {
+                            Layout.fillWidth:true
+                            Layout.preferredHeight:35
+                            Text {
+                                anchors.left:parent.left
+                                anchors.leftMargin:12
+                                anchors.verticalCenter:parent.verticalCenter
+                                text:"MANUAL ADJUSTMENT"
+                                color:Theme.text
+                                font.family:Theme.monoFamily
+                                font.pixelSize:10
+                                font.weight:Font.Bold
+                                font.letterSpacing:1.05
+                            }
+                            Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
+                        }
+
+                        RowLayout {
+                            Layout.fillWidth:true
+                            Layout.fillHeight:true
+                            Layout.leftMargin:12
+                            Layout.rightMargin:12
+                            spacing:8
+
+                            Rectangle {
+                                id:adjMannerVrToggle
+                                Layout.preferredWidth:108
+                                Layout.preferredHeight:28
+                                Layout.alignment:Qt.AlignVCenter
+                                radius:8
+
+                                readonly property bool known:root.presetManager&&root.presetManager.adjMannerVrOffKnown
+                                readonly property bool active:known&&root.presetManager&&root.presetManager.adjMannerVrOff
+                                readonly property bool interactive:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
+
+                                // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 —
+                                // reconnect truth comes from C0 + activeMemory[0x008C].
+                                color:active?"#102C30":(adjMannerVrMouse.containsMouse&&interactive?"#121B21":"#0C1217")
+                                border.width:1
+                                border.color:active?Theme.accent:(root.deviceConnected?"#2A353D":"#263038")
+                                opacity:interactive||active?1.0:0.62
+                                Behavior on color{ColorAnimation{duration:90}}
+                                Behavior on border.color{ColorAnimation{duration:90}}
+                                Behavior on opacity{NumberAnimation{duration:90}}
+
+                                RowLayout {
+                                    anchors.fill:parent
+                                    anchors.leftMargin:10
+                                    anchors.rightMargin:7
+                                    spacing:7
+                                    Text {
+                                        Layout.fillWidth:true
+                                        Layout.fillHeight:true
+                                        text:"VR OFF"
+                                        color:adjMannerVrToggle.active?Theme.accent:Theme.textSoft
+                                        verticalAlignment:Text.AlignVCenter
+                                        horizontalAlignment:Text.AlignHCenter
+                                        font.family:Theme.fontFamily
+                                        font.pixelSize:9
+                                        font.weight:Font.DemiBold
+                                    }
+                                    Rectangle {
+                                        Layout.preferredWidth:31
+                                        Layout.preferredHeight:16
+                                        Layout.alignment:Qt.AlignVCenter
+                                        radius:8
+                                        color:adjMannerVrToggle.active?"#174148":"#070B0E"
+                                        border.width:1
+                                        border.color:adjMannerVrToggle.active?Theme.accent:"#36424A"
+                                        Rectangle {
+                                            width:12;height:12;radius:6;y:2
+                                            x:adjMannerVrToggle.active?17:2
+                                            color:adjMannerVrToggle.active?Theme.accent:"#77858E"
+                                            Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
+                                            Behavior on color{ColorAnimation{duration:90}}
+                                        }
+                                    }
+                                }
+
+                                MouseArea {
+                                    id:adjMannerVrMouse
+                                    anchors.fill:parent
+                                    hoverEnabled:true
+                                    enabled:adjMannerVrToggle.interactive
+                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
+                                    onClicked:root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
+                                }
+                            }
+
+                            ColumnLayout {
+                                Layout.fillWidth:true
+                                Layout.alignment:Qt.AlignVCenter
+                                spacing:2
+                                Text {
+                                    text:"ADJ MANNER"
+                                    color:Theme.textDim
+                                    font.family:Theme.monoFamily
+                                    font.pixelSize:7
+                                    font.letterSpacing:1.0
+                                }
+                                Text {
+                                    text:!root.deviceConnected?"CONNECT DEVICE"
+                                         :!adjMannerVrToggle.known?"SYNCING DEVICE"
+                                         :(adjMannerVrToggle.active?"SOFTWARE CONTROL":"FRONT VR ACTIVE")
+                                    color:!root.deviceConnected?Theme.textDim
+                                          :!adjMannerVrToggle.known?Theme.amber
+                                          :(adjMannerVrToggle.active?Theme.accent:Theme.green)
+                                    font.family:Theme.monoFamily
+                                    font.pixelSize:8
+                                    font.weight:Font.DemiBold
+                                }
+                            }
                         }
                     }
                 }
