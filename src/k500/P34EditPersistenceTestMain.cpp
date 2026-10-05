@@ -65,6 +65,15 @@ int main(int argc, char **argv)
         || !onlyChanged(edit.patch, QSet<int>{0x0008, K500PresetCodec::ChecksumOffset}))
         return fail(QStringLiteral("topMusic whitelist/checksum mapping regressed"));
 
+    // ADJ_MANNER_VR_OFF_FILE_EDIT_V1 — paired reconnect captures prove the
+    // .k500 scalar exactly at 0x0094. Donor is ON (1); edit OFF must touch only
+    // that byte plus the additive checksum.
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("system.adjMannerVrOff"), false);
+    if (!accepted(edit) || u8(edit.patch.bytes, 0x0094) != 0
+        || !onlyChanged(edit.patch, QSet<int>{0x0094, K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("Adj Manner VR OFF file mapping regressed"));
+
     // Shared FBX UI intentionally writes both independently stored raw bytes.
     edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("mic.fbxLevel"), 9);
     if (!accepted(edit) || u8(edit.patch.bytes, 0x001B) != 9 || u8(edit.patch.bytes, 0x001C) != 9
