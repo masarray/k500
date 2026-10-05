@@ -253,6 +253,17 @@ def check_ui_contracts() -> None:
         "persistMappedEdit",
     )
     require(
+        "src/StudioEngine.h",
+        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
+        "syncOfflineAdjMannerVrOff",
+    )
+    require(
+        "src/StudioEngine.cpp",
+        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
+        "manualVrEnabled",
+        "emit deviceStateChanged()",
+    )
+    require(
         "qml/components/SystemToggleRow.qml",
         "SYSTEM_SETTING_TOGGLE_ROW_V1",
         "signal toggleRequested(bool checked)",

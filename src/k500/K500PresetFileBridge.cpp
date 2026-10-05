@@ -492,7 +492,11 @@ bool K500PresetFileBridge::setOfflineAdjMannerVrOff(bool enabled)
         emit persistenceRejected(path, reason);
         return false;
     }
-    return persistMappedEdit(QStringLiteral("system.adjMannerVrOff"), enabled, true);
+    const bool persisted = persistMappedEdit(
+        QStringLiteral("system.adjMannerVrOff"), enabled, true);
+    if (persisted && m_engine)
+        m_engine->syncOfflineAdjMannerVrOff(enabled);
+    return persisted;
 }
 
 bool K500PresetFileBridge::saveFile(const QUrl &url)
