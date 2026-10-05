@@ -780,9 +780,12 @@ Item {
                             }
 
                             Text {
-                                visible:!root.deviceConnected||!initVolumeToggle.known||!adjMannerVrToggle.known
-                                text:!root.deviceConnected?"CONNECT DEVICE":"SYNCING DEVICE"
-                                color:root.deviceConnected?Theme.amber:Theme.textDim
+                                text:!root.deviceConnected?"CONNECT DEVICE"
+                                     :(!initVolumeToggle.known||!adjMannerVrToggle.known)?"SYNCING DEVICE"
+                                     :(adjMannerVrToggle.active?"SOFTWARE CONTROL":"FRONT VR ACTIVE")
+                                color:!root.deviceConnected?Theme.textDim
+                                      :(!initVolumeToggle.known||!adjMannerVrToggle.known)?Theme.amber
+                                      :(adjMannerVrToggle.active?Theme.accent:Theme.green)
                                 font.family:Theme.monoFamily
                                 font.pixelSize:8
                             }
