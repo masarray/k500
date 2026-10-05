@@ -737,7 +737,9 @@ Item {
                             Layout.fillWidth:true
                             Layout.preferredHeight:48
                             title:"Use Init Vol"
-                            detail:"Use stored startup volume"
+                            detail:root.deviceConnected
+                                   ? "Use stored startup volume"
+                                   : "Device setting · not stored in preset"
                             iconName:"settings-2"
                             checked:root.deviceConnected
                                     ? (!!root.presetManager
@@ -879,7 +881,7 @@ Item {
                                     anchors.left:parent.left
                                     anchors.leftMargin:9
                                     anchors.verticalCenter:parent.verticalCenter
-                                    text:"BT name editable · BLE read-only"
+                                    text:"BT rename: max 8 characters · BLE read-only"
                                     color:Theme.textDim
                                     font.family:Theme.fontFamily
                                     font.pixelSize:8
@@ -1001,7 +1003,9 @@ Item {
                                 anchors.verticalCenter:parent.verticalCenter
                                 height:50
                                 title:"VR / Trim Pot Off"
-                                detail:"Disable front-panel adjustment"
+                                detail:!root.deviceConnected && root.offlineEditMode
+                                       ? "Saved with preset"
+                                       : "Disable front-panel adjustment"
                                 iconName:"sliders-horizontal"
                                 checked:root.deviceConnected
                                         ? (!!root.presetManager

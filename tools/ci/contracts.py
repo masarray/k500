@@ -250,6 +250,12 @@ def check_ui_contracts() -> None:
         "\"READ 19 · WRITE 8\"",
     )
     require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "\"Device setting · not stored in preset\"",
+        "\"Saved with preset\"",
+        "\"BT rename: max 8 characters · BLE read-only\"",
+    )
+    require(
         "src/k500/K500PresetEditMapper.cpp",
         "ADJ_MANNER_VR_OFF_FILE_EDIT_V1",
         "system.adjMannerVrOff",
