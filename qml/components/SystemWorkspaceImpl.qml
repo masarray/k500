@@ -11,20 +11,75 @@ Item {
     // Main.qml already owns the high-level DeviceManager used by TopBar. Resolve
     // its preset coordinator through the containing window without exposing raw
     // transport/I/O objects to this workspace.
-    readonly property var presetManager: {
+    readonly property var deviceManager: {
         var w = root.Window.window
-        var dm = w ? w["deviceManager"] : null
-        return dm ? dm.presetManager : null
+        return w ? w["deviceManager"] : null
     }
+    readonly property var presetManager: root.deviceManager ? root.deviceManager.presetManager : null
     // P3_3_PRESET_FILE_UI_V1
     // Resolve the validated P3.2 file bridge through the same high-level
     // DeviceManager boundary. It never exposes Controller/WinIo to QML.
-    readonly property var fileBridge: {
-        var w = root.Window.window
-        var dm = w ? w["deviceManager"] : null
-        return dm ? dm.presetFileBridge : null
-    }
+    readonly property var fileBridge: root.deviceManager ? root.deviceManager.presetFileBridge : null
+
+    // SYSTEM_TOGGLE_INTERACTION_STATE_V1
+    // TopBar status and PresetManager truth must agree before a hardware write.
+    // The setting row remains clickable while blocked so it explains why a
+    // mutation is unavailable instead of presenting a dead-looking switch.
     readonly property bool deviceConnected: !!root.presetManager && root.presetManager.connected
+    readonly property bool deviceReady: root.deviceConnected
+                                        && !!root.deviceManager
+                                        && root.deviceManager.status === "connected"
+                                        && !root.presetManager.busy
+    property string systemControlHintTarget: ""
+    property string systemControlHint: ""
+
+    Timer {
+        id: systemControlHintTimer
+        interval: 2200
+        repeat: false
+        onTriggered: {
+            root.systemControlHintTarget = ""
+            root.systemControlHint = ""
+        }
+    }
+
+    function showSystemControlHint(target, message) {
+        root.systemControlHintTarget = target
+        root.systemControlHint = message
+        systemControlHintTimer.restart()
+    }
+
+    function blockedToggleHint(target) {
+        if (!root.deviceConnected) {
+            root.showSystemControlHint(target, "CONNECT K500 FIRST")
+            return
+        }
+        if (root.deviceManager && root.deviceManager.status === "syncing") {
+            root.showSystemControlHint(target, "SYNCING DEVICE")
+            return
+        }
+        if (root.presetManager && root.presetManager.busy) {
+            root.showSystemControlHint(target, "DEVICE BUSY")
+            return
+        }
+        root.showSystemControlHint(target, "WAIT FOR DEVICE READY")
+    }
+
+    function requestUseInitVolumeToggle() {
+        if (!root.deviceReady) {
+            root.blockedToggleHint("init")
+            return
+        }
+        root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
+    }
+
+    function requestAdjMannerVrToggle() {
+        if (!root.deviceReady) {
+            root.blockedToggleHint("vr")
+            return
+        }
+        root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
+    }
     readonly property bool offlineFileMode: !root.deviceConnected
     readonly property bool stagedPresetReady: !!root.fileBridge
                                               && root.fileBridge.loaded
@@ -639,95 +694,28 @@ Item {
                             }
                         }
 
-                        // SYSTEM_DEVICE_MODE_INIT_TOGGLE_V3
-                        // Keep the startup/init-volume setting with Device Mode.
-                        // Manual VR ownership lives in its own dedicated card.
-                        RowLayout {
+                        // SYSTEM_DEVICE_MODE_INIT_TOGGLE_V4
+                        SystemToggleRow {
                             Layout.fillWidth:true
-                            spacing:8
-
-                            Rectangle {
-                                id:initVolumeToggle
-                                Layout.preferredWidth:128
-                                Layout.preferredHeight:28
-                                radius:8
-
-                                readonly property bool known:root.presetManager&&root.presetManager.useInitVolumeKnown
-                                readonly property bool active:known&&root.presetManager&&root.presetManager.useInitVolume
-                                readonly property bool interactive:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-
-                                color:active?"#102C30":(initVolumeMouse.containsMouse&&interactive?"#121B21":"#0C1217")
-                                border.width:1
-                                border.color:active?Theme.accent:(root.deviceConnected?"#2A353D":"#263038")
-                                opacity:interactive||active?1.0:0.62
-                                Behavior on color{ColorAnimation{duration:90}}
-                                Behavior on border.color{ColorAnimation{duration:90}}
-                                Behavior on opacity{NumberAnimation{duration:90}}
-
-                                RowLayout {
-                                    anchors.fill:parent
-                                    anchors.leftMargin:10
-                                    anchors.rightMargin:7
-                                    spacing:7
-                                    Text {
-                                        Layout.fillWidth:true
-                                        Layout.fillHeight:true
-                                        text:"USE INIT VOL"
-                                        color:initVolumeToggle.active?Theme.accent:Theme.textSoft
-                                        verticalAlignment:Text.AlignVCenter
-                                        horizontalAlignment:Text.AlignHCenter
-                                        font.family:Theme.fontFamily
-                                        font.pixelSize:9
-                                        font.weight:Font.DemiBold
-                                    }
-                                    Rectangle {
-                                        Layout.preferredWidth:31
-                                        Layout.preferredHeight:16
-                                        Layout.alignment:Qt.AlignVCenter
-                                        radius:8
-                                        color:initVolumeToggle.active?"#174148":"#070B0E"
-                                        border.width:1
-                                        border.color:initVolumeToggle.active?Theme.accent:"#36424A"
-                                        Rectangle {
-                                            width:12;height:12;radius:6;y:2
-                                            x:initVolumeToggle.active?17:2
-                                            color:initVolumeToggle.active?Theme.accent:"#77858E"
-                                            Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
-                                            Behavior on color{ColorAnimation{duration:90}}
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id:initVolumeMouse
-                                    anchors.fill:parent
-                                    hoverEnabled:true
-                                    enabled:initVolumeToggle.interactive
-                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    onClicked:root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
-                                }
-                            }
-
-                            Text {
-                                text:!root.deviceConnected?"CONNECT DEVICE"
-                                     :!initVolumeToggle.known?"SYNCING DEVICE"
-                                     :(initVolumeToggle.active?"DEVICE ON":"DEVICE OFF")
-                                color:root.deviceConnected&&!initVolumeToggle.known?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily
-                                font.pixelSize:8
-                            }
-
-                            Item{Layout.fillWidth:true}
-
-                            Text{
-                                visible:root.presetManager&&String(root.presetManager.progress||"").length>0
-                                text:String(root.presetManager?root.presetManager.progress:"")
-                                color:root.presetManager&&root.presetManager.busy?Theme.amber:Theme.textDim
-                                font.family:Theme.monoFamily
-                                font.pixelSize:8
-                                elide:Text.ElideRight
-                                Layout.maximumWidth:150
-                            }
+                            Layout.preferredHeight:48
+                            title:"Use Init Vol"
+                            detail:"Apply stored startup volume for this device mode"
+                            iconName:"settings-2"
+                            checked:!!root.presetManager
+                                    && root.presetManager.useInitVolumeKnown
+                                    && root.presetManager.useInitVolume
+                            available:root.deviceReady
+                            pending:!!root.presetManager && root.presetManager.busy
+                            statusText:root.systemControlHintTarget === "init" ? root.systemControlHint
+                                       : !root.deviceConnected ? "OFFLINE"
+                                       : !root.presetManager.useInitVolumeKnown ? "READING DEVICE"
+                                       : checked ? "ON" : "OFF"
+                            statusColor:root.systemControlHintTarget === "init" ? Theme.amber
+                                        : !root.deviceConnected ? Theme.textDim
+                                        : !root.presetManager.useInitVolumeKnown ? Theme.amber
+                                        : checked ? Theme.green : Theme.textDim
+                            onToggleRequested:root.requestUseInitVolumeToggle()
+                            onBlockedClicked:root.blockedToggleHint("init")
                         }
 
                         RowLayout {
@@ -936,13 +924,11 @@ Item {
                     }
                 }
 
-                // SYSTEM_MANUAL_ADJUSTMENT_CARD_V1
-                // Keep manual front-panel adjustment ownership visually separate
-                // from Device Mode and from read-only Lock/Admin credentials.
+                // SYSTEM_MANUAL_ADJUSTMENT_CARD_V2
                 StudioPanel {
                     Layout.fillWidth:true
                     Layout.fillHeight:true
-                    Layout.minimumHeight:96
+                    Layout.minimumHeight:104
                     accentTop:false
 
                     ColumnLayout {
@@ -966,100 +952,35 @@ Item {
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
 
-                        RowLayout {
+                        Item {
                             Layout.fillWidth:true
                             Layout.fillHeight:true
-                            Layout.leftMargin:12
-                            Layout.rightMargin:12
-                            spacing:8
 
-                            Rectangle {
-                                id:adjMannerVrToggle
-                                Layout.preferredWidth:108
-                                Layout.preferredHeight:28
-                                Layout.alignment:Qt.AlignVCenter
-                                radius:8
-
-                                readonly property bool known:root.presetManager&&root.presetManager.adjMannerVrOffKnown
-                                readonly property bool active:known&&root.presetManager&&root.presetManager.adjMannerVrOff
-                                readonly property bool interactive:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-
-                                // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 —
-                                // reconnect truth comes from C0 + activeMemory[0x008C].
-                                color:active?"#102C30":(adjMannerVrMouse.containsMouse&&interactive?"#121B21":"#0C1217")
-                                border.width:1
-                                border.color:active?Theme.accent:(root.deviceConnected?"#2A353D":"#263038")
-                                opacity:interactive||active?1.0:0.62
-                                Behavior on color{ColorAnimation{duration:90}}
-                                Behavior on border.color{ColorAnimation{duration:90}}
-                                Behavior on opacity{NumberAnimation{duration:90}}
-
-                                RowLayout {
-                                    anchors.fill:parent
-                                    anchors.leftMargin:10
-                                    anchors.rightMargin:7
-                                    spacing:7
-                                    Text {
-                                        Layout.fillWidth:true
-                                        Layout.fillHeight:true
-                                        text:"VR OFF"
-                                        color:adjMannerVrToggle.active?Theme.accent:Theme.textSoft
-                                        verticalAlignment:Text.AlignVCenter
-                                        horizontalAlignment:Text.AlignHCenter
-                                        font.family:Theme.fontFamily
-                                        font.pixelSize:9
-                                        font.weight:Font.DemiBold
-                                    }
-                                    Rectangle {
-                                        Layout.preferredWidth:31
-                                        Layout.preferredHeight:16
-                                        Layout.alignment:Qt.AlignVCenter
-                                        radius:8
-                                        color:adjMannerVrToggle.active?"#174148":"#070B0E"
-                                        border.width:1
-                                        border.color:adjMannerVrToggle.active?Theme.accent:"#36424A"
-                                        Rectangle {
-                                            width:12;height:12;radius:6;y:2
-                                            x:adjMannerVrToggle.active?17:2
-                                            color:adjMannerVrToggle.active?Theme.accent:"#77858E"
-                                            Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
-                                            Behavior on color{ColorAnimation{duration:90}}
-                                        }
-                                    }
-                                }
-
-                                MouseArea {
-                                    id:adjMannerVrMouse
-                                    anchors.fill:parent
-                                    hoverEnabled:true
-                                    enabled:adjMannerVrToggle.interactive
-                                    cursorShape:enabled?Qt.PointingHandCursor:Qt.ArrowCursor
-                                    onClicked:root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
-                                }
-                            }
-
-                            ColumnLayout {
-                                Layout.fillWidth:true
-                                Layout.alignment:Qt.AlignVCenter
-                                spacing:2
-                                Text {
-                                    text:"ADJ MANNER"
-                                    color:Theme.textDim
-                                    font.family:Theme.monoFamily
-                                    font.pixelSize:7
-                                    font.letterSpacing:1.0
-                                }
-                                Text {
-                                    text:!root.deviceConnected?"CONNECT DEVICE"
-                                         :!adjMannerVrToggle.known?"SYNCING DEVICE"
-                                         :(adjMannerVrToggle.active?"SOFTWARE CONTROL":"FRONT VR ACTIVE")
-                                    color:!root.deviceConnected?Theme.textDim
-                                          :!adjMannerVrToggle.known?Theme.amber
-                                          :(adjMannerVrToggle.active?Theme.accent:Theme.green)
-                                    font.family:Theme.monoFamily
-                                    font.pixelSize:8
-                                    font.weight:Font.DemiBold
-                                }
+                            SystemToggleRow {
+                                anchors.left:parent.left
+                                anchors.right:parent.right
+                                anchors.leftMargin:10
+                                anchors.rightMargin:10
+                                anchors.verticalCenter:parent.verticalCenter
+                                height:54
+                                title:"VR / Trim Pot Off"
+                                detail:"Disable front-panel VR adjustment"
+                                iconName:"sliders-horizontal"
+                                checked:!!root.presetManager
+                                        && root.presetManager.adjMannerVrOffKnown
+                                        && root.presetManager.adjMannerVrOff
+                                available:root.deviceReady
+                                pending:!!root.presetManager && root.presetManager.busy
+                                statusText:root.systemControlHintTarget === "vr" ? root.systemControlHint
+                                           : !root.deviceConnected ? "OFFLINE"
+                                           : !root.presetManager.adjMannerVrOffKnown ? "READING DEVICE"
+                                           : checked ? "SOFTWARE CONTROL" : "FRONT VR ACTIVE"
+                                statusColor:root.systemControlHintTarget === "vr" ? Theme.amber
+                                            : !root.deviceConnected ? Theme.textDim
+                                            : !root.presetManager.adjMannerVrOffKnown ? Theme.amber
+                                            : checked ? Theme.accent : Theme.green
+                                onToggleRequested:root.requestAdjMannerVrToggle()
+                                onBlockedClicked:root.blockedToggleHint("vr")
                             }
                         }
                     }
