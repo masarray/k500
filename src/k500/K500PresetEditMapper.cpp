@@ -213,6 +213,9 @@ EditResult applyScalar(const QByteArray &source, const QString &path, const QVar
     else if (path == QStringLiteral("music.uDiskGainDb")) b.addU8(0x0021, u8Value(value, 12));
     else if (path == QStringLiteral("music.digitalGainDb")) b.addU8(0x0022, u8Value(value, 12));
     else if (path == QStringLiteral("mic.eqLink")) b.addU8(0x0092, value.toBool() ? 1 : 0);
+    // ADJ_MANNER_VR_OFF_FILE_EDIT_V1 — physical reconnect captures prove
+    // activeMemory[0x008C] <-> preset file scalar 0x0094 exactly.
+    else if (path == QStringLiteral("system.adjMannerVrOff")) b.addU8(0x0094, value.toBool() ? 1 : 0);
     else if (path == QStringLiteral("system.uDiskRecordVol")) b.addU8(0x0095, u8Value(value, -1));
     else if (path == QStringLiteral("system.usbRecordVol")) b.addU8(0x0096, u8Value(value, -1));
     else return {};

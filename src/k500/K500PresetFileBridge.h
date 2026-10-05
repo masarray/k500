@@ -86,6 +86,11 @@ public:
     // disconnected. Merely staging a file never hydrates StudioEngine.
     Q_INVOKABLE bool previewLoadedPreset();
 
+    // ADJ_MANNER_VR_OFF_FILE_EDIT_V1 — explicit offline editor write to the
+    // capture-proven .k500 scalar. This never talks to hardware and is never
+    // queued for a later device connection.
+    Q_INVOKABLE bool setOfflineAdjMannerVrOff(bool enabled);
+
     Q_INVOKABLE bool setPresetFolder(const QUrl &url);
     Q_INVOKABLE void refreshPresetFolder();
     Q_INVOKABLE bool loadFolderPreset(int index);
@@ -120,6 +125,7 @@ signals:
 private:
     void setError(const QString &message);
     QString localPath(const QUrl &url, bool appendExtension) const;
+    bool persistMappedEdit(const QString &path, const QVariant &value, bool rejectUnsupported);
     void onEngineEdit(const QString &path, const QVariant &value);
     void refreshDocumentMetadata();
 

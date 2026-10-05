@@ -229,12 +229,39 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        "SYSTEM_TOGGLE_INTERACTION_STATE_V1",
+        "SYSTEM_TOGGLE_DUAL_AUTHORITY_V2",
         "SYSTEM_DEVICE_MODE_INIT_TOGGLE_V4",
         "SYSTEM_MANUAL_ADJUSTMENT_CARD_V2",
         "SystemToggleRow {",
+        "offlineUseInitVolume",
+        "offlineAdjMannerVrOff",
         "requestUseInitVolumeToggle",
         "requestAdjMannerVrToggle",
+        "setOfflineAdjMannerVrOff",
+        "\"FILE EDIT\"",
+        "\"LOCAL EDIT\"",
+    )
+    require(
+        "src/k500/K500PresetEditMapper.cpp",
+        "ADJ_MANNER_VR_OFF_FILE_EDIT_V1",
+        "system.adjMannerVrOff",
+        "b.addU8(0x0094",
+    )
+    require(
+        "src/k500/K500PresetFileBridge.h",
+        "setOfflineAdjMannerVrOff",
+        "persistMappedEdit",
+    )
+    require(
+        "src/StudioEngine.h",
+        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
+        "syncOfflineAdjMannerVrOff",
+    )
+    require(
+        "src/StudioEngine.cpp",
+        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
+        "manualVrEnabled",
+        "emit deviceStateChanged()",
     )
     require(
         "qml/components/SystemToggleRow.qml",

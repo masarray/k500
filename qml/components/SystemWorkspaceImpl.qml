@@ -21,15 +21,19 @@ Item {
     // DeviceManager boundary. It never exposes Controller/WinIo to QML.
     readonly property var fileBridge: root.deviceManager ? root.deviceManager.presetFileBridge : null
 
-    // SYSTEM_TOGGLE_INTERACTION_STATE_V1
-    // TopBar status and PresetManager truth must agree before a hardware write.
-    // The setting row remains clickable while blocked so it explains why a
-    // mutation is unavailable instead of presenting a dead-looking switch.
+    // SYSTEM_TOGGLE_DUAL_AUTHORITY_V2
+    // OFFLINE and ONLINE are intentionally isolated authorities:
+    // - OFFLINE edits only the local editor / working preset.
+    // - ONLINE ignores all offline shadow state and uses device readback + live setters.
+    // Nothing from offline is queued or auto-applied when a K500 later connects.
     readonly property bool deviceConnected: !!root.presetManager && root.presetManager.connected
     readonly property bool deviceReady: root.deviceConnected
                                         && !!root.deviceManager
                                         && root.deviceManager.status === "connected"
                                         && !root.presetManager.busy
+
+    property bool offlineUseInitVolume: false
+    property bool offlineAdjMannerVrOff: false
     property string systemControlHintTarget: ""
     property string systemControlHint: ""
 
@@ -49,11 +53,7 @@ Item {
         systemControlHintTimer.restart()
     }
 
-    function blockedToggleHint(target) {
-        if (!root.deviceConnected) {
-            root.showSystemControlHint(target, "CONNECT K500 FIRST")
-            return
-        }
+    function blockedOnlineToggleHint(target) {
         if (root.deviceManager && root.deviceManager.status === "syncing") {
             root.showSystemControlHint(target, "SYNCING DEVICE")
             return
@@ -65,17 +65,44 @@ Item {
         root.showSystemControlHint(target, "WAIT FOR DEVICE READY")
     }
 
+    function seedOfflineAdjMannerFromPreview() {
+        if (root.deviceConnected)
+            return
+        var state = root.engine && root.engine.deviceState ? root.engine.deviceState : null
+        var system = state ? state.system : null
+        if (system && system.adjMannerVrOffKnown)
+            root.offlineAdjMannerVrOff = !!system.adjMannerVrOff
+    }
+
     function requestUseInitVolumeToggle() {
+        if (!root.deviceConnected) {
+            // Use Init is capture-proven as a device-global C0/CMD 0x12 state,
+            // not as part of the 0x0290 slot image. Offline is therefore a local
+            // editor state only; it is never queued for reconnect.
+            root.offlineUseInitVolume = !root.offlineUseInitVolume
+            return
+        }
         if (!root.deviceReady) {
-            root.blockedToggleHint("init")
+            root.blockedOnlineToggleHint("init")
             return
         }
         root.presetManager.setUseInitVolume(!root.presetManager.useInitVolume)
     }
 
     function requestAdjMannerVrToggle() {
+        if (!root.deviceConnected) {
+            var next = !root.offlineAdjMannerVrOff
+            root.offlineAdjMannerVrOff = next
+
+            // File scalar 0x0094 is capture-proven Adj Manner VR OFF.
+            // Persist only inside an explicit Preview/edit session. No file
+            // edit is ever replayed automatically when the device connects.
+            if (root.fileBridge && root.fileBridge.editPersistenceEnabled)
+                root.fileBridge.setOfflineAdjMannerVrOff(next)
+            return
+        }
         if (!root.deviceReady) {
-            root.blockedToggleHint("vr")
+            root.blockedOnlineToggleHint("vr")
             return
         }
         root.presetManager.setAdjMannerVrOff(!root.presetManager.adjMannerVrOff)
@@ -252,6 +279,15 @@ Item {
         root.btNameDraft = root.currentBtName
     }
     onFileBridgeChanged: root.bindFileBridgeEngine()
+
+    Connections {
+        target: root.fileBridge
+        enabled: !!root.fileBridge
+        function onEditTrackingChanged() {
+            if (!root.deviceConnected && root.fileBridge.editPersistenceEnabled)
+                root.seedOfflineAdjMannerFromPreview()
+        }
+    }
 
     Connections {
         target: root.presetManager
@@ -701,21 +737,25 @@ Item {
                             title:"Use Init Vol"
                             detail:"Apply stored startup volume for this device mode"
                             iconName:"settings-2"
-                            checked:!!root.presetManager
-                                    && root.presetManager.useInitVolumeKnown
-                                    && root.presetManager.useInitVolume
-                            available:root.deviceReady
-                            pending:!!root.presetManager && root.presetManager.busy
+                            checked:root.deviceConnected
+                                    ? (!!root.presetManager
+                                       && root.presetManager.useInitVolumeKnown
+                                       && root.presetManager.useInitVolume)
+                                    : root.offlineUseInitVolume
+                            available:!root.deviceConnected || root.deviceReady
+                            pending:root.deviceConnected
+                                    && !!root.presetManager
+                                    && root.presetManager.busy
                             statusText:root.systemControlHintTarget === "init" ? root.systemControlHint
-                                       : !root.deviceConnected ? "OFFLINE"
+                                       : !root.deviceConnected ? "LOCAL EDIT"
                                        : !root.presetManager.useInitVolumeKnown ? "READING DEVICE"
                                        : checked ? "ON" : "OFF"
                             statusColor:root.systemControlHintTarget === "init" ? Theme.amber
-                                        : !root.deviceConnected ? Theme.textDim
+                                        : !root.deviceConnected ? Theme.accent
                                         : !root.presetManager.useInitVolumeKnown ? Theme.amber
                                         : checked ? Theme.green : Theme.textDim
                             onToggleRequested:root.requestUseInitVolumeToggle()
-                            onBlockedClicked:root.blockedToggleHint("init")
+                            onBlockedClicked:root.blockedOnlineToggleHint("init")
                         }
 
                         RowLayout {
@@ -966,21 +1006,26 @@ Item {
                                 title:"VR / Trim Pot Off"
                                 detail:"Disable front-panel VR adjustment"
                                 iconName:"sliders-horizontal"
-                                checked:!!root.presetManager
-                                        && root.presetManager.adjMannerVrOffKnown
-                                        && root.presetManager.adjMannerVrOff
-                                available:root.deviceReady
-                                pending:!!root.presetManager && root.presetManager.busy
+                                checked:root.deviceConnected
+                                        ? (!!root.presetManager
+                                           && root.presetManager.adjMannerVrOffKnown
+                                           && root.presetManager.adjMannerVrOff)
+                                        : root.offlineAdjMannerVrOff
+                                available:!root.deviceConnected || root.deviceReady
+                                pending:root.deviceConnected
+                                        && !!root.presetManager
+                                        && root.presetManager.busy
                                 statusText:root.systemControlHintTarget === "vr" ? root.systemControlHint
-                                           : !root.deviceConnected ? "OFFLINE"
+                                           : !root.deviceConnected
+                                             ? (root.offlineEditMode ? "FILE EDIT" : "LOCAL EDIT")
                                            : !root.presetManager.adjMannerVrOffKnown ? "READING DEVICE"
                                            : checked ? "SOFTWARE CONTROL" : "FRONT VR ACTIVE"
                                 statusColor:root.systemControlHintTarget === "vr" ? Theme.amber
-                                            : !root.deviceConnected ? Theme.textDim
+                                            : !root.deviceConnected ? Theme.accent
                                             : !root.presetManager.adjMannerVrOffKnown ? Theme.amber
                                             : checked ? Theme.accent : Theme.green
                                 onToggleRequested:root.requestAdjMannerVrToggle()
-                                onBlockedClicked:root.blockedToggleHint("vr")
+                                onBlockedClicked:root.blockedOnlineToggleHint("vr")
                             }
                         }
                     }

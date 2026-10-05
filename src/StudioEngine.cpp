@@ -736,6 +736,33 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     emit deviceStateChanged();
 }
 
+void StudioEngine::syncOfflineAdjMannerVrOff(bool enabled)
+{
+    // OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1
+    // A Preview-hydrated .k500 document owns the offline editor state. Keep
+    // manual-VR gating in Music/Mic/FX panels coherent with file[0x0094]
+    // without emitting stateEdited() (which would recurse into persistence)
+    // and without creating any live/device command.
+    if (!m_deviceStateReady)
+        return;
+
+    QVariantMap system = m_deviceState.value(QStringLiteral("system")).toMap();
+    if (system.isEmpty())
+        return;
+
+    const bool alreadyKnown = system.value(QStringLiteral("adjMannerVrOffKnown")).toBool();
+    const bool current = system.value(QStringLiteral("adjMannerVrOff")).toBool();
+    const bool manualVr = system.value(QStringLiteral("manualVrEnabled")).toBool();
+    if (alreadyKnown && current == enabled && manualVr == !enabled)
+        return;
+
+    system.insert(QStringLiteral("adjMannerVrOffKnown"), true);
+    system.insert(QStringLiteral("adjMannerVrOff"), enabled);
+    system.insert(QStringLiteral("manualVrEnabled"), !enabled);
+    m_deviceState.insert(QStringLiteral("system"), system);
+    emit deviceStateChanged();
+}
+
 void StudioEngine::clearDeviceState()
 {
     if (!m_deviceStateReady && m_deviceState.isEmpty())
