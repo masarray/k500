@@ -1,5 +1,7 @@
 #pragma once
 
+#include "K500FieldContract.h"
+
 #include <QByteArray>
 #include <QSet>
 #include <QString>
@@ -13,10 +15,10 @@ constexpr int ChecksumOffset = 0x0475;
 constexpr int NameOffset = 0x0454;
 constexpr int NameLength = 0x21;
 constexpr int DeviceSlotImageLength = 0x0290;
-constexpr int LiveScalarEnd = 0x00e7;
-constexpr int LiveScalarSplit = 0x008f;
-constexpr int LiveScalarDeltaLow = 0x08;
-constexpr int LiveScalarDeltaHigh = 0x09;
+constexpr int LiveScalarEnd = K500FieldContract::ScalarGeometry::ActiveEndExclusive;
+constexpr int LiveScalarSplit = K500FieldContract::ScalarGeometry::ActiveSplit;
+constexpr int LiveScalarDeltaLow = K500FieldContract::ScalarGeometry::LowDelta;
+constexpr int LiveScalarDeltaHigh = K500FieldContract::ScalarGeometry::HighDelta;
 
 struct EqBand {
     quint16 typeRaw = 0;
