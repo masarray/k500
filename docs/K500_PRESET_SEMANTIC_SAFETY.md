@@ -75,6 +75,19 @@ for the same real donor and requires exact equality.
 Fast Contracts validates the complete bundled official preset bank through the
 Python semantic gate.
 
+## Official cache promotion
+
+Remote official presets use the same semantic compatibility gate as local
+Preview/Save/Upload. A downloaded file is promoted only when both conditions hold:
+
+1. strict K500 native-slot compatibility succeeds;
+2. the downloaded bytes reproduce the exact Git blob SHA advertised by the
+   GitHub catalog entry.
+
+The cache decision is derived from the cached bytes themselves plus the current
+catalog SHA, not merely from remembered settings. A failed semantic or blob
+integrity check keeps the last-known-good cached/bundled preset.
+
 ## Change rule
 
 Do not widen domains merely to make a failing preset pass. New values/types need:

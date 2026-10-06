@@ -702,6 +702,10 @@ def check_preset_sync() -> None:
         "api.github.com/repos/masarray/k500/contents/resources/presets?ref=main",
         "raw.githubusercontent.com",
         "validPresetBytes",
+        "validateDeviceSlotCompatibility",
+        "gitBlobShaHex",
+        "QCryptographicHash::Sha1",
+        "failed Git catalog blob integrity verification",
         "QSaveFile",
         "officialPresetLibrary/gitSha",
     )
@@ -717,6 +721,10 @@ def check_preset_sync() -> None:
         "SONKUPIK",
         "LOCAL",
         "Remove All",
+    )
+    forbid(
+        "src/k500/K500OfficialPresetSync.cpp",
+        "failed K500 size/checksum validation",
     )
 
 

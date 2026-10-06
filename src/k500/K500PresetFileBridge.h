@@ -96,9 +96,10 @@ public:
     Q_INVOKABLE bool loadFolderPreset(int index);
     Q_INVOKABLE bool loadBuiltInPreset(int index);
 
-    // OFFICIAL_PRESET_SYNC_V1 — fetch only new/changed official files, validate
-    // exact K500 size/checksum, then atomically replace cache. Network failure
-    // never removes the bundled or last-known-good library.
+    // OFFICIAL_PRESET_SYNC_V1 — fetch only new/changed official files, require
+    // strict K500 semantic compatibility + exact Git catalog blob identity, then
+    // atomically replace cache. Network/integrity failure never removes the
+    // bundled or last-known-good library.
     Q_INVOKABLE void syncOfficialPresets();
 
     // P4_2_PRESET_BATCH_LIBRARY_V1 — legacy deterministic builder retained for
