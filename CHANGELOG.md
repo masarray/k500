@@ -53,9 +53,9 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Closed capture-backed reconnect truth for Music Noise Gate and Music Bass and hydrate them directly from the authoritative 939-byte K500 active-memory image.
 - Closed Mic and output crossover filter-type readback for the capture-proven sections while preserving evidence gates for unsupported filter-type controls.
 - Closed Main/Surround/Center/Sub output-delay readback and write parity, including the native Surround channel-order exception.
-- Closed Adj Manner / VR OFF readback from direct `activeMemory[0x008C]` plus the independent inverse C0 handshake bit, while keeping `CMD 0x07 / RSP 0xF8` as the setter/ACK path.
+- Closed Adj Manner / VR OFF with separate capture-backed authorities: runtime `CMD 0x07` + valid `RSP 0xF8` commits current-session state, while real connect/reconnect/Recall readback hydrates persistent ownership from `activeMemory[0x008C]`; C0 `data[19]` is explicitly non-authoritative.
 - Added front-panel VR ownership semantics: when physical screwdriver trim controls own Music tone and the captured Reverb/Echo trim subset, those software editors remain visible but read-only and visually hardware-owned.
-- Adj Manner changes now perform an explicit post-ACK 939-byte ownership resync before LIVE resumes.
+- Removed the non-native post-ACK read-after-write path that could return the previous `0x008C` value and bounce VR OFF back ON; runtime ACK now fans ownership semantics directly without patching the cached active-memory snapshot.
 
 ### Fixed
 

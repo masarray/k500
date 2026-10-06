@@ -255,6 +255,17 @@ def check_protocol_and_state() -> None:
         "C0 data[19] is ignored",
         "no immediate CMD 0x40 read-after-write",
     )
+    require(
+        "CHANGELOG.md",
+        "valid `RSP 0xF8` commits current-session state",
+        "C0 `data[19]` is explicitly non-authoritative",
+        "Removed the non-native post-ACK read-after-write path",
+    )
+    forbid(
+        "CHANGELOG.md",
+        "inverse C0 handshake bit",
+        "post-ACK 939-byte ownership resync",
+    )
     forbid(
         "docs/PROTOCOL_GOLDEN_VECTORS.md",
         "AA 03 00 07 00 00 F6",
