@@ -742,14 +742,13 @@ Item {
                                    : "Device setting · not stored in preset"
                             iconName:"settings-2"
                             checked:root.deviceConnected
-                                    ? (!!root.presetManager
-                                       && root.presetManager.useInitVolumeKnown
-                                       && root.presetManager.useInitVolume)
+                                    ? (!!root.presetManager && root.presetManager.useInitVolume)
                                     : root.offlineUseInitVolume
-                            available:!root.deviceConnected || root.deviceReady
+                            available:!root.deviceConnected
+                                      || (!!root.deviceManager && root.deviceManager.status === "connected")
                             pending:root.deviceConnected
                                     && !!root.presetManager
-                                    && root.presetManager.busy
+                                    && root.presetManager.useInitBusy
                             statusText:root.systemControlHintTarget === "init" ? root.systemControlHint
                                        : root.deviceConnected
                                          && !root.presetManager.useInitVolumeKnown ? "SYNCING…" : ""
@@ -1008,14 +1007,13 @@ Item {
                                        : "Disable front-panel adjustment"
                                 iconName:"sliders-horizontal"
                                 checked:root.deviceConnected
-                                        ? (!!root.presetManager
-                                           && root.presetManager.adjMannerVrOffKnown
-                                           && root.presetManager.adjMannerVrOff)
+                                        ? (!!root.presetManager && root.presetManager.adjMannerVrOff)
                                         : root.offlineAdjMannerVrOff
-                                available:!root.deviceConnected || root.deviceReady
+                                available:!root.deviceConnected
+                                          || (!!root.deviceManager && root.deviceManager.status === "connected")
                                 pending:root.deviceConnected
                                         && !!root.presetManager
-                                        && root.presetManager.busy
+                                        && root.presetManager.adjMannerBusy
                                 statusText:root.systemControlHintTarget === "vr" ? root.systemControlHint
                                            : root.deviceConnected
                                              && !root.presetManager.adjMannerVrOffKnown ? "SYNCING…" : ""

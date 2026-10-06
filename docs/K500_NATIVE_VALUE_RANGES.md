@@ -102,9 +102,11 @@ Mic Max and UDisk Record were subsequently closed by the final 2026-10-04
 operational capture batch below; do not revive the older read-only assumption.
 
 Adj Manner / VR OFF is a boolean ownership switch rather than a numeric range.
-Paired reconnect captures prove direct `activeMemory[0x008C]` /
+The 2026-10-06 paired connect captures prove direct `activeMemory[0x008C]` /
 file scalar `0x0094`: 0 = front-panel VR active, 1 = VR OFF/software ownership.
-The same state is independently visible through inverse C0 `data[19]` bit 0.
+C0 `data[19]` is explicitly non-authoritative because controlled captures show
+contradictory bit-0 polarity. Live writes use CMD 0x07 with route byte `0x03`
+and are verified from the canonical active-memory block containing `0x008C`.
 
 ## Final System operational controls — native capture observed
 

@@ -165,16 +165,82 @@ def check_protocol_and_state() -> None:
         'case 0x06: return prefix + QStringLiteral("Butter 24")',
     )
     require(
+        "src/k500/K500Protocol.cpp",
+        "ADJ_MANNER_VR_OFF_CMD07_CAPTURED_V2",
+        "enabled ? 0x01 : 0x00, 0x03",
+        "Adj Manner VR OFF unticked capture V2",
+        "Adj Manner VR OFF ticked capture V2",
+    )
+    forbid(
+        "src/k500/K500ResponseParser.h",
+        "tryDecodeAdjMannerVrOff",
+    )
+    forbid(
         "src/k500/K500ResponseParser.cpp",
         "tryDecodeAdjMannerVrOff",
         "response.data.at(19)",
-        "(flags & 0x01u) == 0",
     )
     require(
+        "src/k500/K500PresetManager.cpp",
+        "ADJ_MANNER_TARGETED_VERIFY_V1",
+        "AdjMannerVerifyOffset = 0x0074",
+        "AdjMannerVerifyIndex == 0x18",
+        "AwaitAdjMannerVerify",
+        "activeMemory[0x008C]",
+        "finishOperationRejected",
+        "ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1",
+        "adjMannerVrOffVerified(actual)",
+    )
+    forbid(
         "src/k500/K500PresetManager.cpp",
         "ReadbackPurpose::AdjManner",
         "startReadback(ReadbackPurpose::AdjManner)",
         "939-byte ownership resync complete",
+    )
+    require(
+        "docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md",
+        "97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba",
+        "9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87",
+        "64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839",
+        "Do **not** decode VR OFF from C0 data[19]",
+    )
+    require(
+        "docs/PROTOCOL_GOLDEN_VECTORS.md",
+        "AA 03 00 07 00 03 F3",
+        "AA 03 00 07 01 03 F2",
+        "activeMemory[0x008C]",
+        "C0 `data[19]` is",
+    )
+    require(
+        "docs/K500_CAPTURE_TODO_MAP.md",
+        "C0 data[19] explicitly non-authoritative",
+    )
+    require(
+        "docs/PORTING_PARITY_MATRIX.md",
+        "C0 data[19] retired",
+        "targeted 0x0074/0x003A verify",
+    )
+    require(
+        "docs/K500_NATIVE_VALUE_RANGES.md",
+        "C0 `data[19]` is explicitly non-authoritative",
+    )
+    require(
+        "docs/K500_CAPTURED_RUNTIME_STATUS.md",
+        "C0 `data[19]` is **not** an authority",
+        "0x0074",
+        "0x18",
+    )
+    require(
+        "docs/HARDWARE_ACCEPTANCE_CHECKLIST.md",
+        "AA 03 00 07 00 03 F3",
+        "AA 03 00 07 01 03 F2",
+        "C0 data[19] is ignored",
+    )
+    forbid(
+        "docs/PROTOCOL_GOLDEN_VECTORS.md",
+        "AA 03 00 07 00 00 F6",
+        "AA 03 00 07 01 00 F5",
+        "No reconnect/readback bit is proven",
     )
     require(
         "src/k500/K500DeviceManager.cpp",
@@ -297,6 +363,32 @@ def check_ui_contracts() -> None:
         "\"BT rename: max 8 characters · BLE read-only\"",
     )
     require(
+        "src/k500/K500PresetManager.h",
+        "Q_PROPERTY(bool useInitBusy",
+        "Q_PROPERTY(bool adjMannerBusy",
+        "bool useInitBusy() const",
+        "bool adjMannerBusy() const",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "root.presetManager.useInitBusy",
+        "root.presetManager.adjMannerBusy",
+    )
+    require(
+        "src/k500/K500DeviceManager.h",
+        "ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1",
+        "adjMannerVrOffVerified(bool enabled)",
+    )
+    require(
+        "src/main.cpp",
+        "K500DeviceManager::adjMannerVrOffVerified",
+        "StudioEngine::syncAdjMannerVrOff",
+    )
+    forbid(
+        "src/k500/K500PresetManager.cpp",
+        "emit m_manager->activeMemoryReady",
+    )
+    require(
         "src/k500/K500PresetEditMapper.cpp",
         "ADJ_MANNER_VR_OFF_FILE_EDIT_V1",
         "system.adjMannerVrOff",
@@ -309,12 +401,12 @@ def check_ui_contracts() -> None:
     )
     require(
         "src/StudioEngine.h",
-        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
-        "syncOfflineAdjMannerVrOff",
+        "ADJ_MANNER_SEMANTIC_SYNC_V2",
+        "syncAdjMannerVrOff",
     )
     require(
         "src/StudioEngine.cpp",
-        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
+        "ADJ_MANNER_SEMANTIC_SYNC_V2",
         "manualVrEnabled",
         "emit deviceStateChanged()",
     )

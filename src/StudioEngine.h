@@ -141,10 +141,12 @@ public:
     QVariantMap deviceState() const { return m_deviceState; }
     bool deviceStateReady() const { return m_deviceStateReady; }
 
-    // OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1
-    // Update editor ownership semantics after a verified offline file edit.
-    // This emits deviceStateChanged only: never stateEdited and never hardware I/O.
-    void syncOfflineAdjMannerVrOff(bool enabled);
+    // ADJ_MANNER_SEMANTIC_SYNC_V2
+    // Update editor ownership semantics from either verified offline file state
+    // or verified live-device state. Emits deviceStateChanged only: never
+    // stateEdited and never hardware I/O.
+    void syncAdjMannerVrOff(bool enabled);
+    void syncOfflineAdjMannerVrOff(bool enabled) { syncAdjMannerVrOff(enabled); }
 
     // PRESET_CROSSOVER_HYDRATION_NO_EDIT_V1
     // Offline .k500 Preview has authoritative HPF/LPF footer metadata that is

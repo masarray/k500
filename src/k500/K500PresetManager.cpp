@@ -16,6 +16,12 @@ constexpr int BtIdentityTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
+// ADJ_MANNER_TARGETED_VERIFY_V1 — connect captures read active memory in
+// canonical 0x3A-byte blocks. 0x008C lives in block 0x0074 at relative 0x18.
+constexpr int AdjMannerVerifyOffset = 0x0074;
+constexpr int AdjMannerVerifyLength = K500Protocol::ActiveMemoryBlockSize;
+constexpr int AdjMannerVerifyIndex = K500Protocol::ReadbackOffset::AdjMannerVrOff - AdjMannerVerifyOffset;
+static_assert(AdjMannerVerifyIndex == 0x18);
 }
 
 K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent)
@@ -143,6 +149,26 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
     emit operationCompleted(kind, slotOneBased);
 }
 
+void K500PresetManager::finishOperationRejected(const QString &kind, const QString &message)
+{
+    clearTimeout();
+    m_step = Step::Idle;
+    m_readbackPurpose = ReadbackPurpose::None;
+    m_operation = Operation::None;
+    m_pendingReadLength = 0;
+    m_pendingStoreLength = 0;
+    setProgress(QStringLiteral("%1 rejected").arg(kind));
+    emit busyChanged();
+
+    if (m_manager && m_manager->connected() && m_manager->m_stage == K500DeviceManager::Stage::Ready) {
+        m_manager->setError(message);
+        m_manager->setLiveEnabled(true);
+        m_manager->m_lastValidRx.start();
+        m_manager->m_heartbeatTimer.start();
+    }
+    emit operationFailed(kind, message);
+}
+
 void K500PresetManager::failOperation(const QString &kind, const QString &message)
 {
     clearTimeout();
@@ -239,6 +265,20 @@ void K500PresetManager::recallMode(int slotOneBased)
     });
 }
 
+void K500PresetManager::sendAdjMannerVerification()
+{
+    // ADJ_MANNER_TARGETED_VERIFY_V1 — use the same captured canonical active-
+    // memory block geometry as connect readback, but only the one block that
+    // contains 0x008C. No guessed 1-byte read and no wasteful 939-byte sweep.
+    m_step = Step::AwaitAdjMannerVerify;
+    const quint8 mode = m_manager->m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
+    if (!send(K500Protocol::readBlock(AdjMannerVerifyOffset, AdjMannerVerifyLength, mode),
+              QStringLiteral("Adj Manner verify 0x0074 len 0x003A")))
+        return;
+    armTimeout(ReadbackTimeoutMs, QStringLiteral("Adj Manner VR OFF"),
+               QStringLiteral("Timeout targeted readback activeMemory[0x008C]."));
+}
+
 void K500PresetManager::sendRecallHandshake()
 {
     m_step = Step::AwaitRecallHandshake;
@@ -290,9 +330,9 @@ void K500PresetManager::setUseInitVolume(bool enabled)
 
 void K500PresetManager::setAdjMannerVrOff(bool enabled)
 {
-    // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — CMD 0x07/RSP 0xF8 is the
-    // captured setter, while reconnect truth is independently available through
-    // C0 data[19] bit0 and direct activeMemory[0x008C].
+    // ADJ_MANNER_VR_OFF_NATIVE_PARITY_V2 — physical 2026-10-06 captures
+    // prove CMD 0x07 + route 0x03 / RSP 0xF8. Online truth comes only from
+    // activeMemory[0x008C]; contradictory C0 data[19] is intentionally ignored.
     if (!connected()) {
         const QString error = QStringLiteral("Adj Manner VR OFF memerlukan K500 connected.");
         if (m_manager) m_manager->setError(error);
@@ -537,13 +577,6 @@ void K500PresetManager::onResponse(const K500Response &response)
             emit useInitVolumeChanged();
         }
 
-        bool deviceAdjMannerVrOff = false;
-        if (K500ResponseParser::tryDecodeAdjMannerVrOff(response, &deviceAdjMannerVrOff)
-            && (!m_adjMannerVrOffKnown || m_adjMannerVrOff != deviceAdjMannerVrOff)) {
-            m_adjMannerVrOff = deviceAdjMannerVrOff;
-            m_adjMannerVrOffKnown = true;
-            emit adjMannerVrOffChanged();
-        }
     }
 
     if (!busy() || !response.checksumOk)
@@ -581,11 +614,52 @@ void K500PresetManager::onResponse(const K500Response &response)
 
     if (m_step == Step::AwaitAdjMannerAck && response.rsp == 0xF8) {
         clearTimeout();
+        setProgress(QStringLiteral("Adj Manner VR OFF %1 · acknowledged · verifying device")
+                        .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
+        sendAdjMannerVerification();
+        return;
+    }
+
+    if (m_step == Step::AwaitAdjMannerVerify && response.rsp == 0xBF) {
+        clearTimeout();
+        if (response.data.size() < AdjMannerVerifyLength) {
+            failOperation(QStringLiteral("Adj Manner VR OFF"),
+                          QStringLiteral("Targeted VR OFF verification block terlalu pendek."));
+            return;
+        }
+
+        const quint8 raw = static_cast<quint8>(
+            static_cast<unsigned char>(response.data.at(AdjMannerVerifyIndex)));
+        if (raw > 1) {
+            failOperation(QStringLiteral("Adj Manner VR OFF"),
+                          QStringLiteral("Targeted VR OFF readback menghasilkan nilai tidak valid."));
+            return;
+        }
+
+        const bool requested = m_adjMannerVrOff;
+        const bool actual = raw == 1;
+        m_adjMannerVrOff = actual;
         m_adjMannerVrOffKnown = true;
         emit adjMannerVrOffChanged();
-        setProgress(QStringLiteral("Adj Manner VR OFF %1 · acknowledged · refreshing 939-byte ownership truth")
-                        .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
-        startReadback(ReadbackPurpose::AdjManner);
+
+        // ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1 — keep the manager's cached
+        // active-memory byte coherent, then fan out only the verified semantic
+        // ownership state. Never replay the rest of the cached 939-byte image.
+        if (m_manager && m_manager->m_activeMemory.size() > K500Protocol::ReadbackOffset::AdjMannerVrOff)
+            m_manager->m_activeMemory[K500Protocol::ReadbackOffset::AdjMannerVrOff] = char(raw);
+        if (m_manager)
+            emit m_manager->adjMannerVrOffVerified(actual);
+
+        if (actual != requested) {
+            finishOperationRejected(
+                QStringLiteral("Adj Manner VR OFF"),
+                QStringLiteral("K500 mengakui perintah tetapi readback 0x008C tidak berubah ke state yang diminta."));
+            return;
+        }
+
+        setProgress(QStringLiteral("Adj Manner VR OFF %1 · verified at activeMemory[0x008C]")
+                        .arg(actual ? QStringLiteral("ON") : QStringLiteral("OFF")));
+        finishOperation(QStringLiteral("Adj Manner VR OFF"));
         return;
     }
 
@@ -710,12 +784,6 @@ void K500PresetManager::finishReadback()
     if (m_readbackPurpose == ReadbackPurpose::BtIdentity) {
         setProgress(QStringLiteral("BT Name · 939-byte identity refresh complete"));
         finishOperation(QStringLiteral("BT Name"));
-        return;
-    }
-
-    if (m_readbackPurpose == ReadbackPurpose::AdjManner) {
-        setProgress(QStringLiteral("Adj Manner VR OFF · 939-byte ownership resync complete"));
-        finishOperation(QStringLiteral("Adj Manner VR OFF"));
         return;
     }
 

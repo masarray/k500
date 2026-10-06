@@ -18,6 +18,8 @@ class K500PresetManager final : public QObject
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(bool recallBusy READ recallBusy NOTIFY busyChanged)
     Q_PROPERTY(bool storeBusy READ storeBusy NOTIFY busyChanged)
+    Q_PROPERTY(bool useInitBusy READ useInitBusy NOTIFY busyChanged)
+    Q_PROPERTY(bool adjMannerBusy READ adjMannerBusy NOTIFY busyChanged)
     Q_PROPERTY(bool useInitVolume READ useInitVolume NOTIFY useInitVolumeChanged)
     Q_PROPERTY(bool useInitVolumeKnown READ useInitVolumeKnown NOTIFY useInitVolumeChanged)
     Q_PROPERTY(bool adjMannerVrOff READ adjMannerVrOff NOTIFY adjMannerVrOffChanged)
@@ -33,6 +35,8 @@ public:
     bool busy() const { return m_operation != Operation::None; }
     bool recallBusy() const { return m_operation == Operation::Recall; }
     bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Rename || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
+    bool useInitBusy() const { return m_operation == Operation::UseInit; }
+    bool adjMannerBusy() const { return m_operation == Operation::AdjManner; }
     bool useInitVolume() const { return m_useInitVolume; }
     bool useInitVolumeKnown() const { return m_useInitVolumeKnown; }
     bool adjMannerVrOff() const { return m_adjMannerVrOff; }
@@ -83,9 +87,10 @@ private:
         AwaitCommitAck,
         AwaitUseInitAck,
         AwaitAdjMannerAck,
+        AwaitAdjMannerVerify,
         AwaitBtNameAck,
     };
-    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare, BtIdentity, AdjManner };
+    enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare, BtIdentity };
 
     struct MassEntry {
         int slot = 1;
@@ -94,6 +99,7 @@ private:
 
     bool beginOperation(Operation operation, QString *error = nullptr);
     void finishOperation(const QString &kind, int slotOneBased = 0);
+    void finishOperationRejected(const QString &kind, const QString &message);
     void failOperation(const QString &kind, const QString &message);
     void setProgress(const QString &progress);
 
@@ -104,6 +110,7 @@ private:
     void onResponse(const K500Response &response);
 
     void hydrateAdjMannerFromMemory(const QByteArray &memory);
+    void sendAdjMannerVerification();
 
     void sendRecallHandshake();
     void startReadback(ReadbackPurpose purpose);

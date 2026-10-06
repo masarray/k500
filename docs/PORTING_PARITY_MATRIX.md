@@ -61,7 +61,7 @@ Bluetooth SPP remains implemented and useful for engineering, but is explicitly 
 | Dance Mic Trigger | CAPTURE-MAPPED WRITE 🟧 | paired CMD 0x22 captured; reconnect seed intentionally gated because file 0x0094 is now proven Adj Manner VR OFF |
 | BT Name rename/reset | CAPTURE-MAPPED 🟧 | USB CMD 0x4E SET/RESET + RSP 0xB1 + 939-byte identity refresh |
 | BLE Name rename/reset | READ ONLY 🟦 | readback exists; deliberately not inferred from BT CMD 0x4E |
-| Adj Manner / VR OFF | CAPTURE-MAPPED 🟧 | READ active 0x008C / file 0x0094 + inverse C0 data[19] bit0; WRITE CMD 0x07 + RSP 0xF8; fascia-vs-software ownership gated in UI |
+| Adj Manner / VR OFF | CAPTURE-MAPPED 🟧 | READ authority active 0x008C / file 0x0094; C0 data[19] retired; WRITE CMD 0x07 with route 0x03 + RSP 0xF8; targeted 0x0074/0x003A verify |
 | Mic EQ Link | STABLE USB ✅ | captured command vector |
 | Main output block | STABLE USB ✅ | raw-block seed + neighboring-byte preservation |
 | Main L/R Output Delay | CAPTURE-MAPPED 🟧 | READ file 0x00D4/0x00D6 -> active 0x00CB/0x00CD; WRITE CMD 0x0E data16=L/data18=R, 0..50 ms |
