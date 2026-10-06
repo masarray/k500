@@ -26,8 +26,9 @@ delta/split loop.
 
 `EvidenceLevel` distinguishes structural knowledge from captured fields and
 round-trip-proven fields. `FileMutationPolicy` distinguishes fields that may be
-written from fields that must be preserved. Fields owned by an active parallel
-protocol investigation stay outside this contract until that evidence lands in main.
+written from fields that must be preserved. A field enters this contract only
+after its evidence has landed in `main`; temporary parallel-branch ownership is
+never treated as permanent protocol truth.
 
 Current critical contracts:
 
@@ -36,10 +37,12 @@ Current critical contracts:
 | Mic HP type | `0x001B` | `0x0013` | `0..7` | Captured | PreserveOnly |
 | Mic LP type | `0x001C` | `0x0014` | `0..7` | Captured | PreserveOnly |
 | Mic FBE/FBX | `0x0023` | `0x001B` | `0..4` | ProvenRoundTrip | Writable |
+| Adj Manner / VR OFF | `0x0094` | `0x008C` | `0..1` | ProvenRoundTrip | Writable |
 
 `PreserveOnly` means the scalar must not become writable merely because an offset
 is known. A dedicated physical experiment and regression evidence are required to
-promote that policy.
+promote that policy. Adj Manner / VR OFF was promoted only after the paired
+connect/reconnect captures and native parity work were merged.
 
 ## Engineering rule
 

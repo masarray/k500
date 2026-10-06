@@ -21,6 +21,7 @@ enum class FieldId : unsigned char {
     MicHpType,
     MicLpType,
     MicFbe,
+    AdjMannerVrOff,
 };
 
 namespace ScalarGeometry {
@@ -96,6 +97,7 @@ constexpr int MusicUDiskGain = 0x0021;
 constexpr int MusicDigitalGain = 0x0022;
 constexpr int MicFbe = 0x0023;
 constexpr int MicEqLink = 0x0092;
+constexpr int AdjMannerVrOff = 0x0094;
 constexpr int UDiskRecordVol = 0x0095;
 constexpr int UsbRecordVol = 0x0096;
 } // namespace FileOffset
@@ -123,10 +125,14 @@ constexpr ScalarFieldSpec MicFbe{
     FieldId::MicFbe, FileOffset::MicFbe,
     ScalarGeometry::activeOffsetForFileScalar(FileOffset::MicFbe),
     0, 4, EvidenceLevel::ProvenRoundTrip, FileMutationPolicy::Writable};
+constexpr ScalarFieldSpec AdjMannerVrOff{
+    FieldId::AdjMannerVrOff, FileOffset::AdjMannerVrOff,
+    ScalarGeometry::activeOffsetForFileScalar(FileOffset::AdjMannerVrOff),
+    0, 1, EvidenceLevel::ProvenRoundTrip, FileMutationPolicy::Writable};
 } // namespace Field
 
-constexpr std::array<ScalarFieldSpec, 3> EvidenceBackedScalars{
-    Field::MicHpType, Field::MicLpType, Field::MicFbe};
+constexpr std::array<ScalarFieldSpec, 4> EvidenceBackedScalars{
+    Field::MicHpType, Field::MicLpType, Field::MicFbe, Field::AdjMannerVrOff};
 
 constexpr bool rawValueValid(const ScalarFieldSpec &field, int raw) noexcept
 {
@@ -142,8 +148,10 @@ constexpr bool geometryMatches(const ScalarFieldSpec &field) noexcept
 static_assert(Field::MicHpType.activeOffset == 0x0013);
 static_assert(Field::MicLpType.activeOffset == 0x0014);
 static_assert(Field::MicFbe.activeOffset == 0x001B);
+static_assert(Field::AdjMannerVrOff.activeOffset == 0x008C);
 static_assert(geometryMatches(Field::MicHpType));
 static_assert(geometryMatches(Field::MicLpType));
 static_assert(geometryMatches(Field::MicFbe));
+static_assert(geometryMatches(Field::AdjMannerVrOff));
 
 } // namespace K500FieldContract

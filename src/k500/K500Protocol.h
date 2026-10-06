@@ -205,6 +205,7 @@ constexpr int MusicInput1Gain = 0x0016;
 constexpr int MusicBass = 0x00DF;
 static_assert(MicHpType == K500FieldContract::Field::MicHpType.activeOffset);
 static_assert(MicLpType == K500FieldContract::Field::MicLpType.activeOffset);
+static_assert(AdjMannerVrOff == K500FieldContract::Field::AdjMannerVrOff.activeOffset);
 static_assert(MusicInput1Gain
               == K500FieldContract::ScalarGeometry::activeOffsetForFileScalar(
                      K500FieldContract::FileOffset::MusicInput1Gain));
