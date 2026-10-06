@@ -146,10 +146,11 @@ Repeat the sequence rapidly and with a connected K500. There must be no freeze, 
 - [ ] Adj Manner VR OFF unticked sends `AA 03 00 07 00 03 F3`; ticked sends `AA 03 00 07 01 03 F2`; both receive RSP 0xF8.
 - [ ] Reconnect hydrates unticked/OFF as activeMemory[0x008C]=0 and ticked/ON as 1.
 - [ ] C0 data[19] is ignored for VR ownership; acceptance must not infer state from its bit 0.
-- [ ] Post-write verification reads the canonical 0x0074/0x003A block and confirms relative index 0x18 / activeMemory[0x008C].
+- [ ] After a valid RSP 0xF8, VR OFF keeps the requested current-session state; no immediate CMD 0x40 read-after-write is emitted.
+- [ ] Disconnect/reconnect (or another real authoritative full readback) hydrates VR OFF from activeMemory[0x008C].
 - [ ] Toggling VR OFF does not put Use Init Vol into APPLYING/pending state.
 - [ ] With FRONT VR ACTIVE, Music Bass/Mid/Mid Freq/Treble plus captured Reverb/Echo trim-owned controls are software-read-only and visually hardware-owned.
-- [ ] With VR OFF ON, those software editors regain ownership immediately after verified readback without Adj Manner rewriting their values.
+- [ ] With VR OFF ON, those software editors regain ownership immediately after F8 ACK without Adj Manner rewriting their values.
 - [ ] With Use Init ON, Recall Mode 01 applies stored Music/Mic/Effect Init values to the three active masters.
 - [ ] With Use Init OFF, Recall does not locally synthesize those master values; the UI follows the 939-byte K500 readback.
 

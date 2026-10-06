@@ -16,12 +16,6 @@ constexpr int BtIdentityTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
-// ADJ_MANNER_TARGETED_VERIFY_V1 — connect captures read active memory in
-// canonical 0x3A-byte blocks. 0x008C lives in block 0x0074 at relative 0x18.
-constexpr int AdjMannerVerifyOffset = 0x0074;
-constexpr int AdjMannerVerifyLength = K500Protocol::ActiveMemoryBlockSize;
-constexpr int AdjMannerVerifyIndex = K500Protocol::ReadbackOffset::AdjMannerVrOff - AdjMannerVerifyOffset;
-static_assert(AdjMannerVerifyIndex == 0x18);
 }
 
 K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent)
@@ -149,26 +143,6 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
     emit operationCompleted(kind, slotOneBased);
 }
 
-void K500PresetManager::finishOperationRejected(const QString &kind, const QString &message)
-{
-    clearTimeout();
-    m_step = Step::Idle;
-    m_readbackPurpose = ReadbackPurpose::None;
-    m_operation = Operation::None;
-    m_pendingReadLength = 0;
-    m_pendingStoreLength = 0;
-    setProgress(QStringLiteral("%1 rejected").arg(kind));
-    emit busyChanged();
-
-    if (m_manager && m_manager->connected() && m_manager->m_stage == K500DeviceManager::Stage::Ready) {
-        m_manager->setError(message);
-        m_manager->setLiveEnabled(true);
-        m_manager->m_lastValidRx.start();
-        m_manager->m_heartbeatTimer.start();
-    }
-    emit operationFailed(kind, message);
-}
-
 void K500PresetManager::failOperation(const QString &kind, const QString &message)
 {
     clearTimeout();
@@ -265,20 +239,6 @@ void K500PresetManager::recallMode(int slotOneBased)
     });
 }
 
-void K500PresetManager::sendAdjMannerVerification()
-{
-    // ADJ_MANNER_TARGETED_VERIFY_V1 — use the same captured canonical active-
-    // memory block geometry as connect readback, but only the one block that
-    // contains 0x008C. No guessed 1-byte read and no wasteful 939-byte sweep.
-    m_step = Step::AwaitAdjMannerVerify;
-    const quint8 mode = m_manager->m_io.kind() == K500WinIo::Kind::UsbHid ? 0x00 : 0x63;
-    if (!send(K500Protocol::readBlock(AdjMannerVerifyOffset, AdjMannerVerifyLength, mode),
-              QStringLiteral("Adj Manner verify 0x0074 len 0x003A")))
-        return;
-    armTimeout(ReadbackTimeoutMs, QStringLiteral("Adj Manner VR OFF"),
-               QStringLiteral("Timeout targeted readback activeMemory[0x008C]."));
-}
-
 void K500PresetManager::sendRecallHandshake()
 {
     m_step = Step::AwaitRecallHandshake;
@@ -330,9 +290,10 @@ void K500PresetManager::setUseInitVolume(bool enabled)
 
 void K500PresetManager::setAdjMannerVrOff(bool enabled)
 {
-    // ADJ_MANNER_VR_OFF_NATIVE_PARITY_V2 — physical 2026-10-06 captures
-    // prove CMD 0x07 + route 0x03 / RSP 0xF8. Online truth comes only from
-    // activeMemory[0x008C]; contradictory C0 data[19] is intentionally ignored.
+    // ADJ_MANNER_VR_OFF_NATIVE_PARITY_V3 — physical captures prove:
+    // runtime write = CMD 0x07 + route 0x03 -> RSP 0xF8 and stop.
+    // Connect/reconnect/Recall truth = activeMemory[0x008C].
+    // C0 data[19] remains intentionally non-authoritative.
     if (!connected()) {
         const QString error = QStringLiteral("Adj Manner VR OFF memerlukan K500 connected.");
         if (m_manager) m_manager->setError(error);
@@ -613,52 +574,18 @@ void K500PresetManager::onResponse(const K500Response &response)
     }
 
     if (m_step == Step::AwaitAdjMannerAck && response.rsp == 0xF8) {
+        // ADJ_MANNER_ACK_SESSION_AUTHORITY_V1
+        // Native runtime capture proves the transaction ends at F8:
+        // CMD 0x07 -> RSP 0xF8, with no immediate CMD 0x40 readback.
+        // F8 commits current-session state; activeMemory[0x008C] remains
+        // authoritative only on real connect/reconnect/Recall readback.
         clearTimeout();
-        setProgress(QStringLiteral("Adj Manner VR OFF %1 · acknowledged · verifying device")
-                        .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
-        sendAdjMannerVerification();
-        return;
-    }
-
-    if (m_step == Step::AwaitAdjMannerVerify && response.rsp == 0xBF) {
-        clearTimeout();
-        if (response.data.size() < AdjMannerVerifyLength) {
-            failOperation(QStringLiteral("Adj Manner VR OFF"),
-                          QStringLiteral("Targeted VR OFF verification block terlalu pendek."));
-            return;
-        }
-
-        const quint8 raw = static_cast<quint8>(
-            static_cast<unsigned char>(response.data.at(AdjMannerVerifyIndex)));
-        if (raw > 1) {
-            failOperation(QStringLiteral("Adj Manner VR OFF"),
-                          QStringLiteral("Targeted VR OFF readback menghasilkan nilai tidak valid."));
-            return;
-        }
-
-        const bool requested = m_adjMannerVrOff;
-        const bool actual = raw == 1;
-        m_adjMannerVrOff = actual;
         m_adjMannerVrOffKnown = true;
         emit adjMannerVrOffChanged();
-
-        // ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1 — keep the manager's cached
-        // active-memory byte coherent, then fan out only the verified semantic
-        // ownership state. Never replay the rest of the cached 939-byte image.
-        if (m_manager && m_manager->m_activeMemory.size() > K500Protocol::ReadbackOffset::AdjMannerVrOff)
-            m_manager->m_activeMemory[K500Protocol::ReadbackOffset::AdjMannerVrOff] = char(raw);
         if (m_manager)
-            emit m_manager->adjMannerVrOffVerified(actual);
-
-        if (actual != requested) {
-            finishOperationRejected(
-                QStringLiteral("Adj Manner VR OFF"),
-                QStringLiteral("K500 mengakui perintah tetapi readback 0x008C tidak berubah ke state yang diminta."));
-            return;
-        }
-
-        setProgress(QStringLiteral("Adj Manner VR OFF %1 · verified at activeMemory[0x008C]")
-                        .arg(actual ? QStringLiteral("ON") : QStringLiteral("OFF")));
+            emit m_manager->adjMannerVrOffAccepted(m_adjMannerVrOff);
+        setProgress(QStringLiteral("Adj Manner VR OFF %1 · device acknowledged")
+                        .arg(m_adjMannerVrOff ? QStringLiteral("ON") : QStringLiteral("OFF")));
         finishOperation(QStringLiteral("Adj Manner VR OFF"));
         return;
     }

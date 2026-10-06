@@ -107,6 +107,8 @@ and also proves that C0 data[19] is not a stable VR-OFF authority.
 | `VR_OFF_tick_untick.pcapng` | 4,272 | `97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba` |
 | `Connect_VR_OFF_ticked_position.pcapng` | 5,016 | `9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87` |
 | `Connect_VR_OFF_unticked_position.pcapng` | 5,016 | `64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839` |
+| `nativeKTV_VROFF_OFF_alias_Unticked.pcapng` | 1,048 | `5cb8e2ee8a6f35de66aa5cbaeb95ec9cbd30bb1c87343a762d552fbbeab604db` |
+| `k500_VROFF_BounchyON.pcapng` | 16,920 | `ebaf3be207ac66529acf53f355a17d6df8fd70dc4b76a1d1f5bc50108edb5bc9` |
 
 The native toggle sweep contains fourteen alternating CMD 0x07 writes. Every
 write uses route/control byte `0x03`, and every write receives `RSP 0xF8`:
@@ -128,9 +130,21 @@ VR OFF ticked   / ON  = 0x01
 ```
 
 The standard captured active-memory block that contains this byte starts at
-`0x0074`, length `0x003A`; VR OFF is relative index `0x18`. SonKuPik
-therefore verifies a live toggle after `RSP 0xF8` by reading only that canonical
-block, not by inventing a 1-byte read and not by rereading all 939 bytes.
+`0x0074`, length `0x003A`; VR OFF is relative index `0x18`. This mapping is
+authoritative when that memory is actually read during connect/reconnect/Recall.
+
+The newer native runtime capture closes a separate boundary: after
+`AA 03 00 07 00 03 F3`, native receives `RSP 0xF8` and does **not** issue an
+immediate CMD `0x40` verification read. The SonKuPik regression capture shows
+that adding such a read can return the previous `0x008C` value and bounce the
+UI back ON. Runtime authority is therefore:
+
+```text
+CMD 0x07 -> valid RSP 0xF8 -> commit requested state for the current session
+```
+
+while `activeMemory[0x008C]` is reserved for real connect/reconnect/Recall
+hydration. No synthetic patch is written into the cached active-memory snapshot.
 
 Because `0x008C` is in the low scalar region, the corresponding file/preset
 scalar remains:

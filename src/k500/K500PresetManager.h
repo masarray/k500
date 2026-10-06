@@ -87,7 +87,6 @@ private:
         AwaitCommitAck,
         AwaitUseInitAck,
         AwaitAdjMannerAck,
-        AwaitAdjMannerVerify,
         AwaitBtNameAck,
     };
     enum class ReadbackPurpose { None, Recall, SavePrepare, RenamePrepare, BtIdentity };
@@ -99,7 +98,6 @@ private:
 
     bool beginOperation(Operation operation, QString *error = nullptr);
     void finishOperation(const QString &kind, int slotOneBased = 0);
-    void finishOperationRejected(const QString &kind, const QString &message);
     void failOperation(const QString &kind, const QString &message);
     void setProgress(const QString &progress);
 
@@ -110,7 +108,6 @@ private:
     void onResponse(const K500Response &response);
 
     void hydrateAdjMannerFromMemory(const QByteArray &memory);
-    void sendAdjMannerVerification();
 
     void sendRecallHandshake();
     void startReadback(ReadbackPurpose purpose);

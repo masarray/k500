@@ -105,8 +105,9 @@ Adj Manner / VR OFF is a boolean ownership switch rather than a numeric range.
 The 2026-10-06 paired connect captures prove direct `activeMemory[0x008C]` /
 file scalar `0x0094`: 0 = front-panel VR active, 1 = VR OFF/software ownership.
 C0 `data[19]` is explicitly non-authoritative because controlled captures show
-contradictory bit-0 polarity. Live writes use CMD 0x07 with route byte `0x03`
-and are verified from the canonical active-memory block containing `0x008C`.
+contradictory bit-0 polarity. Live writes use CMD 0x07 with route byte `0x03`;
+valid RSP 0xF8 commits current-session state. `activeMemory[0x008C]` is used
+when a real connect/reconnect/Recall readback occurs, not as immediate write verification.
 
 ## Final System operational controls — native capture observed
 

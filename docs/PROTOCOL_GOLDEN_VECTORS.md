@@ -444,10 +444,14 @@ Ticked   / ON   AA 03 00 07 01 03 F2
 ACK             RSP 0xF8
 ```
 
-Authoritative readback is direct `activeMemory[0x008C]`:
-`0x00=unticked`, `0x01=ticked`. The canonical block is offset `0x0074`,
-length `0x003A`, with VR OFF at relative index `0x18`. C0 `data[19]` is
-not used because controlled captures prove contradictory bit-0 polarity.
+Runtime transaction authority is the native ACK: after CMD `0x07`, a valid
+`RSP 0xF8` commits the requested VR-OFF state for the current session. The
+native runtime capture does not issue an immediate CMD `0x40` read-after-write.
+
+Connect/reconnect/Recall hydration authority is direct `activeMemory[0x008C]`:
+`0x00=unticked`, `0x01=ticked`. C0 `data[19]` is not used because controlled
+captures prove contradictory bit-0 polarity. Do not use `0x008C` as an
+immediate post-write verifier and do not patch cached active memory synthetically.
 
 ## Recall / Use Init Volume
 

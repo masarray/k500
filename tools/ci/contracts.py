@@ -183,33 +183,47 @@ def check_protocol_and_state() -> None:
     )
     require(
         "src/k500/K500PresetManager.cpp",
-        "ADJ_MANNER_TARGETED_VERIFY_V1",
-        "AdjMannerVerifyOffset = 0x0074",
-        "AdjMannerVerifyIndex == 0x18",
+        "ADJ_MANNER_ACK_SESSION_AUTHORITY_V1",
+        "response.rsp == 0xF8",
+        "m_adjMannerVrOffKnown = true",
+        "adjMannerVrOffAccepted(m_adjMannerVrOff)",
+        "finishOperation(QStringLiteral(\"Adj Manner VR OFF\"))",
+    )
+    forbid(
+        "src/k500/K500PresetManager.h",
         "AwaitAdjMannerVerify",
-        "activeMemory[0x008C]",
+        "sendAdjMannerVerification",
         "finishOperationRejected",
-        "ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1",
-        "adjMannerVrOffVerified(actual)",
     )
     forbid(
         "src/k500/K500PresetManager.cpp",
+        "AdjMannerVerifyOffset",
+        "AdjMannerVerifyIndex",
+        "AwaitAdjMannerVerify",
+        "sendAdjMannerVerification",
+        "Adj Manner verify 0x0074",
         "ReadbackPurpose::AdjManner",
         "startReadback(ReadbackPurpose::AdjManner)",
         "939-byte ownership resync complete",
+        "m_activeMemory[K500Protocol::ReadbackOffset::AdjMannerVrOff]",
     )
     require(
         "docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md",
         "97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba",
         "9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87",
         "64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839",
+        "5cb8e2ee8a6f35de66aa5cbaeb95ec9cbd30bb1c87343a762d552fbbeab604db",
+        "ebaf3be207ac66529acf53f355a17d6df8fd70dc4b76a1d1f5bc50108edb5bc9",
         "Do **not** decode VR OFF from C0 data[19]",
+        "immediate CMD `0x40` verification read",
     )
     require(
         "docs/PROTOCOL_GOLDEN_VECTORS.md",
         "AA 03 00 07 00 03 F3",
         "AA 03 00 07 01 03 F2",
         "activeMemory[0x008C]",
+        "RSP 0xF8",
+        "does not issue an immediate CMD `0x40` read-after-write",
         "C0 `data[19]` is",
     )
     require(
@@ -219,23 +233,25 @@ def check_protocol_and_state() -> None:
     require(
         "docs/PORTING_PARITY_MATRIX.md",
         "C0 data[19] retired",
-        "targeted 0x0074/0x003A verify",
+        "no immediate CMD 0x40 verify",
     )
     require(
         "docs/K500_NATIVE_VALUE_RANGES.md",
         "C0 `data[19]` is explicitly non-authoritative",
+        "valid RSP 0xF8 commits current-session state",
     )
     require(
         "docs/K500_CAPTURED_RUNTIME_STATUS.md",
         "C0 `data[19]` is **not** an authority",
-        "0x0074",
-        "0x18",
+        "does not issue an immediate",
+        "cached 939-byte snapshot is never",
     )
     require(
         "docs/HARDWARE_ACCEPTANCE_CHECKLIST.md",
         "AA 03 00 07 00 03 F3",
         "AA 03 00 07 01 03 F2",
         "C0 data[19] is ignored",
+        "no immediate CMD 0x40 read-after-write",
     )
     forbid(
         "docs/PROTOCOL_GOLDEN_VECTORS.md",
@@ -377,12 +393,12 @@ def check_ui_contracts() -> None:
     )
     require(
         "src/k500/K500DeviceManager.h",
-        "ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1",
-        "adjMannerVrOffVerified(bool enabled)",
+        "ADJ_MANNER_ACK_SEMANTIC_FANOUT_V2",
+        "adjMannerVrOffAccepted(bool enabled)",
     )
     require(
         "src/main.cpp",
-        "K500DeviceManager::adjMannerVrOffVerified",
+        "K500DeviceManager::adjMannerVrOffAccepted",
         "StudioEngine::syncAdjMannerVrOff",
     )
     forbid(
