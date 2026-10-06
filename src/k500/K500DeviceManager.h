@@ -87,6 +87,9 @@ signals:
     void deviceScalarsReady(const QByteArray &scalars);
     void activeMemoryReady(const QByteArray &memory);
     void reconciliationMemoryReady(const QByteArray &memory);
+    // ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1 — authoritative targeted
+    // verification updates ownership semantics without replaying stale memory.
+    void adjMannerVrOffVerified(bool enabled);
     void commandDispatchResult(quint64 sessionEpoch, quint64 token,
                                const QString &path, bool accepted,
                                const QString &reason);

@@ -736,13 +736,12 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
     emit deviceStateChanged();
 }
 
-void StudioEngine::syncOfflineAdjMannerVrOff(bool enabled)
+void StudioEngine::syncAdjMannerVrOff(bool enabled)
 {
-    // OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1
-    // A Preview-hydrated .k500 document owns the offline editor state. Keep
-    // manual-VR gating in Music/Mic/FX panels coherent with file[0x0094]
-    // without emitting stateEdited() (which would recurse into persistence)
-    // and without creating any live/device command.
+    // ADJ_MANNER_SEMANTIC_SYNC_V2
+    // Keep manual-VR gating in Music/Mic/FX coherent with authoritative
+    // ownership state without emitting stateEdited() and without creating any
+    // additional live/device command.
     if (!m_deviceStateReady)
         return;
 

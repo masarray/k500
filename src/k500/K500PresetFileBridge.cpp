@@ -495,7 +495,7 @@ bool K500PresetFileBridge::setOfflineAdjMannerVrOff(bool enabled)
     const bool persisted = persistMappedEdit(
         QStringLiteral("system.adjMannerVrOff"), enabled, true);
     if (persisted && m_engine)
-        m_engine->syncOfflineAdjMannerVrOff(enabled);
+        m_engine->syncAdjMannerVrOff(enabled);
     return persisted;
 }
 

@@ -188,6 +188,8 @@ def check_protocol_and_state() -> None:
         "AwaitAdjMannerVerify",
         "activeMemory[0x008C]",
         "finishOperationRejected",
+        "ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1",
+        "adjMannerVrOffVerified(actual)",
     )
     forbid(
         "src/k500/K500PresetManager.cpp",
@@ -335,6 +337,20 @@ def check_ui_contracts() -> None:
         "root.presetManager.adjMannerBusy",
     )
     require(
+        "src/k500/K500DeviceManager.h",
+        "ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1",
+        "adjMannerVrOffVerified(bool enabled)",
+    )
+    require(
+        "src/main.cpp",
+        "K500DeviceManager::adjMannerVrOffVerified",
+        "StudioEngine::syncAdjMannerVrOff",
+    )
+    forbid(
+        "src/k500/K500PresetManager.cpp",
+        "emit m_manager->activeMemoryReady",
+    )
+    require(
         "src/k500/K500PresetEditMapper.cpp",
         "ADJ_MANNER_VR_OFF_FILE_EDIT_V1",
         "system.adjMannerVrOff",
@@ -347,12 +363,12 @@ def check_ui_contracts() -> None:
     )
     require(
         "src/StudioEngine.h",
-        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
-        "syncOfflineAdjMannerVrOff",
+        "ADJ_MANNER_SEMANTIC_SYNC_V2",
+        "syncAdjMannerVrOff",
     )
     require(
         "src/StudioEngine.cpp",
-        "OFFLINE_ADJ_MANNER_SEMANTIC_SYNC_V1",
+        "ADJ_MANNER_SEMANTIC_SYNC_V2",
         "manualVrEnabled",
         "emit deviceStateChanged()",
     )

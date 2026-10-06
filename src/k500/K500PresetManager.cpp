@@ -642,6 +642,14 @@ void K500PresetManager::onResponse(const K500Response &response)
         m_adjMannerVrOffKnown = true;
         emit adjMannerVrOffChanged();
 
+        // ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1 — keep the manager's cached
+        // active-memory byte coherent, then fan out only the verified semantic
+        // ownership state. Never replay the rest of the cached 939-byte image.
+        if (m_manager && m_manager->m_activeMemory.size() > K500Protocol::ReadbackOffset::AdjMannerVrOff)
+            m_manager->m_activeMemory[K500Protocol::ReadbackOffset::AdjMannerVrOff] = char(raw);
+        if (m_manager)
+            emit m_manager->adjMannerVrOffVerified(actual);
+
         if (actual != requested) {
             finishOperationRejected(
                 QStringLiteral("Adj Manner VR OFF"),
