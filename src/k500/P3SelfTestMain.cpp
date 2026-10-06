@@ -61,6 +61,7 @@ int main(int argc, char **argv)
     source[K500FieldContract::Field::MicHpType.fileOffset] = char(7);
     source[K500FieldContract::Field::MicLpType.fileOffset] = char(7);
     source[K500FieldContract::Field::MicFbe.fileOffset] = char(2);
+    source[K500FieldContract::Field::AdjMannerVrOff.fileOffset] = char(1);
     seedRepresentableEq(source);
 
     // Seed the first Mic A EQ record with values that verify alias/sign handling.

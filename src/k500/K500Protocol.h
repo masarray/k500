@@ -198,7 +198,7 @@ constexpr int SurroundRDelay = 0x00D1;
 constexpr int CenterDelay = 0x00D3;
 constexpr int SubDelay = 0x00D5;
 // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — paired reconnect captures.
-constexpr int AdjMannerVrOff = 0x008C;
+constexpr int AdjMannerVrOff = K500FieldContract::Field::AdjMannerVrOff.activeOffset;
 // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — physical donor-isolation capture
 // proves Mic CMD 0x11 final data byte mirrors Music Input1 Gain raw.
 constexpr int MusicInput1Gain = 0x0016;

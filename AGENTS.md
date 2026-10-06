@@ -169,6 +169,9 @@ Any navigation refactor must keep the runtime section stress test green. Never r
 - C++ and `tools/k500_preset_lab.py` native-slot projections must remain byte-identical; CI compares their SHA-256 fingerprints;
 - Canonical scalar geometry, named scalar offsets, evidence level, and file-mutation policy live in `src/k500/K500FieldContract.h`; Controller/Protocol/PresetCodec/PresetEditMapper must consume that contract instead of re-declaring the same mapping.
 - FBE/FBX is proven as `.k500[0x0023] <-> activeMemory[0x001B]`, native values `0..4`; `.k500[0x001B]` and `.k500[0x001C]` are Mic HP/LP type bytes and must never be used as FBE/FBX;
+- Adj Manner / VR OFF is proven as `.k500[0x0094] <-> activeMemory[0x008C]`, raw `0/1`, and belongs in `K500FieldContract` as a round-trip-proven writable field;
+- for fields with a proven native range, offline/AI edit requests outside that range must fail closed with no byte mutation; do not silently clamp a requested value to make it fit;
+- do not apply newer UI range limits retroactively to untouched legacy donor bytes; preserve donor truth unless the field is explicitly edited.
 - checksum is recomputed last;
 - every mutation ends with a changed-byte audit.
 

@@ -1,6 +1,7 @@
 #include "K500PresetEditMapper.h"
 
 #include "K500FieldContract.h"
+#include "K500Protocol.h"
 
 #include <QRegularExpression>
 #include <QtMath>
@@ -78,6 +79,47 @@ EditResult finish(const QByteArray &source, Builder &&builder)
     return result;
 }
 
+EditResult rejectNativeRange(const QString &path, int value, int minimum, int maximum)
+{
+    EditResult result;
+    result.supported = true;
+    result.patch.error = QStringLiteral(
+        "%1=%2 is outside proven native range %3..%4; edit rejected without changing the preset.")
+        .arg(path).arg(value).arg(minimum).arg(maximum);
+    return result;
+}
+
+EditResult applyIntegerU8Range(const QByteArray &source,
+                               const QString &path,
+                               const QVariant &value,
+                               int fileOffset,
+                               int minimum,
+                               int maximum,
+                               int rawBias = 0)
+{
+    const int semantic = qRound(value.toDouble());
+    if (semantic < minimum || semantic > maximum)
+        return rejectNativeRange(path, semantic, minimum, maximum);
+    Builder builder;
+    builder.addU8(fileOffset, semantic + rawBias);
+    return finish(source, std::move(builder));
+}
+
+EditResult applyIntegerU16Range(const QByteArray &source,
+                                const QString &path,
+                                const QVariant &value,
+                                int fileOffset,
+                                int minimum,
+                                int maximum)
+{
+    const int semantic = qRound(value.toDouble());
+    if (semantic < minimum || semantic > maximum)
+        return rejectNativeRange(path, semantic, minimum, maximum);
+    Builder builder;
+    builder.addU16(fileOffset, semantic);
+    return finish(source, std::move(builder));
+}
+
 int u8Value(const QVariant &value, int bias = 0)
 {
     return std::clamp(qRound(value.toDouble()) + bias, 0, 255);
@@ -126,10 +168,12 @@ quint16 filterTypeRaw(const QString &label, bool hpf, bool *ok)
 
 void addCrossoverFrequency(Builder &builder, const EqDescriptor &d, bool hpf, int hz)
 {
-    const int safeHz = std::clamp(hz, 20, 20000);
-    builder.addU16(hpf ? d.hpfScalar : d.lpfScalar, safeHz);
+    // Caller has already validated the semantic domain. Do not silently clamp
+    // here: file persistence must either encode the requested value exactly or
+    // reject the edit.
+    builder.addU16(hpf ? d.hpfScalar : d.lpfScalar, hz);
     const int footer = d.fileOffset + 2 + d.bands * 8;
-    builder.addU16(footer + (hpf ? 10 : 2), safeHz);
+    builder.addU16(footer + (hpf ? 10 : 2), hz);
 }
 
 void addCrossoverType(Builder &builder, const EqDescriptor &d, bool hpf, quint16 raw)
@@ -166,6 +210,17 @@ EditResult applyCrossover(const QByteArray &source, const QString &section,
     const bool hpf = field == QStringLiteral("hpfHz") || field == QStringLiteral("hpType");
     if (field == QStringLiteral("hpfHz") || field == QStringLiteral("lpfHz")) {
         const int hz = qRound(value.toDouble());
+        int minimum = 20;
+        int maximum = 20000;
+        if (section == QStringLiteral("reverb") || section == QStringLiteral("echo")) {
+            minimum = hpf ? K500Protocol::NativeRange::FxHpfMinHz
+                          : K500Protocol::NativeRange::FxLpfMinHz;
+            maximum = hpf ? K500Protocol::NativeRange::FxHpfMaxHz
+                          : K500Protocol::NativeRange::FxLpfMaxHz;
+        }
+        if (hz < minimum || hz > maximum)
+            return rejectNativeRange(
+                QStringLiteral("%1.%2").arg(section, field), hz, minimum, maximum);
         for (const auto *d : targets) addCrossoverFrequency(builder, *d, hpf, hz);
         return finish(source, std::move(builder));
     }
@@ -186,16 +241,59 @@ EditResult applyCrossover(const QByteArray &source, const QString &section,
 
 EditResult applyScalar(const QByteArray &source, const QString &path, const QVariant &value)
 {
+    if (path == QStringLiteral("system.topMusicVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::TopMusicVol, 0, K500Protocol::TopVolumeMax);
+    if (path == QStringLiteral("system.topMicVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::TopMicVol, 0, K500Protocol::TopVolumeMax);
+    if (path == QStringLiteral("system.topEffectVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::TopEffectVol, 0, K500Protocol::TopVolumeMax);
+    if (path == QStringLiteral("system.musicInitVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::MusicInitVol,
+            K500Protocol::NativeRange::StartupLevelMin,
+            K500Protocol::NativeRange::StartupLevelMax);
+    if (path == QStringLiteral("system.musicMaxVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::MusicMaxVol,
+            K500Protocol::NativeRange::StartupLevelMin,
+            K500Protocol::NativeRange::StartupLevelMax);
+    if (path == QStringLiteral("system.micInitVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::MicInitVol,
+            K500Protocol::NativeRange::StartupLevelMin,
+            K500Protocol::NativeRange::StartupLevelMax);
+    if (path == QStringLiteral("system.micMaxVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::MicMaxVol,
+            K500Protocol::NativeRange::StartupLevelMin,
+            K500Protocol::NativeRange::StartupLevelMax);
+    if (path == QStringLiteral("system.effectInitLevel"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::EffectInitLevel,
+            K500Protocol::NativeRange::StartupLevelMin,
+            K500Protocol::NativeRange::StartupLevelMax);
+    if (path == QStringLiteral("mic.fbxLevel"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::Field::MicFbe.fileOffset,
+            K500FieldContract::Field::MicFbe.rawMin,
+            K500FieldContract::Field::MicFbe.rawMax);
+    if (path == QStringLiteral("system.uDiskRecordVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::UDiskRecordVol,
+            K500Protocol::NativeRange::UDiskRecordVolMin,
+            K500Protocol::NativeRange::UDiskRecordVolMax, -1);
+    if (path == QStringLiteral("system.usbRecordVol"))
+        return applyIntegerU8Range(source, path, value,
+            K500FieldContract::FileOffset::UsbRecordVol,
+            K500Protocol::NativeRange::UsbRecordVolMin,
+            K500Protocol::NativeRange::UsbRecordVolMax, -1);
+
     Builder b;
-    if (path == QStringLiteral("system.topMusicVol")) b.addU8(K500FieldContract::FileOffset::TopMusicVol, u8Value(value));
-    else if (path == QStringLiteral("system.topMicVol")) b.addU8(K500FieldContract::FileOffset::TopMicVol, u8Value(value));
-    else if (path == QStringLiteral("system.topEffectVol")) b.addU8(K500FieldContract::FileOffset::TopEffectVol, u8Value(value));
-    else if (path == QStringLiteral("system.musicInitVol")) b.addU8(K500FieldContract::FileOffset::MusicInitVol, u8Value(value));
-    else if (path == QStringLiteral("system.musicMaxVol")) b.addU8(K500FieldContract::FileOffset::MusicMaxVol, u8Value(value));
-    else if (path == QStringLiteral("music.sourceRaw")) b.addU8(K500FieldContract::FileOffset::MusicSource, u8Value(value));
+    if (path == QStringLiteral("music.sourceRaw")) b.addU8(K500FieldContract::FileOffset::MusicSource, u8Value(value));
     else if (path == QStringLiteral("music.key")) b.addU8(K500FieldContract::FileOffset::MusicKey, u8Value(value, 7));
-    else if (path == QStringLiteral("system.micInitVol")) b.addU8(K500FieldContract::FileOffset::MicInitVol, u8Value(value));
-    else if (path == QStringLiteral("system.micMaxVol")) b.addU8(K500FieldContract::FileOffset::MicMaxVol, u8Value(value));
     else if (path == QStringLiteral("mic.micAVol")) b.addU8(K500FieldContract::FileOffset::MicAVol, u8Value(value));
     else if (path == QStringLiteral("mic.micBVol")) b.addU8(K500FieldContract::FileOffset::MicBVol, u8Value(value));
     else if (path == QStringLiteral("mic.noiseGateDb")) b.addU8(K500FieldContract::FileOffset::MicNoiseGate, u8Value(value, 81));
@@ -203,17 +301,6 @@ EditResult applyScalar(const QByteArray &source, const QString &path, const QVar
     else if (path == QStringLiteral("mic.compRatio")) b.addU8(K500FieldContract::FileOffset::MicCompRatio, u8Value(value));
     else if (path == QStringLiteral("mic.attackMs")) b.addU8(K500FieldContract::FileOffset::MicAttack, u8Value(value));
     else if (path == QStringLiteral("mic.releaseSec")) b.addU8(K500FieldContract::FileOffset::MicRelease, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
-    else if (path == QStringLiteral("mic.fbxLevel")) {
-        // FBE_FILE_MAPPING_CAPTURED_20261006_V1 — controlled native exports
-        // FBE0..FBE4 prove one monotonic .k500 scalar at file[0x0023].
-        // file[0x001B]/[0x001C] are Mic HP/LP type bytes and must not be
-        // mutated by an FBE/FBX edit.
-        const int raw = std::clamp(qRound(value.toDouble()),
-                                   K500FieldContract::Field::MicFbe.rawMin,
-                                   K500FieldContract::Field::MicFbe.rawMax);
-        b.addU8(K500FieldContract::Field::MicFbe.fileOffset, raw);
-    }
-    else if (path == QStringLiteral("system.effectInitLevel")) b.addU8(K500FieldContract::FileOffset::EffectInitLevel, u8Value(value));
     else if (path == QStringLiteral("music.input1GainDb")) b.addU8(K500FieldContract::FileOffset::MusicInput1Gain, u8Value(value, 12));
     else if (path == QStringLiteral("music.input2GainDb")) b.addU8(K500FieldContract::FileOffset::MusicInput2Gain, u8Value(value, 12));
     else if (path == QStringLiteral("music.bluetoothGainDb") || path == QStringLiteral("music.btGainDb")) b.addU8(K500FieldContract::FileOffset::MusicBluetoothGain, u8Value(value, 12));
@@ -222,9 +309,8 @@ EditResult applyScalar(const QByteArray &source, const QString &path, const QVar
     else if (path == QStringLiteral("mic.eqLink")) b.addU8(K500FieldContract::FileOffset::MicEqLink, value.toBool() ? 1 : 0);
     // ADJ_MANNER_VR_OFF_FILE_EDIT_V1 — physical reconnect captures prove
     // activeMemory[0x008C] <-> preset file scalar 0x0094 exactly.
-    else if (path == QStringLiteral("system.adjMannerVrOff")) b.addU8(0x0094, value.toBool() ? 1 : 0);
-    else if (path == QStringLiteral("system.uDiskRecordVol")) b.addU8(K500FieldContract::FileOffset::UDiskRecordVol, u8Value(value, -1));
-    else if (path == QStringLiteral("system.usbRecordVol")) b.addU8(K500FieldContract::FileOffset::UsbRecordVol, u8Value(value, -1));
+    else if (path == QStringLiteral("system.adjMannerVrOff"))
+        b.addU8(K500FieldContract::Field::AdjMannerVrOff.fileOffset, value.toBool() ? 1 : 0);
     else return {};
     return finish(source, std::move(b));
 }
@@ -241,6 +327,31 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
     else if (section == QStringLiteral("sub")) base = 0x0060;
     else return {};
 
+    if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs"))
+        return applyIntegerU16Range(source, QStringLiteral("outputs.main.lDelayMs"), value,
+            0x00D4, K500Protocol::NativeRange::OutputDelayMinMs,
+            K500Protocol::NativeRange::OutputDelayMaxMs);
+    if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs"))
+        return applyIntegerU16Range(source, QStringLiteral("outputs.main.rDelayMs"), value,
+            0x00D6, K500Protocol::NativeRange::OutputDelayMinMs,
+            K500Protocol::NativeRange::OutputDelayMaxMs);
+    if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs"))
+        return applyIntegerU16Range(source, QStringLiteral("outputs.surround.lDelayMs"), value,
+            0x00D8, K500Protocol::NativeRange::OutputDelayMinMs,
+            K500Protocol::NativeRange::OutputDelayMaxMs);
+    if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs"))
+        return applyIntegerU16Range(source, QStringLiteral("outputs.surround.rDelayMs"), value,
+            0x00DA, K500Protocol::NativeRange::OutputDelayMinMs,
+            K500Protocol::NativeRange::OutputDelayMaxMs);
+    if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs"))
+        return applyIntegerU16Range(source, QStringLiteral("outputs.center.outputDelayMs"), value,
+            0x00DC, K500Protocol::NativeRange::OutputDelayMinMs,
+            K500Protocol::NativeRange::OutputDelayMaxMs);
+    if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs"))
+        return applyIntegerU16Range(source, QStringLiteral("outputs.sub.outputDelayMs"), value,
+            0x00DE, K500Protocol::NativeRange::OutputDelayMinMs,
+            K500Protocol::NativeRange::OutputDelayMaxMs);
+
     if (stereo && field == QStringLiteral("lVolDb")) b.addU8(base + 0x00, outputRaw(value));
     else if (stereo && field == QStringLiteral("rVolDb")) b.addU8(base + 0x02, outputRaw(value));
     else if (!stereo && field == QStringLiteral("outputVolDb")) b.addU8(base + 0x00, outputRaw(value));
@@ -252,12 +363,6 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
     else if (field == QStringLiteral("compRatio")) b.addU8(base + 0x0D, u8Value(value));
     else if (field == QStringLiteral("attackMs")) b.addU8(base + 0x0E, u8Value(value));
     else if (field == QStringLiteral("releaseSec")) b.addU8(base + 0x0F, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
-    else if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs")) b.addU16(0x00D4, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs")) b.addU16(0x00D6, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs")) b.addU16(0x00D8, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs")) b.addU16(0x00DA, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs")) b.addU16(0x00DC, std::clamp(qRound(value.toDouble()), 0, 50));
-    else if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs")) b.addU16(0x00DE, std::clamp(qRound(value.toDouble()), 0, 50));
     else return {};
     return finish(source, std::move(b));
 }
@@ -265,19 +370,37 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
 EditResult applyEffect(const QByteArray &source, const QString &section,
                        const QString &field, const QVariant &value)
 {
-    Builder b;
     if (section == QStringLiteral("reverb")) {
-        if (field == QStringLiteral("level")) b.addU8(0x0074, u8Value(value));
-        else if (field == QStringLiteral("decayMs")) b.addU16(0x00C8, qRound(value.toDouble()));
-        else if (field == QStringLiteral("predelayMs")) b.addU16(0x00CA, qRound(value.toDouble()));
-        else return {};
-    } else if (section == QStringLiteral("echo")) {
-        if (field == QStringLiteral("level")) b.addU8(0x007B, u8Value(value));
-        else if (field == QStringLiteral("repeat")) b.addU8(0x007C, u8Value(value));
-        else if (field == QStringLiteral("leftDelayMs")) b.addU16(0x00CC, qRound(value.toDouble()));
-        else return {};
-    } else return {};
-    return finish(source, std::move(b));
+        if (field == QStringLiteral("level"))
+            return applyIntegerU8Range(source, QStringLiteral("effects.reverb.level"), value,
+                0x0074, K500Protocol::NativeRange::ReverbLevelMin,
+                K500Protocol::NativeRange::ReverbLevelMax);
+        if (field == QStringLiteral("decayMs"))
+            return applyIntegerU16Range(source, QStringLiteral("effects.reverb.decayMs"), value,
+                0x00C8, K500Protocol::NativeRange::ReverbDecayMinMs,
+                K500Protocol::NativeRange::ReverbDecayMaxMs);
+        if (field == QStringLiteral("predelayMs"))
+            return applyIntegerU16Range(source, QStringLiteral("effects.reverb.predelayMs"), value,
+                0x00CA, K500Protocol::NativeRange::ReverbPredelayMinMs,
+                K500Protocol::NativeRange::ReverbPredelayMaxMs);
+        return {};
+    }
+    if (section == QStringLiteral("echo")) {
+        if (field == QStringLiteral("level"))
+            return applyIntegerU8Range(source, QStringLiteral("effects.echo.level"), value,
+                0x007B, K500Protocol::NativeRange::EchoLevelMin,
+                K500Protocol::NativeRange::EchoLevelMax);
+        if (field == QStringLiteral("repeat"))
+            return applyIntegerU8Range(source, QStringLiteral("effects.echo.repeat"), value,
+                0x007C, K500Protocol::NativeRange::EchoRepeatMin,
+                K500Protocol::NativeRange::EchoRepeatMax);
+        if (field == QStringLiteral("leftDelayMs"))
+            return applyIntegerU16Range(source, QStringLiteral("effects.echo.leftDelayMs"), value,
+                0x00CC, K500Protocol::NativeRange::EchoDelayMinMs,
+                K500Protocol::NativeRange::EchoDelayMaxMs);
+        return {};
+    }
+    return {};
 }
 } // namespace
 

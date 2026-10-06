@@ -57,6 +57,12 @@ bool accepted(const K500PresetEditMapper::EditResult &edit)
     return edit.supported && edit.patch.ok
         && K500PresetCodec::validateChecksum(edit.patch.bytes);
 }
+
+bool rejected(const K500PresetEditMapper::EditResult &edit)
+{
+    return edit.supported && !edit.patch.ok
+        && edit.patch.bytes.isEmpty() && !edit.patch.error.isEmpty();
+}
 }
 
 int main(int argc, char **argv)
@@ -108,6 +114,13 @@ int main(int argc, char **argv)
         || Field::MicFbe.evidence != EvidenceLevel::ProvenRoundTrip
         || Field::MicFbe.fileMutation != FileMutationPolicy::Writable)
         return fail(QStringLiteral("physical FBE contract regressed"));
+
+    if (Field::AdjMannerVrOff.fileOffset != 0x0094
+        || Field::AdjMannerVrOff.activeOffset != 0x008C
+        || Field::AdjMannerVrOff.rawMin != 0 || Field::AdjMannerVrOff.rawMax != 1
+        || Field::AdjMannerVrOff.evidence != EvidenceLevel::ProvenRoundTrip
+        || Field::AdjMannerVrOff.fileMutation != FileMutationPolicy::Writable)
+        return fail(QStringLiteral("physical Adj Manner VR OFF contract regressed"));
 
     if (Field::MicHpType.fileOffset != 0x001B
         || Field::MicLpType.fileOffset != 0x001C
@@ -163,12 +176,12 @@ int main(int argc, char **argv)
     fbeRangeSource = K500PresetCodec::updateChecksum(fbeRangeSource);
     edit = K500PresetEditMapper::applyEngineEdit(
         fbeRangeSource, QStringLiteral("mic.fbxLevel"), 99);
-    if (!accepted(edit) || u8(edit.patch.bytes, 0x0023) != 4)
-        return fail(QStringLiteral("FBE maximum native clamp regressed"));
+    if (!rejected(edit))
+        return fail(QStringLiteral("FBE out-of-range maximum edit was not rejected"));
     edit = K500PresetEditMapper::applyEngineEdit(
         fbeRangeSource, QStringLiteral("mic.fbxLevel"), -99);
-    if (!accepted(edit) || u8(edit.patch.bytes, 0x0023) != 0)
-        return fail(QStringLiteral("FBE minimum native clamp regressed"));
+    if (!rejected(edit))
+        return fail(QStringLiteral("FBE out-of-range minimum edit was not rejected"));
 
     if (!fbeGolden.isEmpty()) {
         const QByteArray &baseline = fbeGolden.at(0);
@@ -283,13 +296,46 @@ int main(int argc, char **argv)
         || !onlyChanged(edit.patch, QSet<int>{0x00DE,K500PresetCodec::ChecksumOffset}))
         return fail(QStringLiteral("Subwoofer output delay persistence regressed"));
 
-    // Programmatic persistence must clamp to the captured 0..50 ms domain.
-    edit = K500PresetEditMapper::applyEngineEdit(delaySource, QStringLiteral("outputs.main.lDelayMs"), 999);
-    if (!accepted(edit) || u16(edit.patch.bytes, 0x00D4) != 50)
-        return fail(QStringLiteral("Output delay maximum clamp regressed"));
+    // Programmatic persistence must reject out-of-domain writes rather than
+    // silently changing the requested semantic value.
+    edit = K500PresetEditMapper::applyEngineEdit(
+        delaySource, QStringLiteral("outputs.main.lDelayMs"), 999);
+    if (!rejected(edit))
+        return fail(QStringLiteral("Output delay out-of-range edit was not rejected"));
 
-    // Verified file-only effect detail can persist even though native LIVE write stays unsupported.
-    edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("effects.reverb.decayMs"), 1900);
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("system.musicInitVol"), 85);
+    if (!rejected(edit))
+        return fail(QStringLiteral("Music Init out-of-range edit was not rejected"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("system.usbRecordVol"), 0);
+    if (!rejected(edit))
+        return fail(QStringLiteral("USB Record out-of-range edit was not rejected"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("effects.reverb.decayMs"), 499);
+    if (!rejected(edit))
+        return fail(QStringLiteral("Reverb decay out-of-range edit was not rejected"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("effects.echo.repeat"), 11);
+    if (!rejected(edit))
+        return fail(QStringLiteral("Echo repeat out-of-range edit was not rejected"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("effects.reverb.hpfHz"), 1001);
+    if (!rejected(edit))
+        return fail(QStringLiteral("Reverb HPF out-of-range edit was not rejected"));
+
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("effects.echo.lpfHz"), 3999);
+    if (!rejected(edit))
+        return fail(QStringLiteral("Echo LPF out-of-range edit was not rejected"));
+
+    // Valid proven-range values still persist exactly.
+    edit = K500PresetEditMapper::applyEngineEdit(
+        source, QStringLiteral("effects.reverb.decayMs"), 1900);
     if (!accepted(edit) || u16(edit.patch.bytes, 0x00C8) != 1900)
         return fail(QStringLiteral("Reverb decay persistence regressed"));
 

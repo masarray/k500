@@ -124,6 +124,7 @@ def validate_device_slot_compatibility(data: bytes | bytearray) -> List[str]:
         (0x1B, 0, 7, "mic.hpTypeRaw"),
         (0x1C, 0, 7, "mic.lpTypeRaw"),
         (0x23, 0, 4, "mic.fbxLevel"),
+        (0x94, 0, 1, "system.adjMannerVrOff"),
     ):
         raw = data[offset]
         if not lo <= raw <= hi:
@@ -366,6 +367,23 @@ SCALAR_PATCHERS = {
     "sub.output_db": (0x60, "outdb"), "sub.mic": (0x64, "u8"), "sub.music": (0x66, "u8"), "sub.reverb": (0x68, "u8"), "sub.echo": (0x6A, "u8"), "sub.comp.threshold_db": (0x6C, "offset50"), "sub.comp.ratio": (0x6D, "u8"), "sub.comp.attack_ms": (0x6E, "u8"), "sub.comp.release_s": (0x6F, "tenths"), "reverb.level": (0x74, "u8"), "reverb.decay_ms": (0xC8, "u16"), "reverb.predelay_ms": (0xCA, "u16"), "echo.level": (0x7B, "u8"), "echo.repeat": (0x7C, "u8"), "echo.delay_ms": (0xCC, "u16"),
 }
 
+# Write-side semantic bounds from docs/K500_NATIVE_VALUE_RANGES.md. These apply
+# only to NEW patches; legacy donor bytes remain preserved unless explicitly
+# edited, so older firmware presets are not normalized or rejected retroactively.
+PATCH_NATIVE_RANGES: Dict[str, Tuple[float, float]] = {
+    "top.music": (0, 84),
+    "top.mic": (0, 84),
+    "top.effect": (0, 84),
+    "reverb.level": (0, 100),
+    "reverb.decay_ms": (500, 5000),
+    "reverb.predelay_ms": (0, 100),
+    "echo.level": (0, 100),
+    "echo.repeat": (0, 10),
+    "echo.delay_ms": (0, 1000),
+    "surround.delay_left_ms": (0, 50),
+    "surround.delay_right_ms": (0, 50),
+}
+
 
 def encode_scalar(kind: str, value: Any) -> int:
     if kind in ("u8", "u16"): return int(round(float(value)))
@@ -397,9 +415,21 @@ def patch_eq_section(data: bytearray, section: str, changes: Mapping[str, Any], 
         idx = int(idx_key)
         if idx < 1 or idx > count: raise ValueError(f"eq.{section} band index {idx} out of range 1..{count}")
         off = base + 2 + (idx - 1) * 8
-        if "frequency_hz" in spec: put_u16(data, off + 2, int(round(float(spec["frequency_hz"]))), touched)
-        if "q" in spec: put_u16(data, off + 4, int(round(float(spec["q"]) * 10)), touched)
-        if "gain_db" in spec: put_i16(data, off + 6, int(round(float(spec["gain_db"]) * 10)), touched)
+        if "frequency_hz" in spec:
+            frequency = int(round(float(spec["frequency_hz"])))
+            if not 20 <= frequency <= 20000:
+                raise ValueError(f"eq.{section} band {idx} frequency_hz must be 20..20000")
+            put_u16(data, off + 2, frequency, touched)
+        if "q" in spec:
+            q_raw = int(round(float(spec["q"]) * 10))
+            if not 1 <= q_raw <= 250:
+                raise ValueError(f"eq.{section} band {idx} q must be 0.1..25.0")
+            put_u16(data, off + 4, q_raw, touched)
+        if "gain_db" in spec:
+            gain_raw = int(round(float(spec["gain_db"]) * 10))
+            if not -240 <= gain_raw <= 240:
+                raise ValueError(f"eq.{section} band {idx} gain_db must be -24..24")
+            put_i16(data, off + 6, gain_raw, touched)
         if "type_raw" in spec: raise ValueError("type_raw changes are intentionally blocked; preserve exact donor typeRaw unless a controlled hardware experiment proves the change")
 
 
@@ -408,7 +438,14 @@ def patch_crossover(data: bytearray, target: str, spec: Mapping[str, Any], touch
     cfg = PRIMARY_XO[target]
     for key, scalar_key, footer_delta in (("hpf_hz", "hpf_scalar", 10), ("lpf_hz", "lpf_scalar", 2)):
         if key in spec:
-            hz = int(round(float(spec[key]))); put_u16(data, cfg[scalar_key], hz, touched)
+            hz = int(round(float(spec[key])))
+            if target in ("reverb", "echo"):
+                lo, hi = (20, 1000) if key == "hpf_hz" else (4000, 16000)
+            else:
+                lo, hi = (20, 20000)
+            if not lo <= hz <= hi:
+                raise ValueError(f"{target}.{key} must be {lo}..{hi} Hz")
+            put_u16(data, cfg[scalar_key], hz, touched)
             for section in cfg["sections"]: put_u16(data, eq_footer_offset(section) + footer_delta, hz, touched)
     for key, footer_delta, base_raw in (("hpf_code", 8, 0x0400), ("lpf_code", 0, 0x0300)):
         if key in spec:
@@ -422,6 +459,11 @@ def apply_patch(donor: bytes, spec: Mapping[str, Any]) -> Tuple[bytes, Dict[str,
     if "name" in spec: patch_name(data, str(spec["name"]), touched)
     for key, value in spec.get("scalars", {}).items():
         if key not in SCALAR_PATCHERS: raise ValueError(f"Unsupported scalar key {key!r}")
+        if key in PATCH_NATIVE_RANGES:
+            lo, hi = PATCH_NATIVE_RANGES[key]
+            semantic = float(value)
+            if not lo <= semantic <= hi:
+                raise ValueError(f"{key} must be within proven native range {lo:g}..{hi:g}")
         offset, kind = SCALAR_PATCHERS[key]; raw = encode_scalar(kind, value); put_u16(data, offset, raw, touched) if kind == "u16" else put_u8(data, offset, raw, touched)
     for section, changes in spec.get("eq", {}).items(): patch_eq_section(data, section, changes, touched)
     for target, changes in spec.get("crossovers", {}).items(): patch_crossover(data, target, changes, touched)

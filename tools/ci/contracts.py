@@ -393,7 +393,7 @@ def check_ui_contracts() -> None:
         "src/k500/K500PresetEditMapper.cpp",
         "ADJ_MANNER_VR_OFF_FILE_EDIT_V1",
         "system.adjMannerVrOff",
-        "b.addU8(0x0094",
+        "K500FieldContract::Field::AdjMannerVrOff.fileOffset",
     )
     require(
         "src/k500/K500PresetFileBridge.h",
@@ -730,6 +730,15 @@ def check_preset_sync() -> None:
 
 def check_preset_semantic_safety() -> None:
     require(
+        "src/k500/K500FieldContract.h",
+        "AdjMannerVrOff",
+        "FileOffset::AdjMannerVrOff",
+        "0x0094",
+        "0x008C",
+        "EvidenceLevel::ProvenRoundTrip",
+        "FileMutationPolicy::Writable",
+    )
+    require(
         "src/k500/K500PresetCodec.h",
         "validateDeviceSlotCompatibility",
         "verifyDeviceSlotProjection",
@@ -752,9 +761,26 @@ def check_preset_semantic_safety() -> None:
         "validateDeviceSlotCompatibility(edit.patch.bytes",
     )
     require(
+        "src/k500/K500PresetEditMapper.cpp",
+        "rejectNativeRange",
+        "NativeRange::StartupLevelMax",
+        "NativeRange::UsbRecordVolMax",
+        "NativeRange::OutputDelayMaxMs",
+        "NativeRange::ReverbDecayMaxMs",
+        "NativeRange::EchoRepeatMax",
+        "K500FieldContract::Field::AdjMannerVrOff.fileOffset",
+    )
+    forbid(
+        "src/k500/K500PresetEditMapper.cpp",
+        "std::clamp(qRound(value.toDouble()), 0, 50)",
+        "b.addU8(0x0094",
+    )
+    require(
         "tools/k500_preset_lab.py",
         "validate_device_slot_compatibility",
         "build_device_slot_image",
+        "PATCH_NATIVE_RANGES",
+        "system.adjMannerVrOff",
         "slot-hash",
         "validate-library",
     )

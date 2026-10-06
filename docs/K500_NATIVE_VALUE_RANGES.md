@@ -162,10 +162,18 @@ The same range must exist at every writable layer:
 2. EqBandModel / StudioEngine model clamp.
 3. K500Controller semantic-state clamp.
 4. K500Protocol transport serialization clamp.
-5. Hardware-free CI guard/self-test.
+5. K500PresetEditMapper offline persistence validation.
+6. tools/k500_preset_lab.py write-side validation for patchable proven fields.
+7. Hardware-free CI guard/self-test.
 
 A UI-only clamp is insufficient because programmatic calls could still generate
-out-of-domain native writes.
+out-of-domain native writes. For offline preset persistence and AI patching,
+out-of-range requests must be rejected without changing bytes; they must not be
+silently clamped to a different semantic value.
+
+This write-side rule does not retroactively normalize legacy donor bytes. Older
+firmware/native presets may contain values outside a newer UI endpoint contract;
+preserve those bytes unless the user explicitly edits the proven field.
 
 ## Reconciliation / live-edit rule
 
