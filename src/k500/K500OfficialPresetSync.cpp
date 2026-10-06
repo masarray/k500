@@ -33,10 +33,12 @@ QNetworkRequest makeRequest(const QUrl &url, bool githubApi)
     return request;
 }
 
-bool validPresetBytes(const QByteArray &bytes)
+bool validPresetBytes(const QByteArray &bytes, QString *error = nullptr)
 {
-    const K500PresetCodec::Document document(bytes);
-    return document.validSize() && document.checksumOk();
+    // OFFICIAL_PRESET_STRICT_PROMOTION_V1
+    // Remote/cache promotion must satisfy the exact same semantic gate as
+    // Preview/Save/Upload. Size + checksum alone are not sufficient.
+    return K500PresetCodec::validateDeviceSlotCompatibility(bytes, error);
 }
 
 QString safeRemoteName(const QString &name)
@@ -47,12 +49,40 @@ QString safeRemoteName(const QString &name)
     return fileName;
 }
 
-bool trustedDownloadUrl(const QUrl &url)
+bool validGitBlobSha(const QString &sha)
+{
+    if (sha.size() != 40)
+        return false;
+    for (const QChar ch : sha) {
+        const ushort u = ch.unicode();
+        const bool hex = (u >= '0' && u <= '9')
+            || (u >= 'a' && u <= 'f')
+            || (u >= 'A' && u <= 'F');
+        if (!hex)
+            return false;
+    }
+    return true;
+}
+
+bool trustedDownloadUrl(const QUrl &url, const QString &expectedName)
 {
     return url.isValid()
         && url.scheme().compare(QStringLiteral("https"), Qt::CaseInsensitive) == 0
         && url.host().compare(QStringLiteral("raw.githubusercontent.com"), Qt::CaseInsensitive) == 0
-        && url.path().startsWith(QStringLiteral("/masarray/k500/"));
+        && url.path().startsWith(QStringLiteral("/masarray/k500/"))
+        && QFileInfo(url.path()).fileName() == expectedName;
+}
+
+QString gitBlobShaHex(const QByteArray &bytes)
+{
+    QByteArray object;
+    object.reserve(bytes.size() + 32);
+    object.append("blob ");
+    object.append(QByteArray::number(bytes.size()));
+    object.append('\0');
+    object.append(bytes);
+    return QString::fromLatin1(
+        QCryptographicHash::hash(object, QCryptographicHash::Sha1).toHex());
 }
 
 QString sha256Hex(const QByteArray &bytes)
@@ -136,7 +166,7 @@ void K500PresetFileBridge::syncOfficialPresets()
             const QString name = safeRemoteName(object.value(QStringLiteral("name")).toString());
             const QString gitSha = object.value(QStringLiteral("sha")).toString();
             const QUrl downloadUrl(object.value(QStringLiteral("download_url")).toString());
-            if (name.isEmpty() || gitSha.isEmpty() || !trustedDownloadUrl(downloadUrl))
+            if (name.isEmpty() || !validGitBlobSha(gitSha) || !trustedDownloadUrl(downloadUrl, name))
                 continue;
 
             remoteNames.append(name);
@@ -147,9 +177,18 @@ void K500PresetFileBridge::syncOfficialPresets()
                 existing = cacheFile.readAll();
 
             const QString key = QStringLiteral("officialPresetLibrary/gitSha/%1").arg(name);
+            const QString existingBlobSha = gitBlobShaHex(existing);
             const bool unchanged = validPresetBytes(existing)
-                && settings.value(key).toString() == gitSha;
-            if (!unchanged) {
+                && existingBlobSha.compare(gitSha, Qt::CaseInsensitive) == 0;
+            if (unchanged) {
+                // Rebuild local provenance from bytes + catalog, not from stale
+                // settings. This also heals deleted/corrupted metadata without
+                // a redundant network download.
+                settings.setValue(key, gitSha);
+                settings.setValue(
+                    QStringLiteral("officialPresetLibrary/sha256/%1").arg(name),
+                    sha256Hex(existing));
+            } else {
                 QVariantMap item;
                 item.insert(QStringLiteral("name"), name);
                 item.insert(QStringLiteral("gitSha"), gitSha);
@@ -206,7 +245,7 @@ void K500PresetFileBridge::downloadNextOfficialPreset()
     const QString name = item.value(QStringLiteral("name")).toString();
     const QString gitSha = item.value(QStringLiteral("gitSha")).toString();
     const QUrl url = item.value(QStringLiteral("url")).toUrl();
-    if (name.isEmpty() || gitSha.isEmpty() || !trustedDownloadUrl(url)) {
+    if (name.isEmpty() || !validGitBlobSha(gitSha) || !trustedDownloadUrl(url, name)) {
         m_officialSyncError = QStringLiteral("Skipped an invalid official preset catalog entry.");
         downloadNextOfficialPreset();
         return;
@@ -217,21 +256,33 @@ void K500PresetFileBridge::downloadNextOfficialPreset()
         const QByteArray bytes = reply->readAll();
         if (reply->error() != QNetworkReply::NoError) {
             m_officialSyncError = QStringLiteral("%1: %2").arg(name, reply->errorString());
-        } else if (!validPresetBytes(bytes)) {
-            m_officialSyncError = QStringLiteral(
-                "%1 failed K500 size/checksum validation; cached copy was kept.").arg(name);
         } else {
-            const QString path = QDir(officialCacheDirectory()).filePath(name);
-            QSaveFile file(path);
-            if (!file.open(QIODevice::WriteOnly)
-                || file.write(bytes) != bytes.size()
-                || !file.commit()) {
-                m_officialSyncError = QStringLiteral("Could not update official preset cache: %1").arg(name);
+            QString validationError;
+            if (!validPresetBytes(bytes, &validationError)) {
+                m_officialSyncError = QStringLiteral(
+                    "%1 failed strict K500 semantic validation; cached copy was kept: %2")
+                    .arg(name, validationError);
+            } else if (gitBlobShaHex(bytes).compare(gitSha, Qt::CaseInsensitive) != 0) {
+                m_officialSyncError = QStringLiteral(
+                    "%1 failed Git catalog blob integrity verification; cached copy was kept.")
+                    .arg(name);
             } else {
-                QSettings settings;
-                settings.setValue(QStringLiteral("officialPresetLibrary/gitSha/%1").arg(name), gitSha);
-                settings.setValue(QStringLiteral("officialPresetLibrary/sha256/%1").arg(name), sha256Hex(bytes));
-                ++m_officialUpdateCount;
+                const QString path = QDir(officialCacheDirectory()).filePath(name);
+                QSaveFile file(path);
+                if (!file.open(QIODevice::WriteOnly)
+                    || file.write(bytes) != bytes.size()
+                    || !file.commit()) {
+                    m_officialSyncError = QStringLiteral(
+                        "Could not update official preset cache: %1").arg(name);
+                } else {
+                    QSettings settings;
+                    settings.setValue(
+                        QStringLiteral("officialPresetLibrary/gitSha/%1").arg(name), gitSha);
+                    settings.setValue(
+                        QStringLiteral("officialPresetLibrary/sha256/%1").arg(name),
+                        sha256Hex(bytes));
+                    ++m_officialUpdateCount;
+                }
             }
         }
 
