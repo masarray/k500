@@ -165,16 +165,42 @@ def check_protocol_and_state() -> None:
         'case 0x06: return prefix + QStringLiteral("Butter 24")',
     )
     require(
+        "src/k500/K500Protocol.cpp",
+        "ADJ_MANNER_VR_OFF_CMD07_CAPTURED_V2",
+        "enabled ? 0x01 : 0x00, 0x03",
+        "Adj Manner VR OFF unticked capture V2",
+        "Adj Manner VR OFF ticked capture V2",
+    )
+    forbid(
+        "src/k500/K500ResponseParser.h",
+        "tryDecodeAdjMannerVrOff",
+    )
+    forbid(
         "src/k500/K500ResponseParser.cpp",
         "tryDecodeAdjMannerVrOff",
         "response.data.at(19)",
-        "(flags & 0x01u) == 0",
     )
     require(
+        "src/k500/K500PresetManager.cpp",
+        "ADJ_MANNER_TARGETED_VERIFY_V1",
+        "AdjMannerVerifyOffset = 0x0074",
+        "AdjMannerVerifyIndex == 0x18",
+        "AwaitAdjMannerVerify",
+        "activeMemory[0x008C]",
+        "finishOperationRejected",
+    )
+    forbid(
         "src/k500/K500PresetManager.cpp",
         "ReadbackPurpose::AdjManner",
         "startReadback(ReadbackPurpose::AdjManner)",
         "939-byte ownership resync complete",
+    )
+    require(
+        "docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md",
+        "97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba",
+        "9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87",
+        "64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839",
+        "Do **not** decode VR OFF from C0 data[19]",
     )
     require(
         "src/k500/K500DeviceManager.cpp",
@@ -295,6 +321,18 @@ def check_ui_contracts() -> None:
         "\"Device setting · not stored in preset\"",
         "\"Saved with preset\"",
         "\"BT rename: max 8 characters · BLE read-only\"",
+    )
+    require(
+        "src/k500/K500PresetManager.h",
+        "Q_PROPERTY(bool useInitBusy",
+        "Q_PROPERTY(bool adjMannerBusy",
+        "bool useInitBusy() const",
+        "bool adjMannerBusy() const",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "root.presetManager.useInitBusy",
+        "root.presetManager.adjMannerBusy",
     )
     require(
         "src/k500/K500PresetEditMapper.cpp",

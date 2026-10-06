@@ -97,23 +97,28 @@ read-only even though it is adjacent in active memory.
 Adj Manner is an **ownership switch** for the front-panel screwdriver trim
 potentiometers, not a tone preset rewrite.
 
-Setter/ACK remains:
+### 2026-10-06 write + connect/readback closure
 
-```text
-OFF / unticked  AA 03 00 07 00 00 F6
-ON  / ticked    AA 03 00 07 01 00 F5
-ACK             RSP 0xF8
-```
-
-Paired reconnect evidence supplied on 2026-10-04:
+The latest native-app capture set supersedes the older CMD-0x07 tail assumption
+and also proves that C0 data[19] is not a stable VR-OFF authority.
 
 | Capture | Bytes | SHA-256 |
 | --- | ---: | --- |
-| `Reconnect_AdjManner_VROFF_OFF.pcapng` | 5,016 | `1f2cab60928e88a421f93e2fa2ac9034686016326d2c6025087df6a12aeea230` |
-| `Reconnect_AdjManner_VROFF_ON.pcapng` | 5,264 | `6b9d3cd469c9c0126a4737dd84e94dcec5f7da2bbae09e4b7eb80f545ff6660` |
+| `VR_OFF_tick_untick.pcapng` | 4,272 | `97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba` |
+| `Connect_VR_OFF_ticked_position.pcapng` | 5,016 | `9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87` |
+| `Connect_VR_OFF_unticked_position.pcapng` | 5,016 | `64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839` |
 
-Both files reconstruct a complete checksum-valid 939-byte active-memory image.
-The two images differ at exactly one byte:
+The native toggle sweep contains fourteen alternating CMD 0x07 writes. Every
+write uses route/control byte `0x03`, and every write receives `RSP 0xF8`:
+
+```text
+OFF / unticked  AA 03 00 07 00 03 F3
+ON  / ticked    AA 03 00 07 01 03 F2
+ACK             RSP 0xF8
+```
+
+The paired connect files reconstruct complete checksum-valid 939-byte active
+memory images. They differ at exactly one semantic byte:
 
 ```text
 activeMemory[0x008C]
@@ -122,18 +127,31 @@ VR OFF unticked / OFF = 0x00
 VR OFF ticked   / ON  = 0x01
 ```
 
-Because `0x008C` is in the low scalar region, the corresponding file/preset
-scalar is `0x0094`.
+The standard captured active-memory block that contains this byte starts at
+`0x0074`, length `0x003A`; VR OFF is relative index `0x18`. SonKuPik
+therefore verifies a live toggle after `RSP 0xF8` by reading only that canonical
+block, not by inventing a 1-byte read and not by rereading all 939 bytes.
 
-The C0 handshake independently carries the same ownership state. The paired
-captures isolate bit 0 at `C0 data[19]`:
+Because `0x008C` is in the low scalar region, the corresponding file/preset
+scalar remains:
 
 ```text
-OFF / unticked: data[19] = 0x43, bit0 = 1
-ON  / ticked:   data[19] = 0x42, bit0 = 0
+file[0x0094]
+0x00 = unticked
+0x01 = ticked
+```
 
-manualVrEnabled = (data[19] & 0x01) != 0
-adjMannerVrOff  = (data[19] & 0x01) == 0
+### C0 boundary
+
+Do **not** decode VR OFF from C0 data[19]. Older reconnect evidence carried
+`0x43/0x42`, while the new controlled connect pair carries `0x0E/0x0D` with
+the opposite bit-0 polarity relative to tick state. That field therefore has
+other semantics mixed into it and is not a safe authority.
+
+Online VR-OFF truth is exclusively:
+
+```text
+activeMemory[0x008C]
 ```
 
 ### User-visible ownership semantics
@@ -144,7 +162,7 @@ adjMannerVrOff  = (data[19] & 0x01) == 0
 - **VR OFF ticked / ON**: fascia trim-pots are disabled and software regains
   ownership of those controls.
 - Changing Adj Manner itself does **not** rewrite the parameter values; the
-  reconnect images are otherwise byte-identical.
+  paired active-memory images are otherwise byte-identical.
 
 The supplied manufacturer screenshots identify the trim-owned groups as:
 
@@ -158,27 +176,18 @@ not shown with the manual-VR treatment and remain software controls.
 
 ### Important manual-value telemetry boundary
 
-This pair maps the **ownership state**, not the fourteen analog VR readings.
-The screenshots prove those manual readings are a separate value domain. For
-example, with fascia VR active the native UI displays Reverb Level 50 / Decay
-2450 ms / Predelay 50 ms while the normal stored digital scalar block in the
-same reconnect snapshot carries different software values. Echo shows the same
-separation.
-
-Therefore SonKuPik may safely lock the trim-owned editors and display the
-hardware-owner treatment now, but must not invent live analog values or pretend
-the normal digital scalars are the screwdriver positions. Exact native-style
-slider motion while a screwdriver turns a trim-pot needs a dedicated
-pot-movement telemetry capture.
+This mapping proves the **ownership state**, not the fourteen analog VR
+readings. The screenshots prove those manual readings are a separate value
+domain. SonKuPik may lock the trim-owned editors and display hardware-owner
+treatment, but must not invent live analog values or pretend normal digital
+scalars are the screwdriver positions.
 
 ### Dance Mic collision correction
 
 The reconnect delta also disproves the previous structural assumption that
 file `0x0094` was Dance Mic Hold. It is definitively Adj Manner VR OFF.
-Consequently the old speculative Dance pair at `0x0093/0x0094` is retired and
-Dance writes fail closed until their reconnect seed is independently proven.
-No adjacent offset is promoted merely because one static snapshot happens to
-look plausible.
+Consequently the old speculative Dance pair at `0x0093/0x0094` remains retired
+until Threshold/Hold read-side seeds are independently proven.
 
 ## Persistent Equipment Mode rename
 

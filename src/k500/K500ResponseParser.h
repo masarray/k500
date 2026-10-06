@@ -28,10 +28,6 @@ public:
     // Physical connect captures prove C0 data[7] bit 0x04 is the authoritative
     // Use Init Volume state: clear=OFF (0x80), set=ON (0x84).
     static bool tryDecodeUseInitVolume(const K500Response &response, bool *enabled);
-    // ADJ_MANNER_VR_OFF_READBACK_20261004_V1
-    // Paired reconnect captures prove C0 data[19] bit 0 is inverse VR-OFF:
-    // bit set = front-panel VR active (VR OFF unticked), clear = VR OFF ticked.
-    static bool tryDecodeAdjMannerVrOff(const K500Response &response, bool *enabled);
     // MUTE_CONNECT_CAPTURED_V1
     // Physical connect captures prove C0 data[7] bit 0x02 is Mute:
     // clear=unmuted (0x84), set=muted (0x86).

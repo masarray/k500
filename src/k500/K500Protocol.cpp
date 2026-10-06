@@ -506,9 +506,10 @@ QByteArray btNameReset()
 
 QByteArray adjMannerVrOff(bool enabled)
 {
-    // ADJ_MANNER_VR_OFF_CMD07_CAPTURED_V1 — exact supplied toggle sequence:
-    // OFF AA 03 00 07 00 00 F6, ON AA 03 00 07 01 00 F5, device ACK RSP 0xF8.
-    return K500Frame::build(bytes({0x03, 0x07, enabled ? 0x01 : 0x00, 0x00}));
+    // ADJ_MANNER_VR_OFF_CMD07_CAPTURED_V2 — 2026-10-06 physical native
+    // tick/untick sweep repeats the exact route byte 0x03 on every write:
+    // OFF AA 03 00 07 00 03 F3, ON AA 03 00 07 01 03 F2, ACK RSP 0xF8.
+    return K500Frame::build(bytes({0x03, 0x07, enabled ? 0x01 : 0x00, 0x03}));
 }
 
 QByteArray reverbBlock(const K500ReverbBlockState &state, const QByteArray &deviceData)
@@ -997,11 +998,11 @@ bool selfTest(QString *error)
         return fail(QStringLiteral("BT Name accepted unproven >8/non-ASCII input"));
 
     if (!expect(K500Frame::toUsbFrame(adjMannerVrOff(false)),
-                {0xAA,0x03,0x00,0x07,0x00,0x00,0xF6},
-                QStringLiteral("Adj Manner VR OFF unticked capture"))) return false;
+                {0xAA,0x03,0x00,0x07,0x00,0x03,0xF3},
+                QStringLiteral("Adj Manner VR OFF unticked capture V2"))) return false;
     if (!expect(K500Frame::toUsbFrame(adjMannerVrOff(true)),
-                {0xAA,0x03,0x00,0x07,0x01,0x00,0xF5},
-                QStringLiteral("Adj Manner VR OFF ticked capture"))) return false;
+                {0xAA,0x03,0x00,0x07,0x01,0x03,0xF2},
+                QStringLiteral("Adj Manner VR OFF ticked capture V2"))) return false;
 
     QByteArray reverbSeed = bytes({0x5F,0x01,0x64,0x32,0x32,0x55,0xDC,0x00,0xB8,0x3D,0x90,0x06,0x2A,0x00,0x00});
     K500ReverbBlockState reverb;
