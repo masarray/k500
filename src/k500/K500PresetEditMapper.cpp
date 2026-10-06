@@ -327,38 +327,40 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
     else if (section == QStringLiteral("sub")) base = 0x0060;
     else return {};
 
-    const auto addOutputDelay = [&](const QString &semanticPath, int fileOffset) -> EditResult {
+    const bool delayField =
+        (section == QStringLiteral("main")
+            && (field == QStringLiteral("lDelayMs") || field == QStringLiteral("rDelayMs")))
+        || (section == QStringLiteral("surround")
+            && (field == QStringLiteral("lDelayMs") || field == QStringLiteral("rDelayMs")))
+        || (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs"))
+        || (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs"));
+
+    if (delayField) {
         const int delayMs = qRound(value.toDouble());
         if (delayMs < K500Protocol::NativeRange::OutputDelayMinMs
             || delayMs > K500Protocol::NativeRange::OutputDelayMaxMs) {
             return rejectNativeRange(
-                semanticPath, delayMs,
+                QStringLiteral("outputs.%1.%2").arg(section, field),
+                delayMs,
                 K500Protocol::NativeRange::OutputDelayMinMs,
                 K500Protocol::NativeRange::OutputDelayMaxMs);
         }
-        Builder delayBuilder;
-        if (fileOffset == 0x00D4) delayBuilder.addU16(0x00D4, delayMs);
-        else if (fileOffset == 0x00D6) delayBuilder.addU16(0x00D6, delayMs);
-        else if (fileOffset == 0x00D8) delayBuilder.addU16(0x00D8, delayMs);
-        else if (fileOffset == 0x00DA) delayBuilder.addU16(0x00DA, delayMs);
-        else if (fileOffset == 0x00DC) delayBuilder.addU16(0x00DC, delayMs);
-        else if (fileOffset == 0x00DE) delayBuilder.addU16(0x00DE, delayMs);
-        else return {};
-        return finish(source, std::move(delayBuilder));
-    };
 
-    if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs"))
-        return addOutputDelay(QStringLiteral("outputs.main.lDelayMs"), 0x00D4);
-    if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs"))
-        return addOutputDelay(QStringLiteral("outputs.main.rDelayMs"), 0x00D6);
-    if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs"))
-        return addOutputDelay(QStringLiteral("outputs.surround.lDelayMs"), 0x00D8);
-    if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs"))
-        return addOutputDelay(QStringLiteral("outputs.surround.rDelayMs"), 0x00DA);
-    if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs"))
-        return addOutputDelay(QStringLiteral("outputs.center.outputDelayMs"), 0x00DC);
-    if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs"))
-        return addOutputDelay(QStringLiteral("outputs.sub.outputDelayMs"), 0x00DE);
+        if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs"))
+            b.addU16(0x00D4, delayMs);
+        else if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs"))
+            b.addU16(0x00D6, delayMs);
+        else if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs"))
+            b.addU16(0x00D8, delayMs);
+        else if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs"))
+            b.addU16(0x00DA, delayMs);
+        else if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs"))
+            b.addU16(0x00DC, delayMs);
+        else if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs"))
+            b.addU16(0x00DE, delayMs);
+
+        return finish(source, std::move(b));
+    }
 
     if (stereo && field == QStringLiteral("lVolDb")) b.addU8(base + 0x00, outputRaw(value));
     else if (stereo && field == QStringLiteral("rVolDb")) b.addU8(base + 0x02, outputRaw(value));
