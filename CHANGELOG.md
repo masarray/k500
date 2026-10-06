@@ -2,6 +2,22 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Mode 01 flagship singer-comfort lock
+
+### Changed
+
+- Promoted the real-K500-auditioned Mode 01 R2.1 sonic architecture as the new official `KONSER NYANYI` flagship while preserving the accepted Music PEQ, Main PEQ, Sub foundation, Mic dynamics, and unknown/reserved bytes.
+- Relative to the previous official Mode 01, the flagship keeps more vocal body with less low-mid occupancy, stronger Center/Surround support, darker less-intrusive Echo, and cleaner dry/wet separation.
+- Final FX lock: Main Reverb `95`, Main Echo `34`, Reverb `2450 ms / 77 ms / 250-13200 Hz`, Echo `310 ms / repeat 2 / 600-4100 Hz`.
+- The temporary audition identity `KONSER NYANYI R2` was normalized back to the public `KONSER NYANYI` name without changing the accepted sonic parameter bytes.
+
+### Qualification
+
+- The supplied R2.1 hardware recording retained large headroom and the intended non-fatiguing balance; the micro-calibration restored a small amount of premium wet-field openness without returning to the R1 wash.
+- Comparative path simulation versus accepted Mode 05 shows Mode 01 R2.1 with slightly more dry-vocal body, lower low-mid occupancy, essentially equal presence, lower 2.5-4.5 kHz i-ring energy, and modestly more detail/air.
+- Official SHA-256: `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1`.
+- The detailed audit and lock rationale are recorded in `docs/K500_MODE01_FLAGSHIP_R21_ACCEPTANCE.md`.
+
 ## Unreleased — Balanced Enhanced Music Core candidate
 
 ### Changed

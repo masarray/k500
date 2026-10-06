@@ -19,7 +19,7 @@ The current official Mode 01 is:
 ```text
 resources/presets/01_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
-SHA-256: 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
+SHA-256: 66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1
 ```
 
 It was evolved surgically from the exact native `CONCERT HIFI V4` donor. Preserve the native donor as rollback/provenance evidence; future official changes require listening evidence, a byte-diff audit, and an updated golden reference.
