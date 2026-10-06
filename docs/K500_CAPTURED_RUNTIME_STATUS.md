@@ -155,6 +155,8 @@ Latest physical evidence:
 | `VR_OFF_tick_untick.pcapng` | 4,272 | `97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba` |
 | `Connect_VR_OFF_ticked_position.pcapng` | 5,016 | `9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87` |
 | `Connect_VR_OFF_unticked_position.pcapng` | 5,016 | `64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839` |
+| `nativeKTV_VROFF_OFF_alias_Unticked.pcapng` | 1,048 | `5cb8e2ee8a6f35de66aa5cbaeb95ec9cbd30bb1c87343a762d552fbbeab604db` |
+| `k500_VROFF_BounchyON.pcapng` | 16,920 | `ebaf3be207ac66529acf53f355a17d6df8fd70dc4b76a1d1f5bc50108edb5bc9` |
 
 Native setter/ACK:
 
@@ -176,10 +178,14 @@ C0 `data[19]` is **not** an authority for VR OFF. Older captures and the new
 controlled connect pair show contradictory bit-0 polarity, so that field must
 not be decoded as ownership state.
 
-After RSP 0xF8, SonKuPik verifies only the canonical captured 0x3A-byte block
-starting at `0x0074`; `0x008C` is relative index `0x18`. The verified
-semantic state is then fanned out to the editor ownership gates without
-replaying a stale full-memory snapshot.
+The newer native runtime capture proves a different transaction boundary:
+CMD 0x07 receives RSP 0xF8 and the native app does not issue an immediate
+CMD 0x40 readback. SonKuPik therefore treats F8 as current-session acceptance
+and fans that semantic ownership state directly to the editor gates.
+
+`activeMemory[0x008C]` remains authoritative only when the application performs
+a real connect/reconnect/Recall readback. The cached 939-byte snapshot is never
+patched synthetically after a runtime toggle.
 
 ## Change control
 

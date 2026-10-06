@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
                      &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
     QObject::connect(&deviceManager, &K500DeviceManager::reconciliationMemoryReady,
                      &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
-    QObject::connect(&deviceManager, &K500DeviceManager::adjMannerVrOffVerified,
+    QObject::connect(&deviceManager, &K500DeviceManager::adjMannerVrOffAccepted,
                      &studioEngine, &StudioEngine::syncAdjMannerVrOff);
 
     if (app.arguments().contains(QStringLiteral("--trace-k500"))) {

@@ -87,9 +87,10 @@ signals:
     void deviceScalarsReady(const QByteArray &scalars);
     void activeMemoryReady(const QByteArray &memory);
     void reconciliationMemoryReady(const QByteArray &memory);
-    // ADJ_MANNER_TARGETED_SEMANTIC_FANOUT_V1 — authoritative targeted
-    // verification updates ownership semantics without replaying stale memory.
-    void adjMannerVrOffVerified(bool enabled);
+    // ADJ_MANNER_ACK_SEMANTIC_FANOUT_V2 — valid native RSP 0xF8 commits
+    // current-session ownership semantics. Full readback remains authoritative
+    // on connect/reconnect/Recall and may later replace this session state.
+    void adjMannerVrOffAccepted(bool enabled);
     void commandDispatchResult(quint64 sessionEpoch, quint64 token,
                                const QString &path, bool accepted,
                                const QString &reason);
