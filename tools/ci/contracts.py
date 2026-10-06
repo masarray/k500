@@ -228,11 +228,13 @@ def check_protocol_and_state() -> None:
     )
     require(
         "docs/K500_CAPTURE_TODO_MAP.md",
-        "C0 data[19] explicitly non-authoritative",
+        "C0 data[19] non-authoritative",
+        "no immediate read-after-write",
     )
     require(
         "docs/PORTING_PARITY_MATRIX.md",
-        "C0 data[19] retired",
+        "session WRITE authority",
+        "connect/reconnect READ authority",
         "no immediate CMD 0x40 verify",
     )
     require(
