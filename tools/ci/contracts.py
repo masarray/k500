@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -719,6 +720,56 @@ def check_preset_sync() -> None:
     )
 
 
+def check_preset_semantic_safety() -> None:
+    require(
+        "src/k500/K500PresetCodec.h",
+        "validateDeviceSlotCompatibility",
+        "verifyDeviceSlotProjection",
+    )
+    require(
+        "src/k500/K500PresetCodec.cpp",
+        "NativeEqQRawMax = 250",
+        "NativeEqGainRawMax = 240",
+        "verifyProjectionUnchecked",
+        "Shadow verification failed",
+    )
+    forbid(
+        "src/k500/K500PresetCodec.cpp",
+        "std::clamp<int>(qRaw, 1, 0xff)",
+        "std::min<int>(std::abs(static_cast<int>(gainRaw)), 0xff)",
+    )
+    require(
+        "src/k500/K500PresetFileBridge.cpp",
+        "deviceCompatible",
+        "validateDeviceSlotCompatibility(edit.patch.bytes",
+    )
+    require(
+        "tools/k500_preset_lab.py",
+        "validate_device_slot_compatibility",
+        "build_device_slot_image",
+        "slot-hash",
+        "validate-library",
+    )
+
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "tools" / "k500_preset_lab.py"),
+            "validate-library",
+            str(ROOT / "resources" / "presets"),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if process.returncode != 0:
+        detail = (process.stdout + "\n" + process.stderr).strip()
+        FAILURES.append(f"official preset semantic compatibility failed: {detail}")
+    else:
+        PASSES.append("official preset bank: strict native-slot semantics")
+
+
 def check_build_targets() -> None:
     require(
         "CMakeLists.txt",
@@ -777,6 +828,7 @@ def check_ci_topology() -> None:
 def main() -> int:
     check_presets()
     check_fbe_mapping_evidence()
+    check_preset_semantic_safety()
     check_protocol_and_state()
     check_ui_contracts()
     check_public_surface_contracts()

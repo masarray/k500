@@ -22,6 +22,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 FILE_SIZE = 0x478
+DEVICE_SLOT_IMAGE_LENGTH = 0x290
+LIVE_SCALAR_END = 0xE7
+LIVE_SCALAR_SPLIT = 0x8F
 CHECKSUM_OFFSET = 0x475
 NAME_OFFSET = 0x454
 NAME_FIELD_LENGTH = 0x21
@@ -33,6 +36,12 @@ EQ_SECTIONS: Dict[str, Tuple[int, int]] = {
     "main": (0x01F8, 7), "mainAlt": (0x0240, 7), "surround": (0x0288, 5),
     "surroundAlt": (0x02C0, 5), "center": (0x02F8, 5), "centerAlt": (0x0330, 5),
     "sub": (0x0368, 5), "subAlt": (0x03A0, 5), "reverb": (0x03D8, 5), "echo": (0x0410, 5),
+}
+EQ_LIVE_OFFSETS: Dict[str, int] = {
+    "micA": 0x00E7, "micB": 0x0119, "music": 0x014B, "main": 0x016E,
+    "mainAlt": 0x0191, "surround": 0x01B4, "surroundAlt": 0x01CD,
+    "center": 0x01E6, "centerAlt": 0x01FF, "sub": 0x0218,
+    "subAlt": 0x0231, "reverb": 0x024A, "echo": 0x0263,
 }
 
 PRIMARY_XO: Dict[str, Dict[str, Any]] = {
@@ -98,6 +107,119 @@ def validate_bytes(data: bytes | bytearray) -> List[str]:
     name = preset_name(data)
     if len(name) > NAME_VISIBLE_MAX: errors.append(f"name exceeds {NAME_VISIBLE_MAX} chars: {name!r}")
     return errors
+
+
+def _compact_type_nibble(raw: int) -> Optional[int]:
+    if 0x0000 <= raw <= 0x0003: return 0x00
+    if raw == 0x0100: return 0x10
+    if raw == 0x0200: return 0x20
+    return None
+
+
+def validate_device_slot_compatibility(data: bytes | bytearray) -> List[str]:
+    errors = validate_bytes(data)
+    if errors: return errors
+
+    for offset, lo, hi, label in (
+        (0x1B, 0, 7, "mic.hpTypeRaw"),
+        (0x1C, 0, 7, "mic.lpTypeRaw"),
+        (0x23, 0, 4, "mic.fbxLevel"),
+    ):
+        raw = data[offset]
+        if not lo <= raw <= hi:
+            errors.append(f"{label} raw={raw} outside native {lo}..{hi}")
+
+    for section, (base, count) in EQ_SECTIONS.items():
+        for idx in range(count):
+            off = base + 2 + idx * 8
+            type_raw = u16(data, off)
+            freq = u16(data, off + 2)
+            q_raw = u16(data, off + 4)
+            gain_raw = i16(data, off + 6)
+            if _compact_type_nibble(type_raw) is None:
+                errors.append(f"{section} band {idx+1} unsupported typeRaw=0x{type_raw:04X}")
+            if not 20 <= freq <= 20000:
+                errors.append(f"{section} band {idx+1} frequency={freq} outside 20..20000")
+            if not 1 <= q_raw <= 250:
+                errors.append(f"{section} band {idx+1} qRaw={q_raw} outside 1..250")
+            if not -240 <= gain_raw <= 240:
+                errors.append(f"{section} band {idx+1} gainRaw={gain_raw} outside -240..240")
+    return errors
+
+
+def _file_offset_for_active_scalar(active_offset: int) -> int:
+    if not 0 <= active_offset < LIVE_SCALAR_END:
+        raise ValueError(f"active scalar offset out of range: {active_offset}")
+    return active_offset + (0x08 if active_offset < LIVE_SCALAR_SPLIT else 0x09)
+
+
+def build_device_slot_image(data: bytes | bytearray) -> bytes:
+    errors = validate_device_slot_compatibility(data)
+    if errors:
+        raise ValueError("preset is not native-slot compatible: " + "; ".join(errors))
+
+    slot = bytearray(DEVICE_SLOT_IMAGE_LENGTH)
+    for active in range(LIVE_SCALAR_END):
+        slot[active] = data[_file_offset_for_active_scalar(active)]
+
+    for section, (base, count) in EQ_SECTIONS.items():
+        live = EQ_LIVE_OFFSETS[section]
+        for idx in range(count):
+            src = base + 2 + idx * 8
+            dst = live + idx * 5
+            type_raw = u16(data, src)
+            freq = u16(data, src + 2)
+            q_raw = u16(data, src + 4)
+            gain_raw = i16(data, src + 6)
+            type_nibble = _compact_type_nibble(type_raw)
+            assert type_nibble is not None
+            slot[dst] = freq & 0xFF
+            slot[dst + 1] = (freq >> 8) & 0xFF
+            slot[dst + 2] = q_raw
+            slot[dst + 3] = type_nibble | (0x80 if gain_raw < 0 else 0x00)
+            slot[dst + 4] = abs(gain_raw)
+
+    slot[0x027C:0x0280] = data[0x044C:0x0450]
+    slot[0x0280:0x0290] = data[NAME_OFFSET:NAME_OFFSET + 0x10]
+    out = bytes(slot)
+    verify_device_slot_projection(data, out)
+    return out
+
+
+def verify_device_slot_projection(data: bytes | bytearray, slot: bytes | bytearray) -> None:
+    if len(slot) != DEVICE_SLOT_IMAGE_LENGTH:
+        raise ValueError(f"slot size={len(slot)} expected={DEVICE_SLOT_IMAGE_LENGTH}")
+    for active in range(LIVE_SCALAR_END):
+        file_off = _file_offset_for_active_scalar(active)
+        if slot[active] != data[file_off]:
+            raise ValueError(f"scalar shadow mismatch active=0x{active:04X} file=0x{file_off:04X}")
+
+    for section, (base, count) in EQ_SECTIONS.items():
+        live = EQ_LIVE_OFFSETS[section]
+        for idx in range(count):
+            src = base + 2 + idx * 8
+            dst = live + idx * 5
+            type_raw = u16(data, src)
+            freq = u16(data, src + 2)
+            q_raw = u16(data, src + 4)
+            gain_raw = i16(data, src + 6)
+            type_nibble = _compact_type_nibble(type_raw)
+            if type_nibble is None:
+                raise ValueError(f"{section} band {idx+1} type cannot be shadow-decoded")
+            expected = bytes((
+                freq & 0xFF,
+                (freq >> 8) & 0xFF,
+                q_raw,
+                type_nibble | (0x80 if gain_raw < 0 else 0x00),
+                abs(gain_raw),
+            ))
+            if bytes(slot[dst:dst + 5]) != expected:
+                raise ValueError(f"{section} band {idx+1} shadow mismatch")
+
+    if bytes(slot[0x027C:0x0280]) != bytes(data[0x044C:0x0450]):
+        raise ValueError("slot tail shadow mismatch")
+    if bytes(slot[0x0280:0x0290]) != bytes(data[NAME_OFFSET:NAME_OFFSET + 0x10]):
+        raise ValueError("slot name shadow mismatch")
 
 
 def read_file(path: str | Path) -> bytes:
@@ -305,6 +427,8 @@ def apply_patch(donor: bytes, spec: Mapping[str, Any]) -> Tuple[bytes, Dict[str,
     for target, changes in spec.get("crossovers", {}).items(): patch_crossover(data, target, changes, touched)
     data[CHECKSUM_OFFSET] = 0; data[CHECKSUM_OFFSET] = (-sum(data)) & 0xFF; touched.add(CHECKSUM_OFFSET); out = bytes(data); errors = validate_bytes(out)
     if errors: raise ValueError("patched preset invalid: " + "; ".join(errors))
+    slot_errors = validate_device_slot_compatibility(out)
+    if slot_errors: raise ValueError("patched preset is not native-slot compatible: " + "; ".join(slot_errors))
     changed = [i for i, (a, b) in enumerate(zip(donor, out)) if a != b]; unexpected = sorted(set(changed) - touched)
     if unexpected: raise AssertionError("unexpected changed offsets: " + ", ".join(f"0x{x:04X}" for x in unexpected))
     return out, {"sourceName": preset_name(donor), "outputName": preset_name(out), "changedByteCount": len(changed), "changedOffsets": [f"0x{x:04X}" for x in changed], "allowedOffsetCount": len(touched), "unexpectedOffsets": [], "checksumOk": checksum_ok(out), "size": len(out)}
@@ -319,7 +443,49 @@ def compare_files(a: bytes, b: bytes, source_a: str, source_b: str, out_dir: Pat
 
 
 def cmd_validate(args) -> int:
-    data = Path(args.file).read_bytes(); errors = validate_bytes(data); result = {"file": args.file, "valid": not errors, "errors": errors, "size": len(data), "checksumModulo": sum(data) & 0xFF if data else None, "name": preset_name(data) if len(data) >= NAME_OFFSET + 1 else None}; print(json.dumps(result, indent=2)); return 0 if not errors else 2
+    data = Path(args.file).read_bytes()
+    errors = validate_bytes(data)
+    device_errors = validate_device_slot_compatibility(data) if not errors else list(errors)
+    result = {
+        "file": args.file,
+        "valid": not errors,
+        "deviceCompatible": not device_errors,
+        "errors": errors,
+        "deviceErrors": device_errors,
+        "size": len(data),
+        "checksumModulo": sum(data) & 0xFF if data else None,
+        "name": preset_name(data) if len(data) >= NAME_OFFSET + 1 else None,
+    }
+    print(json.dumps(result, indent=2))
+    return 0 if not errors and not device_errors else 2
+
+
+def cmd_slot_hash(args) -> int:
+    import hashlib
+    data = Path(args.file).read_bytes()
+    slot = build_device_slot_image(data)
+    print("SLOT_SHA256=" + hashlib.sha256(slot).hexdigest())
+    return 0
+
+
+def cmd_validate_library(args) -> int:
+    root = Path(args.directory)
+    files = sorted(root.glob("*.k500"))
+    if not files:
+        raise ValueError(f"no .k500 files found in {root}")
+    failures: Dict[str, List[str]] = {}
+    for path in files:
+        errors = validate_device_slot_compatibility(path.read_bytes())
+        if errors:
+            failures[path.name] = errors
+    result = {
+        "directory": str(root),
+        "count": len(files),
+        "deviceCompatible": len(failures) == 0,
+        "failures": failures,
+    }
+    print(json.dumps(result, indent=2))
+    return 0 if not failures else 2
 
 
 def cmd_inspect(args) -> int:
@@ -347,6 +513,8 @@ def make_parser() -> argparse.ArgumentParser:
     x = sub.add_parser("plot", help="generate comparative response plots + CSV + JSON"); x.add_argument("file"); x.add_argument("--out-dir", required=True); x.add_argument("--prefix"); x.set_defaults(func=cmd_plot)
     x = sub.add_parser("compare", help="compare two presets and graph B-A response deltas"); x.add_argument("a"); x.add_argument("b"); x.add_argument("--out-dir", required=True); x.set_defaults(func=cmd_compare)
     x = sub.add_parser("patch", help="create a new preset by surgical patching of a valid donor"); x.add_argument("donor"); x.add_argument("spec"); x.add_argument("output"); x.add_argument("--audit"); x.set_defaults(func=cmd_patch)
+    x = sub.add_parser("slot-hash", help="strictly convert to native slot and print SHA-256"); x.add_argument("file"); x.set_defaults(func=cmd_slot_hash)
+    x = sub.add_parser("validate-library", help="strictly validate every .k500 in a directory"); x.add_argument("directory"); x.set_defaults(func=cmd_validate_library)
     return p
 
 

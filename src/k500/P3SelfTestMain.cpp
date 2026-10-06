@@ -17,6 +17,32 @@ void putU16(QByteArray &b, int off, quint16 v)
     b[off] = char(v & 0xff);
     b[off + 1] = char((v >> 8) & 0xff);
 }
+
+struct EqFixture {
+    int fileOffset;
+    int bands;
+};
+
+constexpr EqFixture EqFixtures[] = {
+    {0x00f0, 10}, {0x0150, 10}, {0x01b0, 7}, {0x01f8, 7},
+    {0x0240, 7}, {0x0288, 5}, {0x02c0, 5}, {0x02f8, 5},
+    {0x0330, 5}, {0x0368, 5}, {0x03a0, 5}, {0x03d8, 5},
+    {0x0410, 5},
+};
+
+void seedRepresentableEq(QByteArray &bytes)
+{
+    int bandOrdinal = 0;
+    for (const auto &section : EqFixtures) {
+        for (int i = 0; i < section.bands; ++i, ++bandOrdinal) {
+            const int off = section.fileOffset + 2 + i * 8;
+            putU16(bytes, off, 0x0000);
+            putU16(bytes, off + 2, static_cast<quint16>(100 + (bandOrdinal * 173) % 18000));
+            putU16(bytes, off + 4, 10);
+            putU16(bytes, off + 6, 0);
+        }
+    }
+}
 }
 
 int main(int argc, char **argv)
@@ -29,7 +55,13 @@ int main(int argc, char **argv)
         source[i] = char((i * 73 + 19) & 0xff);
 
     const QByteArray visibleName("P3 BIT PERFECT");
+    source.replace(NameOffset, NameLength, QByteArray(NameLength, char(0)));
     source.replace(NameOffset, visibleName.size(), visibleName);
+
+    source[K500FieldContract::Field::MicHpType.fileOffset] = char(7);
+    source[K500FieldContract::Field::MicLpType.fileOffset] = char(7);
+    source[K500FieldContract::Field::MicFbe.fileOffset] = char(2);
+    seedRepresentableEq(source);
 
     // Seed the first Mic A EQ record with values that verify alias/sign handling.
     putU16(source, 0x00f2, 0x0003); // P alias must remain raw 0x0003 in .k500
@@ -70,6 +102,9 @@ int main(int argc, char **argv)
     ok &= expect(!denied.ok, "non-whitelisted byte patch was accepted");
 
     QString slotError;
+    ok &= expect(validateDeviceSlotCompatibility(source, &slotError),
+                 "representable preset failed strict compatibility validation");
+    ok &= expect(slotError.isEmpty(), "strict compatibility validation returned an error");
     const QByteArray slot = buildDeviceSlotImage(source, &slotError);
     ok &= expect(slotError.isEmpty(), "slot conversion reported an error");
     ok &= expect(slot.size() == DeviceSlotImageLength, "slot image is not 0x0290 bytes");
@@ -88,7 +123,52 @@ int main(int argc, char **argv)
         ok &= expect(slot.mid(0x027c, 4) == source.mid(0x044c, 4), "slot tail mapping mismatch");
         ok &= expect(slot.mid(0x0280, 0x10) == source.mid(NameOffset, 0x10), "slot name mapping mismatch");
         ok &= expect(slot != source.left(DeviceSlotImageLength), "converter accidentally degraded to raw file slicing");
+        QString verifyError;
+        ok &= expect(verifyDeviceSlotProjection(source, slot, &verifyError),
+                     "shadow verification rejected converter output");
+        QByteArray damagedSlot = slot;
+        damagedSlot[0x00e7 + 2] = char(quint8(damagedSlot[0x00e7 + 2]) ^ 0x01);
+        ok &= expect(!verifyDeviceSlotProjection(source, damagedSlot, &verifyError),
+                     "shadow verification accepted a semantically damaged slot image");
     }
+
+    auto expectSemanticReject = [&ok, &source](QByteArray candidate,
+                                               const char *message) {
+        candidate = updateChecksum(std::move(candidate));
+        QString error;
+        ok &= expect(!validateDeviceSlotCompatibility(candidate, &error), message);
+        ok &= expect(!error.isEmpty(), "semantic rejection did not explain the failure");
+        ok &= expect(buildDeviceSlotImage(candidate).isEmpty(),
+                     "semantic-invalid preset still produced a native slot");
+    };
+
+    QByteArray badType = source;
+    putU16(badType, 0x00f2, 0x0300);
+    expectSemanticReject(badType, "unsupported PEQ type was accepted");
+
+    QByteArray badFrequency = source;
+    putU16(badFrequency, 0x00f4, 20001);
+    expectSemanticReject(badFrequency, "out-of-range PEQ frequency was accepted");
+
+    QByteArray badQ = source;
+    putU16(badQ, 0x00f6, 251);
+    expectSemanticReject(badQ, "PEQ Q requiring native clamp was accepted");
+
+    QByteArray badGain = source;
+    putU16(badGain, 0x00f8, quint16(qint16(241)));
+    expectSemanticReject(badGain, "PEQ gain requiring native clamp was accepted");
+
+    QByteArray badFbe = source;
+    badFbe[K500FieldContract::Field::MicFbe.fileOffset] = char(5);
+    expectSemanticReject(badFbe, "out-of-domain FBE scalar was accepted");
+
+    QByteArray badChecksum = source;
+    badChecksum[0x20] = char(quint8(badChecksum[0x20]) ^ 0x01);
+    QString checksumError;
+    ok &= expect(!validateDeviceSlotCompatibility(badChecksum, &checksumError),
+                 "checksum-invalid preset passed strict compatibility");
+    ok &= expect(buildDeviceSlotImage(badChecksum).isEmpty(),
+                 "checksum-invalid preset converted to a native slot");
 
     Document shortDoc(QByteArray(100, char(0)));
     ok &= expect(!shortDoc.validSize(), "short preset should be rejected");

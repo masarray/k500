@@ -1,6 +1,7 @@
 #include "K500PresetCodec.h"
 
 #include <QCoreApplication>
+#include <QCryptographicHash>
 #include <QFile>
 #include <QTextStream>
 #include <QtEndian>
@@ -28,8 +29,12 @@ qint16 i16(const QByteArray &bytes, int offset)
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    if (argc != 2)
-        return fail(QStringLiteral("expected one .k500 fixture path"));
+    if (argc != 2 && argc != 3)
+        return fail(QStringLiteral("expected one .k500 fixture path and optional --slot-sha256"));
+    const bool printSlotSha = argc == 3
+        && QString::fromLocal8Bit(argv[2]) == QStringLiteral("--slot-sha256");
+    if (argc == 3 && !printSlotSha)
+        return fail(QStringLiteral("unknown optional argument"));
 
     QFile file(QString::fromLocal8Bit(argv[1]));
     if (!file.open(QIODevice::ReadOnly))
@@ -47,6 +52,8 @@ int main(int argc, char **argv)
         return fail(QStringLiteral("real donor no-op round trip changed bytes"));
 
     QString error;
+    if (!K500PresetCodec::validateDeviceSlotCompatibility(source, &error))
+        return fail(QStringLiteral("fixture is not native-slot compatible: %1").arg(error));
     const QByteArray slot = K500PresetCodec::buildDeviceSlotImage(source, &error);
     if (slot.size() != K500PresetCodec::DeviceSlotImageLength)
         return fail(QStringLiteral("slot conversion failed: %1").arg(error));
@@ -68,9 +75,9 @@ int main(int argc, char **argv)
     const quint8 typeNibble = typeRaw == 0x0100 ? 0x10 : typeRaw == 0x0200 ? 0x20 : 0x00;
     if (static_cast<quint8>(slot.at(dst)) != (frequency & 0xff)
         || static_cast<quint8>(slot.at(dst + 1)) != ((frequency >> 8) & 0xff)
-        || static_cast<quint8>(slot.at(dst + 2)) != std::clamp<int>(qRaw, 1, 0xff)
+        || static_cast<quint8>(slot.at(dst + 2)) != qRaw
         || static_cast<quint8>(slot.at(dst + 3)) != (typeNibble | (gainRaw < 0 ? 0x80 : 0x00))
-        || static_cast<quint8>(slot.at(dst + 4)) != std::min<int>(std::abs(static_cast<int>(gainRaw)), 0xff))
+        || static_cast<quint8>(slot.at(dst + 4)) != std::abs(static_cast<int>(gainRaw)))
         return fail(QStringLiteral("real donor compact PEQ mapping regressed"));
 
     if (slot.mid(0x027c, 4) != source.mid(0x044c, 4))
@@ -80,6 +87,14 @@ int main(int argc, char **argv)
     if (slot == source.left(K500PresetCodec::DeviceSlotImageLength))
         return fail(QStringLiteral("converter degraded to raw .k500 slicing"));
 
+    QString projectionError;
+    if (!K500PresetCodec::verifyDeviceSlotProjection(source, slot, &projectionError))
+        return fail(QStringLiteral("shadow projection verification failed: %1").arg(projectionError));
+
+    if (printSlotSha) {
+        const QByteArray digest = QCryptographicHash::hash(slot, QCryptographicHash::Sha256).toHex();
+        QTextStream(stdout) << "SLOT_SHA256=" << digest << '\n';
+    }
     QTextStream(stdout) << "P3.2 donor corpus PASS: " << doc.name() << '\n';
     return 0;
 }

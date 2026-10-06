@@ -310,9 +310,21 @@ EditResult applyEngineEdit(const QByteArray &source,
         const int offset = d->fileOffset + 2 + index * 8;
         const K500PresetCodec::Document doc(source);
         const QVariantMap map = value.toMap();
-        const int frequency = std::clamp(qRound(map.value(QStringLiteral("frequency"), doc.u16(offset + 2)).toDouble()), 20, 20000);
-        const int qRaw = std::clamp(qRound(map.value(QStringLiteral("q"), doc.u16(offset + 4) / 10.0).toDouble() * 10.0), 1, 300);
-        const int gainRaw = std::clamp(qRound(map.value(QStringLiteral("gain"), doc.i16(offset + 6) / 10.0).toDouble() * 10.0), -240, 240);
+        const int frequency = qRound(
+            map.value(QStringLiteral("frequency"), doc.u16(offset + 2)).toDouble());
+        const int qRaw = qRound(
+            map.value(QStringLiteral("q"), doc.u16(offset + 4) / 10.0).toDouble() * 10.0);
+        const int gainRaw = qRound(
+            map.value(QStringLiteral("gain"), doc.i16(offset + 6) / 10.0).toDouble() * 10.0);
+        if (frequency < 20 || frequency > 20000
+            || qRaw < 1 || qRaw > 250
+            || gainRaw < -240 || gainRaw > 240) {
+            EditResult r;
+            r.supported = true;
+            r.patch.error = QStringLiteral(
+                "PEQ value is outside native range: frequency 20..20000 Hz, Q 0.1..25.0, gain -24..+24 dB.");
+            return r;
+        }
         bool typeOk = false;
         const quint16 typeRaw = peqTypeRaw(map.value(QStringLiteral("type"), QStringLiteral("BELL")).toString(), doc.u16(offset), &typeOk);
         if (!typeOk) {

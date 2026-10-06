@@ -1254,6 +1254,45 @@ Until proven otherwise, **preserve them bit-perfectly**.
 
 ---
 
+# 31A. Strict Native-Slot Semantic Safety
+
+A `.k500` file can have the correct 1144-byte size and additive checksum while
+still containing values that cannot be represented exactly by the K500 native
+656-byte equipment slot.
+
+Before Preview, Save As, Mass Upload, or device-slot conversion, the application
+must pass the strict device compatibility gate.
+
+For every compact PEQ band:
+
+```text
+frequency: 20..20000 Hz
+Q raw:     1..250      (Q 0.1..25.0)
+gain raw:  -240..240   (-24.0..+24.0 dB)
+typeRaw:   0x0000..0x0003 Bell aliases
+           0x0100 Low Shelf
+           0x0200 High Shelf
+```
+
+Unknown PEQ types are not normalized to Bell. Q/gain/frequency are not clamped
+while producing the native slot. An unrepresentable source preset is rejected.
+
+Evidence-backed scalar domains are also checked, including:
+
+```text
+file[0x001B] Mic HP type: 0..7
+file[0x001C] Mic LP type: 0..7
+file[0x0023] FBE/FBX:     0..4
+```
+
+After encoding, the codec shadow-verifies scalar projection, every compact PEQ
+record, the four-byte native tail, and the hardware-visible 16-byte name.
+
+The Python research lab implements the same strict projection. CI compares the
+SHA-256 of the C++ and Python 656-byte slots for the same donor so production
+serialization and AI tooling cannot silently drift apart.
+
+---
 # 32. Final Engineering Principle
 
 The correct K500 AI workflow is:
