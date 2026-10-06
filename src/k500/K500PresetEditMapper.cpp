@@ -327,30 +327,38 @@ EditResult applyOutput(const QByteArray &source, const QString &section,
     else if (section == QStringLiteral("sub")) base = 0x0060;
     else return {};
 
+    const auto addOutputDelay = [&](const QString &semanticPath, int fileOffset) -> EditResult {
+        const int delayMs = qRound(value.toDouble());
+        if (delayMs < K500Protocol::NativeRange::OutputDelayMinMs
+            || delayMs > K500Protocol::NativeRange::OutputDelayMaxMs) {
+            return rejectNativeRange(
+                semanticPath, delayMs,
+                K500Protocol::NativeRange::OutputDelayMinMs,
+                K500Protocol::NativeRange::OutputDelayMaxMs);
+        }
+        Builder delayBuilder;
+        if (fileOffset == 0x00D4) delayBuilder.addU16(0x00D4, delayMs);
+        else if (fileOffset == 0x00D6) delayBuilder.addU16(0x00D6, delayMs);
+        else if (fileOffset == 0x00D8) delayBuilder.addU16(0x00D8, delayMs);
+        else if (fileOffset == 0x00DA) delayBuilder.addU16(0x00DA, delayMs);
+        else if (fileOffset == 0x00DC) delayBuilder.addU16(0x00DC, delayMs);
+        else if (fileOffset == 0x00DE) delayBuilder.addU16(0x00DE, delayMs);
+        else return {};
+        return finish(source, std::move(delayBuilder));
+    };
+
     if (section == QStringLiteral("main") && field == QStringLiteral("lDelayMs"))
-        return applyIntegerU16Range(source, QStringLiteral("outputs.main.lDelayMs"), value,
-            0x00D4, K500Protocol::NativeRange::OutputDelayMinMs,
-            K500Protocol::NativeRange::OutputDelayMaxMs);
+        return addOutputDelay(QStringLiteral("outputs.main.lDelayMs"), 0x00D4);
     if (section == QStringLiteral("main") && field == QStringLiteral("rDelayMs"))
-        return applyIntegerU16Range(source, QStringLiteral("outputs.main.rDelayMs"), value,
-            0x00D6, K500Protocol::NativeRange::OutputDelayMinMs,
-            K500Protocol::NativeRange::OutputDelayMaxMs);
+        return addOutputDelay(QStringLiteral("outputs.main.rDelayMs"), 0x00D6);
     if (section == QStringLiteral("surround") && field == QStringLiteral("lDelayMs"))
-        return applyIntegerU16Range(source, QStringLiteral("outputs.surround.lDelayMs"), value,
-            0x00D8, K500Protocol::NativeRange::OutputDelayMinMs,
-            K500Protocol::NativeRange::OutputDelayMaxMs);
+        return addOutputDelay(QStringLiteral("outputs.surround.lDelayMs"), 0x00D8);
     if (section == QStringLiteral("surround") && field == QStringLiteral("rDelayMs"))
-        return applyIntegerU16Range(source, QStringLiteral("outputs.surround.rDelayMs"), value,
-            0x00DA, K500Protocol::NativeRange::OutputDelayMinMs,
-            K500Protocol::NativeRange::OutputDelayMaxMs);
+        return addOutputDelay(QStringLiteral("outputs.surround.rDelayMs"), 0x00DA);
     if (section == QStringLiteral("center") && field == QStringLiteral("outputDelayMs"))
-        return applyIntegerU16Range(source, QStringLiteral("outputs.center.outputDelayMs"), value,
-            0x00DC, K500Protocol::NativeRange::OutputDelayMinMs,
-            K500Protocol::NativeRange::OutputDelayMaxMs);
+        return addOutputDelay(QStringLiteral("outputs.center.outputDelayMs"), 0x00DC);
     if (section == QStringLiteral("sub") && field == QStringLiteral("outputDelayMs"))
-        return applyIntegerU16Range(source, QStringLiteral("outputs.sub.outputDelayMs"), value,
-            0x00DE, K500Protocol::NativeRange::OutputDelayMinMs,
-            K500Protocol::NativeRange::OutputDelayMaxMs);
+        return addOutputDelay(QStringLiteral("outputs.sub.outputDelayMs"), 0x00DE);
 
     if (stereo && field == QStringLiteral("lVolDb")) b.addU8(base + 0x00, outputRaw(value));
     else if (stereo && field == QStringLiteral("rVolDb")) b.addU8(base + 0x02, outputRaw(value));
