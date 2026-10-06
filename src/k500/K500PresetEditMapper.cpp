@@ -1,6 +1,6 @@
 #include "K500PresetEditMapper.h"
 
-#include "K500Protocol.h"
+#include "K500FieldContract.h"
 
 #include <QRegularExpression>
 #include <QtMath>
@@ -187,44 +187,44 @@ EditResult applyCrossover(const QByteArray &source, const QString &section,
 EditResult applyScalar(const QByteArray &source, const QString &path, const QVariant &value)
 {
     Builder b;
-    if (path == QStringLiteral("system.topMusicVol")) b.addU8(0x0008, u8Value(value));
-    else if (path == QStringLiteral("system.topMicVol")) b.addU8(0x0009, u8Value(value));
-    else if (path == QStringLiteral("system.topEffectVol")) b.addU8(0x000A, u8Value(value));
-    else if (path == QStringLiteral("system.musicInitVol")) b.addU8(0x000B, u8Value(value));
-    else if (path == QStringLiteral("system.musicMaxVol")) b.addU8(0x000C, u8Value(value));
-    else if (path == QStringLiteral("music.sourceRaw")) b.addU8(0x000E, u8Value(value));
-    else if (path == QStringLiteral("music.key")) b.addU8(0x0011, u8Value(value, 7));
-    else if (path == QStringLiteral("system.micInitVol")) b.addU8(0x0012, u8Value(value));
-    else if (path == QStringLiteral("system.micMaxVol")) b.addU8(0x0013, u8Value(value));
-    else if (path == QStringLiteral("mic.micAVol")) b.addU8(0x0014, u8Value(value));
-    else if (path == QStringLiteral("mic.micBVol")) b.addU8(0x0015, u8Value(value));
-    else if (path == QStringLiteral("mic.noiseGateDb")) b.addU8(0x0016, u8Value(value, 81));
-    else if (path == QStringLiteral("mic.compThresholdDb")) b.addU8(0x0017, u8Value(value, 50));
-    else if (path == QStringLiteral("mic.compRatio")) b.addU8(0x0018, u8Value(value));
-    else if (path == QStringLiteral("mic.attackMs")) b.addU8(0x0019, u8Value(value));
-    else if (path == QStringLiteral("mic.releaseSec")) b.addU8(0x001A, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
+    if (path == QStringLiteral("system.topMusicVol")) b.addU8(K500FieldContract::FileOffset::TopMusicVol, u8Value(value));
+    else if (path == QStringLiteral("system.topMicVol")) b.addU8(K500FieldContract::FileOffset::TopMicVol, u8Value(value));
+    else if (path == QStringLiteral("system.topEffectVol")) b.addU8(K500FieldContract::FileOffset::TopEffectVol, u8Value(value));
+    else if (path == QStringLiteral("system.musicInitVol")) b.addU8(K500FieldContract::FileOffset::MusicInitVol, u8Value(value));
+    else if (path == QStringLiteral("system.musicMaxVol")) b.addU8(K500FieldContract::FileOffset::MusicMaxVol, u8Value(value));
+    else if (path == QStringLiteral("music.sourceRaw")) b.addU8(K500FieldContract::FileOffset::MusicSource, u8Value(value));
+    else if (path == QStringLiteral("music.key")) b.addU8(K500FieldContract::FileOffset::MusicKey, u8Value(value, 7));
+    else if (path == QStringLiteral("system.micInitVol")) b.addU8(K500FieldContract::FileOffset::MicInitVol, u8Value(value));
+    else if (path == QStringLiteral("system.micMaxVol")) b.addU8(K500FieldContract::FileOffset::MicMaxVol, u8Value(value));
+    else if (path == QStringLiteral("mic.micAVol")) b.addU8(K500FieldContract::FileOffset::MicAVol, u8Value(value));
+    else if (path == QStringLiteral("mic.micBVol")) b.addU8(K500FieldContract::FileOffset::MicBVol, u8Value(value));
+    else if (path == QStringLiteral("mic.noiseGateDb")) b.addU8(K500FieldContract::FileOffset::MicNoiseGate, u8Value(value, 81));
+    else if (path == QStringLiteral("mic.compThresholdDb")) b.addU8(K500FieldContract::FileOffset::MicCompThreshold, u8Value(value, 50));
+    else if (path == QStringLiteral("mic.compRatio")) b.addU8(K500FieldContract::FileOffset::MicCompRatio, u8Value(value));
+    else if (path == QStringLiteral("mic.attackMs")) b.addU8(K500FieldContract::FileOffset::MicAttack, u8Value(value));
+    else if (path == QStringLiteral("mic.releaseSec")) b.addU8(K500FieldContract::FileOffset::MicRelease, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
     else if (path == QStringLiteral("mic.fbxLevel")) {
         // FBE_FILE_MAPPING_CAPTURED_20261006_V1 — controlled native exports
         // FBE0..FBE4 prove one monotonic .k500 scalar at file[0x0023].
         // file[0x001B]/[0x001C] are Mic HP/LP type bytes and must not be
         // mutated by an FBE/FBX edit.
         const int raw = std::clamp(qRound(value.toDouble()),
-                                   K500Protocol::NativeRange::MicFbxMinLevel,
-                                   K500Protocol::NativeRange::MicFbxMaxLevel);
-        b.addU8(0x0023, raw);
+                                   K500FieldContract::Field::MicFbe.rawMin,
+                                   K500FieldContract::Field::MicFbe.rawMax);
+        b.addU8(K500FieldContract::Field::MicFbe.fileOffset, raw);
     }
-    else if (path == QStringLiteral("system.effectInitLevel")) b.addU8(0x001D, u8Value(value));
-    else if (path == QStringLiteral("music.input1GainDb")) b.addU8(0x001E, u8Value(value, 12));
-    else if (path == QStringLiteral("music.input2GainDb")) b.addU8(0x001F, u8Value(value, 12));
-    else if (path == QStringLiteral("music.bluetoothGainDb") || path == QStringLiteral("music.btGainDb")) b.addU8(0x0020, u8Value(value, 12));
-    else if (path == QStringLiteral("music.uDiskGainDb")) b.addU8(0x0021, u8Value(value, 12));
-    else if (path == QStringLiteral("music.digitalGainDb")) b.addU8(0x0022, u8Value(value, 12));
-    else if (path == QStringLiteral("mic.eqLink")) b.addU8(0x0092, value.toBool() ? 1 : 0);
+    else if (path == QStringLiteral("system.effectInitLevel")) b.addU8(K500FieldContract::FileOffset::EffectInitLevel, u8Value(value));
+    else if (path == QStringLiteral("music.input1GainDb")) b.addU8(K500FieldContract::FileOffset::MusicInput1Gain, u8Value(value, 12));
+    else if (path == QStringLiteral("music.input2GainDb")) b.addU8(K500FieldContract::FileOffset::MusicInput2Gain, u8Value(value, 12));
+    else if (path == QStringLiteral("music.bluetoothGainDb") || path == QStringLiteral("music.btGainDb")) b.addU8(K500FieldContract::FileOffset::MusicBluetoothGain, u8Value(value, 12));
+    else if (path == QStringLiteral("music.uDiskGainDb")) b.addU8(K500FieldContract::FileOffset::MusicUDiskGain, u8Value(value, 12));
+    else if (path == QStringLiteral("music.digitalGainDb")) b.addU8(K500FieldContract::FileOffset::MusicDigitalGain, u8Value(value, 12));
+    else if (path == QStringLiteral("mic.eqLink")) b.addU8(K500FieldContract::FileOffset::MicEqLink, value.toBool() ? 1 : 0);
     // ADJ_MANNER_VR_OFF_FILE_EDIT_V1 — physical reconnect captures prove
     // activeMemory[0x008C] <-> preset file scalar 0x0094 exactly.
     else if (path == QStringLiteral("system.adjMannerVrOff")) b.addU8(0x0094, value.toBool() ? 1 : 0);
-    else if (path == QStringLiteral("system.uDiskRecordVol")) b.addU8(0x0095, u8Value(value, -1));
-    else if (path == QStringLiteral("system.usbRecordVol")) b.addU8(0x0096, u8Value(value, -1));
+    else if (path == QStringLiteral("system.uDiskRecordVol")) b.addU8(K500FieldContract::FileOffset::UDiskRecordVol, u8Value(value, -1));
+    else if (path == QStringLiteral("system.usbRecordVol")) b.addU8(K500FieldContract::FileOffset::UsbRecordVol, u8Value(value, -1));
     else return {};
     return finish(source, std::move(b));
 }

@@ -1,3 +1,4 @@
+#include "K500FieldContract.h"
 #include "K500PresetCodec.h"
 #include "K500PresetEditMapper.h"
 
@@ -71,6 +72,48 @@ int main(int argc, char **argv)
     const QByteArray source = file.readAll();
     if (!K500PresetCodec::validateChecksum(source))
         return fail(QStringLiteral("donor fixture checksum invalid"));
+
+    // CANONICAL_PRESET_FIELD_CONTRACT_V1 — keep scalar projection and
+    // evidence-backed Mic/FBE semantics inside the existing fast persistence
+    // regression instead of creating another CI/build target.
+    using namespace K500FieldContract;
+    using namespace K500FieldContract::ScalarGeometry;
+    if (activeOffsetForFileScalar(0x0008) != 0x0000
+        || activeOffsetForFileScalar(0x0096) != 0x008E
+        || activeOffsetForFileScalar(0x0097) != InvalidOffset
+        || activeOffsetForFileScalar(0x0098) != 0x008F
+        || activeOffsetForFileScalar(0x00EF) != 0x00E6)
+        return fail(QStringLiteral("canonical scalar split boundary regressed"));
+
+    for (int active = 0; active < ActiveEndExclusive; ++active) {
+        const int fileOffset = fileOffsetForActiveScalar(active);
+        if (fileOffset == InvalidOffset || activeOffsetForFileScalar(fileOffset) != active)
+            return fail(QStringLiteral("canonical scalar mapping is not bijective"));
+    }
+
+    QSet<int> contractFiles;
+    QSet<int> contractActive;
+    for (const auto &field : EvidenceBackedScalars) {
+        if (!geometryMatches(field) || field.rawMin > field.rawMax)
+            return fail(QStringLiteral("evidence-backed field contract is inconsistent"));
+        if (contractFiles.contains(field.fileOffset) || contractActive.contains(field.activeOffset))
+            return fail(QStringLiteral("duplicate evidence-backed field mapping"));
+        contractFiles.insert(field.fileOffset);
+        contractActive.insert(field.activeOffset);
+    }
+
+    if (Field::MicFbe.fileOffset != 0x0023
+        || Field::MicFbe.activeOffset != 0x001B
+        || Field::MicFbe.rawMin != 0 || Field::MicFbe.rawMax != 4
+        || Field::MicFbe.evidence != EvidenceLevel::ProvenRoundTrip
+        || Field::MicFbe.fileMutation != FileMutationPolicy::Writable)
+        return fail(QStringLiteral("physical FBE contract regressed"));
+
+    if (Field::MicHpType.fileOffset != 0x001B
+        || Field::MicLpType.fileOffset != 0x001C
+        || Field::MicHpType.fileMutation != FileMutationPolicy::PreserveOnly
+        || Field::MicLpType.fileMutation != FileMutationPolicy::PreserveOnly)
+        return fail(QStringLiteral("Mic HP/LP preservation contract regressed"));
 
     QVector<QByteArray> fbeGolden;
     if (argc == 7) {

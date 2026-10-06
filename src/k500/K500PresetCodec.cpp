@@ -174,9 +174,9 @@ QByteArray buildDeviceSlotImage(const QByteArray &presetFile, QString *error)
         return {};
     }
     QByteArray live(DeviceSlotImageLength, char(0));
-    for (int i = 0; i < LiveScalarEnd; ++i) {
-        const int delta = i < LiveScalarSplit ? LiveScalarDeltaLow : LiveScalarDeltaHigh;
-        live[i] = presetFile.at(i + delta);
+    for (int activeOffset = 0; activeOffset < LiveScalarEnd; ++activeOffset) {
+        const int fileOffset = K500FieldContract::ScalarGeometry::fileOffsetForActiveScalar(activeOffset);
+        live[activeOffset] = presetFile.at(fileOffset);
     }
 
     for (const auto &d : EqMap) {

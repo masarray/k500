@@ -34,14 +34,15 @@ Read:
 2. `docs/ARCHITECTURE.md`
 3. `docs/PORTING_PARITY_MATRIX.md`
 4. `docs/PROTOCOL_GOLDEN_VECTORS.md`
-5. `docs/K500_CAPTURE_TODO_MAP.md`
-6. `docs/MUSIC_TONE_CAPTURE_MAP.md`
-7. `docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md`
-8. `docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md`
-9. `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`
-10. `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`
-11. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
-12. `CONTRIBUTING.md`
+5. `docs/K500_FIELD_CONTRACT.md`
+6. `docs/K500_CAPTURE_TODO_MAP.md`
+7. `docs/MUSIC_TONE_CAPTURE_MAP.md`
+8. `docs/K500_MUSIC_CROSSOVER_TYPE_CAPTURE.md`
+9. `docs/K500_MIC_CROSSOVER_TYPE_CAPTURE.md`
+10. `docs/K500_SYSTEM_CONTROLS_CAPTURE_MAP.md`
+11. `docs/K500_OUTPUT_DELAY_CAPTURE_MAP.md`
+12. `docs/HARDWARE_ACCEPTANCE_CHECKLIST.md`
+13. `CONTRIBUTING.md`
 
 ### `.k500` preset analysis, sonic tuning, simulation, graphs, or new presets
 
@@ -160,7 +161,7 @@ Any navigation refactor must keep the runtime section stress test green. Never r
 - preserve unknown/reserved bytes and raw PEQ aliases;
 - preserve `mainAlt`, `surroundAlt`, `centerAlt`, `subAlt` unless intentionally targeted by a proven experiment;
 - no-op must be byte-identical;
-- FBE/FBX is proven as `.k500[0x0023] <-> activeMemory[0x001B]`, native values `0..4`; `.k500[0x001B]` and `.k500[0x001C]` are Mic HP/LP type bytes and must never be used as FBE/FBX;
+- Canonical scalar geometry, named scalar offsets, evidence level, and file-mutation policy live in `src/k500/K500FieldContract.h`; Controller/Protocol/PresetCodec/PresetEditMapper must consume that contract instead of re-declaring the same mapping.\n- FBE/FBX is proven as `.k500[0x0023] <-> activeMemory[0x001B]`, native values `0..4`; `.k500[0x001B]` and `.k500[0x001C]` are Mic HP/LP type bytes and must never be used as FBE/FBX;
 - checksum is recomputed last;
 - every mutation ends with a changed-byte audit.
 

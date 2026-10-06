@@ -1,5 +1,6 @@
 #include "K500Controller.h"
 
+#include "K500FieldContract.h"
 #include "K500Frame.h"
 
 #include <QRegularExpression>
@@ -13,23 +14,15 @@ quint8 byteAt(const QByteArray &bytes, int offset, quint8 fallback = 0)
     return static_cast<quint8>(static_cast<unsigned char>(bytes.at(offset)));
 }
 
-int liveOffsetForFileScalar(int fileOffset)
-{
-    if (fileOffset >= 0x0008 && fileOffset <= 0x0096)
-        return fileOffset - 0x08;
-    if (fileOffset >= 0x0098 && fileOffset <= 0x00EF)
-        return fileOffset - 0x09;
-    return -1;
-}
 
 quint8 fileU8(const QByteArray &memory, int fileOffset, quint8 fallback = 0)
 {
-    return byteAt(memory, liveOffsetForFileScalar(fileOffset), fallback);
+    return byteAt(memory, K500FieldContract::ScalarGeometry::activeOffsetForFileScalar(fileOffset), fallback);
 }
 
 quint16 fileU16(const QByteArray &memory, int fileOffset, quint16 fallback = 0)
 {
-    const int offset = liveOffsetForFileScalar(fileOffset);
+    const int offset = K500FieldContract::ScalarGeometry::activeOffsetForFileScalar(fileOffset);
     if (offset < 0 || offset + 1 >= memory.size())
         return fallback;
     return static_cast<quint16>(byteAt(memory, offset)
@@ -184,20 +177,20 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     // LIVE is still OFF. Unknown/reserved neighbours remain device-owned.
     setDeviceScalars(memory.left(0x40));
 
-    m_music.topMusicVol = fileU8(memory, 0x0008, 35);
-    m_music.musicInitVol = fileU8(memory, 0x000B, 25);
-    m_music.musicMaxVol = fileU8(memory, 0x000C, K500Protocol::TopVolumeMax);
+    m_music.topMusicVol = fileU8(memory, K500FieldContract::FileOffset::TopMusicVol, 35);
+    m_music.musicInitVol = fileU8(memory, K500FieldContract::FileOffset::MusicInitVol, 25);
+    m_music.musicMaxVol = fileU8(memory, K500FieldContract::FileOffset::MusicMaxVol, K500Protocol::TopVolumeMax);
     m_music.topMusicVol = qMin(m_music.topMusicVol, m_music.musicMaxVol);
-    m_music.sourceRaw = fileU8(memory, 0x000E, 2);
-    m_music.key = static_cast<int>(fileU8(memory, 0x0011, 7)) - 7;
+    m_music.sourceRaw = fileU8(memory, K500FieldContract::FileOffset::MusicSource, 2);
+    m_music.key = static_cast<int>(fileU8(memory, K500FieldContract::FileOffset::MusicKey, 7)) - 7;
     // MIC_CROSSOVER_TAIL_DONOR_20261004_V1 — file scalar 0x001E translates
     // exactly to activeMemory[0x0016], the physical Mic CMD 0x11 tail donor.
     m_music.input1GainDb = static_cast<int>(byteAt(
         memory, K500Protocol::ReadbackOffset::MusicInput1Gain, 9)) - 12;
-    m_music.input2GainDb = static_cast<int>(fileU8(memory, 0x001F, 9)) - 12;
-    m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, 0x0020, 9)) - 12;
-    m_music.uDiskGainDb = static_cast<int>(fileU8(memory, 0x0021, 8)) - 12;
-    m_music.digitalGainDb = static_cast<int>(fileU8(memory, 0x0022, 8)) - 12;
+    m_music.input2GainDb = static_cast<int>(fileU8(memory, K500FieldContract::FileOffset::MusicInput2Gain, 9)) - 12;
+    m_music.bluetoothGainDb = static_cast<int>(fileU8(memory, K500FieldContract::FileOffset::MusicBluetoothGain, 9)) - 12;
+    m_music.uDiskGainDb = static_cast<int>(fileU8(memory, K500FieldContract::FileOffset::MusicUDiskGain, 8)) - 12;
+    m_music.digitalGainDb = static_cast<int>(fileU8(memory, K500FieldContract::FileOffset::MusicDigitalGain, 8)) - 12;
     // MUSIC_TONE_READBACK_20261004_V1 — paired reconnect snapshots prove
     // direct activeMemory[0x0005], raw 0=OFF and raw 1..41=-90..-50 dB.
     // This is a direct active-memory byte, not a translated file scalar.
@@ -206,24 +199,24 @@ void K500Controller::applyDeviceMemory(const QByteArray &memory, bool preserveDe
     m_music.noiseGateRaw = K500Protocol::musicNoiseGateRawValid(musicNoiseGateRaw)
         ? static_cast<int>(musicNoiseGateRaw) : -1;
 
-    m_mic.micMaxVol = fileU8(memory, 0x0013, K500Protocol::TopVolumeMax);
-    m_mic.topMicVol = qMin<int>(fileU8(memory, 0x0009, 35), m_mic.micMaxVol);
-    m_mic.micInitVol = fileU8(memory, 0x0012, 25);
-    m_mic.micAVol = fileU8(memory, 0x0014, 96);
-    m_mic.micBVol = fileU8(memory, 0x0015, 96);
+    m_mic.micMaxVol = fileU8(memory, K500FieldContract::FileOffset::MicMaxVol, K500Protocol::TopVolumeMax);
+    m_mic.topMicVol = qMin<int>(fileU8(memory, K500FieldContract::FileOffset::TopMicVol, 35), m_mic.micMaxVol);
+    m_mic.micInitVol = fileU8(memory, K500FieldContract::FileOffset::MicInitVol, 25);
+    m_mic.micAVol = fileU8(memory, K500FieldContract::FileOffset::MicAVol, 96);
+    m_mic.micBVol = fileU8(memory, K500FieldContract::FileOffset::MicBVol, 96);
     // FBX_NATIVE_0_4_CAPTURED_V1 — physical reconnect captures prove the
     // authoritative live active-memory byte is offset 0x001B (not file offset
     // 0x001B, which maps to a different live byte through fileU8()).
     m_mic.fbxLevel = qBound(K500Protocol::NativeRange::MicFbxMinLevel,
-                            static_cast<int>(byteAt(memory, 0x001B, 0)),
+                            static_cast<int>(byteAt(memory, K500Protocol::ReadbackOffset::MicFbx, 0)),
                             K500Protocol::NativeRange::MicFbxMaxLevel);
-    m_mic.compThresholdDb = static_cast<int>(fileU8(memory, 0x0017, 38)) - 50;
-    m_mic.compRatio = fileU8(memory, 0x0018, 3);
-    m_mic.attackMs = fileU8(memory, 0x0019, 10);
-    m_mic.releaseSec = fileU8(memory, 0x001A, 2) / 10.0;
+    m_mic.compThresholdDb = static_cast<int>(fileU8(memory, K500FieldContract::FileOffset::MicCompThreshold, 38)) - 50;
+    m_mic.compRatio = fileU8(memory, K500FieldContract::FileOffset::MicCompRatio, 3);
+    m_mic.attackMs = fileU8(memory, K500FieldContract::FileOffset::MicAttack, 10);
+    m_mic.releaseSec = fileU8(memory, K500FieldContract::FileOffset::MicRelease, 2) / 10.0;
 
-    m_effect.topEffectVol = fileU8(memory, 0x000A, 35);
-    m_effect.effectInitLevel = fileU8(memory, 0x001D, 25);
+    m_effect.topEffectVol = fileU8(memory, K500FieldContract::FileOffset::TopEffectVol, 35);
+    m_effect.effectInitLevel = fileU8(memory, K500FieldContract::FileOffset::EffectInitLevel, 25);
 
     // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1 — the old
     // structural seed at file[0x0093/0x0094] is invalid: paired reconnect

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "K500FieldContract.h"
+
 #include <QByteArray>
 #include <QString>
 
@@ -154,8 +156,8 @@ constexpr int MusicNoiseGateMaxDb = -50;
 constexpr double MusicBassMinDb = -12.0;
 constexpr double MusicBassMaxDb = 12.0;
 
-constexpr int MicFbxMinLevel = 0;
-constexpr int MicFbxMaxLevel = 4;
+constexpr int MicFbxMinLevel = K500FieldContract::Field::MicFbe.rawMin;
+constexpr int MicFbxMaxLevel = K500FieldContract::Field::MicFbe.rawMax;
 
 constexpr int StartupLevelMin = 0;
 constexpr int StartupLevelMax = TopVolumeMax;
@@ -180,6 +182,7 @@ namespace ReadbackOffset {
 constexpr int MusicNoiseGate = 0x0005;
 constexpr int MicHpType = 0x0013;
 constexpr int MicLpType = 0x0014;
+constexpr int MicFbx = K500FieldContract::Field::MicFbe.activeOffset;
 constexpr int MainHpType = 0x002C;
 constexpr int MainLpType = 0x002E;
 constexpr int SurroundHpType = 0x0040;
@@ -200,6 +203,11 @@ constexpr int AdjMannerVrOff = 0x008C;
 // proves Mic CMD 0x11 final data byte mirrors Music Input1 Gain raw.
 constexpr int MusicInput1Gain = 0x0016;
 constexpr int MusicBass = 0x00DF;
+static_assert(MicHpType == K500FieldContract::Field::MicHpType.activeOffset);
+static_assert(MicLpType == K500FieldContract::Field::MicLpType.activeOffset);
+static_assert(MusicInput1Gain
+              == K500FieldContract::ScalarGeometry::activeOffsetForFileScalar(
+                     K500FieldContract::FileOffset::MusicInput1Gain));
 } // namespace ReadbackOffset
 
 QByteArray heartbeat();
