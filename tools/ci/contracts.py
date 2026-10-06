@@ -205,6 +205,44 @@ def check_protocol_and_state() -> None:
         "Do **not** decode VR OFF from C0 data[19]",
     )
     require(
+        "docs/PROTOCOL_GOLDEN_VECTORS.md",
+        "AA 03 00 07 00 03 F3",
+        "AA 03 00 07 01 03 F2",
+        "activeMemory[0x008C]",
+        "C0 `data[19]` is",
+    )
+    require(
+        "docs/K500_CAPTURE_TODO_MAP.md",
+        "C0 data[19] explicitly non-authoritative",
+    )
+    require(
+        "docs/PORTING_PARITY_MATRIX.md",
+        "C0 data[19] retired",
+        "targeted 0x0074/0x003A verify",
+    )
+    require(
+        "docs/K500_NATIVE_VALUE_RANGES.md",
+        "C0 `data[19]` is explicitly non-authoritative",
+    )
+    require(
+        "docs/K500_CAPTURED_RUNTIME_STATUS.md",
+        "C0 `data[19]` is **not** an authority",
+        "0x0074",
+        "0x18",
+    )
+    require(
+        "docs/HARDWARE_ACCEPTANCE_CHECKLIST.md",
+        "AA 03 00 07 00 03 F3",
+        "AA 03 00 07 01 03 F2",
+        "C0 data[19] is ignored",
+    )
+    forbid(
+        "docs/PROTOCOL_GOLDEN_VECTORS.md",
+        "AA 03 00 07 00 00 F6",
+        "AA 03 00 07 01 00 F5",
+        "No reconnect/readback bit is proven",
+    )
+    require(
         "src/k500/K500DeviceManager.cpp",
         "K500Protocol::ActiveMemorySize",
         "K500Protocol::ActiveMemoryBlockSize",

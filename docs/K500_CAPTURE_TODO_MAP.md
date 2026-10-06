@@ -140,7 +140,7 @@ Do not promote a field from TODO to mapped from filename assumptions alone. Use 
 | USB Record Vol | ✅ 0x0096 + 1 | ✅ CMD 0x3E selector 0x03, raw=UI-1 | capture-mapped | no |
 | Dance/Mic Trigger Threshold | ❌ reconnect seed reopened; old 0x0093/0x0094 pair invalidated | ✅ CMD 0x22 raw=dB+60 | WRITE captured, safe live seed gated | optional only if Dance live editing must ship |
 | Dance/Mic Trigger Hold Time | ❌ reconnect seed reopened; file 0x0094 is Adj Manner | ✅ CMD 0x22 raw seconds | WRITE captured, safe live seed gated | optional only if Dance live editing must ship |
-| Adj Manner / VR OFF | ✅ active 0x008C / file 0x0094 + C0 data[19] bit0 inverse | ✅ CMD 0x07 + F8 ACK | READ+WRITE closed | no |
+| Adj Manner / VR OFF | ✅ active 0x008C / file 0x0094; C0 data[19] explicitly non-authoritative | ✅ CMD 0x07 state + route 0x03 + F8 ACK | READ+WRITE closed | no |
 
 ## Identity / security
 

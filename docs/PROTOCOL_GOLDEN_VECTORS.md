@@ -419,8 +419,9 @@ ACK = RSP 0xDD
 -60 dB /30 s  AA 07 00 22 01 00 1E 0B 00 00 AD
 ```
 
-The paired seed uses scalar offsets 0x0093/0x0094 only when both bytes decode
-inside the captured domains; otherwise no write is emitted.
+The old structural Dance seed at 0x0093/0x0094 is retired because file 0x0094
+is capture-proven Adj Manner VR OFF. Dance live write stays fail-closed until
+both read-side values are independently mapped.
 
 BT Name uses dedicated `CMD 0x4E`:
 
@@ -435,13 +436,18 @@ After ACK the USB-only promoted workflow performs a full 939-byte identity
 refresh. BLE identity remains read-only.
 
 Adj Manner / VR OFF uses `CMD 0x07`; ACK is `RSP 0xF8`.
+The 2026-10-06 native sweep proves route/control byte `0x03` on every write:
 
 ```text
-Unticked / OFF  AA 03 00 07 00 00 F6
-Ticked   / ON   AA 03 00 07 01 00 F5
+Unticked / OFF  AA 03 00 07 00 03 F3
+Ticked   / ON   AA 03 00 07 01 03 F2
+ACK             RSP 0xF8
 ```
 
-No reconnect/readback bit is proven, so ACK establishes only current-session truth.
+Authoritative readback is direct `activeMemory[0x008C]`:
+`0x00=unticked`, `0x01=ticked`. The canonical block is offset `0x0074`,
+length `0x003A`, with VR OFF at relative index `0x18`. C0 `data[19]` is
+not used because controlled captures prove contradictory bit-0 polarity.
 
 ## Recall / Use Init Volume
 

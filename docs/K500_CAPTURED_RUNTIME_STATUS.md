@@ -146,29 +146,40 @@ master values from the Init fields during Recall. It must keep the established
 Recall -> C0 -> full 939-byte readback -> hydrate flow and accept the device's
 post-Recall result.
 
-## Adj Manner / front-panel VR ownership — reconnect captured 2026-10-04
+## Adj Manner / front-panel VR ownership — write/readback closed 2026-10-06
 
-Paired reconnect captures:
+Latest physical evidence:
 
 | Capture | Size | SHA-256 |
 | --- | ---: | --- |
-| `Reconnect_AdjManner_VROFF_OFF.pcapng` | 5,016 | `1f2cab60928e88a421f93e2fa2ac9034686016326d2c6025087df6a12aeea230` |
-| `Reconnect_AdjManner_VROFF_ON.pcapng` | 5,264 | `6b9d3cd469c9c0126a4737dd84e94dcec5f7da2bbae09e4b7eb80f545ff6660` |
+| `VR_OFF_tick_untick.pcapng` | 4,272 | `97c880d5caec84aaa760d552f852b64f3305b8c01a4be00fc28acf4b321ca3ba` |
+| `Connect_VR_OFF_ticked_position.pcapng` | 5,016 | `9a66ba4b54c767a594b0c4eea351b15b145a662de89056a07452fd98815e9e87` |
+| `Connect_VR_OFF_unticked_position.pcapng` | 5,016 | `64f5baa97db41cacc526e0c8d78be8b5b631462222f8c5b9fc31a85d97831839` |
 
-The complete 939-byte snapshots differ only at direct
-`activeMemory[0x008C]`: 0=VR OFF unticked/front-panel trims active,
-1=VR OFF ticked/software ownership.
-
-The same state is present in RSP 0xC0 `data[19]` bit 0 with inverse polarity:
+Native setter/ACK:
 
 ```text
-0x43 bit0=1 -> front-panel VR active -> adjMannerVrOff=false
-0x42 bit0=0 -> front-panel VR disabled -> adjMannerVrOff=true
+unticked / OFF  AA 03 00 07 00 03 F3
+ticked   / ON   AA 03 00 07 01 03 F2
+ACK             RSP 0xF8
 ```
 
-The setter remains CMD 0x07 / ACK RSP 0xF8. Because this changes control
-ownership, SonKuPik follows the ACK with one full 939-byte readback before LIVE
-resumes; ordinary parameter edits do not use this expensive reconciliation.
+The paired complete 939-byte connect snapshots differ at the ownership byte:
+
+```text
+activeMemory[0x008C]
+0x00 = VR OFF unticked / front-panel trims active
+0x01 = VR OFF ticked / software ownership
+```
+
+C0 `data[19]` is **not** an authority for VR OFF. Older captures and the new
+controlled connect pair show contradictory bit-0 polarity, so that field must
+not be decoded as ownership state.
+
+After RSP 0xF8, SonKuPik verifies only the canonical captured 0x3A-byte block
+starting at `0x0074`; `0x008C` is relative index `0x18`. The verified
+semantic state is then fanned out to the editor ownership gates without
+replaying a stale full-memory snapshot.
 
 ## Change control
 
