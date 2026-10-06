@@ -61,7 +61,7 @@ def require_exact_count(rel: str, token: str, expected: int) -> None:
 
 def check_presets() -> None:
     expected = {
-        "01_KONSER_NYANYI.k500": ("KONSER NYANYI", "761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4"),
+        "01_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1"),
         "02_MC_HOST_RADIO.k500": ("MC HOST RADIO", "8b18cdbd1f4e1ae409c882d84955bfa34ca770e459615524591732182f14339c"),
         "03_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc"),
         "04_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c"),

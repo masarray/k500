@@ -136,8 +136,17 @@ The exact native `CONCERT HIFI V4` donor remains the rollback/provenance referen
 ```text
 resources/presets/01_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
-SHA-256: 761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
+SHA-256: 66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1
 ```
+
+2026-10-06 flagship acceptance evolved Mode 01 through two narrow hardware-audition passes without touching the accepted Music/Main/Sub foundation:
+
+```text
+R1 -> R2: more singer body/support, cleaner Center/Surround support, darker/less intrusive Echo, longer dry/wet separation
+R2 -> R2.1: only micro-calibrated spatial openness (Main Reverb/Echo +1 step, 2450 ms decay, 77 ms predelay, 13.2 kHz Reverb LPF)
+```
+
+The promoted distribution bytes preserve the exact R2.1 sonic parameters. The temporary audition name `KONSER NYANYI R2` was normalized back to the official `KONSER NYANYI` identity before promotion; this name/checksum normalization is non-sonic. Relative to the previous official Mode 01, the final file changes 68 bytes and keeps all unknown/reserved bytes donor-owned.
 
 Future experiments normally branch from the current official bytes; rollback investigations may explicitly return to the archived native hash recorded in the v1.0 history.
 
@@ -186,7 +195,7 @@ Candidate hashes:
 
 | Slot | Repository file | Status / SHA-256 |
 |---:|---|---|
-| 01 | `01_KONSER_NYANYI.k500` | accepted, unchanged — `761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4` |
+| 01 | `01_KONSER_NYANYI.k500` | accepted, unchanged — `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1` |
 | 02 | `02_MC_HOST_RADIO.k500` | **candidate** — `8b18cdbd1f4e1ae409c882d84955bfa34ca770e459615524591732182f14339c` |
 | 03 | `03_KAR_DANGDUT.k500` | accepted, unchanged — `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` |
 | 04 | `04_POP_ROCK_BALLAD.k500` | **candidate** — `bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c` |
