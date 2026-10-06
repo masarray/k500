@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QSet>
 #include <QTextStream>
+#include <QVector>
 #include <QtEndian>
 
 namespace {
@@ -39,6 +40,17 @@ bool onlyChanged(const K500PresetCodec::PatchResult &patch, const QSet<int> &exp
     return changedSet(patch) == expected;
 }
 
+QSet<int> diffSet(const QByteArray &lhs, const QByteArray &rhs)
+{
+    QSet<int> changed;
+    const int common = qMin(lhs.size(), rhs.size());
+    for (int i = 0; i < common; ++i)
+        if (lhs.at(i) != rhs.at(i)) changed.insert(i);
+    for (int i = common; i < lhs.size(); ++i) changed.insert(i);
+    for (int i = common; i < rhs.size(); ++i) changed.insert(i);
+    return changed;
+}
+
 bool accepted(const K500PresetEditMapper::EditResult &edit)
 {
     return edit.supported && edit.patch.ok
@@ -49,8 +61,9 @@ bool accepted(const K500PresetEditMapper::EditResult &edit)
 int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
-    if (argc != 2)
-        return fail(QStringLiteral("expected one donor .k500 fixture path"));
+    if (argc != 2 && argc != 7)
+        return fail(QStringLiteral(
+            "expected donor .k500 fixture path and optional FBE0..FBE4 golden fixture paths"));
 
     QFile file(QString::fromLocal8Bit(argv[1]));
     if (!file.open(QIODevice::ReadOnly))
@@ -58,6 +71,21 @@ int main(int argc, char **argv)
     const QByteArray source = file.readAll();
     if (!K500PresetCodec::validateChecksum(source))
         return fail(QStringLiteral("donor fixture checksum invalid"));
+
+    QVector<QByteArray> fbeGolden;
+    if (argc == 7) {
+        fbeGolden.reserve(5);
+        for (int level = 0; level <= 4; ++level) {
+            QFile goldenFile(QString::fromLocal8Bit(argv[level + 2]));
+            if (!goldenFile.open(QIODevice::ReadOnly))
+                return fail(QStringLiteral("cannot open FBE%1 golden fixture").arg(level));
+            const QByteArray bytes = goldenFile.readAll();
+            if (bytes.size() != K500PresetCodec::PresetFileLength
+                || !K500PresetCodec::validateChecksum(bytes))
+                return fail(QStringLiteral("FBE%1 golden fixture invalid").arg(level));
+            fbeGolden.push_back(bytes);
+        }
+    }
 
     // Scalar: exactly one data byte plus checksum.
     auto edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("system.topMusicVol"), 44);
@@ -74,11 +102,54 @@ int main(int argc, char **argv)
         || !onlyChanged(edit.patch, QSet<int>{0x0094, K500PresetCodec::ChecksumOffset}))
         return fail(QStringLiteral("Adj Manner VR OFF file mapping regressed"));
 
-    // Shared FBX UI intentionally writes both independently stored raw bytes.
-    edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("mic.fbxLevel"), 9);
-    if (!accepted(edit) || u8(edit.patch.bytes, 0x001B) != 9 || u8(edit.patch.bytes, 0x001C) != 9
-        || !onlyChanged(edit.patch, QSet<int>{0x001B, 0x001C, K500PresetCodec::ChecksumOffset}))
-        return fail(QStringLiteral("FBX shared-edit whitelist mapping regressed"));
+    // FBE_FILE_MAPPING_CAPTURED_20261006_V1 — controlled FBE0..FBE4 native
+    // exports prove file[0x0023] is the sole FBE/FBX scalar in the 0..4
+    // native domain. file[0x001B]/[0x001C] remain Mic HP/LP type bytes.
+    const quint8 originalMicHpType = u8(source, 0x001B);
+    const quint8 originalMicLpType = u8(source, 0x001C);
+    const int targetFbe = u8(source, 0x0023) == 4 ? 0 : 4;
+    edit = K500PresetEditMapper::applyEngineEdit(source, QStringLiteral("mic.fbxLevel"), targetFbe);
+    if (!accepted(edit) || u8(edit.patch.bytes, 0x0023) != targetFbe
+        || u8(edit.patch.bytes, 0x001B) != originalMicHpType
+        || u8(edit.patch.bytes, 0x001C) != originalMicLpType
+        || !onlyChanged(edit.patch, QSet<int>{0x0023, K500PresetCodec::ChecksumOffset}))
+        return fail(QStringLiteral("FBE file mapping/whitelist regressed"));
+
+    QByteArray fbeRangeSource = source;
+    fbeRangeSource[0x0023] = char(2);
+    fbeRangeSource = K500PresetCodec::updateChecksum(fbeRangeSource);
+    edit = K500PresetEditMapper::applyEngineEdit(
+        fbeRangeSource, QStringLiteral("mic.fbxLevel"), 99);
+    if (!accepted(edit) || u8(edit.patch.bytes, 0x0023) != 4)
+        return fail(QStringLiteral("FBE maximum native clamp regressed"));
+    edit = K500PresetEditMapper::applyEngineEdit(
+        fbeRangeSource, QStringLiteral("mic.fbxLevel"), -99);
+    if (!accepted(edit) || u8(edit.patch.bytes, 0x0023) != 0)
+        return fail(QStringLiteral("FBE minimum native clamp regressed"));
+
+    if (!fbeGolden.isEmpty()) {
+        const QByteArray &baseline = fbeGolden.at(0);
+        const quint8 capturedMicHpType = u8(baseline, 0x001B);
+        const quint8 capturedMicLpType = u8(baseline, 0x001C);
+        for (int level = 0; level <= 4; ++level) {
+            const QByteArray &fixture = fbeGolden.at(level);
+            if (u8(fixture, 0x0023) != level)
+                return fail(QStringLiteral("FBE%1 fixture scalar is not level %1").arg(level));
+            if (u8(fixture, 0x001B) != capturedMicHpType
+                || u8(fixture, 0x001C) != capturedMicLpType)
+                return fail(QStringLiteral("FBE%1 fixture changed Mic HP/LP type bytes").arg(level));
+            if (level > 0
+                && diffSet(fbeGolden.at(level - 1), fixture)
+                    != QSet<int>{0x0023, K500PresetCodec::ChecksumOffset})
+                return fail(QStringLiteral("FBE%1 pairwise golden diff is not scalar+checksum only").arg(level));
+
+            const auto goldenEdit = K500PresetEditMapper::applyEngineEdit(
+                baseline, QStringLiteral("mic.fbxLevel"), level);
+            if (!accepted(goldenEdit) || goldenEdit.patch.bytes != fixture)
+                return fail(QStringLiteral(
+                    "FBE%1 writer output is not byte-identical to physical golden capture").arg(level));
+        }
+    }
 
     // PEQ Bell aliases 0x0000..0x0003 must survive an ordinary band edit.
     QByteArray aliasSource = source;

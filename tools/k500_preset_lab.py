@@ -125,7 +125,7 @@ def out_db(raw: int) -> float: return (raw - 75) / 2.0
 def parse_scalars(data: bytes) -> Dict[str, Any]:
     return {
         "top": {"music": data[0x08], "mic": data[0x09], "effect": data[0x0A]},
-        "mic": {"aVolume": data[0x14], "bVolume": data[0x15], "gateDb": data[0x16] - 81, "compressor": {"thresholdDb": data[0x17] - 50, "ratio": data[0x18], "attackMs": data[0x19], "releaseS": data[0x1A] / 10.0}, "fbxA": data[0x1B], "fbxB": data[0x1C], "eqLink": data[0x92] == 1},
+        "mic": {"aVolume": data[0x14], "bVolume": data[0x15], "gateDb": data[0x16] - 81, "compressor": {"thresholdDb": data[0x17] - 50, "ratio": data[0x18], "attackMs": data[0x19], "releaseS": data[0x1A] / 10.0}, "fbxLevel": data[0x23], "hpTypeRaw": data[0x1B], "lpTypeRaw": data[0x1C], "eqLink": data[0x92] == 1},
         "music": {"source": data[0x0E], "key": data[0x11] - 7, "inputGainDb": {"input1": data[0x1E] - 12, "input2": data[0x1F] - 12, "bluetooth": data[0x20] - 12, "udisk": data[0x21] - 12, "digital": data[0x22] - 12}},
         "main": {"leftDb": out_db(data[0x24]), "rightDb": out_db(data[0x26]), "mic": data[0x28], "music": data[0x2A], "reverb": data[0x2C], "echo": data[0x2E], "compressor": {"thresholdDb": data[0x30] - 50, "ratio": data[0x31], "attackMs": data[0x32], "releaseS": data[0x33] / 10.0}},
         "surround": {"leftDb": out_db(data[0x38]), "rightDb": out_db(data[0x3A]), "mic": data[0x3C], "music": data[0x3E], "reverb": data[0x40], "echo": data[0x42], "compressor": {"thresholdDb": data[0x44] - 50, "ratio": data[0x45], "attackMs": data[0x46], "releaseS": data[0x47] / 10.0}, "delayLeftMs": u16(data, 0xD8), "delayRightMs": u16(data, 0xDA)},

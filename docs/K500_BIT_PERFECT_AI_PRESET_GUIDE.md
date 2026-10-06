@@ -170,21 +170,38 @@ If the user only changes gain/frequency/Q, **preserve the exact original typeRaw
 
 Do not normalize `0x0001`, `0x0002`, or `0x0003` back to `0x0000` merely because all display as `P`.
 
-## 4.2 FBX bytes are independently stored
+## 4.2 FBE / FBX scalar and Mic crossover-type bytes
 
-Known bytes:
+Controlled native exports captured on 2026-10-06 (`FBE0` through `FBE4`) prove the
+preset-file FBE/FBX scalar is one byte:
 
 ```text
-0x001B
-0x001C
+file[0x0023] = 0  -> OFF
+file[0x0023] = 1  -> Level 1
+file[0x0023] = 2  -> Level 2
+file[0x0023] = 3  -> Level 3
+file[0x0023] = 4  -> Level 4
 ```
 
-The UI may expose them as one shared FBX/depth value, but real presets can contain different raw values.
+Across all five captures, every adjacent pair differs only at `0x0023` and the
+additive checksum byte `0x0475`.
+
+The earlier interpretation of `file[0x001B]` and `file[0x001C]` as FBX bytes is
+invalid. Those bytes map through the proven low-scalar translation to direct
+active-memory Mic crossover type fields:
+
+```text
+file[0x001B] -> activeMemory[0x0013] = Mic HP Type
+file[0x001C] -> activeMemory[0x0014] = Mic LP Type
+file[0x0023] -> activeMemory[0x001B] = FBE / FBX
+```
 
 Therefore:
 
-- do not average and rewrite both bytes during an unrelated edit;
-- preserve each raw byte independently unless the FBX parameter is explicitly changed.
+- FBE/FBX file edits may change only `0x0023` plus checksum;
+- the native FBE/FBX domain is `0..4`;
+- never write FBE/FBX into `0x001B` or `0x001C`;
+- preserve Mic HP/LP type bytes during every unrelated edit.
 
 ## 4.3 Name padding is not semantically neutral
 

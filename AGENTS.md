@@ -160,6 +160,7 @@ Any navigation refactor must keep the runtime section stress test green. Never r
 - preserve unknown/reserved bytes and raw PEQ aliases;
 - preserve `mainAlt`, `surroundAlt`, `centerAlt`, `subAlt` unless intentionally targeted by a proven experiment;
 - no-op must be byte-identical;
+- FBE/FBX is proven as `.k500[0x0023] <-> activeMemory[0x001B]`, native values `0..4`; `.k500[0x001B]` and `.k500[0x001C]` are Mic HP/LP type bytes and must never be used as FBE/FBX;
 - checksum is recomputed last;
 - every mutation ends with a changed-byte audit.
 

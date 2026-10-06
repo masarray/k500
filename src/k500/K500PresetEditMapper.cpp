@@ -1,5 +1,7 @@
 #include "K500PresetEditMapper.h"
 
+#include "K500Protocol.h"
+
 #include <QRegularExpression>
 #include <QtMath>
 #include <algorithm>
@@ -202,9 +204,14 @@ EditResult applyScalar(const QByteArray &source, const QString &path, const QVar
     else if (path == QStringLiteral("mic.attackMs")) b.addU8(0x0019, u8Value(value));
     else if (path == QStringLiteral("mic.releaseSec")) b.addU8(0x001A, std::clamp(qRound(value.toDouble() * 10.0), 0, 255));
     else if (path == QStringLiteral("mic.fbxLevel")) {
-        const int raw = std::clamp(qRound(value.toDouble()), 0, 20);
-        b.addU8(0x001B, raw);
-        b.addU8(0x001C, raw);
+        // FBE_FILE_MAPPING_CAPTURED_20261006_V1 — controlled native exports
+        // FBE0..FBE4 prove one monotonic .k500 scalar at file[0x0023].
+        // file[0x001B]/[0x001C] are Mic HP/LP type bytes and must not be
+        // mutated by an FBE/FBX edit.
+        const int raw = std::clamp(qRound(value.toDouble()),
+                                   K500Protocol::NativeRange::MicFbxMinLevel,
+                                   K500Protocol::NativeRange::MicFbxMaxLevel);
+        b.addU8(0x0023, raw);
     }
     else if (path == QStringLiteral("system.effectInitLevel")) b.addU8(0x001D, u8Value(value));
     else if (path == QStringLiteral("music.input1GainDb")) b.addU8(0x001E, u8Value(value, 12));

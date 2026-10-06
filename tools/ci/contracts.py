@@ -101,6 +101,47 @@ def check_presets() -> None:
     PASSES.append("official preset bank: size/checksum/name/hash")
 
 
+def check_fbe_mapping_evidence() -> None:
+    expected = {
+        "FBE0.k500": (0, "ffeb1e3968b4e0dcf5437442d52fd948eeee91dfdfd6552ac3a0e31a05d9cf7a"),
+        "FBE1.k500": (1, "fe57c12e5f068e3b3c4d665a8874d78b46c584678d4306718ddae48257341d7a"),
+        "FBE2.k500": (2, "840cbc27595c4b1ee3a7f1a86beb94a1329f055a435799506a640ce068328f05"),
+        "FBE3.k500": (3, "9742ec33cc510fd68092bc0ac7915a9c27db82778548bb41275f81a7d076e9d5"),
+        "FBE4.k500": (4, "271cca43e0ff9e1e312c068eb0c528bb59d00137bdc39a16060751c1385db7fb"),
+    }
+    root = ROOT / "tests" / "fixtures" / "fbe"
+    captures: list[bytes] = []
+    for name, (level, expected_hash) in expected.items():
+        path = root / name
+        if not path.is_file():
+            FAILURES.append(f"FBE evidence missing: {path.relative_to(ROOT)}")
+            continue
+        raw = path.read_bytes()
+        captures.append(raw)
+        if len(raw) != 0x478:
+            FAILURES.append(f"{name}: expected 1144 bytes, got {len(raw)}")
+            continue
+        if sum(raw) & 0xFF:
+            FAILURES.append(f"{name}: additive checksum invalid")
+        if raw[0x0023] != level:
+            FAILURES.append(f"{name}: file[0x0023]={raw[0x0023]} != FBE level {level}")
+        if raw[0x001B] != 7 or raw[0x001C] != 7:
+            FAILURES.append(f"{name}: Mic HP/LP capture bytes changed from 7/7")
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != expected_hash:
+            FAILURES.append(f"{name}: sha256 {digest} != immutable evidence {expected_hash}")
+
+    if len(captures) == 5:
+        for level in range(1, 5):
+            changed = {
+                offset
+                for offset, (before, after) in enumerate(zip(captures[level - 1], captures[level]))
+                if before != after
+            }
+            if changed != {0x0023, 0x0475}:
+                FAILURES.append(f"FBE{level - 1}->FBE{level}: unexpected diff offsets {sorted(changed)}")
+    PASSES.append("FBE physical evidence: immutable hash/checksum/mapping")
+
 def check_protocol_and_state() -> None:
     require(
         "src/k500/K500Protocol.h",
@@ -643,6 +684,7 @@ def check_ci_topology() -> None:
 
 def main() -> int:
     check_presets()
+    check_fbe_mapping_evidence()
     check_protocol_and_state()
     check_ui_contracts()
     check_public_surface_contracts()

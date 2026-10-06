@@ -23,6 +23,14 @@ function Invoke-Checked {
 }
 
 $donor = "tests/fixtures/donor-sample.k500"
+$fbeGolden = @(
+    "tests/fixtures/fbe/FBE0.k500",
+    "tests/fixtures/fbe/FBE1.k500",
+    "tests/fixtures/fbe/FBE2.k500",
+    "tests/fixtures/fbe/FBE3.k500",
+    "tests/fixtures/fbe/FBE4.k500"
+)
+$fbePersistenceArgs = @($donor) + $fbeGolden
 
 # Compile once, test many: every hardware-free native regression runs from the
 # same Release build. This replaces the old P0/P1/P2/P3/P4 per-workflow rebuilds.
@@ -36,7 +44,7 @@ Invoke-Checked "$BuildDir/k500_protocol_selftest.exe" -Label "Protocol golden ve
 Invoke-Checked "$BuildDir/k500_p2_selftest.exe" -Label "Preset protocol"
 Invoke-Checked "$BuildDir/k500_p3_selftest.exe" -Label "Preset codec"
 Invoke-Checked "$BuildDir/k500_p32_corpus_test.exe" @($donor) "Preset donor corpus"
-Invoke-Checked "$BuildDir/k500_p34_edit_persistence_test.exe" @($donor) "Controlled edit persistence"
+Invoke-Checked "$BuildDir/k500_p34_edit_persistence_test.exe" $fbePersistenceArgs "Controlled edit persistence + FBE golden mapping"
 Invoke-Checked "$BuildDir/k500_p42_batch_test.exe" @($donor) "Batch preset library"
 Invoke-Checked "$BuildDir/k500_donation_prompt_selftest.exe" -Label "Donation prompt calendar"
 Invoke-Checked "$BuildDir/k500_update_selftest.exe" -Label "Updater metadata/integrity"
