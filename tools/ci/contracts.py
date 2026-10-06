@@ -266,6 +266,16 @@ def check_protocol_and_state() -> None:
         "inverse C0 handshake bit",
         "post-ACK 939-byte ownership resync",
     )
+    require(
+        "AGENTS.md",
+        "Disconnect is a **presentation/editor handoff**",
+        "Treating “unknown/offline” as boolean `false` is a regression.",
+    )
+    require(
+        "CHANGELOG.md",
+        "Fixed disconnect handoff for Use Init Volume and VR OFF",
+        "reconnect readback remains authoritative",
+    )
     forbid(
         "docs/PROTOCOL_GOLDEN_VECTORS.md",
         "AA 03 00 07 00 00 F6",
@@ -403,6 +413,28 @@ def check_ui_contracts() -> None:
         "qml/components/SystemWorkspaceImpl.qml",
         "root.presetManager.useInitBusy",
         "root.presetManager.adjMannerBusy",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_OFFLINE_HANDOFF_V1",
+        "mirrorAcceptedDeviceTogglesToOffline",
+        "function onUseInitVolumeChanged()",
+        "function onAdjMannerVrOffChanged()",
+        "root.presetManager.useInitVolumeKnown",
+        "root.presetManager.adjMannerVrOffKnown",
+    )
+    require(
+        "src/k500/K500PresetManager.cpp",
+        "OFFLINE_DEVICE_TRUTH_INVALIDATION_V2",
+        "m_useInitVolumeKnown = false",
+        "m_adjMannerVrOffKnown = false",
+        "interruptedOperation == Operation::UseInit",
+        "interruptedOperation == Operation::AdjManner",
+    )
+    forbid(
+        "src/k500/K500PresetManager.cpp",
+        "m_useInitVolume = false;",
+        "m_adjMannerVrOff = false;",
     )
     require(
         "src/k500/K500DeviceManager.h",
