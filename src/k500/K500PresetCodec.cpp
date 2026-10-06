@@ -39,11 +39,90 @@ qint16 readI16(const QByteArray &bytes, int offset)
     return static_cast<qint16>(readU16(bytes, offset));
 }
 
-quint8 compactTypeNibble(quint16 typeRaw)
+constexpr int NativeEqFrequencyMinHz = 20;
+constexpr int NativeEqFrequencyMaxHz = 20000;
+constexpr int NativeEqQRawMin = 1;
+constexpr int NativeEqQRawMax = 250;
+constexpr int NativeEqGainRawMin = -240;
+constexpr int NativeEqGainRawMax = 240;
+
+quint8 readU8(const QByteArray &bytes, int offset)
 {
-    if (typeRaw == 0x0100) return 0x10;
-    if (typeRaw == 0x0200) return 0x20;
-    return 0x00;
+    return inRange(bytes, offset)
+        ? static_cast<quint8>(static_cast<unsigned char>(bytes.at(offset)))
+        : 0;
+}
+
+bool compactTypeNibble(quint16 typeRaw, quint8 *nibble)
+{
+    if (!nibble) return false;
+    if (typeRaw <= 0x0003) { *nibble = 0x00; return true; }
+    if (typeRaw == 0x0100) { *nibble = 0x10; return true; }
+    if (typeRaw == 0x0200) { *nibble = 0x20; return true; }
+    return false;
+}
+
+bool reject(QString *error, const QString &message)
+{
+    if (error) *error = message;
+    return false;
+}
+
+QString hexOffset(int offset)
+{
+    return QStringLiteral("0x%1").arg(offset, 4, 16, QLatin1Char('0')).toUpper();
+}
+
+bool verifyProjectionUnchecked(const QByteArray &presetFile,
+                               const QByteArray &slotImage,
+                               QString *error)
+{
+    if (slotImage.size() != DeviceSlotImageLength)
+        return reject(error, QStringLiteral("Native slot image must be exactly 0x0290 bytes."));
+
+    for (int activeOffset = 0; activeOffset < LiveScalarEnd; ++activeOffset) {
+        const int fileOffset = K500FieldContract::ScalarGeometry::fileOffsetForActiveScalar(activeOffset);
+        if (slotImage.at(activeOffset) != presetFile.at(fileOffset)) {
+            return reject(error, QStringLiteral(
+                "Shadow verification failed at scalar active %1 <- file %2.")
+                .arg(hexOffset(activeOffset), hexOffset(fileOffset)));
+        }
+    }
+
+    for (const auto &d : EqMap) {
+        for (int i = 0; i < d.bands; ++i) {
+            const int src = d.fileOffset + 2 + i * 8;
+            const int dst = d.liveOffset + i * 5;
+            const quint16 typeRaw = readU16(presetFile, src);
+            const quint16 frequency = readU16(presetFile, src + 2);
+            const quint16 qRaw = readU16(presetFile, src + 4);
+            const qint16 gainRaw = readI16(presetFile, src + 6);
+            quint8 typeNibble = 0;
+            if (!compactTypeNibble(typeRaw, &typeNibble))
+                return reject(error, QStringLiteral("Internal PEQ type verification failure."));
+
+            const quint8 expectedTypeSign = static_cast<quint8>(
+                typeNibble | (gainRaw < 0 ? 0x80 : 0x00));
+            const quint8 expectedMagnitude = static_cast<quint8>(
+                std::abs(static_cast<int>(gainRaw)));
+
+            if (readU8(slotImage, dst) != (frequency & 0xff)
+                || readU8(slotImage, dst + 1) != ((frequency >> 8) & 0xff)
+                || readU8(slotImage, dst + 2) != qRaw
+                || readU8(slotImage, dst + 3) != expectedTypeSign
+                || readU8(slotImage, dst + 4) != expectedMagnitude) {
+                return reject(error, QStringLiteral(
+                    "Shadow verification failed for %1 band %2.")
+                    .arg(QString::fromLatin1(d.key)).arg(i + 1));
+            }
+        }
+    }
+
+    if (slotImage.mid(0x027c, 4) != presetFile.mid(0x044c, 4))
+        return reject(error, QStringLiteral("Shadow verification failed for native slot tail."));
+    if (slotImage.mid(0x0280, 0x10) != presetFile.mid(NameOffset, 0x10))
+        return reject(error, QStringLiteral("Shadow verification failed for preset name."));
+    return true;
 }
 }
 
@@ -167,10 +246,86 @@ PatchResult applyWhitelistedPatches(const QByteArray &source,
     return r;
 }
 
+bool validateDeviceSlotCompatibility(const QByteArray &presetFile, QString *error)
+{
+    if (error) error->clear();
+    if (presetFile.size() != PresetFileLength)
+        return reject(error, QStringLiteral(
+            "Device slot conversion requires a 0x0478-byte .k500 file."));
+    if (!validateChecksum(presetFile))
+        return reject(error, QStringLiteral(
+            "Device slot conversion requires a checksum-valid .k500 file."));
+
+    const Document document(presetFile);
+    if (document.name().size() > 16)
+        return reject(error, QStringLiteral(
+            "Preset name exceeds the 16-character hardware-visible limit."));
+
+    for (const auto &field : K500FieldContract::EvidenceBackedScalars) {
+        const int raw = readU8(presetFile, field.fileOffset);
+        if (!K500FieldContract::rawValueValid(field, raw)) {
+            return reject(error, QStringLiteral(
+                "Evidence-backed scalar at file %1 is outside native range %2..%3 (raw=%4).")
+                .arg(hexOffset(field.fileOffset))
+                .arg(field.rawMin).arg(field.rawMax).arg(raw));
+        }
+    }
+
+    for (const auto &d : EqMap) {
+        for (int i = 0; i < d.bands; ++i) {
+            const int src = d.fileOffset + 2 + i * 8;
+            const quint16 typeRaw = readU16(presetFile, src);
+            const quint16 frequency = readU16(presetFile, src + 2);
+            const quint16 qRaw = readU16(presetFile, src + 4);
+            const qint16 gainRaw = readI16(presetFile, src + 6);
+            quint8 typeNibble = 0;
+
+            if (!compactTypeNibble(typeRaw, &typeNibble)) {
+                return reject(error, QStringLiteral(
+                    "%1 band %2 has unsupported PEQ typeRaw 0x%3; native slot supports Bell aliases 0x0000..0x0003, LS 0x0100, HS 0x0200 only.")
+                    .arg(QString::fromLatin1(d.key)).arg(i + 1)
+                    .arg(typeRaw, 4, 16, QLatin1Char('0')));
+            }
+            if (frequency < NativeEqFrequencyMinHz || frequency > NativeEqFrequencyMaxHz) {
+                return reject(error, QStringLiteral(
+                    "%1 band %2 frequency %3 Hz is outside native %4..%5 Hz.")
+                    .arg(QString::fromLatin1(d.key)).arg(i + 1).arg(frequency)
+                    .arg(NativeEqFrequencyMinHz).arg(NativeEqFrequencyMaxHz));
+            }
+            if (qRaw < NativeEqQRawMin || qRaw > NativeEqQRawMax) {
+                return reject(error, QStringLiteral(
+                    "%1 band %2 Q raw %3 is outside native %4..%5.")
+                    .arg(QString::fromLatin1(d.key)).arg(i + 1).arg(qRaw)
+                    .arg(NativeEqQRawMin).arg(NativeEqQRawMax));
+            }
+            if (gainRaw < NativeEqGainRawMin || gainRaw > NativeEqGainRawMax) {
+                return reject(error, QStringLiteral(
+                    "%1 band %2 gain raw %3 is outside native %4..%5 (0.1 dB units).")
+                    .arg(QString::fromLatin1(d.key)).arg(i + 1).arg(gainRaw)
+                    .arg(NativeEqGainRawMin).arg(NativeEqGainRawMax));
+            }
+        }
+    }
+    return true;
+}
+
+bool verifyDeviceSlotProjection(const QByteArray &presetFile,
+                                const QByteArray &slotImage,
+                                QString *error)
+{
+    if (error) error->clear();
+    QString compatibilityError;
+    if (!validateDeviceSlotCompatibility(presetFile, &compatibilityError))
+        return reject(error, compatibilityError);
+    return verifyProjectionUnchecked(presetFile, slotImage, error);
+}
+
 QByteArray buildDeviceSlotImage(const QByteArray &presetFile, QString *error)
 {
-    if (presetFile.size() != PresetFileLength) {
-        if (error) *error = QStringLiteral("Device slot conversion requires a 0x0478-byte .k500 file.");
+    if (error) error->clear();
+    QString validationError;
+    if (!validateDeviceSlotCompatibility(presetFile, &validationError)) {
+        if (error) *error = validationError;
         return {};
     }
     QByteArray live(DeviceSlotImageLength, char(0));
@@ -189,15 +344,24 @@ QByteArray buildDeviceSlotImage(const QByteArray &presetFile, QString *error)
             const qint16 gainRaw = readI16(presetFile, src + 6);
             live[dst] = static_cast<char>(freq & 0xff);
             live[dst + 1] = static_cast<char>((freq >> 8) & 0xff);
-            live[dst + 2] = static_cast<char>(std::clamp<int>(qRaw, 1, 0xff));
-            live[dst + 3] = static_cast<char>(compactTypeNibble(typeRaw) | (gainRaw < 0 ? 0x80 : 0x00));
-            const int magnitude = std::min<int>(std::abs(static_cast<int>(gainRaw)), 0xff);
-            live[dst + 4] = static_cast<char>(magnitude);
+            quint8 typeNibble = 0;
+            compactTypeNibble(typeRaw, &typeNibble); // validated above
+            live[dst + 2] = static_cast<char>(qRaw);
+            live[dst + 3] = static_cast<char>(
+                typeNibble | (gainRaw < 0 ? 0x80 : 0x00));
+            live[dst + 4] = static_cast<char>(
+                std::abs(static_cast<int>(gainRaw)));
         }
     }
 
     live.replace(0x027c, 4, presetFile.mid(0x044c, 4));
     live.replace(0x0280, 0x10, presetFile.mid(NameOffset, 0x10));
+
+    QString shadowError;
+    if (!verifyProjectionUnchecked(presetFile, live, &shadowError)) {
+        if (error) *error = shadowError;
+        return {};
+    }
     return live;
 }
 

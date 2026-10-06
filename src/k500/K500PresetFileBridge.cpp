@@ -43,6 +43,9 @@ bool readValidPreset(const QString &path, QByteArray *bytes)
     const K500PresetCodec::Document document(candidate);
     if (!document.validSize() || !document.checksumOk())
         return false;
+    QString compatibilityError;
+    if (!K500PresetCodec::validateDeviceSlotCompatibility(candidate, &compatibilityError))
+        return false;
     if (bytes)
         *bytes = candidate;
     return true;
@@ -167,6 +170,9 @@ QVariantMap K500PresetFileBridge::describePreset(const QByteArray &bytes,
     const K500PresetCodec::Document document(bytes);
     const bool sizeOk = document.validSize();
     const bool checksumOk = sizeOk && document.checksumOk();
+    QString compatibilityError;
+    const bool deviceCompatible = checksumOk
+        && K500PresetCodec::validateDeviceSlotCompatibility(bytes, &compatibilityError);
 
     QVariantMap entry;
     entry.insert(QStringLiteral("index"), index);
@@ -180,7 +186,9 @@ QVariantMap K500PresetFileBridge::describePreset(const QByteArray &bytes,
     entry.insert(QStringLiteral("size"), bytes.size());
     entry.insert(QStringLiteral("sizeOk"), sizeOk);
     entry.insert(QStringLiteral("checksumOk"), checksumOk);
-    entry.insert(QStringLiteral("valid"), sizeOk && checksumOk);
+    entry.insert(QStringLiteral("deviceCompatible"), deviceCompatible);
+    entry.insert(QStringLiteral("compatibilityError"), compatibilityError);
+    entry.insert(QStringLiteral("valid"), sizeOk && checksumOk && deviceCompatible);
     return entry;
 }
 
@@ -466,6 +474,15 @@ bool K500PresetFileBridge::persistMappedEdit(const QString &path,
         return false;
     }
 
+    QString compatibilityError;
+    if (!K500PresetCodec::validateDeviceSlotCompatibility(edit.patch.bytes, &compatibilityError)) {
+        const QString reason = QStringLiteral("Edit membuat preset tidak dapat direpresentasikan persis oleh hardware: %1")
+            .arg(compatibilityError);
+        setError(QStringLiteral("%1: %2").arg(path, reason));
+        emit persistenceRejected(path, reason);
+        return false;
+    }
+
     m_sourceBytes = edit.patch.bytes;
     refreshDocumentMetadata();
     setError({});
@@ -504,6 +521,12 @@ bool K500PresetFileBridge::saveFile(const QUrl &url)
     setError({});
     if (!loaded() || !K500PresetCodec::validateChecksum(m_sourceBytes)) {
         setError(QStringLiteral("Belum ada working .k500 valid untuk diekspor."));
+        return false;
+    }
+    QString compatibilityError;
+    if (!K500PresetCodec::validateDeviceSlotCompatibility(m_sourceBytes, &compatibilityError)) {
+        setError(QStringLiteral("Preset belum aman untuk hardware dan tidak diekspor: %1")
+                     .arg(compatibilityError));
         return false;
     }
 

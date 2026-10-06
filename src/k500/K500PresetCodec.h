@@ -89,6 +89,18 @@ PatchResult applyWhitelistedPatches(const QByteArray &source,
                                     const QSet<int> &allowedOffsets,
                                     bool recomputeChecksum = true);
 
+// Strict upload/preview compatibility gate. Container validity alone is not
+// enough: every semantic value used by the 0x0290 native slot must be exactly
+// representable without clamping, type fallback or silent normalization.
+bool validateDeviceSlotCompatibility(const QByteArray &presetFile,
+                                     QString *error = nullptr);
+
+// Shadow-decode verification: prove that an already built native slot contains
+// exactly the scalar/EQ/tail/name semantics encoded by the source .k500 file.
+bool verifyDeviceSlotProjection(const QByteArray &presetFile,
+                                const QByteArray &slotImage,
+                                QString *error = nullptr);
+
 // Convert a complete .k500 file into the native 0x0290 equipment-slot image.
 // This is NOT source.left(0x0290): scalar offsets use the verified +8/+9 split
 // and 8-byte file EQ bands are compacted into native 5-byte live records.

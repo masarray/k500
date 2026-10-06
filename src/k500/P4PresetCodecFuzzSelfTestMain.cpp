@@ -116,16 +116,27 @@ bool deterministicPresetFuzz(QString *error)
             return false;
         }
 
+        QString compatibilityError;
+        const bool compatible = K500PresetCodec::validateDeviceSlotCompatibility(
+            source, &compatibilityError);
         QString slotError;
         const QByteArray slot = K500PresetCodec::buildDeviceSlotImage(source, &slotError);
-        if (validSize) {
+        if (compatible) {
             if (slot.size() != K500PresetCodec::DeviceSlotImageLength) {
-                if (error) *error = QStringLiteral("valid preset did not produce 0x0290 slot image at iteration %1").arg(iteration);
+                if (error) *error = QStringLiteral("compatible preset did not produce 0x0290 slot image at iteration %1").arg(iteration);
                 return false;
             }
-        } else if (!slot.isEmpty() || slotError.isEmpty()) {
-            if (error) *error = QStringLiteral("invalid preset size was accepted by slot conversion at iteration %1").arg(iteration);
-            return false;
+            QString shadowError;
+            if (!K500PresetCodec::verifyDeviceSlotProjection(source, slot, &shadowError)) {
+                if (error) *error = QStringLiteral("compatible preset failed shadow verification at iteration %1: %2")
+                    .arg(iteration).arg(shadowError);
+                return false;
+            }
+        } else {
+            if (!slot.isEmpty() || slotError.isEmpty() || compatibilityError.isEmpty()) {
+                if (error) *error = QStringLiteral("incompatible preset was not rejected deterministically at iteration %1").arg(iteration);
+                return false;
+            }
         }
 
         const QByteArray checksummed = K500PresetCodec::updateChecksum(source);

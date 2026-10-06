@@ -247,6 +247,23 @@ int main(int argc, char **argv)
     if (!bridge.loadFile(QUrl::fromLocalFile(bPath)) || bridge.editTracking())
         return fail(QStringLiteral("new preset load did not reset offline edit session"));
 
+    QByteArray semanticInvalid = source;
+    semanticInvalid[K500FieldContract::Field::MicFbe.fileOffset] = char(5);
+    semanticInvalid = K500PresetCodec::updateChecksum(semanticInvalid);
+    const QString semanticBadPath = dir.filePath(QStringLiteral("03_SEMANTIC_INVALID.k500"));
+    if (!writeFile(semanticBadPath, semanticInvalid))
+        return fail(QStringLiteral("cannot create semantic-invalid fixture"));
+    if (bridge.loadFile(QUrl::fromLocalFile(semanticBadPath)))
+        return fail(QStringLiteral("semantic-invalid preset was accepted for staging"));
+    if (bridge.lastError().isEmpty())
+        return fail(QStringLiteral("semantic-invalid staging rejection had no explanation"));
+    QVariantList semanticBadUrls;
+    semanticBadUrls << QUrl::fromLocalFile(aPath) << QUrl::fromLocalFile(semanticBadPath);
+    if (!bridge.buildMassUploadEntries(semanticBadUrls, 1).isEmpty())
+        return fail(QStringLiteral("semantic-invalid member did not abort entire batch"));
+    if (bridge.lastError().contains(QStringLiteral("Checksum"), Qt::CaseInsensitive))
+        return fail(QStringLiteral("semantic-invalid preset was misreported as checksum failure"));
+
     QByteArray corrupt = source;
     corrupt[0x20] = static_cast<char>(static_cast<unsigned char>(corrupt.at(0x20)) ^ 0x01);
     const QString badPath = dir.filePath(QStringLiteral("03_CORRUPT.k500"));

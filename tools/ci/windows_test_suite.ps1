@@ -44,6 +44,35 @@ Invoke-Checked "$BuildDir/k500_protocol_selftest.exe" -Label "Protocol golden ve
 Invoke-Checked "$BuildDir/k500_p2_selftest.exe" -Label "Preset protocol"
 Invoke-Checked "$BuildDir/k500_p3_selftest.exe" -Label "Preset codec"
 Invoke-Checked "$BuildDir/k500_p32_corpus_test.exe" @($donor) "Preset donor corpus"
+
+Write-Host "==> C++ / Python native-slot differential"
+$cppProjectionOutput = & "$BuildDir/k500_p32_corpus_test.exe" $donor "--slot-sha256" 2>&1
+if ($LASTEXITCODE -ne 0) {
+    $cppProjectionOutput | Write-Host
+    throw "C++ native-slot projection failed with exit code $LASTEXITCODE"
+}
+$pythonExe = Get-Command python -ErrorAction SilentlyContinue
+$pythonPrefix = @()
+if (-not $pythonExe) {
+    $pythonExe = Get-Command py -ErrorAction SilentlyContinue
+    $pythonPrefix = @("-3")
+}
+if (-not $pythonExe) { throw "Python is required for preset projection differential" }
+$pythonProjectionOutput = & $pythonExe.Source @pythonPrefix "tools/k500_preset_lab.py" "slot-hash" $donor 2>&1
+if ($LASTEXITCODE -ne 0) {
+    $pythonProjectionOutput | Write-Host
+    throw "Python native-slot projection failed with exit code $LASTEXITCODE"
+}
+$cppMatch = [regex]::Match(($cppProjectionOutput -join "`n"), "SLOT_SHA256=([0-9a-fA-F]{64})")
+$pythonMatch = [regex]::Match(($pythonProjectionOutput -join "`n"), "SLOT_SHA256=([0-9a-fA-F]{64})")
+if (-not $cppMatch.Success -or -not $pythonMatch.Success) {
+    throw "Native-slot differential did not emit comparable SHA-256 fingerprints"
+}
+if ($cppMatch.Groups[1].Value.ToLowerInvariant() -ne $pythonMatch.Groups[1].Value.ToLowerInvariant()) {
+    throw "C++ / Python native-slot projection mismatch: C++=$($cppMatch.Groups[1].Value) Python=$($pythonMatch.Groups[1].Value)"
+}
+Write-Host "Native-slot projection SHA-256: $($cppMatch.Groups[1].Value)"
+
 Invoke-Checked "$BuildDir/k500_p34_edit_persistence_test.exe" $fbePersistenceArgs "Controlled edit persistence + FBE golden mapping"
 Invoke-Checked "$BuildDir/k500_p42_batch_test.exe" @($donor) "Batch preset library"
 Invoke-Checked "$BuildDir/k500_donation_prompt_selftest.exe" -Label "Donation prompt calendar"
