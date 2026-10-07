@@ -1,8 +1,8 @@
 name: Windows Updater Release Candidate
-run-name: Updater RC v1.1.0-rc.${{ inputs.rc_number }}
+run-name: Updater RC v1.1.1-rc.${{ inputs.rc_number }}
 
 # Manual-only P4 candidate publisher. A green candidate does not promote stable;
-# stable v1.1+ remains blocked by docs/V1_1_UPDATER_RC_ACCEPTANCE.md.
+# stable v1.1+ remains blocked by docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md.
 on:
   workflow_dispatch:
     inputs:
@@ -29,7 +29,7 @@ env:
 
 jobs:
   package-updater-rc:
-    name: Qualify v1.1 updater RC
+    name: Qualify v1.1.1 updater RC
     runs-on: windows-2022
     timeout-minutes: 45
 
@@ -51,10 +51,10 @@ jobs:
             throw 'Unable to read project version from CMakeLists.txt'
           }
           $version = $Matches[1]
-          if ($version -ne '1.1.0') { throw "P4 updater RC requires source version 1.1.0; found $version" }
+          if ($version -ne '1.1.1') { throw "P4 updater RC requires source version 1.1.1; found $version" }
           $tag = "v$version-rc.$env:RC_NUMBER"
-          $gate = Get-Content 'docs/V1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
-          if ($gate -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=(pending|accepted)\s*$') {
+          $gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
+          if ($gate -notmatch '(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$') {
             throw 'Updater acceptance record has no valid machine-readable token.'
           }
           $url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"
@@ -255,8 +255,8 @@ jobs:
             "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
             $artifacts += [ordered]@{ file=$file.Name; sha256=$hash; bytes=$file.Length }
           }
-          $gate = Get-Content 'docs/V1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
-          if ($gate -notmatch '(?m)^UPDATER_V1_1_ACCEPTANCE=(pending|accepted)\s*$') { throw 'Acceptance token missing' }
+          $gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
+          if ($gate -notmatch '(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$') { throw 'Acceptance token missing' }
           $acceptance = $Matches[1]
           $manifest = [ordered]@{
             schema = 'sonkupik-k500-updater-rc-v1'
@@ -309,9 +309,9 @@ jobs:
           body: |
             **Updater release candidate — not public stable.**
 
-            This exact build qualifies the v1.1.0 Windows updater lifecycle: machine-wide and per-user installers, explicit no-admin migration, rollback/recovery, resumable downloads, and persistence safeguards.
+            This exact build qualifies the v1.1.1 patch release on the proven v1.1 updater lifecycle: machine-wide and per-user installers, explicit no-admin migration, rollback/recovery, resumable downloads, and persistence safeguards.
 
-            Public stable remains v1.0.3 until `UPDATER_V1_1_ACCEPTANCE=accepted` is committed after acceptance.
+            Public stable remains v1.1.0 until `UPDATER_V1_1_1_ACCEPTANCE=accepted` is committed after acceptance.
 
             Windows binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
           files: |
