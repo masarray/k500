@@ -93,7 +93,17 @@ Write-Host "==> Deploy Qt runtime"
 windeployqt --release --qmldir qml "$PackageDir/SonKuPik-K500.exe"
 if ($LASTEXITCODE -ne 0) { throw "windeployqt failed" }
 
-foreach ($arg in @("--font-self-test", "--protocol-self-test", "--update-health-check=1.1.0")) {
+# RUNTIME_VERSION_FROM_CMAKE_V1 — release health checks must follow the exact
+# source version instead of silently pinning the previous public release.
+$cmakeVersionText = Get-Content CMakeLists.txt -Raw
+$cmakeVersionMatch = [regex]::Match(
+    $cmakeVersionText,
+    'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)'
+)
+if (-not $cmakeVersionMatch.Success) { throw "Could not derive runtime version from CMakeLists.txt" }
+$runtimeVersion = $cmakeVersionMatch.Groups[1].Value
+
+foreach ($arg in @("--font-self-test", "--protocol-self-test", "--update-health-check=$runtimeVersion")) {
     Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @($arg) "Runtime $arg"
 }
 
