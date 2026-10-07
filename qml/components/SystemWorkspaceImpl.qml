@@ -88,6 +88,18 @@ Item {
             root.offlineAdjMannerVrOff = !!root.presetManager.adjMannerVrOff
     }
 
+    // SYSTEM_LATE_LOAD_OFFLINE_SEED_V1
+    // SystemWorkspaceImpl is lazy-created. If a complete device session already
+    // connected and disconnected before the first System visit, the manager
+    // intentionally retains the last accepted boolean payloads while Known=false.
+    // Seed presentation only; this never restores hardware authority or queues I/O.
+    function seedOfflineTogglesFromRetainedSession() {
+        if (root.deviceConnected || !root.presetManager)
+            return
+        root.offlineUseInitVolume = !!root.presetManager.useInitVolume
+        root.offlineAdjMannerVrOff = !!root.presetManager.adjMannerVrOff
+    }
+
     function requestUseInitVolumeToggle() {
         if (!root.deviceConnected) {
             // Use Init is capture-proven as a device-global C0/CMD 0x12 state,
@@ -287,7 +299,10 @@ Item {
 
     Component.onCompleted: {
         root.bindFileBridgeEngine()
-        root.mirrorAcceptedDeviceTogglesToOffline()
+        if (root.deviceConnected)
+            root.mirrorAcceptedDeviceTogglesToOffline()
+        else
+            root.seedOfflineTogglesFromRetainedSession()
         if (root.activeDeviceSlot >= 0)
             root.selectedDeviceSlot = root.activeDeviceSlot
         root.modeNameDraft = root.selectedDeviceModeName
