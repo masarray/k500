@@ -685,14 +685,37 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.0 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must remain 1.1.0 for RC5")
-    if "V1_1_RC5_PUBLIC_RELEASE_QUALIFICATION_ANCHOR" not in cmake:
-        FAILURES.append("CMakeLists.txt: RC5 qualification anchor missing")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.1 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: source version must be 1.1.1 for the patch release")
+    if "V1_1_1_PATCH_RELEASE_QUALIFICATION_ANCHOR" not in cmake:
+        FAILURES.append("CMakeLists.txt: v1.1.1 qualification anchor missing")
 
-    acceptance = read("docs/V1_1_UPDATER_RC_ACCEPTANCE.md")
-    if not re.search(r"(?m)^UPDATER_V1_1_ACCEPTANCE=(pending|accepted)\s*$", acceptance):
-        FAILURES.append("updater acceptance machine-readable token missing")
+    legacy_acceptance = read("docs/V1_1_UPDATER_RC_ACCEPTANCE.md")
+    for token in (
+        "UPDATER_V1_1_ACCEPTANCE=accepted",
+        "UPDATER_V1_1_ACCEPTED_TAG=v1.1.0-rc.5",
+        "UPDATER_V1_1_ACCEPTED_COMMIT=01c545ed27d9a4316fb255765a25ae41f0e1457a",
+    ):
+        if token not in legacy_acceptance:
+            FAILURES.append(f"historical v1.1.0 acceptance provenance changed: {token}")
+
+    acceptance = read("docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md")
+    if not re.search(r"(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$", acceptance):
+        FAILURES.append("v1.1.1 updater acceptance machine-readable token missing")
+    require(
+        ".github/workflows/windows-updater-rc.yml",
+        "v1.1.1-rc.${{ inputs.rc_number }}",
+        "docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md",
+        "UPDATER_V1_1_1_ACCEPTANCE",
+        "Public stable remains v1.1.0",
+    )
+    require(
+        ".github/workflows/windows-updater-promote.yml",
+        "docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md",
+        "UPDATER_V1_1_1_ACCEPTED_COMMIT",
+        "$stableTag = 'v1.1.1'",
+        "Public stable SonKuPik K500 v1.1.1.",
+    )
 
     require(
         "packaging/windows/installer.iss",
@@ -741,9 +764,19 @@ def check_release_contracts() -> None:
         "QCryptographicHash::Sha256",
     )
     require(
+        "tools/ci/windows_test_suite.ps1",
+        "RUNTIME_VERSION_FROM_CMAKE_V1",
+        "$runtimeVersion = $cmakeVersionMatch.Groups[1].Value",
+        "--update-health-check=$runtimeVersion",
+    )
+    forbid(
+        "tools/ci/windows_test_suite.ps1",
+        "--update-health-check=1.1.0",
+    )
+    require(
         ".github/workflows/windows-updater-promote.yml",
         "byte-identical-rc-artifact-promotion",
-        "UPDATER_V1_1_ACCEPTED_COMMIT",
+        "UPDATER_V1_1_1_ACCEPTED_COMMIT",
         "Stable staging changed accepted bytes:",
         "overwrite_files: false",
     )

@@ -1,13 +1,13 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.1.0 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.1.1 LANGUAGES CXX)
 
-# V1_1_RC5_PUBLIC_RELEASE_QUALIFICATION_ANCHOR
-# Non-semantic release marker: CMakeLists.txt is watched by every workflow
-# required by the v1.1 RC publisher. RC5 is the first immutable candidate that
-# includes the final capture-backed K500 protocol/readback closure, Adj Manner
-# hardware-ownership semantics, synchronized presets, and installer-only public
-# distribution contract on one exact SHA.
+# V1_1_1_PATCH_RELEASE_QUALIFICATION_ANCHOR
+# v1.1.1 is the first patch release after public v1.1.0. The RC must contain
+# the exact current-main preset bank plus the post-v1.1.0 System-toggle UX,
+# capture-backed VR OFF fixes, disconnect/offline handoff, semantic preset
+# hardening and CI regression closure on one immutable SHA. Stable promotion
+# must reuse the accepted RC installer bytes without rebuilding.
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

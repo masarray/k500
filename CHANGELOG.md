@@ -2,6 +2,21 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — v1.1.1 patch release
+
+### Release scope
+
+- Consolidates all accepted post-v1.1.0 changes from current `main`: the hardware-auditioned Mode 01/Mode 02 flagship presets, premium System toggle UX, capture-correct VR OFF runtime behavior, disconnect-to-offline-edit handoff, preset semantic/range hardening, and consolidated regression guards.
+- Keeps the public support scope unchanged at Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
+- Uses the existing immutable updater model: build one exact `v1.1.1-rc.N`, record installer SHA-256 after qualification, then publish stable v1.1.1 by byte-identical promotion only.
+- The public Smart Installer route continues to follow GitHub `/releases/latest`; no landing-page code change is required when stable promotion makes v1.1.1 latest.
+
+### Release authorization
+
+- Release owner authorized v1.1.1 preparation after real-device validation of the VR OFF/toggle fixes and acceptance of the latest System UX and preset updates.
+- Final stable promotion remains fail-closed until the exact RC workflow, installer/runtime validation, deep updater acceptance, immutable tag/commit provenance, and installer hashes are recorded.
+
+
 ## Unreleased — Mode 02 flagship broadcast lock
 
 ### Changed
