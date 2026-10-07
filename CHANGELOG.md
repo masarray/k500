@@ -2,6 +2,23 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — Mode 02 flagship broadcast lock
+
+### Changed
+
+- Promoted the real-K500-auditioned `MC HOST RADIO R3` architecture as the new official Mode 02 flagship while preserving the balanced enhanced Music core, Main/Sub tonal foundation, Mic dynamics, and unknown/reserved bytes.
+- R1 established the close broadcast voice: more chest authority, less 300–500 Hz boxiness, lower 2.5–4.5 kHz fatigue, and slightly more upper detail/air.
+- R2 converted the old short-karaoke ambience into a controlled studio-booth field: Surround direct Mic `30 -> 24`, Main Reverb `44 -> 34`, Center Reverb `20 -> 12`, and front Echo reduced while retaining the 95 ms / repeat-1 early reflection.
+- R3 restored freshness without making the announcer sharp: Mic 6.3 kHz `-0.3 -> 0.0 dB`, 11 kHz shelf `+8.3 -> +8.9 dB`, Main/Surround Reverb `36/50`, and a `600 ms / 25 ms / 400-13000 Hz` airy booth field.
+- The temporary audition identity `MC HOST RADIO R3` was normalized back to `MC HOST RADIO`; sonic parameter bytes are unchanged by promotion.
+
+### Qualification
+
+- Three staged hardware recordings were used to preserve causal attribution: dry voice first, booth architecture second, fresh-air polish last.
+- R3 retained the centered/authoritative presenter image while restoring lateral high-frequency breath; the 3.9 kHz and 9.27 kHz comfort/sibilance guards remain locked.
+- Official SHA-256: `adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7`.
+- Detailed byte/provenance and lock rationale: `docs/K500_MODE02_FLAGSHIP_R3_ACCEPTANCE.md`.
+
 ## Unreleased — Mode 01 flagship singer-comfort lock
 
 ### Changed
@@ -29,8 +46,8 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 
 ### Qualification
 
-- Modes 01, 03 and 05 remain the accepted anchors.
-- Modes 02, 04 and 06–10 remain **candidate** until one controlled real-K500 listening pass confirms that the shared enhanced Music foundation does not compromise each preset's context.
+- Modes 01, 02, 03 and 05 are now hardware-accepted anchors; Mode 02 keeps the shared enhanced Music foundation inside its independently accepted broadcast flagship.
+- Modes 04 and 06–10 remain **candidate** until one controlled real-K500 listening pass confirms that the shared enhanced Music foundation does not compromise each preset's context.
 - Public RC/stable provenance must not consume these candidate bytes before that gate passes.
 
 
