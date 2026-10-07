@@ -150,11 +150,35 @@ The promoted distribution bytes preserve the exact R2.1 sonic parameters. The te
 
 Future experiments normally branch from the current official bytes; rollback investigations may explicitly return to the archived native hash recorded in the v1.0 history.
 
+### Mode 02 flagship broadcast authority
+
+Mode 02 completed a three-stage real-K500 hardware audition on 2026-10-07:
+
+```text
+R1: dry-voice foundation -> more 120–250 Hz authority, less 250–500 Hz boxiness, stronger 2.5–4.5 kHz comfort guard
+R2: studio-booth spatial architecture -> less direct Surround voice and less audible front FX while retaining the 95 ms single early reflection
+R3: fresh-air polish -> small dry-vocal detail/air lift plus a more open high-frequency wet field without raising the 9.27 kHz sibilance region
+```
+
+The accepted distribution authority is:
+
+```text
+resources/presets/02_MC_HOST_RADIO.k500
+internal name: MC HOST RADIO
+SHA-256: adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7
+```
+
+The temporary audition file `MC HOST RADIO R3` had SHA-256 `39eddffca6aeffebbd5544b42ad4499c205ae0a8fd021b10ada374331a3dde67`. Promotion changes only the temporary name bytes plus additive checksum; all sonic parameter bytes are identical to the accepted R3 hardware candidate.
+
+Locked architecture: balanced enhanced Music core, Sub/Main tonal foundation, Mic dynamics and 95 Hz HPF, broadcast body/boxiness balance, 3.9/9.27 kHz comfort guards, 95 ms repeat-1 Echo, Main/Center authority, controlled direct Surround voice, and the fresh/airy 600 ms studio-booth field. Detailed evidence is in `docs/K500_MODE02_FLAGSHIP_R3_ACCEPTANCE.md`.
+
 ## 8. Balanced Enhanced Music Core candidate bank
 
-The accepted hardware anchors are now **01, 03, and 05**. The user explicitly
-prefers the Music result of all three. Their seven Music-PEQ gains occupy a very
-tight, already-proven envelope:
+The hardware-accepted preset anchors are now **01, 02, 03, and 05**. The shared
+Music core itself was derived from the explicitly preferred 01/03/05 Music
+results; Mode 02 has since accepted that core in its independently auditioned
+broadcast context. The 01/03/05 seven-band gains occupy a very tight,
+already-proven envelope:
 
 | Music band | 01 | 03 | 05 | Balanced core |
 | --- | ---: | ---: | ---: | ---: |
@@ -175,7 +199,7 @@ The proposed shared core is therefore:
 Every value is inside the exact range already accepted on real K500 hardware;
 this is an interpolation of accepted results, not a new extrapolated voicing.
 
-On branch `preset/balanced-enhanced-bank-20261004`, Slots 02, 04 and 06–10
+On branch `preset/balanced-enhanced-bank-20261004`, Slots 04 and 06–10 remain candidate work. Slot 02 has since completed its independent broadcast-flagship hardware audition; historically that branch prepared Slots 02, 04 and 06–10 to
 apply that shared Music core **only to the seven Music PEQ gain fields**.
 Frequencies, Q, raw filter aliases, crossovers, Mic A/B, dynamics, Reverb,
 Echo, routing, output EQ/gain, compressor, delays and unknown/reserved bytes
@@ -183,7 +207,7 @@ remain byte-identical to each slot's current official donor.
 
 That intentionally preserves context:
 
-- **02 MC HOST RADIO:** enhanced backing music while the dry/controlled MC vocal path remains intact.
+- **02 MC HOST RADIO:** the enhanced backing-music core is now retained inside the accepted fresh/airy broadcast flagship; dry-vocal and booth-spatial evolution is documented separately.
 - **04 POP ROCK BALLAD:** enhanced common Music foundation; existing rock/ballad vocal and spatial routing remains the context.
 - **06 SHOLAWAT SYAHDU:** enhanced Music quality while the softer devotional Mic/FX architecture remains untouched.
 - **07 JAZZ LOUNGE:** the common Music quality is adopted, while its lower Surround/Sub routing and intimate vocal architecture preserve lounge scale.
@@ -191,12 +215,12 @@ That intentionally preserves context:
 - **09 ACOUSTIC NATURAL:** common Music quality is added without rewriting its more restrained routing/output or natural vocal identity.
 - **10 REGGAE DUB:** the Music path is modernized while its existing strong Sub route and rhythmic Echo/Dub architecture remain the genre authority.
 
-Candidate hashes:
+Bank status:
 
 | Slot | Repository file | Status / SHA-256 |
 |---:|---|---|
 | 01 | `01_KONSER_NYANYI.k500` | accepted, unchanged — `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1` |
-| 02 | `02_MC_HOST_RADIO.k500` | **candidate** — `8b18cdbd1f4e1ae409c882d84955bfa34ca770e459615524591732182f14339c` |
+| 02 | `02_MC_HOST_RADIO.k500` | **accepted flagship R3** — `adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7` |
 | 03 | `03_KAR_DANGDUT.k500` | accepted, unchanged — `ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc` |
 | 04 | `04_POP_ROCK_BALLAD.k500` | **candidate** — `bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c` |
 | 05 | `05_POP_KENANGAN_V2.k500` | accepted R2, unchanged — `e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5` |
@@ -206,10 +230,7 @@ Candidate hashes:
 | 09 | `09_ACOUSTIC_NATURAL.k500` | **candidate** — `785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b` |
 | 10 | `10_REGGAE_DUB.k500` | **candidate** — `e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f` |
 
-These candidates are prepared for one controlled real-K500 audition pass.
-Do not call them hardware-accepted or merge them to the public release line
-until that listening gate passes. Once accepted, promote the exact bytes; do
-not rebuild them.
+Slot 02 has now passed its controlled real-K500 audition and is promoted as the exact accepted flagship bytes above. Slots 04 and 06–10 remain candidates; do not call those hardware-accepted or merge them to the public release line until their listening gates pass. Once accepted, promote exact bytes; do not rebuild them.
 
 ## 9. Locking policy
 

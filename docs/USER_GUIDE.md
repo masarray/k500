@@ -181,7 +181,7 @@ The current official Mode 01 is `KONSER NYANYI`, evolved from the exact native K
 The official library is intentionally differentiated:
 
 - 01 KONSER NYANYI — universal concert karaoke;
-- 02 MC HOST RADIO — dry Broadcast utility;
+- 02 MC HOST RADIO — fresh/airy flagship Broadcast voice with controlled studio-booth ambience;
 - 03 KAR DANGDUT — Dangdut;
 - 04 POP ROCK BALLAD — pop/slow-rock;
 - 05 POP KENANGAN V2 — nostalgic slow-pop;
