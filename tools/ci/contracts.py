@@ -417,7 +417,9 @@ def check_ui_contracts() -> None:
     require(
         "qml/components/SystemWorkspaceImpl.qml",
         "SYSTEM_OFFLINE_HANDOFF_V1",
+        "SYSTEM_LATE_LOAD_OFFLINE_SEED_V1",
         "mirrorAcceptedDeviceTogglesToOffline",
+        "seedOfflineTogglesFromRetainedSession",
         "function onUseInitVolumeChanged()",
         "function onAdjMannerVrOffChanged()",
         "root.presetManager.useInitVolumeKnown",
