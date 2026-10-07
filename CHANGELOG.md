@@ -59,6 +59,8 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 
 ### Fixed
 
+- Fixed disconnect handoff for Use Init Volume and VR OFF: disconnect now invalidates hardware authority without forcing either boolean to OFF, while the UI continues from the last accepted/read state as an offline editable shadow; reconnect readback remains authoritative and never auto-applies offline edits.
+
 - Retired the old speculative Dance Mic reconnect seed after physical evidence proved file scalar `0x0094` belongs to Adj Manner VR OFF. Dance Mic write encoding remains captured, but live editing fails closed until an independent paired reconnect seed is proven.
 - Corrected canonical evidence promotion for capture-proven Mic/Main/Surround/Center/Sub crossover types instead of leaving physically mapped output types marked assumed.
 - Preserved parallel QRIS/support work from current `main` while integrating the protocol branch, including the shared `src/main.cpp` changes.

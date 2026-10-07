@@ -89,6 +89,16 @@ State layers must remain distinct:
 
 A refactor that makes one layer masquerade as another is a regression even if the UI looks simpler.
 
+Disconnect is a **presentation/editor handoff**, not a command that turns boolean
+controls OFF. For System toggles such as Use Init Volume and Adj Manner / VR OFF:
+
+- while ONLINE, only accepted/readback state may mirror into the offline working shadow;
+- disconnect invalidates hardware authority (`Known=false`) but must not zero the last value;
+- the offline shadow remains editable and is never queued/auto-written on reconnect;
+- reconnect/Recall authoritative device hydration wins again and refreshes the shadow.
+
+Treating “unknown/offline” as boolean `false` is a regression.
+
 ## UI interaction-state invariant
 
 Qt/QML GUI objects remain on the GUI thread. Do **not** create a background

@@ -74,6 +74,20 @@ Item {
             root.offlineAdjMannerVrOff = !!system.adjMannerVrOff
     }
 
+    // SYSTEM_OFFLINE_HANDOFF_V1
+    // Keep the offline working controls aligned with the latest accepted/read
+    // ONLINE state. Unknown/optimistic values are deliberately ignored. On
+    // disconnect the bindings fall back to these shadows without changing them.
+    // Reconnect never uploads them; authoritative device hydration wins again.
+    function mirrorAcceptedDeviceTogglesToOffline() {
+        if (!root.deviceConnected || !root.presetManager)
+            return
+        if (root.presetManager.useInitVolumeKnown)
+            root.offlineUseInitVolume = !!root.presetManager.useInitVolume
+        if (root.presetManager.adjMannerVrOffKnown)
+            root.offlineAdjMannerVrOff = !!root.presetManager.adjMannerVrOff
+    }
+
     function requestUseInitVolumeToggle() {
         if (!root.deviceConnected) {
             // Use Init is capture-proven as a device-global C0/CMD 0x12 state,
@@ -273,6 +287,7 @@ Item {
 
     Component.onCompleted: {
         root.bindFileBridgeEngine()
+        root.mirrorAcceptedDeviceTogglesToOffline()
         if (root.activeDeviceSlot >= 0)
             root.selectedDeviceSlot = root.activeDeviceSlot
         root.modeNameDraft = root.selectedDeviceModeName
@@ -298,11 +313,22 @@ Item {
         }
         function onConnectedChanged() {
             // DEVICE_TRUTH_EDIT_ISOLATION_V1 — a real K500 session always wins.
-            // Disable PC edit persistence before any subsequent LIVE user edits.
-            if (root.deviceConnected && root.fileBridge)
-                root.fileBridge.editTracking = false
+            // On connect, mirror the authoritative hydrated values into the
+            // offline working shadow before LIVE editing starts. On disconnect,
+            // do not touch that shadow: it is the intentional visual/editor handoff.
+            if (root.deviceConnected) {
+                root.mirrorAcceptedDeviceTogglesToOffline()
+                if (root.fileBridge)
+                    root.fileBridge.editTracking = false
+            }
             if (root.activeDeviceSlot >= 0)
                 root.selectedDeviceSlot = root.activeDeviceSlot
+        }
+        function onUseInitVolumeChanged() {
+            root.mirrorAcceptedDeviceTogglesToOffline()
+        }
+        function onAdjMannerVrOffChanged() {
+            root.mirrorAcceptedDeviceTogglesToOffline()
         }
     }
 

@@ -48,28 +48,53 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
                 m_activeSlot = 0;
                 emit activeSlotChanged();
             }
-            // OFFLINE_USE_INIT_V1 + USE_INIT_DEVICE_TRUTH_V1 — never retain a
-            // PC preference as device truth while offline. Connect-time C0
-            // hydration owns the actual Use Init Volume state.
-            if (m_useInitVolumeKnown || m_useInitVolume) {
-                m_useInitVolume = false;
-                m_useInitVolumeKnown = false;
-                emit useInitVolumeChanged();
-            }
-            // Offline state is never device truth. Reconnect C0/full readback will
-            // restore Adj Manner from the capture-proven hardware flag.
-            if (m_adjMannerVrOffKnown || m_adjMannerVrOff) {
-                m_adjMannerVrOff = false;
-                m_adjMannerVrOffKnown = false;
-                emit adjMannerVrOffChanged();
-            }
+
+            // OFFLINE_DEVICE_TRUTH_INVALIDATION_V2
+            // Disconnect removes hardware authority; it does NOT mean boolean
+            // controls suddenly became false. Preserve the last accepted/read
+            // payload and invalidate only its Known bit. The QML offline working
+            // shadow already mirrors accepted online state and will continue from
+            // that value. A future reconnect/readback replaces it authoritatively.
+            bool useInitChanged = false;
+            bool adjMannerChanged = false;
+
+            // If transport disappears while a setter is still optimistic, roll
+            // back to the last accepted value before dropping device authority.
             if (busy()) {
                 clearTimeout();
+                const Operation interruptedOperation = m_operation;
+                if (interruptedOperation == Operation::UseInit
+                    && (m_useInitVolume != m_previousUseInitVolume
+                        || m_useInitVolumeKnown != m_previousUseInitVolumeKnown)) {
+                    m_useInitVolume = m_previousUseInitVolume;
+                    m_useInitVolumeKnown = m_previousUseInitVolumeKnown;
+                    useInitChanged = true;
+                }
+                if (interruptedOperation == Operation::AdjManner
+                    && (m_adjMannerVrOff != m_previousAdjMannerVrOff
+                        || m_adjMannerVrOffKnown != m_previousAdjMannerVrOffKnown)) {
+                    m_adjMannerVrOff = m_previousAdjMannerVrOff;
+                    m_adjMannerVrOffKnown = m_previousAdjMannerVrOffKnown;
+                    adjMannerChanged = true;
+                }
                 m_operation = Operation::None;
                 m_step = Step::Idle;
                 m_readbackPurpose = ReadbackPurpose::None;
                 emit busyChanged();
             }
+
+            if (m_useInitVolumeKnown) {
+                m_useInitVolumeKnown = false;
+                useInitChanged = true;
+            }
+            if (m_adjMannerVrOffKnown) {
+                m_adjMannerVrOffKnown = false;
+                adjMannerChanged = true;
+            }
+            if (useInitChanged)
+                emit useInitVolumeChanged();
+            if (adjMannerChanged)
+                emit adjMannerVrOffChanged();
         }
     });
     connect(m_manager, &K500DeviceManager::transportModeChanged,
