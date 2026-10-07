@@ -14,7 +14,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 ### Release authorization
 
 - Release owner authorized v1.1.1 preparation after real-device validation of the VR OFF/toggle fixes and acceptance of the latest System UX and preset updates.
-- Final stable promotion remains fail-closed until the exact RC workflow, installer/runtime validation, deep updater acceptance, immutable tag/commit provenance, and installer hashes are recorded.
+- RC1 completed exact-main qualification successfully and its machine/per-user installer hashes are recorded in `docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md`; stable v1.1.1 is now eligible only for byte-identical promotion of those accepted bytes.
 
 
 ## Unreleased — Mode 02 flagship broadcast lock
