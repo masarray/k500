@@ -764,6 +764,16 @@ def check_release_contracts() -> None:
         "QCryptographicHash::Sha256",
     )
     require(
+        "tools/ci/windows_test_suite.ps1",
+        "RUNTIME_VERSION_FROM_CMAKE_V1",
+        "$runtimeVersion = $cmakeVersionMatch.Groups[1].Value",
+        "--update-health-check=$runtimeVersion",
+    )
+    forbid(
+        "tools/ci/windows_test_suite.ps1",
+        "--update-health-check=1.1.0",
+    )
+    require(
         ".github/workflows/windows-updater-promote.yml",
         "byte-identical-rc-artifact-promotion",
         "UPDATER_V1_1_1_ACCEPTED_COMMIT",
