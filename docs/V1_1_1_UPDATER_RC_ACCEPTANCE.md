@@ -2,11 +2,11 @@
 
 > This file is the fail-closed acceptance gate for the v1.1.1 patch release. The historical v1.1.0 acceptance record remains immutable in `docs/V1_1_UPDATER_RC_ACCEPTANCE.md`.
 
-UPDATER_V1_1_1_ACCEPTANCE=pending
-UPDATER_V1_1_1_ACCEPTED_TAG=pending
-UPDATER_V1_1_1_ACCEPTED_COMMIT=pending
-UPDATER_V1_1_1_MACHINE_SHA256=pending
-UPDATER_V1_1_1_USER_SHA256=pending
+UPDATER_V1_1_1_ACCEPTANCE=accepted
+UPDATER_V1_1_1_ACCEPTED_TAG=v1.1.1-rc.1
+UPDATER_V1_1_1_ACCEPTED_COMMIT=df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13
+UPDATER_V1_1_1_MACHINE_SHA256=122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03
+UPDATER_V1_1_1_USER_SHA256=0387799511a2c05269f536112ec4a17d12d05487814ba16cce4a9774d4f8b389
 
 ## Candidate scope
 
@@ -34,6 +34,28 @@ That authorization does **not** bypass provenance. Stable publication remains bl
 2. passes the RC workflow, machine/per-user installer runtime validation, consolidated regression suite, and deep updater lifecycle acceptance;
 3. is published under one immutable `v1.1.1-rc.N` tag;
 4. has its exact commit and both installer SHA-256 values recorded below by a reviewed acceptance commit.
+
+## RC1 acceptance record
+
+RC1 completed successfully on 2026-10-08 from exact commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`.
+
+The exact workflow passed:
+
+- exact-main qualification;
+- clean configure/build and complete release regression suite;
+- machine-wide installer runtime validation;
+- per-user installer runtime validation;
+- deep updater lifecycle acceptance;
+- immutable RC provenance generation and publication.
+
+Accepted artifacts:
+
+- Machine installer: `SonKuPik-K500-v1.1.1-rc.1-Windows-Setup.exe`
+  - SHA-256: `122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03`
+- Per-user installer: `SonKuPik-K500-v1.1.1-rc.1-Windows-Setup-PerUser.exe`
+  - SHA-256: `0387799511a2c05269f536112ec4a17d12d05487814ba16cce4a9774d4f8b389`
+
+Stable v1.1.1 publication is authorized only by byte-identical promotion of these accepted installer bytes.
 
 ## Acceptance update after RC qualification
 
