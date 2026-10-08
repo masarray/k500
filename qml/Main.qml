@@ -12,7 +12,9 @@ ApplicationWindow {
     height: 920
     minimumWidth: 1260
     minimumHeight: 800
-    title: "SonKuPik K500 — Karaoke Processor"
+    // WINDOW_TITLE_RUNTIME_VERSION_V1 — CMake -> QCoreApplication -> Qt.application.version.
+    // Never hard-code the public stable tag here: binary version is authoritative.
+    title: "SonKuPik K500 - Karaoke Processor v" + Qt.application.version
     color: Theme.bg
 
     readonly property int lowerRackHeight: 304
