@@ -8,6 +8,8 @@ cross-platform contract suite.
 from __future__ import annotations
 
 import hashlib
+import json
+import tempfile
 import re
 import subprocess
 import sys
@@ -100,6 +102,59 @@ def check_presets() -> None:
         if digest != expected_hash:
             FAILURES.append(f"{path.name}: sha256 {digest} != {expected_hash}")
     PASSES.append("official preset bank: size/checksum/name/hash")
+
+
+
+def check_uaudio_companions() -> None:
+    """Build all ten derived .k500 files and guard the exact donor-only mutation."""
+    require(
+        "CMakeLists.txt",
+        "UAUDIO_COMPANION_PRESET_BANK_V1",
+        "tools/generate_uaudio_presets.py",
+        "SONKUPIK_UAUDIO_PRESET_FILES",
+        "list(APPEND SONKUPIK_PRESET_FILES",
+    )
+    require(
+        "src/k500/K500PresetFileBridge.cpp",
+        "UAUDIO_COMPANION_PRESET_BANK_V1",
+        ":/presets/11_KONSER_NYANYI_UAUDIO.k500",
+        ":/presets/20_REGGAE_DUB_UAUDIO.k500",
+    )
+    try:
+        with tempfile.TemporaryDirectory(prefix="k500-uaudio-") as temp:
+            out = Path(temp)
+            completed = subprocess.run(
+                [sys.executable, str(ROOT / "tools/generate_uaudio_presets.py"),
+                 "--source", str(ROOT / "resources/presets"), "--output", str(out)],
+                capture_output=True, text=True, timeout=30, check=False
+            )
+            if completed.returncode != 0:
+                FAILURES.append("UAUDIO companions generation failed: " + completed.stderr[-1200:])
+                return
+            manifest = json.loads((out / "uaudio-manifest.json").read_text(encoding="utf-8"))
+            if len(manifest) != 10 or len(list(out.glob("*.k500"))) != 10:
+                FAILURES.append("UAUDIO companions: expected exactly 10 generated presets")
+                return
+            for index, entry in enumerate(manifest, 11):
+                path = out / entry["file"]
+                donor = ROOT / "resources/presets" / entry["donor"]
+                generated = path.read_bytes()
+                original = donor.read_bytes()
+                if not path.name.startswith(f"{index:02d}_") or len(generated) != 0x478:
+                    FAILURES.append(f"UAUDIO companions: incorrect output {path.name}")
+                    continue
+                if generated[0x0E] != 5 or sum(generated) & 0xFF:
+                    FAILURES.append(f"UAUDIO companions: source or checksum invalid for {path.name}")
+                if entry["donorSha256"] != hashlib.sha256(original).hexdigest():
+                    FAILURES.append(f"UAUDIO companions: donor provenance mismatch for {path.name}")
+                allowed = set(range(0x454, 0x464)) | {0x0E, 0x475}
+                changed = {i for i, (a, b) in enumerate(zip(original, generated)) if a != b}
+                if not changed <= allowed:
+                    FAILURES.append(f"UAUDIO companions: illegal sonic edits in {path.name}")
+            PASSES.append("UAUDIO companions: 10 verified donor-derived native presets")
+    except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
+        FAILURES.append("UAUDIO companions validation: " + str(exc))
+
 
 
 def check_fbe_mapping_evidence() -> None:
@@ -1076,6 +1131,7 @@ def check_ci_topology() -> None:
 
 def main() -> int:
     check_presets()
+    check_uaudio_companions()
     check_fbe_mapping_evidence()
     check_preset_semantic_safety()
     check_protocol_and_state()
