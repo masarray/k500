@@ -406,7 +406,7 @@ void StudioEngine::mirrorMicEq(int sourceChannel)
             band.value(QStringLiteral("frequency")).toDouble(),
             band.value(QStringLiteral("gain")).toDouble(),
             band.value(QStringLiteral("q")).toDouble(),
-            band.value(QStringLiteral("type")).toString());
+            band.value(QStringLiteral("typeName")).toString());
     }
     destination->syncCrossover(source->hpfHz(), source->lpfHz(),
                                source->hpType(), source->lpType());
