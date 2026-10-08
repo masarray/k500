@@ -557,7 +557,7 @@ int main(int argc, char *argv[])
         // OFFLINE_PREVIEW_CANNOT_CLOBBER_DEVICE_HISTORY_V1 — padded PC file
         // preview must never replace prior VERIFIED slot labels/values.
         QByteArray offlinePreview(0x03AB, char(0));
-        studioEngine.hydrateFromDeviceMemory(offlinePreview, false);
+        studioEngine.hydrateFromPreviewMemory(offlinePreview);
         studioEngine.clearDeviceState();
         if (studioEngine.retainedDeviceModeNames() != names
             || studioEngine.retainedDeviceState().value(QStringLiteral("system")).toMap()
