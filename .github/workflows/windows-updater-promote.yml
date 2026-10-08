@@ -37,20 +37,20 @@ jobs:
           $cmake = Get-Content CMakeLists.txt -Raw
           if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') { throw 'Version not found' }
           $version = $Matches[1]
-          if ($version -ne '1.1.1') { throw "P4 promotion requires source line 1.1.1; found $version" }
+          if ($version -ne '1.1.2') { throw "P4 promotion requires source line 1.1.2; found $version" }
 
-          $gate = Get-Content docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md -Raw
+          $gate = Get-Content docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md -Raw
           function Read-GateToken([string]$name) {
             $escaped = [regex]::Escape($name)
             $match = [regex]::Match($gate, "(?m)^$escaped=(.*)$")
             if (-not $match.Success) { throw "Acceptance record missing $name" }
             return $match.Groups[1].Value.Trim()
           }
-          $state = Read-GateToken 'UPDATER_V1_1_1_ACCEPTANCE'
-          $tag = Read-GateToken 'UPDATER_V1_1_1_ACCEPTED_TAG'
-          $commit = (Read-GateToken 'UPDATER_V1_1_1_ACCEPTED_COMMIT').ToLowerInvariant()
-          $machineHash = (Read-GateToken 'UPDATER_V1_1_1_MACHINE_SHA256').ToLowerInvariant()
-          $userHash = (Read-GateToken 'UPDATER_V1_1_1_USER_SHA256').ToLowerInvariant()
+          $state = Read-GateToken 'UPDATER_V1_1_2_ACCEPTANCE'
+          $tag = Read-GateToken 'UPDATER_V1_1_2_ACCEPTED_TAG'
+          $commit = (Read-GateToken 'UPDATER_V1_1_2_ACCEPTED_COMMIT').ToLowerInvariant()
+          $machineHash = (Read-GateToken 'UPDATER_V1_1_2_MACHINE_SHA256').ToLowerInvariant()
+          $userHash = (Read-GateToken 'UPDATER_V1_1_2_USER_SHA256').ToLowerInvariant()
           if ($state -ne 'accepted') { throw 'Stable updater promotion is blocked until acceptance is exactly accepted.' }
           if ($tag -notmatch '^v1\.1\.1-rc\.[1-9][0-9]*$') { throw "Invalid accepted RC tag: $tag" }
           if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Accepted RC commit must be a full 40-character SHA.' }
@@ -87,7 +87,7 @@ jobs:
           }
           if ($resolvedCommit.ToLowerInvariant() -ne $commit) { throw 'Accepted RC tag commit differs from recorded accepted commit.' }
 
-          $stableTag = 'v1.1.1'
+          $stableTag = 'v1.1.2'
           $stableUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$stableTag"
           $response = Invoke-WebRequest -Uri $stableUrl -Headers @{
             Authorization = "Bearer $env:GH_TOKEN"
@@ -301,11 +301,11 @@ jobs:
           make_latest: true
           generate_release_notes: true
           body: |
-            Public stable SonKuPik K500 v1.1.1.
+            Public stable SonKuPik K500 v1.1.2.
 
-            The machine installer and scope-matched per-user updater package are the exact binary bytes accepted from `${{ steps.accept.outputs.accepted_tag }}` at commit `${{ steps.accept.outputs.accepted_commit }}`. Stable promotion did not rebuild them. The recommended public download is the Smart Installer; no portable package is published for v1.1.1.
+            The machine installer and scope-matched per-user updater package are the exact binary bytes accepted from `${{ steps.accept.outputs.accepted_tag }}` at commit `${{ steps.accept.outputs.accepted_commit }}`. Stable promotion did not rebuild them. The recommended public download is the Smart Installer; no portable package is published for v1.1.2.
 
-            v1.1.1 rolls forward the accepted post-v1.1.0 preset, System UX, capture-backed protocol and offline-handoff corrections while preserving the proven updater lifecycle. Windows x64 + USB HID remains the hardware-qualified scope; Bluetooth SPP remains experimental.
+            v1.1.2 rolls forward the accepted post-v1.1.0 preset, System UX, capture-backed protocol and offline-handoff corrections while preserving the proven updater lifecycle. Windows x64 + USB HID remains the hardware-qualified scope; Bluetooth SPP remains experimental.
 
             Binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
           files: |
