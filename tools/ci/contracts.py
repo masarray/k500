@@ -645,12 +645,12 @@ def check_ui_contracts() -> None:
         'title: "Mic HPF & LPF"',
         'title: "Reverb HPF & LPF"',
         'title: "Echo HPF & LPF"',
-        'title: "Crossover & Speaker Delay"',
+        'title: "X-OVER & SPK DELAY"',
     )
     if read("qml/components/SectionWorkspace.qml").count(
-        'title: "Crossover & Speaker Delay"'
+        'title: "X-OVER & SPK DELAY"'
     ) != 4:
-        FAILURES.append("all four output sections must say Crossover & Speaker Delay")
+        FAILURES.append("all four output sections must say X-OVER & SPK DELAY")
     require("qml/components/FilterPanel.qml", 'text: "MUSIC HPF & LPF"')
     require("qml/components/MasterStripPanel.qml", 'text: "MASTER VOLUME"')
     require("qml/components/MusicTonePanel.qml", 'text: "PITCH SHIFTER (NADA MUSIK)"')
