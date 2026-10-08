@@ -26,6 +26,7 @@ class K500PresetManager final : public QObject
     Q_PROPERTY(bool adjMannerVrOffKnown READ adjMannerVrOffKnown NOTIFY adjMannerVrOffChanged)
     Q_PROPERTY(bool usbStoreAvailable READ usbStoreAvailable NOTIFY connectedChanged)
     Q_PROPERTY(int activeSlot READ activeSlot NOTIFY activeSlotChanged)
+    Q_PROPERTY(int lastKnownSlot READ lastKnownSlot NOTIFY lastKnownSlotChanged)
     Q_PROPERTY(QString progress READ progress NOTIFY progressChanged)
 
 public:
@@ -43,6 +44,7 @@ public:
     bool adjMannerVrOffKnown() const { return m_adjMannerVrOffKnown; }
     bool usbStoreAvailable() const;
     int activeSlot() const { return m_activeSlot; }
+    int lastKnownSlot() const { return m_lastKnownSlot; }
     QString progress() const { return m_progress; }
 
     Q_INVOKABLE void recallMode(int slotOneBased);
@@ -69,6 +71,7 @@ signals:
     void useInitVolumeChanged();
     void adjMannerVrOffChanged();
     void activeSlotChanged();
+    void lastKnownSlotChanged();
     void progressChanged();
     void activeMemoryReady(const QByteArray &memory);
     void operationCompleted(const QString &kind, int slotOneBased);
@@ -141,6 +144,7 @@ private:
     int m_requestedSlot = 1;
     QString m_requestedModeName;
     int m_activeSlot = 0;
+    int m_lastKnownSlot = 0;
     QString m_progress;
 
     QByteArray m_readbackMemory;
