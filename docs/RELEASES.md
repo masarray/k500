@@ -8,13 +8,13 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.1.0**.
+Current public stable: **v1.1.1**.
 
-Current public stable source line: **v1.1.0**.
+Current public stable source line: **v1.1.1**.
 
-Next patch candidate source line: **v1.1.1**. It is not public stable until an immutable v1.1.1 RC is accepted and promoted byte-identically.
+No next application version is declared yet. Start a new immutable RC line only after the source version is intentionally bumped.
 
-Stable **v1.1.0** was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`. RC4 predates the final protocol/readback and Adj Manner ownership closure and was not eligible for promotion.
+Stable **v1.1.1** was promoted byte-identically from accepted **v1.1.1-rc.1** at exact source commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Stable **v1.1.0** remains historical and was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`.
 
 Current qualified scope: **Windows 10/11 x64 + USB HID**.
 
@@ -37,6 +37,19 @@ MAJOR.MINOR.PATCH
 - **MAJOR** — support/architecture/API expectations that intentionally reset compatibility expectations.
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
+
+## v1.1.1 stable record
+
+- Stable tag: `v1.1.1`
+- Accepted RC: `v1.1.1-rc.1`
+- Exact binary source commit: `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`
+- Acceptance metadata merge: `ab32ee9d7560fc88926b255852345644b4dffdc4`
+- Machine Setup SHA-256: `122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03`
+- Per-user Setup SHA-256: `0387799511a2c05269f536112ec4a17d12d05487814ba16cce4a9774d4f8b389`
+- Publication: byte-identical promotion; no installer rebuild after RC acceptance
+- Public latest channel: GitHub `/releases/latest` and the SonKuPik landing download route
+
+The v1.1.1 binary includes the accepted current-main Mode 01/02 presets, premium System toggle UX, capture-backed VR OFF corrections, disconnect/offline handoff, semantic preset hardening, and consolidated regression closure.
 
 ## v1.0.0 stable record
 

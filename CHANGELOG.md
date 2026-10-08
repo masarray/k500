@@ -2,22 +2,22 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
-## Unreleased — v1.1.1 patch release
+## v1.1.1 — 2026-10-08
 
 ### Release scope
 
 - Consolidates all accepted post-v1.1.0 changes from current `main`: the hardware-auditioned Mode 01/Mode 02 flagship presets, premium System toggle UX, capture-correct VR OFF runtime behavior, disconnect-to-offline-edit handoff, preset semantic/range hardening, and consolidated regression guards.
 - Keeps the public support scope unchanged at Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
-- Uses the existing immutable updater model: build one exact `v1.1.1-rc.N`, record installer SHA-256 after qualification, then publish stable v1.1.1 by byte-identical promotion only.
-- The public Smart Installer route continues to follow GitHub `/releases/latest`; no landing-page code change is required when stable promotion makes v1.1.1 latest.
+- Published stable v1.1.1 by byte-identical promotion of accepted `v1.1.1-rc.1`; the machine and per-user installer hashes are unchanged from the accepted RC.
+- GitHub `/releases/latest`, the landing `/api/release` endpoint, and `/download/windows` now resolve stable v1.1.1.
 
 ### Release authorization
 
 - Release owner authorized v1.1.1 preparation after real-device validation of the VR OFF/toggle fixes and acceptance of the latest System UX and preset updates.
-- RC1 completed exact-main qualification successfully and its machine/per-user installer hashes are recorded in `docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md`; stable v1.1.1 is now eligible only for byte-identical promotion of those accepted bytes.
+- RC1 completed exact-main qualification successfully; stable promotion completed without rebuilding. Machine SHA-256 is `122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03` and per-user SHA-256 is `0387799511a2c05269f536112ec4a17d12d05487814ba16cce4a9774d4f8b389`.
 
 
-## Unreleased — Mode 02 flagship broadcast lock
+## v1.1.1 — Mode 02 flagship broadcast lock
 
 ### Changed
 
@@ -34,7 +34,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Official SHA-256: `adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7`.
 - Detailed byte/provenance and lock rationale: `docs/K500_MODE02_FLAGSHIP_R3_ACCEPTANCE.md`.
 
-## Unreleased — Mode 01 flagship singer-comfort lock
+## v1.1.1 — Mode 01 flagship singer-comfort lock
 
 ### Changed
 
@@ -50,7 +50,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Official SHA-256: `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1`.
 - The detailed audit and lock rationale are recorded in `docs/K500_MODE01_FLAGSHIP_R21_ACCEPTANCE.md`.
 
-## Unreleased — Balanced Enhanced Music Core candidate
+## v1.1.0 — Balanced Enhanced Music Core candidate
 
 ### Changed
 
@@ -66,7 +66,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Public RC/stable provenance must not consume these candidate bytes before that gate passes.
 
 
-## Unreleased — CI consolidation
+## v1.1.0 — CI consolidation
 
 ### Changed
 
@@ -78,7 +78,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Updater RC qualification now requires one successful exact-main `K500 CI` run instead of six independent workflow names.
 - Legacy milestone workflows were retired from active Actions; their historical implementation remains available through Git history.
 
-## Unreleased — Final K500 protocol and hardware-ownership closure
+## v1.1.0 — Final K500 protocol and hardware-ownership closure
 
 ### Added
 
@@ -103,7 +103,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - The next immutable public candidate is **v1.1.0-rc.5** from the exact post-merge `main` commit.
 - Stable v1.1.0 remains fail-closed until the exact RC5 machine and per-user installer bytes are accepted and recorded in the updater acceptance provenance gate.
 
-## Unreleased — Final musicality preset library
+## v1.1.0 — Final musicality preset library
 
 ### Changed
 
@@ -115,7 +115,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Updated release and consolidated CI guards so packaged, cached and GitHub-synced official presets converge on the evidence-approved mixed bank.
 
 
-## Unreleased — Voluntary QRIS support prompt
+## v1.1.0 — Voluntary QRIS support prompt
 
 ### Added
 
@@ -131,7 +131,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Donation remains optional and does not unlock, restrict, or modify any K500 feature.
 
 
-## Unreleased — Smart Installer public distribution
+## v1.1.0 — Smart Installer public distribution
 
 ### Changed
 
@@ -146,7 +146,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Stable manifest parsing already accepts the two-installer artifact model and regression coverage explicitly exercises both machine and per-user scope selection.
 - RC3 operator testing confirmed correct preset presentation, Program Files migration/UAC behavior, no-admin LocalAppData update, and foreground relaunch; automated migration sentinels cover Documents presets, QSettings, official cache, and uninstall-registration cleanup.
 
-## Unreleased — Synchronize official preset filenames
+## v1.1.0 — Synchronize official preset filenames
 
 ### Changed
 
@@ -156,14 +156,14 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 
 
 
-## Unreleased — Preset 02 display rename
+## v1.1.0 — Preset 02 display rename
 
 ### Changed
 
 - Renamed official Slot 02 internal preset name from `BCAST HIFI V2` to `MC HOST RADIO`.
 - Audio parameters, EQ, dynamics, Reverb/Echo, routing, and donor sonic behavior are unchanged; only the visible/internal name field and additive checksum changed.
 
-## Unreleased — Final official preset library refresh
+## v1.1.0 — Final official preset library refresh
 
 ### Changed
 
@@ -228,7 +228,7 @@ Public stable release from commit `7d6ded580e15b652db97edf0700283e3fa931996`, pr
 ### Validation
 
 - The v1.0.3 device-validation line advanced through RC1/RC2 with exact-build CI and physical-capture-backed fixes before the final public stable package.
-- v1.0.3 remains historical stable release evidence; v1.1.0 is the current latest non-prerelease public stable.
+- v1.0.3 remains historical stable release evidence; the current latest non-prerelease public stable is v1.1.1.
 
 ## 1.0.2 — Smart Windows lifecycle
 

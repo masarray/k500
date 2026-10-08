@@ -132,6 +132,23 @@
 
       const label = document.getElementById('release-label');
       if (label) label.textContent = `Stable ${release.tag}`;
+
+      // LANDING_RELEASE_BUTTON_VERSION_V1 — static HTML carries the current
+      // stable fallback, while every download CTA follows /api/release so the
+      // visible version and the resolved artifact cannot silently diverge.
+      const version = release.version || String(release.tag).replace(/^v/, '');
+      const applyTemplate = (template) => template
+        .replace(/\{tag\}/g, release.tag)
+        .replace(/\{version\}/g, version);
+
+      document.querySelectorAll('[data-release-template]').forEach((element) => {
+        const template = element.getAttribute('data-release-template');
+        if (template) element.textContent = applyTemplate(template);
+      });
+      document.querySelectorAll('[data-release-aria-template]').forEach((element) => {
+        const template = element.getAttribute('data-release-aria-template');
+        if (template) element.setAttribute('aria-label', applyTemplate(template));
+      });
     } catch {
       // Same-origin download routes still resolve the latest stable release even if metadata sync fails.
     } finally {
