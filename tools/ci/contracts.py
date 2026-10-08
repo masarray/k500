@@ -879,6 +879,16 @@ def check_release_contracts() -> None:
         "v1.1.1 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
+    rc_workflow = read(".github/workflows/windows-updater-rc.yml")
+    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw")
+    rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
+    rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
+    if not (0 <= rc_gate < rc_close < rc_url):
+        FAILURES.append("windows-updater-rc.yml: acceptance/closed-line/tag-check ordering is corrupt")
+    if rc_workflow.count("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1") != 1:
+        FAILURES.append("windows-updater-rc.yml: closed-line guard must occur exactly once")
+    if "overwrite_files: false\n) {" in rc_workflow or "accepted\\s*\n          $response" in rc_workflow:
+        FAILURES.append("windows-updater-rc.yml: malformed RC workflow tail detected")
     require(
         "src/main.cpp",
         "DonationPromptController",
