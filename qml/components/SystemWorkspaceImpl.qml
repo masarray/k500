@@ -36,6 +36,25 @@ Item {
     property bool offlineAdjMannerVrOff: false
     property string systemControlHintTarget: ""
     property string systemControlHint: ""
+    // SAVE_AS_EXPLICIT_SOURCE_GATE_V1 — live device readback is not a complete
+    // 1144-byte .k500 document; never silently export fabricated file data.
+    property string pcSaveNotice: ""
+    Timer {
+        id: pcSaveNoticeTimer
+        interval: 6500
+        onTriggered: root.pcSaveNotice = ""
+    }
+    function requestSaveAs() {
+        if (!root.fileBridge)
+            return
+        if (!root.fileBridge.loaded) {
+            root.pcSaveNotice = "Select a preset from the PC bank/local folder or Open file before Save As. Device LIVE readback is not a complete .k500 file."
+            pcSaveNoticeTimer.restart()
+            return
+        }
+        root.pcSaveNotice = ""
+        savePresetDialog.open()
+    }
 
     Timer {
         id: systemControlHintTimer
@@ -389,8 +408,15 @@ Item {
         fileMode: FileDialog.SaveFile
         nameFilters: ["K500 preset (*.k500)"]
         onAccepted: {
-            if (root.fileBridge)
-                root.fileBridge.saveFile(selectedFile)
+            if (!root.fileBridge)
+                return
+            if (root.fileBridge.saveFile(selectedFile)) {
+                root.pcSaveNotice = "Saved: " + String(root.fileBridge.sourceName)
+                pcSaveNoticeTimer.restart()
+            } else {
+                root.pcSaveNotice = String(root.fileBridge.lastError || "Save As failed")
+                pcSaveNoticeTimer.restart()
+            }
         }
     }
 
@@ -615,7 +641,8 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
+                            text: root.pcSaveNotice.length > 0 ? root.pcSaveNotice
+                                  : root.fileBridge && String(root.fileBridge.lastError || "").length > 0
                                   ? String(root.fileBridge.lastError)
                                   : (root.fileBridge && root.fileBridge.dirty
                                      ? ("Verified edit · " + String(root.fileBridge.changedByteCount) + " changed byte(s) incl. checksum")
@@ -626,7 +653,7 @@ Item {
                                            : (root.pcUploadReady
                                               ? ("Staged only · editor remains K500 truth · Upload to hardware slot " + String(root.selectedDeviceSlot + 1))
                                               : "PC library is separate from the 10 hardware slots"))))
-                            color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
+                            color: root.pcSaveNotice.length > 0 || root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                             font.family: Theme.monoFamily
                             font.pixelSize: 8
                             elide: Text.ElideRight
@@ -636,7 +663,7 @@ Item {
                             Layout.fillWidth: true
                             spacing: 6
                             SoftButton { Layout.fillWidth: true; text: "Open file"; compact: true; enabled: !!root.fileBridge; onClicked: openPresetDialog.open() }
-                            SoftButton { Layout.fillWidth: true; text: "Save as"; compact: true; enabled: root.fileBridge && root.fileBridge.loaded; onClicked: savePresetDialog.open() }
+                            SoftButton { Layout.fillWidth: true; text: "Save PC As"; compact: true; enabled: !!root.fileBridge; onClicked: root.requestSaveAs() }
                             SoftButton {
                                 Layout.fillWidth: true
                                 text: root.offlineFileMode ? (root.offlineEditMode ? "Preview again" : "Preview") : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
