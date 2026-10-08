@@ -28,7 +28,7 @@ StudioPanel {
                 anchors.left: parent.left
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                text: "PITCH SHIFTER"
+                text: "PITCH SHIFTER (NADA MUSIK)"
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: 10
