@@ -675,7 +675,8 @@ def check_ui_contracts() -> None:
         "src/StudioEngine.h",
         "retainedDeviceModeNames",
         "retainedDeviceState",
-        "hardwareReadback = true",
+        "void hydrateFromDeviceMemory(const QByteArray &memory)",
+        "void hydrateFromPreviewMemory(const QByteArray &memory)",
     )
     require(
         "src/StudioEngine.cpp",
@@ -687,7 +688,7 @@ def check_ui_contracts() -> None:
     require(
         "src/k500/K500PresetFileBridge.cpp",
         "OFFLINE_PREVIEW_NOT_HARDWARE_V1",
-        "hydrateFromDeviceMemory(preview, false)",
+        "hydrateFromPreviewMemory(preview)",
     )
     require(
         "src/k500/K500PresetManager.cpp",
