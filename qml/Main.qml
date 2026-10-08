@@ -232,13 +232,12 @@ ApplicationWindow {
         onTriggered: AppUpdater.checkForUpdates(false)
     }
 
-    // P1_MIC_EQ_LINK_UI_BRIDGE_V1
-    // SectionEqGraph owns the local toggle and SectionWorkspace mirrors it.
-    // Keep the hardware path at the application boundary through StudioEngine.
+    // MIC_EQ_LINK_USER_INTENT_ONLY_V1 — readback/link hydration never writes
+    // to hardware. Only a user click dispatches one mic.eqLink device edit.
     Connections {
         target: sectionWorkspace
-        function onMicEqLinkedChanged() {
-            root.studioEngine.editDevicePath("mic.eqLink", sectionWorkspace.micEqLinked)
+        function onMicEqLinkUserRequested(linked) {
+            root.studioEngine.editDevicePath("mic.eqLink", linked)
         }
     }
 }
