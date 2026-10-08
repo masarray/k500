@@ -617,6 +617,16 @@ def check_public_surface_contracts() -> None:
             else:
                 PASSES.append(f"QRIS production asset: {width}x{height}")
 
+    # WINDOW_TITLE_RUNTIME_VERSION_V1 — title reports the installed binary,
+    # not a hard-coded release label or a separately cached website version.
+    require(
+        "qml/Main.qml",
+        "WINDOW_TITLE_RUNTIME_VERSION_V1",
+        'title: "SonKuPik K500 - Karaoke Processor v" + Qt.application.version',
+    )
+    require("src/AppVersionInit.cpp", "QCoreApplication::setApplicationVersion")
+    forbid("qml/Main.qml", 'title: "SonKuPik K500 - Karaoke Processor v1.1.1"')
+
     # About/support link contract.
     require(
         "qml/components/AboutDialog.qml",
