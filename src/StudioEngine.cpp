@@ -405,7 +405,17 @@ void StudioEngine::connectEqModel(EqBandModel *model, const QString &key)
     });
 }
 
-void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory, bool hardwareReadback)
+void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
+{
+    hydrateMemory(memory, true);
+}
+
+void StudioEngine::hydrateFromPreviewMemory(const QByteArray &memory)
+{
+    hydrateMemory(memory, false);
+}
+
+void StudioEngine::hydrateMemory(const QByteArray &memory, bool hardwareReadback)
 {
     // K500_FULL_READBACK_SYNC_V1 — exact donor/native active-memory size.
     if (memory.size() < ActiveMemorySize)
