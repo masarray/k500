@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 import tempfile
 import re
 import subprocess
@@ -597,13 +598,64 @@ def check_ui_contracts() -> None:
         "Qt.ControlModifier",
         "Qt.ShiftModifier",
         "selectedSourceIndexes = next",
-        "selectedSourceIndexes.slice().sort",
+        "var selected = selectedSourceIndexes.slice()",
+        "var direction = index >= sourceAnchor ? 1 : -1",
+        "for (var i = sourceAnchor; ; i += direction)",
+        "selectionPosition(index)",
+        'selected ? "#" + String(root.selectionPosition(index)).padStart(2, "0")',
         "targetContains(path)",
         "targetModel.count < maxSlots",
         "root.selectSource(index, mouse.modifiers)",
         "root.selectedSourceIndexes.length > 0",
     )
-    forbid("qml/components/MassUploadTransferWindow.qml", "onClicked: root.sourceIndex = index")
+    forbid(
+        "qml/components/MassUploadTransferWindow.qml",
+        "onClicked: root.sourceIndex = index",
+        "selectedSourceIndexes.slice().sort",
+        "next.sort(function(a, b)",
+        'text: validPreset ? "READY" : "INVALID"',
+    )
+
+    # SELECTION_CHRONOLOGY_BEHAVIOR_TEST_V1 — run the actual QML functions in
+    # a no-GUI JS VM, covering Blues -> Pop Rock, reverse/forward Shift,
+    # Ctrl re-pick ordering, visible rank, duplicate prevention and 10 slots.
+    # Node is available on GitHub-hosted CI; never needed in the shipped EXE.
+    node = shutil.which("node")
+    if node is None:
+        FAILURES.append("Mass Upload selection regression needs Node.js in CI")
+    else:
+        try:
+            js_test = subprocess.run(
+                [node, str(ROOT / "tools/ci/test_mass_selection_order.js")],
+                text=True, capture_output=True, timeout=12, check=False,
+            )
+            if js_test.returncode:
+                FAILURES.append(
+                    "Mass Upload real-QML selection test failed: "
+                    + (js_test.stderr or js_test.stdout)[-1800:]
+                )
+            else:
+                PASSES.append(js_test.stdout.strip())
+        except subprocess.TimeoutExpired:
+            FAILURES.append("Mass Upload real-QML selection regression timed out")
+
+    # UX titles are section-specific, not generic or copy-pasted to wrong DSP.
+    require(
+        "qml/components/SectionWorkspace.qml",
+        'title: "Mic HPF & LPF"',
+        'title: "Reverb HPF & LPF"',
+        'title: "Echo HPF & LPF"',
+        'title: "Crossover & Speaker Delay"',
+    )
+    if read("qml/components/SectionWorkspace.qml").count(
+        'title: "Crossover & Speaker Delay"'
+    ) != 4:
+        FAILURES.append("all four output sections must say Crossover & Speaker Delay")
+    require("qml/components/FilterPanel.qml", 'text: "MUSIC HPF & LPF"')
+    require("qml/components/MasterStripPanel.qml", 'text: "MASTER VOLUME"')
+    require("qml/components/MusicTonePanel.qml", 'text: "PITCH SHIFTER (NADA MUSIK)"')
+    forbid("qml/components/SectionWorkspace.qml", '"Band Limits / Delay"')
+
 
     # PRE_RC_UX_STABILIZATION_V1 — canonical PC catalog IDs never derive
     # from ListView order, and cannot silently change physical 01..10 slots.
