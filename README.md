@@ -45,6 +45,8 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 >
 > **Updater status:** **v1.1.1** was promoted byte-identically from accepted `v1.1.1-rc.1`, built from commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Machine and per-user installers were not rebuilt after acceptance. GitHub `/releases/latest`, the product landing API, and the same-origin Smart Installer route now resolve v1.1.1.
 
+> **Development candidate:** v1.1.2 adds official PC-library UAUDIO presets 11–20, Mass Upload Ctrl/Shift selection, a red active EQ Bypass warning, and the runtime window-title version. This is source/RC work only; stable download remains v1.1.1 until accepted promotion. See [candidate scope](docs/V1_1_2_CANDIDATE_SCOPE.md) and [pending RC gate](docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md).
+
 ## See the real app
 
 <p align="center">
