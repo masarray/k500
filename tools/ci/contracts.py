@@ -668,6 +668,76 @@ def check_ui_contracts() -> None:
         'color:root.eqBypassActive?"#381B23"',
     )
 
+    # LAST_VERIFIED_DEVICE_SLOT_SNAPSHOT_V1 — the view may retain last
+    # successfully read 10-slot identities after Disconnect, but never mark
+    # them ACTIVE or let offline file Preview impersonate a hardware readback.
+    require(
+        "src/StudioEngine.h",
+        "retainedDeviceModeNames",
+        "retainedDeviceState",
+        "void hydrateFromDeviceMemory(const QByteArray &memory)",
+        "void hydrateFromPreviewMemory(const QByteArray &memory)",
+    )
+    require(
+        "src/StudioEngine.cpp",
+        "LAST_VERIFIED_DEVICE_SLOT_SNAPSHOT_V1",
+        "if (hardwareReadback)",
+        "m_retainedDeviceModeNames = modeNames",
+        "m_retainedDeviceState = m_deviceState",
+    )
+    require(
+        "src/k500/K500PresetFileBridge.cpp",
+        "OFFLINE_PREVIEW_NOT_HARDWARE_V1",
+        "hydrateFromPreviewMemory(preview)",
+    )
+    require(
+        "src/k500/K500PresetManager.cpp",
+        "OFFLINE_LAST_KNOWN_DEVICE_SLOT_V1",
+        "m_lastKnownSlot = slot",
+        "emit lastKnownSlotChanged()",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "DEVICE_SLOT_OFFLINE_SHADOW_V1",
+        "root.engine.retainedDeviceModeNames",
+        "root.engine.retainedDeviceState",
+        "root.deviceConnected && index===root.activeDeviceSlot",
+        "root.presetManager.lastKnownSlot",
+    )
+    require(
+        "src/main.cpp",
+        "RETAIN_VERIFIED_DEVICE_MODE_NAMES_TEST_V1",
+        "OFFLINE_PREVIEW_CANNOT_CLOBBER_DEVICE_HISTORY_V1",
+    )
+
+    # MASS_UPLOAD_ACK_PROGRESS_V1 — progress only on device response ACK,
+    # reserve final completion for the successful full Recall/readback. The
+    # dialog cannot disappear or abort in the middle of a store transaction.
+    require(
+        "src/k500/K500PresetManager.h",
+        "massUploadProgressPercent",
+        "massUploadProgressChanged",
+    )
+    require(
+        "src/k500/K500PresetManager.cpp",
+        "MASS_UPLOAD_ACK_PROGRESS_V1",
+        "m_storeOffset += m_pendingStoreLength",
+        "updateMassUploadAcknowledgedProgress()",
+        "99 * accepted / totalBytes",
+        "setMassUploadProgressPercent(100)",
+    )
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1",
+        "verifiedPercent",
+        "transferInFlight",
+        "onOperationCompleted(kind, slot)",
+        "onOperationFailed(kind, message)",
+        "onClosing: function(close)",
+        "Behavior on width",
+        "Easing.OutCubic",
+    )
+
     # Presentation may never bypass the native controller/engine boundary.
     for path in (ROOT / "qml").rglob("*.qml"):
         data = path.read_text(encoding="utf-8")

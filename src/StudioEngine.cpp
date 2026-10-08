@@ -407,6 +407,16 @@ void StudioEngine::connectEqModel(EqBandModel *model, const QString &key)
 
 void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
 {
+    hydrateMemory(memory, true);
+}
+
+void StudioEngine::hydrateFromPreviewMemory(const QByteArray &memory)
+{
+    hydrateMemory(memory, false);
+}
+
+void StudioEngine::hydrateMemory(const QByteArray &memory, bool hardwareReadback)
+{
     // K500_FULL_READBACK_SYNC_V1 — exact donor/native active-memory size.
     if (memory.size() < ActiveMemorySize)
         return;
@@ -737,6 +747,13 @@ void StudioEngine::hydrateFromDeviceMemory(const QByteArray &memory)
         }},
         {QStringLiteral("eq"), eqState},
     };
+    // LAST_VERIFIED_DEVICE_SLOT_SNAPSHOT_V1 — preserve only names whose 939-byte
+    // active-memory readback completed. The live deviceState remains transient;
+    // disconnect clears its authority, not this display-only snapshot.
+    if (hardwareReadback) {
+        m_retainedDeviceModeNames = modeNames;
+        m_retainedDeviceState = m_deviceState;
+    }
     m_deviceStateReady = true;
     emit deviceStateChanged();
 }

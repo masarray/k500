@@ -52,6 +52,41 @@ Window {
     property var selectedSourceIndexes: []
     property int targetIndex: -1
     readonly property int maxSlots: 10
+    // MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1 — modal visual feedback follows
+    // native ACK/verified readback, never a timer-driven fictional percentage.
+    property bool transferInFlight: false
+    property bool transferSucceeded: false
+    property string transferError: ""
+    readonly property int verifiedPercent: root.presetManager
+                                           ? Number(root.presetManager.massUploadProgressPercent || 0) : 0
+    onClosing: function(close) {
+        // Abort/close during CMD 0x41/0x42/0x43 may leave device slots partial.
+        // There is deliberately no mid-store "Cancel" operation.
+        if (root.transferInFlight)
+            close.accepted = false
+    }
+    Connections {
+        target: root.presetManager
+        enabled: !!root.presetManager
+        function onOperationCompleted(kind, slot) {
+            if (kind !== "Mass Upload" || !root.transferInFlight)
+                return
+            root.transferInFlight = false
+            root.transferSucceeded = true
+        }
+        function onOperationFailed(kind, message) {
+            if (kind !== "Mass Upload" || !root.transferInFlight)
+                return
+            root.transferError = String(message)
+            root.transferInFlight = false
+        }
+        function onConnectedChanged() {
+            if (root.transferInFlight && !root.presetManager.connected) {
+                root.transferError = "Connection lost. Upload was interrupted; reconnect and verify device slots before retrying."
+                root.transferInFlight = false
+            }
+        }
+    }
     // Unified source replaces the old folderPresets-only Mass Upload source.
     // folderPresets remains part of combinedPresets together with SONKUPIK official presets.
     readonly property var sourcePresets: root.fileBridge ? root.fileBridge.combinedPresets : []
@@ -101,6 +136,9 @@ Window {
     }
 
     function openTransfer() {
+        transferInFlight = false
+        transferSucceeded = false
+        transferError = ""
         clearSourceSelection()
         targetIndex = -1
         targetModel.clear()
@@ -176,8 +214,12 @@ Window {
             paths.push(String(targetModel.get(i).path))
         var entries = fileBridge.buildTransferUploadEntries(paths)
         if (entries && entries.length > 0) {
+            // Keep the native modal open; the overlay owns progress from
+            // successful Store ACKs, until final 939-byte readback confirms 100%.
+            transferSucceeded = false
+            transferError = ""
+            transferInFlight = true
             presetManager.massUploadSlotImages(entries)
-            visible = false
         }
     }
 
@@ -610,6 +652,118 @@ Window {
                              && root.presetManager.usbStoreAvailable
                              && !root.presetManager.busy
                     onClicked: root.uploadTransfer()
+                }
+            }
+        }
+
+        // Verified-progress transfer overlay; full-screen hit blocker prevents
+        // double-submit and edits while non-cancellable native store is active.
+        Rectangle {
+            id: transferOverlay
+            anchors.fill: parent
+            z: 100
+            visible: root.transferInFlight || root.transferSucceeded || root.transferError.length > 0
+            color: "#D9070D12"
+            MouseArea { anchors.fill: parent; cursorShape: Qt.ArrowCursor }
+
+            Rectangle {
+                width: Math.min(530, parent.width - 52)
+                height: 246
+                anchors.centerIn: parent
+                radius: 14
+                color: "#182128"
+                border.color: root.transferError.length ? "#D85C69" : root.transferSucceeded ? "#51D9BD" : "#315660"
+                border.width: 1
+
+                ColumnLayout {
+                    anchors.fill: parent
+                    anchors.margins: 24
+                    spacing: 11
+                    Text {
+                        text: root.transferError.length ? "MASS UPLOAD INTERRUPTED"
+                              : root.transferSucceeded ? "MASS UPLOAD COMPLETE"
+                              : "MASS UPLOAD IN PROGRESS"
+                        color: root.transferError.length ? "#FF9AA0" : root.transferSucceeded ? "#69E5C5" : Theme.text
+                        font.family: Theme.monoFamily
+                        font.pixelSize: 15
+                        font.weight: Font.Bold
+                        font.letterSpacing: 0.65
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.transferError.length ? root.transferError
+                              : root.transferSucceeded ? "All device writes acknowledged; final Recall and 939-byte verification complete."
+                              : root.presetManager ? String(root.presetManager.progress || "Preparing K500 store transaction…") : ""
+                        color: Theme.textSoft
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 11
+                        wrapMode: Text.WordWrap
+                        Layout.preferredHeight: 39
+                        verticalAlignment: Text.AlignVCenter
+                    }
+                    RowLayout {
+                        Layout.fillWidth: true
+                        Text {
+                            text: root.transferSucceeded ? "VERIFIED" : root.transferError.length ? "LAST CONFIRMED" : "ACKNOWLEDGED"
+                            font.family: Theme.monoFamily
+                            font.pixelSize: 10
+                            font.weight: Font.Bold
+                            color: Theme.textSoft
+                        }
+                        Item { Layout.fillWidth: true }
+                        Text {
+                            text: String(root.verifiedPercent) + "%"
+                            color: root.transferError.length ? "#FF9AA0" : "#6AE9ED"
+                            font.family: Theme.monoFamily
+                            font.pixelSize: 24
+                            font.weight: Font.Bold
+                        }
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 16
+                        radius: 8
+                        color: "#080D11"
+                        border.color: "#35454D"
+                        border.width: 1
+                        clip: true
+                        Rectangle {
+                            anchors.top: parent.top
+                            anchors.bottom: parent.bottom
+                            anchors.left: parent.left
+                            anchors.margins: 2
+                            radius: 6
+                            width: Math.max(0, (parent.width - 4) * Math.max(0, Math.min(100, root.verifiedPercent)) / 100)
+                            color: root.transferError.length ? "#D85C69" : root.transferSucceeded ? "#51D9BD" : "#32C9D5"
+                            Behavior on width {
+                                NumberAnimation { duration: 260; easing.type: Easing.OutCubic }
+                            }
+                        }
+                    }
+                    Text {
+                        Layout.fillWidth: true
+                        text: root.transferInFlight
+                              ? "Do not unplug K500 or close this window while writing device memory."
+                              : root.transferSucceeded ? "Safe to close. Device Slot 01 was recalled and verified."
+                              : "Keep LIVE off until K500 is reconnected and its slots are verified."
+                        color: root.transferInFlight ? "#E3BF68" : Theme.textDim
+                        font.family: Theme.fontFamily
+                        font.pixelSize: 10
+                        wrapMode: Text.WordWrap
+                    }
+                    Item { Layout.fillHeight: true }
+                    SoftButton {
+                        Layout.alignment: Qt.AlignRight
+                        Layout.preferredWidth: 120
+                        text: root.transferSucceeded ? "Done" : "Close"
+                        compact: true
+                        visible: !root.transferInFlight
+                        onClicked: {
+                            root.transferSucceeded = false
+                            root.transferError = ""
+                            root.visible = false
+                        }
+                    }
                 }
             }
         }

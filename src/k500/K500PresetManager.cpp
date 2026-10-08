@@ -214,6 +214,30 @@ void K500PresetManager::setProgress(const QString &progress)
     emit progressChanged();
 }
 
+void K500PresetManager::setMassUploadProgressPercent(int percent)
+{
+    // MASS_UPLOAD_ACK_PROGRESS_V1: percent is derived from ACKed 0x0290
+    // payload bytes, never from frames merely sent or timer animation.
+    const int bounded = qBound(0, percent, 100);
+    if (m_massUploadProgressPercent == bounded)
+        return;
+    m_massUploadProgressPercent = bounded;
+    emit massUploadProgressChanged();
+}
+
+void K500PresetManager::updateMassUploadAcknowledgedProgress()
+{
+    if (m_operation != Operation::MassUpload || m_massEntries.isEmpty())
+        return;
+    const qint64 bytesPerSlot = K500PresetProtocol::DeviceSlotImageLength;
+    const qint64 totalBytes = m_massEntries.size() * bytesPerSlot;
+    // The last 1% is reserved for final Recall/939-byte readback.
+    const qint64 accepted = qBound<qint64>(0,
+        qint64(m_massIndex) * bytesPerSlot + m_storeOffset, totalBytes);
+    setMassUploadProgressPercent(static_cast<int>(99 * accepted / totalBytes));
+}
+
+
 bool K500PresetManager::send(const QByteArray &frame, const QString &label)
 {
     if (!m_manager || frame.isEmpty())
@@ -509,6 +533,7 @@ void K500PresetManager::massUploadSlotImages(const QVariantList &entries)
         return;
     }
 
+    setMassUploadProgressPercent(0);
     m_massEntries = normalized;
     m_massIndex = -1;
     m_storeChain = {};
@@ -550,6 +575,12 @@ void K500PresetManager::onResponse(const K500Response &response)
     if (m_manager && m_manager->m_stage != K500DeviceManager::Stage::Idle
         && response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
         const int slot = qBound(1, static_cast<int>(static_cast<quint8>(response.data.at(0))) + 1, 10);
+        // OFFLINE_LAST_KNOWN_DEVICE_SLOT_V1 — keep the last C0 slot for UI
+        // presentation, but clear the live ACTIVE slot on disconnect.
+        if (m_lastKnownSlot != slot) {
+            m_lastKnownSlot = slot;
+            emit lastKnownSlotChanged();
+        }
         if (m_activeSlot != slot) {
             m_activeSlot = slot;
             emit activeSlotChanged();
@@ -579,6 +610,11 @@ void K500PresetManager::onResponse(const K500Response &response)
         } else if (m_activeSlot != m_requestedSlot) {
             m_activeSlot = m_requestedSlot;
             emit activeSlotChanged();
+        }
+        if (m_activeSlot >= 1 && m_activeSlot <= 10
+            && m_lastKnownSlot != m_activeSlot) {
+            m_lastKnownSlot = m_activeSlot;
+            emit lastKnownSlotChanged();
         }
         startReadback(ReadbackPurpose::Recall);
         return;
@@ -632,6 +668,7 @@ void K500PresetManager::onResponse(const K500Response &response)
         clearTimeout();
         m_storeOffset += m_pendingStoreLength;
         m_pendingStoreLength = 0;
+        updateMassUploadAcknowledgedProgress();
         sendNextStoreChunk();
         return;
     }
@@ -717,6 +754,7 @@ void K500PresetManager::finishReadback()
             return;
         }
         if (m_operation == Operation::MassUpload) {
+            setMassUploadProgressPercent(100); // Only verified final readback.
             setProgress(QStringLiteral("Mass upload complete · slot 1 active · 939-byte resync complete"));
             finishOperation(QStringLiteral("Mass Upload"), resolvedSlot);
             return;
@@ -854,6 +892,10 @@ void K500PresetManager::acceptStoreCommit()
     setProgress(QStringLiteral("Slot %1 saved · commit acknowledged").arg(m_requestedSlot));
 
     if (m_operation == Operation::MassUpload) {
+        // Slot becomes durable only after 0xBC; never infer success from
+        // sending 0x43. This also accounts for an ACKed final slot.
+        m_storeOffset = K500PresetProtocol::DeviceSlotImageLength;
+        updateMassUploadAcknowledgedProgress();
         if (m_massIndex + 1 < m_massEntries.size()) {
             startNextMassEntry();
             return;

@@ -540,8 +540,13 @@ int main(int argc, char *argv[])
         // authority but must NOT reset the last verified HP/LP working state.
         // Reconnect hydration must replace that shadow without editing hardware.
         const int preHandoffEdits = hydrationEdits;
+        // RETAIN_VERIFIED_DEVICE_MODE_NAMES_TEST_V1 — last good hardware
+        // identity survives authority loss, never becoming default SLOT labels.
+        const bool initialNamesVerified = studioEngine.retainedDeviceModeNames() == names;
         studioEngine.clearDeviceState();
-        const bool offlineHandoffValid = !studioEngine.deviceStateReady()
+        const bool offlineHandoffValid = initialNamesVerified
+            && studioEngine.retainedDeviceModeNames() == names
+            && !studioEngine.deviceStateReady()
             && studioEngine.hpType() == QStringLiteral("HP LR 24")
             && studioEngine.lpType() == QStringLiteral("Bypass")
             && studioEngine.micAEqBands()->hpType() == QStringLiteral("HP Bessel 12")
@@ -549,11 +554,28 @@ int main(int argc, char *argv[])
             && hydrationEdits == preHandoffEdits;
         if (!offlineHandoffValid)
             return 7;
-        studioEngine.hydrateFromDeviceMemory(memory);
+        // OFFLINE_PREVIEW_CANNOT_CLOBBER_DEVICE_HISTORY_V1 — padded PC file
+        // preview must never replace prior VERIFIED slot labels/values.
+        QByteArray offlinePreview(0x03AB, char(0));
+        studioEngine.hydrateFromPreviewMemory(offlinePreview);
+        studioEngine.clearDeviceState();
+        if (studioEngine.retainedDeviceModeNames() != names
+            || studioEngine.retainedDeviceState().value(QStringLiteral("system")).toMap()
+                   .value(QStringLiteral("deviceModeNames")).toStringList() != names
+            || hydrationEdits != preHandoffEdits)
+            return 7;
+        // A second hardware readback must supersede the last displayed names.
+        QByteArray newMemory = memory;
+        putFixedAscii(newMemory, 0x0290, 0x10, QByteArray("NEW DEVICE SLOT"));
+        studioEngine.hydrateFromDeviceMemory(newMemory);
         if (!studioEngine.deviceStateReady()
+            || studioEngine.retainedDeviceModeNames().size() != 10
+            || studioEngine.retainedDeviceModeNames().first() != QStringLiteral("NEW DEVICE SLOT")
             || studioEngine.micAEqBands()->lpType() != QStringLiteral("LP Bessel 18")
             || hydrationEdits != preHandoffEdits)
             return 7;
+        // Restore original fixture for the rest of the engine suite.
+        studioEngine.hydrateFromDeviceMemory(memory);
 
         // MUSIC_MAX_NATIVE_CEILING_V1 — lowering Max clamps current Music master
         // immediately; raising Max back does not raise the master.
