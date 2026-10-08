@@ -7,7 +7,8 @@ Item {
     required property var engine
     property int sectionIndex: 1
     property int micChannel: 0
-    property bool micEqLinked: Boolean(groupValue("mic", "eqLink", false))
+    readonly property bool micEqLinked: root.engine ? Boolean(root.engine.micEqLinked) : false
+    signal micEqLinkUserRequested(bool linked)
     readonly property int lowerRackHeight: 304
     readonly property int rightPanelWidth: 216
     readonly property int masterWidth: rightPanelWidth
@@ -82,7 +83,10 @@ Item {
                     Layout.fillHeight: true
                     Layout.minimumHeight: 0
                     onMicChannelRequested: function(channel) { root.micChannel = channel }
-                    onEqLinkRequested: function(linked) { root.micEqLinked = linked }
+                    onEqLinkRequested: function(linked) {
+                        root.engine.setMicEqLinked(linked, root.micChannel)
+                        root.micEqLinkUserRequested(linked)
+                    }
                 }
 
                 RowLayout {

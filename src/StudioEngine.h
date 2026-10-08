@@ -93,6 +93,7 @@ class StudioEngine final : public QObject
     Q_PROPERTY(EqBandModel *musicEqBands READ musicEqBands CONSTANT)
     Q_PROPERTY(EqBandModel *micAEqBands READ micAEqBands CONSTANT)
     Q_PROPERTY(EqBandModel *micBEqBands READ micBEqBands CONSTANT)
+    Q_PROPERTY(bool micEqLinked READ micEqLinked NOTIFY micEqLinkedChanged)
     Q_PROPERTY(EqBandModel *reverbEqBands READ reverbEqBands CONSTANT)
     Q_PROPERTY(EqBandModel *echoEqBands READ echoEqBands CONSTANT)
     Q_PROPERTY(EqBandModel *mainEqBands READ mainEqBands CONSTANT)
@@ -135,6 +136,9 @@ public:
     EqBandModel *musicEqBands() { return &m_musicEqBands; }
     EqBandModel *micAEqBands() { return &m_micAEqBands; }
     EqBandModel *micBEqBands() { return &m_micBEqBands; }
+    bool micEqLinked() const { return m_micEqLinked; }
+    // UI-side source selection is not a second native device write.
+    Q_INVOKABLE void setMicEqLinked(bool linked, int sourceChannel = 0);
     EqBandModel *reverbEqBands() { return &m_reverbEqBands; }
     EqBandModel *echoEqBands() { return &m_echoEqBands; }
     EqBandModel *mainEqBands() { return &m_mainEqBands; }
@@ -279,6 +283,7 @@ public slots:
 
 signals:
     void deviceStateChanged();
+    void micEqLinkedChanged();
     void musicKeyChanged();
     void noiseGateChanged();
     void bassChanged();
@@ -330,6 +335,14 @@ private:
     EqBandModel m_subEqBands;
 
     void hydrateMemory(const QByteArray &memory, bool hardwareReadback);
+
+    // MIC_EQ_LINK_INSTANT_STATE_PARITY_V1 — A/B mirroring is guarded and
+    // uses no-edit sync methods. Device writes remain on the existing path.
+    void mirrorMicEq(int sourceChannel);
+    void syncMicEqLink(bool linked, int sourceChannel);
+    bool m_micEqLinked = false;
+    bool m_micEqMirrorGuard = false;
+    bool m_micEqHydrating = false;
 
     QVariantMap m_deviceState;
     QStringList m_retainedDeviceModeNames;

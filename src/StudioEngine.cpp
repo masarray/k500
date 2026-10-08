@@ -2,6 +2,7 @@
 #include "k500/K500Protocol.h"
 
 #include <QtMath>
+#include <QScopedValueRollback>
 
 namespace {
 constexpr int ActiveMemorySize = 0x03AB;
@@ -363,6 +364,24 @@ StudioEngine::StudioEngine(QObject *parent)
     connectEqModel(&m_musicEqBands, QStringLiteral("music"));
     connectEqModel(&m_micAEqBands, QStringLiteral("micA"));
     connectEqModel(&m_micBEqBands, QStringLiteral("micB"));
+
+    // MIC_EQ_LINK_INSTANT_STATE_PARITY_V1 — any user change to either native
+    // PEQ model immediately syncs its counterpart, even without a readback.
+    // No second bandChanged/crossoverEditRequested or native packet is emitted.
+    const auto mirrorA = [this] {
+        if (m_micEqLinked && !m_micEqHydrating && !m_micEqMirrorGuard)
+            mirrorMicEq(0);
+    };
+    const auto mirrorB = [this] {
+        if (m_micEqLinked && !m_micEqHydrating && !m_micEqMirrorGuard)
+            mirrorMicEq(1);
+    };
+    connect(&m_micAEqBands, &QAbstractItemModel::dataChanged, this, mirrorA);
+    connect(&m_micBEqBands, &QAbstractItemModel::dataChanged, this, mirrorB);
+    connect(&m_micAEqBands, &QAbstractItemModel::modelReset, this, mirrorA);
+    connect(&m_micBEqBands, &QAbstractItemModel::modelReset, this, mirrorB);
+    connect(&m_micAEqBands, &EqBandModel::crossoverChanged, this, mirrorA);
+    connect(&m_micBEqBands, &EqBandModel::crossoverChanged, this, mirrorB);
     connectEqModel(&m_reverbEqBands, QStringLiteral("reverb"));
     connectEqModel(&m_echoEqBands, QStringLiteral("echo"));
     connectEqModel(&m_mainEqBands, QStringLiteral("main"));
@@ -370,6 +389,44 @@ StudioEngine::StudioEngine(QObject *parent)
     connectEqModel(&m_centerEqBands, QStringLiteral("center"));
     connectEqModel(&m_subEqBands, QStringLiteral("sub"));
     syncMusicCrossoverModel();
+}
+
+void StudioEngine::mirrorMicEq(int sourceChannel)
+{
+    if (!m_micEqLinked || m_micEqMirrorGuard || m_micEqHydrating)
+        return;
+
+    QScopedValueRollback<bool> guard(m_micEqMirrorGuard, true);
+    EqBandModel *source = sourceChannel == 1 ? &m_micBEqBands : &m_micAEqBands;
+    EqBandModel *destination = sourceChannel == 1 ? &m_micAEqBands : &m_micBEqBands;
+    const int count = qMin(source->count(), destination->count());
+    for (int index = 0; index < count; ++index) {
+        const QVariantMap band = source->get(index);
+        destination->syncBand(index,
+            band.value(QStringLiteral("frequency")).toDouble(),
+            band.value(QStringLiteral("gain")).toDouble(),
+            band.value(QStringLiteral("q")).toDouble(),
+            band.value(QStringLiteral("typeName")).toString());
+    }
+    destination->syncCrossover(source->hpfHz(), source->lpfHz(),
+                               source->hpType(), source->lpType());
+}
+
+void StudioEngine::syncMicEqLink(bool linked, int sourceChannel)
+{
+    if (m_micEqLinked != linked) {
+        m_micEqLinked = linked;
+        emit micEqLinkedChanged();
+    }
+    if (linked)
+        mirrorMicEq(sourceChannel);
+}
+
+void StudioEngine::setMicEqLinked(bool linked, int sourceChannel)
+{
+    // This method updates the editor model only. The originating UI action
+    // dispatches mic.eqLink exactly once through Main.qml; readback never does.
+    syncMicEqLink(linked, sourceChannel);
 }
 
 void StudioEngine::connectEqModel(EqBandModel *model, const QString &key)
@@ -420,6 +477,7 @@ void StudioEngine::hydrateMemory(const QByteArray &memory, bool hardwareReadback
     // K500_FULL_READBACK_SYNC_V1 — exact donor/native active-memory size.
     if (memory.size() < ActiveMemorySize)
         return;
+    QScopedValueRollback<bool> hydrating(m_micEqHydrating, true);
 
     const auto syncInt = [](int &target, int value, const auto &notify) {
         if (target == value) return;
@@ -755,6 +813,11 @@ void StudioEngine::hydrateMemory(const QByteArray &memory, bool hardwareReadback
         m_retainedDeviceState = m_deviceState;
     }
     m_deviceStateReady = true;
+    // Readback/Preview owns this flag; it must not be interpreted as a
+    // second user click or cause a native mic.eqLink write.
+    const bool linkedFromReadback = mic.value(QStringLiteral("eqLink")).toBool();
+    m_micEqHydrating = false;
+    syncMicEqLink(linkedFromReadback, 0); // canonical Mic A on linked readback.
     emit deviceStateChanged();
 }
 

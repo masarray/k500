@@ -689,6 +689,53 @@ int main(int argc, char *argv[])
             return 7;
         ceilingProbe.endDeviceSession();
         qInfo() << "Music Max controller/DesiredState ceiling regression passed";
+
+        // MIC_EQ_LINK_INSTANT_REGRESSION_V1 — enabling Link must immediately
+        // converge all bands, type, HP/LP without waiting for USB readback.
+        // Mirroring must never generate a second device edit.
+        studioEngine.setMicEqLinked(false);
+        studioEngine.micAEqBands()->setBand(0, 177, 4.5, 1.5);
+        studioEngine.micBEqBands()->setBand(0, 613, -3.0, 2.0);
+        const int editsBeforeLink = hydrationEdits;
+        studioEngine.setMicEqLinked(true, 0);
+        const auto identicalMicModels = [&] {
+            const EqBandModel *a = studioEngine.micAEqBands();
+            const EqBandModel *b = studioEngine.micBEqBands();
+            if (a->count() != b->count() || a->hpType() != b->hpType()
+                || a->lpType() != b->lpType()
+                || !qFuzzyCompare(a->hpfHz(), b->hpfHz())
+                || !qFuzzyCompare(a->lpfHz(), b->lpfHz()))
+                return false;
+            for (int i = 0; i < a->count(); ++i)
+                if (a->get(i) != b->get(i))
+                    return false;
+            return true;
+        };
+        if (!studioEngine.micEqLinked() || !identicalMicModels()
+            || hydrationEdits != editsBeforeLink)
+            return 7;
+        studioEngine.micBEqBands()->setBand(1, 930, 3.0, 1.1);
+        studioEngine.micBEqBands()->setBandType(1, QStringLiteral("HS"));
+        studioEngine.micBEqBands()->setHpType(QStringLiteral("HP LR 24"));
+        if (!identicalMicModels() || hydrationEdits != editsBeforeLink + 3)
+            return 7;
+        studioEngine.micBEqBands()->resetAll();
+        if (!identicalMicModels())
+            return 7;
+        studioEngine.setMicEqLinked(false);
+        studioEngine.micBEqBands()->setBand(0, 211, 5.0, 0.8);
+        if (identicalMicModels())
+            return 7;
+        // Hardware reports LINK=on and potentially divergent native A/B slot
+        // images. Verified Mic A becomes canonical without a second USB write.
+        QByteArray linkedMemory = memory;
+        putFileU8(linkedMemory, 0x0092, 1);
+        const int editsBeforeLinkedReadback = hydrationEdits;
+        studioEngine.hydrateFromDeviceMemory(linkedMemory);
+        if (!studioEngine.micEqLinked() || !identicalMicModels()
+            || hydrationEdits != editsBeforeLinkedReadback)
+            return 7;
+        qInfo() << "Mic EQ LINK instant A/B editor parity regression passed";
     }
 
     QQmlApplicationEngine engine;
