@@ -332,28 +332,33 @@ void EqBandModel::syncCrossover(double hpfHz, double lpfHz,
 StudioEngine::StudioEngine(QObject *parent)
     : QObject(parent)
 {
+    // OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1 — construct all nine EQ models
+    // with HP/LP Type Bypass *before* connecting edit signals. There is no
+    // startup setter, delayed QML replay, stateEdited or hardware write.
+    // Preview metadata and real-device readback use syncCrossover() later;
+    // disconnect preserves the working values instead of re-priming them.
     m_musicEqBands.configure(7, {80, 160, 315, 630, 1300, 2500, 8000},
-                             20, 20000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+                             20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_micAEqBands.configure(10, {80, 125, 250, 500, 1000, 2000, 4000, 6300, 10000, 12500},
-                            20, 20000, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
+                            20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_micBEqBands.configure(10, {80, 125, 250, 500, 1000, 2000, 4000, 6300, 10000, 12500},
-                            20, 20000, QStringLiteral("HP LR 24"), QStringLiteral("LP LR 24"));
+                            20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_reverbEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                              217, 12000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"),
+                              217, 12000, QStringLiteral("Bypass"), QStringLiteral("Bypass"),
                               K500Protocol::NativeRange::FxHpfMinHz, K500Protocol::NativeRange::FxHpfMaxHz,
                               K500Protocol::NativeRange::FxLpfMinHz, K500Protocol::NativeRange::FxLpfMaxHz);
     m_echoEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                            700, 4400, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"),
+                            700, 4400, QStringLiteral("Bypass"), QStringLiteral("Bypass"),
                             K500Protocol::NativeRange::FxHpfMinHz, K500Protocol::NativeRange::FxHpfMaxHz,
                             K500Protocol::NativeRange::FxLpfMinHz, K500Protocol::NativeRange::FxLpfMaxHz);
     m_mainEqBands.configure(7, {80, 160, 315, 630, 1250, 2500, 8000},
-                            20, 20000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+                            20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_surroundEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                                20, 20000, QStringLiteral("HP Bessel 12"), QStringLiteral("LP Bessel 12"));
+                                20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_centerEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                              20, 20000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+                              20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_subEqBands.configure(5, {40, 55, 70, 85, 100},
-                           40, 95, QStringLiteral("HP Butter 24"), QStringLiteral("LP Butter 24"));
+                           40, 95, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
 
     connectEqModel(&m_musicEqBands, QStringLiteral("music"));
     connectEqModel(&m_micAEqBands, QStringLiteral("micA"));
