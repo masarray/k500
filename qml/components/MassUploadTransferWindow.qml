@@ -47,6 +47,7 @@ Window {
 
     property int sourceIndex: -1
     property int sourceAnchor: -1
+    // MASS_UPLOAD_EXTENDED_SELECTION_V1 — supported Ctrl/Shift input contract.
     // MASS_UPLOAD_SELECTION_ORDER_V2 — chronological selection is the source
     // of truth for Add; catalogue row position is not the hardware slot order.
     // Ctrl appends/removes; Shift walks from anchor toward clicked row, not
