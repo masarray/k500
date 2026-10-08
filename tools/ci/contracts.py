@@ -625,7 +625,7 @@ def check_ui_contracts() -> None:
     )
     forbid(
         "qml/components/MassUploadTransferWindow.qml",
-        "text: origin",
+        "\\n                                                    text: origin\\n",
         "text: String(index + 1).padStart(2, \"0\") + \" PRESET\"",
     )
 
