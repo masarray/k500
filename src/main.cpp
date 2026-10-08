@@ -554,6 +554,16 @@ int main(int argc, char *argv[])
             && hydrationEdits == preHandoffEdits;
         if (!offlineHandoffValid)
             return 7;
+        // OFFLINE_PREVIEW_CANNOT_CLOBBER_DEVICE_HISTORY_V1 — padded PC file
+        // preview must never replace prior VERIFIED slot labels/values.
+        QByteArray offlinePreview(0x03AB, char(0));
+        studioEngine.hydrateFromDeviceMemory(offlinePreview, false);
+        studioEngine.clearDeviceState();
+        if (studioEngine.retainedDeviceModeNames() != names
+            || studioEngine.retainedDeviceState().value(QStringLiteral("system")).toMap()
+                   .value(QStringLiteral("deviceModeNames")).toStringList() != names
+            || hydrationEdits != preHandoffEdits)
+            return 7;
         // A second hardware readback must supersede the last displayed names.
         QByteArray newMemory = memory;
         putFixedAscii(newMemory, 0x0290, 0x10, QByteArray("NEW DEVICE SLOT"));
