@@ -808,7 +808,7 @@ def check_release_contracts() -> None:
         ".github/workflows/windows-updater-rc.yml",
         "v1.1.2-rc.${{ inputs.rc_number }}",
         "docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_1_ACCEPTANCE",
+        "UPDATER_V1_1_2_ACCEPTANCE",
         "v1.1.2 candidate is pending independent acceptance",
     )
     require(
