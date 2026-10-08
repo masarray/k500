@@ -47,8 +47,10 @@ Window {
 
     property int sourceIndex: -1
     property int sourceAnchor: -1
-    // MASS_UPLOAD_EXTENDED_SELECTION_V1 — source selection never changes device slots.
-    // Copy-on-write preserves QML delegate bindings while Ctrl toggles / Shift extends.
+    // MASS_UPLOAD_SELECTION_ORDER_V2 — chronological selection is the source
+    // of truth for Add; catalogue row position is not the hardware slot order.
+    // Ctrl appends/removes; Shift walks from anchor toward clicked row, not
+    // sorted row-index order. Copy-on-write keeps QML delegate bindings alive.
     property var selectedSourceIndexes: []
     property int targetIndex: -1
     readonly property int maxSlots: 10
@@ -101,8 +103,11 @@ Window {
 
     onSourcePresetsChanged: clearSourceSelection()
 
+    function selectionPosition(index) {
+        return selectedSourceIndexes.indexOf(index) + 1
+    }
     function isSourceSelected(index) {
-        return selectedSourceIndexes.indexOf(index) >= 0
+        return selectionPosition(index) > 0
     }
 
     function selectSource(index, modifiers) {
@@ -115,9 +120,14 @@ Window {
         if (shift && sourceAnchor >= 0) {
             if (!ctrl)
                 next = []
-            for (var i = Math.min(sourceAnchor, index); i <= Math.max(sourceAnchor, index); ++i) {
+            // The direction is meaningful: picking Blues then Shift+Pop
+            // Rock appends Blues, Jazz, Sholawat, ... Pop Rock in that order.
+            var direction = index >= sourceAnchor ? 1 : -1
+            for (var i = sourceAnchor; ; i += direction) {
                 if (Boolean(presets[i].valid) && next.indexOf(i) < 0)
                     next.push(i)
+                if (i === index)
+                    break
             }
         } else if (ctrl) {
             var existing = next.indexOf(index)
@@ -130,7 +140,7 @@ Window {
             next = [index]
             sourceAnchor = index
         }
-        next.sort(function(a, b) { return a - b })
+        // Do not sort. Ctrl deselect/reselect moves that pick to the end.
         sourceIndex = index
         selectedSourceIndexes = next
     }
@@ -179,8 +189,9 @@ Window {
 
     function addSelected() {
         var source = root.sourcePresets
-        // Deterministic order, valid-only, no duplicates; never exceed 10 device slots.
-        var selected = selectedSourceIndexes.slice().sort(function(a, b) { return a - b })
+        // Exact manual pick order, valid-only, no duplicates; cap at ten
+        // physical device slots. The native 10->1 store protocol is untouched.
+        var selected = selectedSourceIndexes.slice()
         for (var i = 0; i < selected.length && targetModel.count < maxSlots; ++i) {
             var index = selected[i]
             if (index >= 0 && index < source.length)
@@ -256,7 +267,7 @@ Window {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Choose presets with Ctrl+click or Shift+click, then Add to map up to 10 K500 Device Slots."
+                    text: "Ctrl+click builds your pick order. Shift+click adds a range in its direction. Add stages picks to K500 slots 01–10."
                     color: Theme.textDim
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -433,8 +444,9 @@ Window {
                                                 }
                                             }
                                             Text {
-                                                text: validPreset ? "READY" : "INVALID"
-                                                color: validPreset ? Theme.accent : Theme.amber
+                                                text: !validPreset ? "INVALID"
+                                                      : selected ? "#" + String(root.selectionPosition(index)).padStart(2, "0") : ""
+                                                color: selected ? Theme.accent : Theme.amber
                                                 font.family: Theme.monoFamily
                                                 font.pixelSize: 9
                                                 font.weight: Font.Bold
