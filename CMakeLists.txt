@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.1.1 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.1.2 LANGUAGES CXX)
 
-# V1_1_1_PATCH_RELEASE_QUALIFICATION_ANCHOR
+# V1_1_2_PATCH_RELEASE_QUALIFICATION_ANCHOR
 # v1.1.1 is the first patch release after public v1.1.0. The RC must contain
 # the exact current-main preset bank plus the post-v1.1.0 System-toggle UX,
 # capture-backed VR OFF fixes, disconnect/offline handoff, semantic preset
