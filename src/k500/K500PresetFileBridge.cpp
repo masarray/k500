@@ -639,7 +639,7 @@ bool K500PresetFileBridge::previewLoadedPreset()
     std::copy(slot.cbegin(), slot.cend(), preview.begin());
     // OFFLINE_PREVIEW_NOT_HARDWARE_V1 — never overwrite last verified K500
     // mode names/values with the padded preview's all-zero hardware-only bytes.
-    m_engine->hydrateFromDeviceMemory(preview, false);
+    m_engine->hydrateFromPreviewMemory(preview);
 
     // PRESET_PREVIEW_CROSSOVER_OVERLAY_V1
     // The native 0x0290 slot image intentionally contains PEQ bands/scalars but
