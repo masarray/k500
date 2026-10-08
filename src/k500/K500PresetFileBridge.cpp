@@ -32,6 +32,19 @@ constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     {"BLUES CLUB",        "Warm vintage blues with a single slap repeat",     "08_BLUES_CLUB.k500",           ":/presets/08_BLUES_CLUB.k500"},
     {"ACOUSTIC NATURAL",  "Natural organic vocal with subtle ambience",       "09_ACOUSTIC_NATURAL.k500",        ":/presets/09_ACOUSTIC_NATURAL.k500"},
     {"REGGAE DUB",        "Bass/groove-led voicing with rhythmic echo",       "10_REGGAE_DUB.k500",          ":/presets/10_REGGAE_DUB.k500"},
+
+    // UAUDIO_COMPANION_PRESET_BANK_V1 — deterministic 01–10 counterparts.
+    // 11–20 are PC library options; physical K500 hardware still has 10 slots.
+    {"KONSER UAUDIO", "KONSER NYANYI tuning · USB Audio music source", "11_KONSER_NYANYI_UAUDIO.k500", ":/presets/11_KONSER_NYANYI_UAUDIO.k500"},
+    {"MC HOST UAUDIO", "MC HOST RADIO tuning · USB Audio music source", "12_MC_HOST_RADIO_UAUDIO.k500", ":/presets/12_MC_HOST_RADIO_UAUDIO.k500"},
+    {"DANGDUT UAUDIO", "KAR DANGDUT tuning · USB Audio music source", "13_KAR_DANGDUT_UAUDIO.k500", ":/presets/13_KAR_DANGDUT_UAUDIO.k500"},
+    {"POP ROCK UAUDIO", "POP ROCK BALLAD tuning · USB Audio music source", "14_POP_ROCK_BALLAD_UAUDIO.k500", ":/presets/14_POP_ROCK_BALLAD_UAUDIO.k500"},
+    {"KENANGAN UAUDIO", "POP KENANGAN V2 tuning · USB Audio music source", "15_POP_KENANGAN_V2_UAUDIO.k500", ":/presets/15_POP_KENANGAN_V2_UAUDIO.k500"},
+    {"SHOLAWAT UAUDIO", "SHOLAWAT SYAHDU tuning · USB Audio music source", "16_SHOLAWAT_SYAHDU_UAUDIO.k500", ":/presets/16_SHOLAWAT_SYAHDU_UAUDIO.k500"},
+    {"JAZZ UAUDIO", "JAZZ LOUNGE tuning · USB Audio music source", "17_JAZZ_LOUNGE_UAUDIO.k500", ":/presets/17_JAZZ_LOUNGE_UAUDIO.k500"},
+    {"BLUES UAUDIO", "BLUES CLUB tuning · USB Audio music source", "18_BLUES_CLUB_UAUDIO.k500", ":/presets/18_BLUES_CLUB_UAUDIO.k500"},
+    {"ACOUSTIC UAUDIO", "ACOUSTIC NATURAL tuning · USB Audio music source", "19_ACOUSTIC_NATURAL_UAUDIO.k500", ":/presets/19_ACOUSTIC_NATURAL_UAUDIO.k500"},
+    {"REGGAE UAUDIO", "REGGAE DUB tuning · USB Audio music source", "20_REGGAE_DUB_UAUDIO.k500", ":/presets/20_REGGAE_DUB_UAUDIO.k500"},
 };
 
 bool readValidPreset(const QString &path, QByteArray *bytes)
