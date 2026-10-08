@@ -10,9 +10,9 @@ Stable releases are intended for general use within the explicitly documented ha
 
 Current public stable: **v1.1.1**.
 
-Current public stable source line: **v1.1.1**.
+Next patch candidate source line: **v1.1.2** (not yet public stable).
 
-No next application version is declared yet. Start a new immutable RC line only after the source version is intentionally bumped.
+The v1.1.2 RC acceptance gate starts pending. Public download and updater channels remain at stable v1.1.1 until a separately accepted immutable RC is promoted.
 
 Stable **v1.1.1** was promoted byte-identically from accepted **v1.1.1-rc.1** at exact source commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Stable **v1.1.0** remains historical and was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`.
 
@@ -112,7 +112,7 @@ CI can verify software behavior; hardware-facing support claims still require re
 For v1.1+, the release model changes from **build-and-publish** to **accept-and-promote**:
 
 - `v1.1.x-rc.N` is an immutable GitHub prerelease built from one exact `main` commit;
-- desktop acceptance records the RC tag, full source commit, and SHA-256 of the machine and per-user Setup packages in a release-specific acceptance record (for v1.1.1: `V1_1_1_UPDATER_RC_ACCEPTANCE.md`);
+- desktop acceptance records the RC tag, full source commit, and SHA-256 of the machine and per-user Setup packages in a release-specific acceptance record (for candidate v1.1.2: `V1_1_2_UPDATER_RC_ACCEPTANCE.md`);
 - public v1.0.3 is never pointed at prereleases; an installed v1.1 candidate uses the explicit process-local `--update-candidate=<tag>` QA channel;
 - stable v1.1.x promotion downloads the accepted machine/per-user prerelease assets, verifies tag→commit→manifest→hash provenance, revalidates both installers, and republishes the **same binary bytes** under stable filenames with a two-artifact stable v3 manifest;
 - rebuilding the application after RC acceptance is not a valid v1.1 promotion path.
