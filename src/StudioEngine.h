@@ -237,7 +237,10 @@ public:
     QString lastChangedPath() const { return m_lastChangedPath; }
 
 public slots:
-    void hydrateFromDeviceMemory(const QByteArray &memory, bool hardwareReadback = true);
+    void hydrateFromDeviceMemory(const QByteArray &memory);
+    // Separate offline Preview API keeps the one-arg signal/slot connection
+    // invariant; Preview can never impersonate a device readback.
+    void hydrateFromPreviewMemory(const QByteArray &memory);
     void clearDeviceState();
 
     // P1_CANONICAL_DEVICE_EDIT_V1 — rack controls still enter through
@@ -325,6 +328,8 @@ private:
     EqBandModel m_surroundEqBands;
     EqBandModel m_centerEqBands;
     EqBandModel m_subEqBands;
+
+    void hydrateMemory(const QByteArray &memory, bool hardwareReadback);
 
     QVariantMap m_deviceState;
     QStringList m_retainedDeviceModeNames;
