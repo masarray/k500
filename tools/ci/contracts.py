@@ -579,6 +579,32 @@ def check_ui_contracts() -> None:
     require_exact_count("qml/components/SectionEqGraphHost.qml", "SectionEqGraph {", 8)
     forbid("qml/components/SectionEqGraphHost.qml", "Loader {")
 
+    # EQ_BYPASS_RED_WARNING_V1: red is reserved for the bypassed/on state.
+    require(
+        "qml/components/SectionEqGraph.qml",
+        "EQ_BYPASS_RED_WARNING_V1",
+        'color:root.eqBypassActive?"#381B23"',
+        'border.color:root.eqBypassActive?"#F0727A"',
+        'color:root.eqBypassActive?"#FF9AA0":Theme.textSoft',
+        'onClicked:root.setEqBypass(!root.eqBypassActive)',
+    )
+
+    # MASS_UPLOAD_EXTENDED_SELECTION_V1: modifiers work before staging; device
+    # upload cardinality and descending 10->1 hardware order remain unchanged.
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "MASS_UPLOAD_EXTENDED_SELECTION_V1",
+        "Qt.ControlModifier",
+        "Qt.ShiftModifier",
+        "selectedSourceIndexes = next",
+        "selectedSourceIndexes.slice().sort",
+        "targetContains(path)",
+        "targetModel.count < maxSlots",
+        "root.selectSource(index, mouse.modifiers)",
+        "root.selectedSourceIndexes.length > 0",
+    )
+    forbid("qml/components/MassUploadTransferWindow.qml", "onClicked: root.sourceIndex = index")
+
     # Presentation may never bypass the native controller/engine boundary.
     for path in (ROOT / "qml").rglob("*.qml"):
         data = path.read_text(encoding="utf-8")
