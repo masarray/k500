@@ -605,6 +605,69 @@ def check_ui_contracts() -> None:
     )
     forbid("qml/components/MassUploadTransferWindow.qml", "onClicked: root.sourceIndex = index")
 
+    # PRE_RC_UX_STABILIZATION_V1 — canonical PC catalog IDs never derive
+    # from ListView order, and cannot silently change physical 01..10 slots.
+    require(
+        "src/k500/K500PresetFileBridge.cpp",
+        "OFFICIAL_PRESET_CANONICAL_CATALOG_ID_V1",
+        "fileName.left(2).toInt(&catalogNumberOk)",
+        'entry.insert(QStringLiteral("catalogNumber"), catalogNumber)',
+        'entry.insert(QStringLiteral("originLabel"), QStringLiteral("LOCAL"))',
+    )
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "MASS_UPLOAD_CANONICAL_BADGE_V1",
+        "modelData.catalogNumber",
+        'String(catalogNumber).padStart(2, "0")',
+        'origin === "LOCAL" ? "LOCAL" : "OFFICIAL"',
+        "root.isSourceSelected(index)",
+        "targetModel.count < maxSlots",
+    )
+    forbid(
+        "qml/components/MassUploadTransferWindow.qml",
+        "text: origin",
+        "text: String(index + 1).padStart(2, \"0\") + \" PRESET\"",
+    )
+
+    # Off-line default is a constructor-only model state. No delayed QML
+    # setter may clobber a selected file or verified Connect/Recall readback.
+    require(
+        "src/StudioEngine.cpp",
+        "OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1",
+        "m_musicEqBands.configure",
+        "m_subEqBands.configure",
+    )
+    constructor = read("src/StudioEngine.cpp").split(
+        "StudioEngine::StudioEngine(QObject *parent)", 1
+    )[-1].split("    connectEqModel(", 1)[0]
+    if constructor.count('QStringLiteral("Bypass"), QStringLiteral("Bypass")') != 9:
+        FAILURES.append("StudioEngine: expected exactly 9 no-edit Bypass model initializations")
+    else:
+        PASSES.append("offline HP/LP authority: 9 constructor-only Bypass models")
+    require(
+        "src/StudioEngine.h",
+        'QString m_hpType = QStringLiteral("Bypass")',
+        'QString m_lpType = QStringLiteral("Bypass")',
+    )
+    require(
+        "src/main.cpp",
+        "OFFLINE_CROSSOVER_ENGINE_TEST_V1",
+        "OFFLINE_CROSSOVER_HANDOFF_TEST_V1",
+        "studioEngine.clearDeviceState()",
+    )
+    forbid("qml/components/SectionEqGraph.qml", "ensureStartupCrossoverDefaults", "startupCrossoverPrimed")
+    forbid("qml/components/SectionEqGraphHost.qml", "restoreConfiguredCrossoverTypes", "setHpType(", "setLpType(")
+    forbid("qml/components/EqGraph.qml", "Component.onCompleted: Qt.callLater", 'root.engine.hpType = "HP Butter 12"')
+    require(
+        "qml/components/SectionEqGraph.qml",
+        "EQ_TOOLBAR_GEOMETRY_PARITY_V1",
+        'Layout.preferredHeight:28;text:"Mic A"',
+        'Layout.preferredHeight:28;text:"Mic B"',
+        "Layout.preferredWidth:104\n                    Layout.preferredHeight:28",
+        "Layout.preferredWidth:31\n                            Layout.preferredHeight:16",
+        'color:root.eqBypassActive?"#381B23"',
+    )
+
     # Presentation may never bypass the native controller/engine boundary.
     for path in (ROOT / "qml").rglob("*.qml"):
         data = path.read_text(encoding="utf-8")
