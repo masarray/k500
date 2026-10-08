@@ -28,7 +28,7 @@ StudioPanel {
                 anchors.left: parent.left
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                text: "MASTER STRIP"
+                text: "MASTER VOLUME"
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: 10
