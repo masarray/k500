@@ -102,6 +102,7 @@ class StudioEngine final : public QObject
     Q_PROPERTY(QVariantMap deviceState READ deviceState NOTIFY deviceStateChanged)
     // Last verified table survives disconnect as display-only; authority stays deviceStateReady.
     Q_PROPERTY(QStringList retainedDeviceModeNames READ retainedDeviceModeNames NOTIFY deviceStateChanged)
+    Q_PROPERTY(QVariantMap retainedDeviceState READ retainedDeviceState NOTIFY deviceStateChanged)
     Q_PROPERTY(bool deviceStateReady READ deviceStateReady NOTIFY deviceStateChanged)
     Q_PROPERTY(int musicKey READ musicKey WRITE setMusicKey NOTIFY musicKeyChanged)
     Q_PROPERTY(double noiseGate READ noiseGate WRITE setNoiseGate NOTIFY noiseGateChanged)
@@ -142,6 +143,7 @@ public:
     EqBandModel *subEqBands() { return &m_subEqBands; }
     QVariantMap deviceState() const { return m_deviceState; }
     QStringList retainedDeviceModeNames() const { return m_retainedDeviceModeNames; }
+    QVariantMap retainedDeviceState() const { return m_retainedDeviceState; }
     bool deviceStateReady() const { return m_deviceStateReady; }
 
     // ADJ_MANNER_SEMANTIC_SYNC_V2
@@ -235,7 +237,7 @@ public:
     QString lastChangedPath() const { return m_lastChangedPath; }
 
 public slots:
-    void hydrateFromDeviceMemory(const QByteArray &memory);
+    void hydrateFromDeviceMemory(const QByteArray &memory, bool hardwareReadback = true);
     void clearDeviceState();
 
     // P1_CANONICAL_DEVICE_EDIT_V1 — rack controls still enter through
@@ -326,6 +328,7 @@ private:
 
     QVariantMap m_deviceState;
     QStringList m_retainedDeviceModeNames;
+    QVariantMap m_retainedDeviceState;
     bool m_deviceStateReady = false;
 
     int m_musicKey = 0;
