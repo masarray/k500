@@ -46,6 +46,10 @@ Window {
     }
 
     property int sourceIndex: -1
+    property int sourceAnchor: -1
+    // MASS_UPLOAD_EXTENDED_SELECTION_V1 — source selection never changes device slots.
+    // Copy-on-write preserves QML delegate bindings while Ctrl toggles / Shift extends.
+    property var selectedSourceIndexes: []
     property int targetIndex: -1
     readonly property int maxSlots: 10
     // Unified source replaces the old folderPresets-only Mass Upload source.
@@ -54,8 +58,50 @@ Window {
 
     ListModel { id: targetModel }
 
-    function openTransfer() {
+    function clearSourceSelection() {
         sourceIndex = -1
+        sourceAnchor = -1
+        selectedSourceIndexes = []
+    }
+
+    onSourcePresetsChanged: clearSourceSelection()
+
+    function isSourceSelected(index) {
+        return selectedSourceIndexes.indexOf(index) >= 0
+    }
+
+    function selectSource(index, modifiers) {
+        var presets = root.sourcePresets
+        if (index < 0 || index >= presets.length || !Boolean(presets[index].valid))
+            return
+        var ctrl = (modifiers & Qt.ControlModifier) !== 0
+        var shift = (modifiers & Qt.ShiftModifier) !== 0
+        var next = (ctrl || shift) ? selectedSourceIndexes.slice() : []
+        if (shift && sourceAnchor >= 0) {
+            if (!ctrl)
+                next = []
+            for (var i = Math.min(sourceAnchor, index); i <= Math.max(sourceAnchor, index); ++i) {
+                if (Boolean(presets[i].valid) && next.indexOf(i) < 0)
+                    next.push(i)
+            }
+        } else if (ctrl) {
+            var existing = next.indexOf(index)
+            if (existing >= 0)
+                next.splice(existing, 1)
+            else
+                next.push(index)
+            sourceAnchor = index
+        } else {
+            next = [index]
+            sourceAnchor = index
+        }
+        next.sort(function(a, b) { return a - b })
+        sourceIndex = index
+        selectedSourceIndexes = next
+    }
+
+    function openTransfer() {
+        clearSourceSelection()
         targetIndex = -1
         targetModel.clear()
         if (fileBridge) {
@@ -95,9 +141,13 @@ Window {
 
     function addSelected() {
         var source = root.sourcePresets
-        if (sourceIndex < 0 || sourceIndex >= source.length)
-            return
-        addEntry(source[sourceIndex])
+        // Deterministic order, valid-only, no duplicates; never exceed 10 device slots.
+        var selected = selectedSourceIndexes.slice().sort(function(a, b) { return a - b })
+        for (var i = 0; i < selected.length && targetModel.count < maxSlots; ++i) {
+            var index = selected[i]
+            if (index >= 0 && index < source.length)
+                addEntry(source[index])
+        }
     }
 
     function addAll() {
@@ -137,7 +187,7 @@ Window {
         onAccepted: {
             if (root.fileBridge) {
                 root.fileBridge.setPresetFolder(selectedFolder)
-                root.sourceIndex = -1
+                root.clearSourceSelection()
             }
         }
     }
@@ -164,7 +214,7 @@ Window {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Mix official SonKuPik presets and your own local presets, then map up to 10 selections to K500 Device Slots."
+                    text: "Choose presets with Ctrl+click or Shift+click, then Add to map up to 10 K500 Device Slots."
                     color: Theme.textDim
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -205,7 +255,7 @@ Window {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: String(root.sourcePresets.length) + " PRESETS"
+                                text: String(root.sourcePresets.length) + " PRESETS" + (root.selectedSourceIndexes.length ? " · " + root.selectedSourceIndexes.length + " SELECTED" : "")
                                 color: Theme.accent
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 8
@@ -285,7 +335,7 @@ Window {
                                         height: 38
                                         radius: 6
                                         readonly property bool validPreset: Boolean(modelData.valid)
-                                        readonly property bool selected: index === root.sourceIndex
+                                        readonly property bool selected: root.isSourceSelected(index)
                                         readonly property string origin: String(modelData.originLabel || (modelData.source === "folder" ? "LOCAL" : "SONKUPIK"))
                                         color: selected ? "#15252A" : sourceMouse.containsMouse ? "#12181D" : "#0D1115"
                                         border.width: 1
@@ -348,8 +398,8 @@ Window {
                                             hoverEnabled: true
                                             cursorShape: validPreset ? Qt.PointingHandCursor : Qt.ArrowCursor
                                             enabled: validPreset
-                                            onClicked: root.sourceIndex = index
-                                            onDoubleClicked: { root.sourceIndex = index; root.addSelected() }
+                                            onClicked: function(mouse) { root.selectSource(index, mouse.modifiers) }
+                                            onDoubleClicked: { root.selectSource(index, Qt.NoModifier); root.addSelected() }
                                         }
                                     }
 
@@ -374,7 +424,7 @@ Window {
                     Layout.preferredWidth: 92
                     Layout.alignment: Qt.AlignVCenter
                     spacing: 8
-                    SoftButton { Layout.fillWidth: true; text: "Add  >"; compact: true; enabled: root.sourceIndex >= 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected() }
+                    SoftButton { Layout.fillWidth: true; text: root.selectedSourceIndexes.length > 1 ? "Add (" + root.selectedSourceIndexes.length + ")  >" : "Add  >"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected() }
                     SoftButton { Layout.fillWidth: true; text: "Add All  >>"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll() }
                     Item { Layout.preferredHeight: 12 }
                     SoftButton { Layout.fillWidth: true; text: "<  Remove"; compact: true; enabled: root.targetIndex >= 0; onClicked: root.removeSelected() }
