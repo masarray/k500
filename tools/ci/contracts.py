@@ -524,6 +524,16 @@ def check_ui_contracts() -> None:
     require_exact_count("qml/components/SectionEqGraphHost.qml", "SectionEqGraph {", 8)
     forbid("qml/components/SectionEqGraphHost.qml", "Loader {")
 
+    # EQ_BYPASS_RED_WARNING_V1: red is reserved for the bypassed/on state.
+    require(
+        "qml/components/SectionEqGraph.qml",
+        "EQ_BYPASS_RED_WARNING_V1",
+        'color:root.eqBypassActive?"#381B23"',
+        'border.color:root.eqBypassActive?"#F0727A"',
+        'color:root.eqBypassActive?"#FF9AA0":Theme.textSoft',
+        'onClicked:root.setEqBypass(!root.eqBypassActive)',
+    )
+
     # Presentation may never bypass the native controller/engine boundary.
     for path in (ROOT / "qml").rglob("*.qml"):
         data = path.read_text(encoding="utf-8")
