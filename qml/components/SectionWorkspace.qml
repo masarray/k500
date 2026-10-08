@@ -139,7 +139,7 @@ Item {
                                     Layout.minimumWidth: root.rightPanelWidth
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
-                                    title: "Band Limits"
+                                    title: "Mic HPF & LPF"
                                     fields: [
                                         {label:"HPF",value:root.activeEqModel().hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
                                         {label:"LPF",value:root.activeEqModel().lpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0}
@@ -177,7 +177,7 @@ Item {
                                     Layout.minimumWidth: root.rightPanelWidth
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
-                                    title: "Tone"
+                                    title: "Reverb HPF & LPF"
                                     // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Reverb UI
                                     // exposes HPF/LPF cutoff only; there is no filter-type selector.
                                     showTypes: false
@@ -213,7 +213,7 @@ Item {
                                     Layout.minimumWidth: root.rightPanelWidth
                                     Layout.maximumWidth: root.rightPanelWidth
                                     Layout.fillHeight: true
-                                    title: "Tone"
+                                    title: "Echo HPF & LPF"
                                     // FX_NATIVE_FREQUENCY_ONLY_V1 — manufacturer Echo UI
                                     // exposes HPF/LPF cutoff only; there is no filter-type selector.
                                     showTypes: false
@@ -252,7 +252,7 @@ Item {
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
-                                    title: "Band Limits / Delay"
+                                    title: "Crossover & Speaker Delay"
                                     // OUTPUT_DELAY_CMD0E_CAPTURED_V1 — Main L/R are fully mapped.
                                     fields:[
                                         {label:"L DELAY",value:Number(root.nestedValue("outputs","main","lDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
@@ -294,7 +294,7 @@ Item {
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
-                                    title:"Band Limits / Delay"
+                                    title: "Crossover & Speaker Delay"
                                     fields:[
                                         {label:"L DELAY",value:Number(root.nestedValue("outputs","surround","lDelayMs",3)),from:0,to:50,step:1,unit:"ms",decimals:0},
                                         {label:"R DELAY",value:Number(root.nestedValue("outputs","surround","rDelayMs",4)),from:0,to:50,step:1,unit:"ms",decimals:0},
@@ -334,7 +334,7 @@ Item {
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
-                                    title:"Band Limits / Delay"
+                                    title: "Crossover & Speaker Delay"
                                     fields:[
                                         {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","center","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
                                         {label:"HPF",value:root.engine.centerEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
@@ -373,7 +373,7 @@ Item {
                                 }
                                 RackFilterPanel {
                                     Layout.preferredWidth:root.rightPanelWidth; Layout.minimumWidth:root.rightPanelWidth; Layout.maximumWidth:root.rightPanelWidth; Layout.fillHeight:true
-                                    title:"Band Limits / Delay"
+                                    title: "Crossover & Speaker Delay"
                                     fields:[
                                         {label:"OUTPUT DELAY",value:Number(root.nestedValue("outputs","sub","outputDelayMs",0)),from:0,to:50,step:1,unit:"ms",decimals:0},
                                         {label:"HPF",value:root.engine.subEqBands.hpfHz,from:20,to:20000,step:1,unit:"Hz",decimals:0},
