@@ -8,6 +8,8 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 
 - [User Guide](USER_GUIDE.md) — install, connect, edit, Preview, Save As, Upload, Mass Upload, preset Sync, diagnostics.
 - [Release Model](RELEASES.md) — stable/prerelease policy, package verification, official preset updates.
+- [v1.1.2 RC Acceptance](V1_1_2_UPDATER_RC_ACCEPTANCE.md) — pending candidate gate; public stable remains v1.1.1.
+- [v1.1.2 Candidate Scope](V1_1_2_CANDIDATE_SCOPE.md) — UAUDIO 11–20, multiselect, bypass warning and title.
 - [v1.1.1 Patch RC Acceptance](V1_1_1_UPDATER_RC_ACCEPTANCE.md) — accepted RC1 provenance and byte-identical v1.1.1 stable-promotion record.
 - [v1.1.0 Updater RC Acceptance](V1_1_UPDATER_RC_ACCEPTANCE.md) — historical fail-closed updater qualification and stable-promotion record.
 - [Windows Distribution Security](WINDOWS_DISTRIBUTION_SECURITY.md) — unsigned binaries, hashes, antivirus/reputation guidance.
