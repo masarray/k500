@@ -255,10 +255,10 @@ Window {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: String(root.sourcePresets.length) + " PRESETS" + (root.selectedSourceIndexes.length ? " · " + root.selectedSourceIndexes.length + " SELECTED" : "")
+                                text: String(root.sourcePresets.length) + " PRESETS" + (root.selectedSourceIndexes.length ? "  ·  " + root.selectedSourceIndexes.length + " SELECTED" : "")
                                 color: Theme.accent
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 8
+                                font.pixelSize: 9
                                 font.weight: Font.Bold
                             }
                             Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Theme.borderSoft }
@@ -281,7 +281,7 @@ Window {
                                         text: root.fileBridge ? String(root.fileBridge.officialSyncStatus || "SonKuPik presets ready") : "SonKuPik presets ready"
                                         color: root.fileBridge && String(root.fileBridge.officialSyncError || "").length > 0 ? Theme.amber : Theme.textSoft
                                         font.family: Theme.monoFamily
-                                        font.pixelSize: 8
+                                        font.pixelSize: 9
                                         elide: Text.ElideRight
                                     }
                                     Text {
@@ -289,9 +289,9 @@ Window {
                                         text: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0
                                               ? ("LOCAL · " + String(root.fileBridge.presetFolder))
                                               : "LOCAL · choose a folder for your own presets"
-                                        color: Theme.textDim
+                                        color: Theme.textSoft
                                         font.family: Theme.monoFamily
-                                        font.pixelSize: 7
+                                        font.pixelSize: 9
                                         elide: Text.ElideMiddle
                                     }
                                 }
@@ -337,6 +337,13 @@ Window {
                                         readonly property bool validPreset: Boolean(modelData.valid)
                                         readonly property bool selected: root.isSourceSelected(index)
                                         readonly property string origin: String(modelData.originLabel || (modelData.source === "folder" ? "LOCAL" : "SONKUPIK"))
+                                        // MASS_UPLOAD_CANONICAL_BADGE_V1 — stable preset source identity.
+                                        // Not a row index and never a destination K500 hardware slot.
+                                        readonly property int catalogNumber: Number(modelData.catalogNumber || 0)
+                                        readonly property bool numberedOfficial: origin === "SONKUPIK" && catalogNumber >= 1 && catalogNumber <= 20
+                                        readonly property string badgeText: numberedOfficial
+                                                                             ? String(catalogNumber).padStart(2, "0")
+                                                                             : origin === "LOCAL" ? "LOCAL" : "OFFICIAL"
                                         color: selected ? "#15252A" : sourceMouse.containsMouse ? "#12181D" : "#0D1115"
                                         border.width: 1
                                         border.color: selected ? Theme.accentSoft : validPreset ? "#252D34" : "#553A32"
@@ -347,18 +354,18 @@ Window {
                                             anchors.rightMargin: 8
                                             spacing: 7
                                             Rectangle {
-                                                Layout.preferredWidth: origin === "SONKUPIK" ? 62 : 42
-                                                Layout.preferredHeight: 20
+                                                Layout.preferredWidth: numberedOfficial ? 32 : badgeText === "LOCAL" ? 46 : 62
+                                                Layout.preferredHeight: 22
                                                 radius: 5
-                                                color: origin === "SONKUPIK" ? "#18252A" : "#171B20"
+                                                color: numberedOfficial ? "#182B30" : "#171B20"
                                                 border.width: 1
-                                                border.color: origin === "SONKUPIK" ? Theme.accentSoft : Theme.borderSoft
+                                                border.color: numberedOfficial ? Theme.accentSoft : Theme.borderSoft
                                                 Text {
                                                     anchors.centerIn: parent
-                                                    text: origin
-                                                    color: origin === "SONKUPIK" ? Theme.accent : Theme.textSoft
+                                                    text: badgeText
+                                                    color: numberedOfficial ? Theme.accent : Theme.textSoft
                                                     font.family: Theme.monoFamily
-                                                    font.pixelSize: 7
+                                                    font.pixelSize: numberedOfficial ? 11 : 9
                                                     font.weight: Font.Bold
                                                 }
                                             }
@@ -370,16 +377,16 @@ Window {
                                                     text: String(modelData.displayName || modelData.presetName || modelData.fileName || "K500 PRESET")
                                                     color: validPreset ? Theme.text : Theme.textDim
                                                     font.family: Theme.monoFamily
-                                                    font.pixelSize: 9
+                                                    font.pixelSize: 10
                                                     font.weight: Font.Bold
                                                     elide: Text.ElideRight
                                                 }
                                                 Text {
                                                     Layout.fillWidth: true
                                                     text: String(modelData.description || modelData.fileName || "")
-                                                    color: Theme.textDim
+                                                    color: Theme.textSoft
                                                     font.family: Theme.fontFamily
-                                                    font.pixelSize: 7
+                                                    font.pixelSize: 9
                                                     elide: Text.ElideRight
                                                 }
                                             }
@@ -387,7 +394,7 @@ Window {
                                                 text: validPreset ? "READY" : "INVALID"
                                                 color: validPreset ? Theme.accent : Theme.amber
                                                 font.family: Theme.monoFamily
-                                                font.pixelSize: 7
+                                                font.pixelSize: 9
                                                 font.weight: Font.Bold
                                             }
                                         }
