@@ -311,7 +311,7 @@ jobs:
 
             This exact build qualifies the v1.1.1 patch release on the proven v1.1 updater lifecycle: machine-wide and per-user installers, explicit no-admin migration, rollback/recovery, resumable downloads, and persistence safeguards.
 
-            Public stable remains v1.1.0 until `UPDATER_V1_1_1_ACCEPTANCE=accepted` is committed after acceptance.
+            Stable v1.1.1 has now been promoted from the accepted RC1 bytes. This version-specific RC workflow is retained for provenance; bump the source version before starting a new release line.
 
             Windows binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
           files: |

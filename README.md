@@ -41,9 +41,9 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
 >
-> **Release line:** **v1.1.0** remains the current public stable while **v1.1.1-rc.1** has completed exact-main qualification and is accepted for byte-identical stable promotion. The support scope remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
+> **Release line:** **v1.1.1** is the current public stable. It includes the accepted post-v1.1.0 preset refresh, premium System toggles, capture-correct VR OFF behavior, disconnect/offline-edit handoff, and the associated regression hardening. The support scope remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
 >
-> **Updater status:** v1.1.1 RC1 is locked to commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13` and passed machine/per-user installer validation plus deep updater lifecycle acceptance. Public downloads continue to resolve v1.1.0 until the accepted RC1 bytes are promoted as stable v1.1.1; the landing page follows GitHub `/releases/latest` automatically.
+> **Updater status:** **v1.1.1** was promoted byte-identically from accepted `v1.1.1-rc.1`, built from commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Machine and per-user installers were not rebuilt after acceptance. GitHub `/releases/latest`, the product landing API, and the same-origin Smart Installer route now resolve v1.1.1.
 
 ## See the real app
 

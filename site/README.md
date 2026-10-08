@@ -12,7 +12,7 @@ The site stays dependency-free and split by user intent so visitors do not need 
 - `/download/windows` — streams the latest stable Windows Smart Installer through the landing domain
 - `/api/release` — same-origin latest stable version metadata
 
-All pages share `/styles.css`. The release helper `/app.js` is progressive enhancement only: download links already point at the same-origin latest routes, while the release label is synchronized after page load through `/api/release`. The browser never needs to call the GitHub API for release synchronization.
+All pages share `/styles.css`. The release helper `/app.js` is progressive enhancement only: download links already point at the same-origin latest routes, while the release label **and visible download-button version** are synchronized after page load through `/api/release`. Static HTML retains the current stable version as a fallback, so visitors can still see which release is offered if metadata sync is delayed. The browser never needs to call the GitHub API directly.
 
 The Pages Functions live at repository-root `/functions` because the Cloudflare Pages project root is the repository root while the static build output is `site`.
 
@@ -25,6 +25,7 @@ GitHub Releases remains the upstream artifact store, but the visitor-facing down
 3. The Smart Installer is streamed through Cloudflare without buffering it in Worker memory.
 4. `Content-Disposition: attachment` keeps the user on the landing page while the file downloads.
 5. Range and validator headers are forwarded so large downloads remain resilient.
+6. Download CTAs show the resolved stable tag (for example `v1.1.1`) and refresh from the same `/api/release` authority that drives the release label.
 
 This means a future stable release becomes the download target automatically without editing landing-page HTML.
 
