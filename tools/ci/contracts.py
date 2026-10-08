@@ -802,7 +802,7 @@ def check_release_contracts() -> None:
             FAILURES.append(f"historical v1.1.1 RC acceptance changed: {token}")
 
     acceptance = read("docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md")
-    if not re.search(r"(?m)^UPDATER_V1_1_2_ACCEPTANCE=(pending|accepted)\\s*$", acceptance):
+    if not re.search(r"(?m)^UPDATER_V1_1_2_ACCEPTANCE=(pending|accepted)\s*$", acceptance):
         FAILURES.append("v1.1.2 updater acceptance machine-readable token missing")
     require(
         ".github/workflows/windows-updater-rc.yml",
