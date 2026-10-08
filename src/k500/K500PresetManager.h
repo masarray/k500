@@ -27,6 +27,7 @@ class K500PresetManager final : public QObject
     Q_PROPERTY(bool usbStoreAvailable READ usbStoreAvailable NOTIFY connectedChanged)
     Q_PROPERTY(int activeSlot READ activeSlot NOTIFY activeSlotChanged)
     Q_PROPERTY(QString progress READ progress NOTIFY progressChanged)
+    Q_PROPERTY(int massUploadProgressPercent READ massUploadProgressPercent NOTIFY massUploadProgressChanged)
 
 public:
     explicit K500PresetManager(K500DeviceManager *manager, QObject *parent = nullptr);
@@ -44,6 +45,7 @@ public:
     bool usbStoreAvailable() const;
     int activeSlot() const { return m_activeSlot; }
     QString progress() const { return m_progress; }
+    int massUploadProgressPercent() const { return m_massUploadProgressPercent; }
 
     Q_INVOKABLE void recallMode(int slotOneBased);
     Q_INVOKABLE void setUseInitVolume(bool enabled);
@@ -70,6 +72,7 @@ signals:
     void adjMannerVrOffChanged();
     void activeSlotChanged();
     void progressChanged();
+    void massUploadProgressChanged();
     void activeMemoryReady(const QByteArray &memory);
     void operationCompleted(const QString &kind, int slotOneBased);
     void operationFailed(const QString &kind, const QString &message);
@@ -100,6 +103,8 @@ private:
     void finishOperation(const QString &kind, int slotOneBased = 0);
     void failOperation(const QString &kind, const QString &message);
     void setProgress(const QString &progress);
+    void setMassUploadProgressPercent(int percent);
+    void updateMassUploadAcknowledgedProgress();
 
     bool send(const QByteArray &frame, const QString &label);
     void armTimeout(int ms, const QString &kind, const QString &message);
@@ -142,6 +147,7 @@ private:
     QString m_requestedModeName;
     int m_activeSlot = 0;
     QString m_progress;
+    int m_massUploadProgressPercent = 0;
 
     QByteArray m_readbackMemory;
     int m_readOffset = 0;
