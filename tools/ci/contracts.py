@@ -776,10 +776,10 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.1 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must be 1.1.1 for the patch release")
-    if "V1_1_1_PATCH_RELEASE_QUALIFICATION_ANCHOR" not in cmake:
-        FAILURES.append("CMakeLists.txt: v1.1.1 qualification anchor missing")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.2 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: source version must be 1.1.2 for the patch release")
+    if "V1_1_2_PATCH_RELEASE_QUALIFICATION_ANCHOR" not in cmake:
+        FAILURES.append("CMakeLists.txt: v1.1.2 qualification anchor missing")
 
     legacy_acceptance = read("docs/V1_1_UPDATER_RC_ACCEPTANCE.md")
     for token in (
@@ -790,22 +790,33 @@ def check_release_contracts() -> None:
         if token not in legacy_acceptance:
             FAILURES.append(f"historical v1.1.0 acceptance provenance changed: {token}")
 
-    acceptance = read("docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md")
-    if not re.search(r"(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$", acceptance):
-        FAILURES.append("v1.1.1 updater acceptance machine-readable token missing")
+    # Stable v1.1.1 accepted bytes remain immutable while qualifying the
+    # independent v1.1.2 RC line.
+    historic111 = read("docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md")
+    for token in (
+        "UPDATER_V1_1_1_ACCEPTANCE=accepted",
+        "UPDATER_V1_1_1_ACCEPTED_TAG=v1.1.1-rc.1",
+        "UPDATER_V1_1_1_ACCEPTED_COMMIT=df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13",
+    ):
+        if token not in historic111:
+            FAILURES.append(f"historical v1.1.1 RC acceptance changed: {token}")
+
+    acceptance = read("docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md")
+    if not re.search(r"(?m)^UPDATER_V1_1_2_ACCEPTANCE=(pending|accepted)\\s*$", acceptance):
+        FAILURES.append("v1.1.2 updater acceptance machine-readable token missing")
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "v1.1.1-rc.${{ inputs.rc_number }}",
-        "docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md",
+        "v1.1.2-rc.${{ inputs.rc_number }}",
+        "docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md",
         "UPDATER_V1_1_1_ACCEPTANCE",
-        "Stable v1.1.1 has now been promoted from the accepted RC1 bytes",
+        "v1.1.2 candidate is pending independent acceptance",
     )
     require(
         ".github/workflows/windows-updater-promote.yml",
-        "docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_1_ACCEPTED_COMMIT",
-        "$stableTag = 'v1.1.1'",
-        "Public stable SonKuPik K500 v1.1.1.",
+        "docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md",
+        "UPDATER_V1_1_2_ACCEPTED_COMMIT",
+        "$stableTag = 'v1.1.2'",
+        "Public stable SonKuPik K500 v1.1.2.",
     )
 
     require(
@@ -867,7 +878,7 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-promote.yml",
         "byte-identical-rc-artifact-promotion",
-        "UPDATER_V1_1_1_ACCEPTED_COMMIT",
+        "UPDATER_V1_1_2_ACCEPTED_COMMIT",
         "Stable staging changed accepted bytes:",
         "overwrite_files: false",
     )
@@ -885,7 +896,7 @@ def check_release_contracts() -> None:
     require(
         "docs/RELEASES.md",
         "Current public stable: **v1.1.1**",
-        "Current public stable source line: **v1.1.1**",
+        "Next patch candidate source line: **v1.1.2**",
         "## v1.1.1 stable record",
         "122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03",
         "0387799511a2c05269f536112ec4a17d12d05487814ba16cce4a9774d4f8b389",
@@ -966,12 +977,12 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_1_ACCEPTANCE=accepted",
-        "v1.1.1 RC line is closed after acceptance/stable promotion",
+        "UPDATER_V1_1_2_ACCEPTANCE=accepted",
+        "v1.1.2 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw")
+    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md' -Raw")
     rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):
