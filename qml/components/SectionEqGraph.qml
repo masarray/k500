@@ -423,6 +423,8 @@ StudioPanel {
                 }
             }
 
+            // EQ_BYPASS_RED_WARNING_V1 — bypass is a signal-path warning, not a normal cyan selection.
+            // Keep the button neutral when off; tint only the active bypass control ruby.
             // PEQ_TOOLBAR_ALL_SECTIONS_V1
             // Uniform order on every PEQ page: EQ BYPASS -> EQ RESET -> A | B.
             // Mic A/B channel selection and EQ LINK stay separate to avoid
@@ -435,9 +437,9 @@ StudioPanel {
                     Layout.preferredWidth:116
                     Layout.preferredHeight:28
                     radius:8
-                    color:root.eqBypassActive?"#102C30":(eqBypassMouse.containsMouse?"#121B21":"#0C1217")
+                    color:root.eqBypassActive?"#381B23":(eqBypassMouse.containsMouse?"#121B21":"#0C1217")
                     border.width:1
-                    border.color:root.eqBypassActive?Theme.accent:"#2A353D"
+                    border.color:root.eqBypassActive?"#F0727A":"#2A353D"
                     Behavior on color{ColorAnimation{duration:90}}
                     Behavior on border.color{ColorAnimation{duration:90}}
 
@@ -450,7 +452,7 @@ StudioPanel {
                             Layout.fillWidth:true
                             Layout.fillHeight:true
                             text:"EQ BYPASS"
-                            color:root.eqBypassActive?Theme.accent:Theme.textSoft
+                            color:root.eqBypassActive?"#FF9AA0":Theme.textSoft
                             verticalAlignment:Text.AlignVCenter
                             horizontalAlignment:Text.AlignHCenter
                             font.family:Theme.fontFamily
@@ -462,13 +464,13 @@ StudioPanel {
                             Layout.preferredHeight:16
                             Layout.alignment:Qt.AlignVCenter
                             radius:8
-                            color:root.eqBypassActive?"#174148":"#070B0E"
+                            color:root.eqBypassActive?"#57242D":"#070B0E"
                             border.width:1
-                            border.color:root.eqBypassActive?Theme.accent:"#36424A"
+                            border.color:root.eqBypassActive?"#D85C69":"#36424A"
                             Rectangle {
                                 width:12;height:12;radius:6;y:2
                                 x:root.eqBypassActive?17:2
-                                color:root.eqBypassActive?Theme.accent:"#77858E"
+                                color:root.eqBypassActive?"#FF8590":"#77858E"
                                 Behavior on x{NumberAnimation{duration:100;easing.type:Easing.OutCubic}}
                                 Behavior on color{ColorAnimation{duration:90}}
                             }
