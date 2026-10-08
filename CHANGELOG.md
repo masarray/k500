@@ -2,6 +2,14 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## Unreleased — v1.1.2 candidate
+
+- Add ten offline-bundled UAUDIO companions 11–20 generated from the exact official 01–10 preset bytes; only music source, 16-character hardware name and checksum may change.
+- Add Ctrl/Shift extended selection in the PC Mass Upload source list with deterministic bounded batch Add; physical 10-slot hardware mapping and native transfer remain unchanged.
+- Make active EQ BYPASS ruby-red for immediate signal-chain awareness, with no bypass protocol change.
+- Display the installed application version in the native Windows title bar.
+- Public stable remains v1.1.1; new RC qualification is pending, not yet a stable release.
+
 ## v1.1.1 — 2026-10-08
 
 ### Release scope
