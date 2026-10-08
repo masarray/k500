@@ -408,14 +408,14 @@ Item {
         fileMode: FileDialog.SaveFile
         nameFilters: ["K500 preset (*.k500)"]
         onAccepted: {
-            if (!root.fileBridge)
-                return
-            if (root.fileBridge.saveFile(selectedFile)) {
-                root.pcSaveNotice = "Saved: " + String(root.fileBridge.sourceName)
-                pcSaveNoticeTimer.restart()
-            } else {
-                root.pcSaveNotice = String(root.fileBridge.lastError || "Save As failed")
-                pcSaveNoticeTimer.restart()
+            if (root.fileBridge) {
+                if (root.fileBridge.saveFile(selectedFile)) {
+                    root.pcSaveNotice = "Saved: " + String(root.fileBridge.sourceName)
+                    pcSaveNoticeTimer.restart()
+                } else {
+                    root.pcSaveNotice = String(root.fileBridge.lastError || "Save As failed")
+                    pcSaveNoticeTimer.restart()
+                }
             }
         }
     }
