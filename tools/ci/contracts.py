@@ -738,6 +738,59 @@ def check_ui_contracts() -> None:
         "Easing.OutCubic",
     )
 
+    # LOCAL_PRESET_LEGACY_FOLDER_DISCOVERY_V1: old Documents directory takes
+    # precedence over an empty stale remembered folder; no recursive scans.
+    require(
+        "src/k500/K500PresetFileBridge.cpp",
+        "LOCAL_PRESET_LEGACY_FOLDER_DISCOVERY_V1",
+        "QStandardPaths::DocumentsLocation",
+        "SONKUPIK STUDIO Presets",
+        "pcPresetLibrary/folder",
+        "rebuildFolderPresets()",
+    )
+    # Save PC As is an actual file-bridge operation with explicit prerequisite,
+    # not an invented full .k500 export from incomplete LIVE device memory.
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SAVE_AS_EXPLICIT_SOURCE_GATE_V1",
+        'text: "Save PC As"',
+        "root.requestSaveAs()",
+        "root.fileBridge.saveFile(selectedFile)",
+        "root.pcSaveNotice",
+        "Select a preset from the PC bank/local folder",
+    )
+    # Mic EQ LINK is an immediate, reversible editor invariant. Readback
+    # is authoritative, but it NEVER silently re-transmits mic.eqLink.
+    require(
+        "src/StudioEngine.h",
+        "MIC_EQ_LINK_INSTANT_STATE_PARITY_V1",
+        "micEqLinkedChanged",
+        "setMicEqLinked(bool linked, int sourceChannel = 0)",
+    )
+    require(
+        "src/StudioEngine.cpp",
+        "MIC_EQ_LINK_INSTANT_STATE_PARITY_V1",
+        "mirrorMicEq(0)",
+        "mirrorMicEq(1)",
+        "m_micEqHydrating",
+        "m_micEqMirrorGuard",
+        "syncMicEqLink(linkedFromReadback, 0)",
+        "QScopedValueRollback<bool>",
+    )
+    require(
+        "qml/components/SectionWorkspace.qml",
+        "root.engine.setMicEqLinked(linked, root.micChannel)",
+        "micEqLinkUserRequested",
+    )
+    require(
+        "qml/Main.qml",
+        "MIC_EQ_LINK_USER_INTENT_ONLY_V1",
+        "onMicEqLinkUserRequested(linked)",
+        'root.studioEngine.editDevicePath("mic.eqLink", linked)',
+    )
+    forbid("qml/Main.qml", "onMicEqLinkedChanged()")
+    require("src/main.cpp", "MIC_EQ_LINK_INSTANT_REGRESSION_V1")
+
     # Presentation may never bypass the native controller/engine boundary.
     for path in (ROOT / "qml").rglob("*.qml"):
         data = path.read_text(encoding="utf-8")
