@@ -83,8 +83,8 @@ private:
     double m_hpfMaxHz = 20000.0;
     double m_lpfMinHz = 20.0;
     double m_lpfMaxHz = 20000.0;
-    QString m_hpType = QStringLiteral("HP Butter 12");
-    QString m_lpType = QStringLiteral("LP Butter 12");
+    QString m_hpType = QStringLiteral("Bypass");
+    QString m_lpType = QStringLiteral("Bypass");
 };
 
 class StudioEngine final : public QObject
@@ -332,8 +332,8 @@ private:
     double m_treble = 0.0;
     double m_hpfHz = 20.0;
     double m_lpfHz = 20000.0;
-    QString m_hpType = QStringLiteral("HP Butter 12");
-    QString m_lpType = QStringLiteral("LP Butter 12");
+    QString m_hpType = QStringLiteral("Bypass");
+    QString m_lpType = QStringLiteral("Bypass");
     double m_input1Gain = -3.0;
     double m_input2Gain = -3.0;
     double m_bluetoothGain = -3.0;

@@ -10,15 +10,8 @@ Item {
 
     implicitHeight: 500
 
-    // MUSIC_CROSSOVER_STARTUP_DEVICE_SEMANTICS_V2
-    // The shared graph still contains a legacy offline BYPASS priming step.
-    // Restore Music's known native Butterworth-12 type after child completion;
-    // startup occurs with LIVE disabled, so this cannot replay to hardware.
-    Component.onCompleted: Qt.callLater(function() {
-        if (!root.engine) return
-        root.engine.hpType = "HP Butter 12"
-        root.engine.lpType = "LP Butter 12"
-    })
+    // OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1 — use the canonical engine
+    // default/Preview/readback; do not force Butterworth after child creation.
 
     SectionEqGraph {
         anchors.fill: parent

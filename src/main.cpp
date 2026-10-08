@@ -209,6 +209,24 @@ int main(int argc, char *argv[])
 
     const bool engineSelfTest = app.arguments().contains(QStringLiteral("--engine-self-test"));
     if (engineSelfTest) {
+        // OFFLINE_CROSSOVER_ENGINE_TEST_V1 — cold start must be Bypass for
+        // every persistent PEQ model without any QML priming or device writes.
+        // Hardware readback and file Preview are allowed to replace it later.
+        const bool offlineCrossoverDefaults =
+            studioEngine.hpType() == QStringLiteral("Bypass")
+            && studioEngine.lpType() == QStringLiteral("Bypass");
+        if (!offlineCrossoverDefaults)
+            return 2;
+        for (EqBandModel *eqModel : {
+                 studioEngine.musicEqBands(), studioEngine.micAEqBands(),
+                 studioEngine.micBEqBands(), studioEngine.reverbEqBands(),
+                 studioEngine.echoEqBands(), studioEngine.mainEqBands(),
+                 studioEngine.surroundEqBands(), studioEngine.centerEqBands(),
+                 studioEngine.subEqBands()}) {
+            if (eqModel->hpType() != QStringLiteral("Bypass")
+                || eqModel->lpType() != QStringLiteral("Bypass"))
+                return 2;
+        }
         studioEngine.setBass(3.5);
         studioEngine.setHpfHz(95.0);
         studioEngine.setLpType(QStringLiteral("LP LR 24"));
@@ -516,6 +534,25 @@ int main(int argc, char *argv[])
             && subEq.value(QStringLiteral("lpType")).toString() == QStringLiteral("LP Butter 12")
             && hydrationEdits == 0;
         if (!hydrationValid)
+            return 7;
+
+        // OFFLINE_CROSSOVER_HANDOFF_TEST_V1 — disconnect releases device
+        // authority but must NOT reset the last verified HP/LP working state.
+        // Reconnect hydration must replace that shadow without editing hardware.
+        const int preHandoffEdits = hydrationEdits;
+        studioEngine.clearDeviceState();
+        const bool offlineHandoffValid = !studioEngine.deviceStateReady()
+            && studioEngine.hpType() == QStringLiteral("HP LR 24")
+            && studioEngine.lpType() == QStringLiteral("Bypass")
+            && studioEngine.micAEqBands()->hpType() == QStringLiteral("HP Bessel 12")
+            && studioEngine.mainEqBands()->lpType() == QStringLiteral("LP Butter 18")
+            && hydrationEdits == preHandoffEdits;
+        if (!offlineHandoffValid)
+            return 7;
+        studioEngine.hydrateFromDeviceMemory(memory);
+        if (!studioEngine.deviceStateReady()
+            || studioEngine.micAEqBands()->lpType() != QStringLiteral("LP Bessel 18")
+            || hydrationEdits != preHandoffEdits)
             return 7;
 
         // MUSIC_MAX_NATIVE_CEILING_V1 — lowering Max clamps current Music master

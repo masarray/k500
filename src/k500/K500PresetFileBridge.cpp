@@ -243,6 +243,17 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
             path,
             source,
             index++);
+        // OFFICIAL_PRESET_CANONICAL_CATALOG_ID_V1 — identity belongs to the
+        // canonical bundled filename, not ListView order or a mutable cache index.
+        // Valid cache replacements inherit the ID of their matching official file.
+        // Noncanonical official extras and LOCAL presets intentionally have no ID.
+        bool catalogNumberOk = false;
+        const int catalogNumber = fileName.left(2).toInt(&catalogNumberOk);
+        if (catalogNumberOk && fileName.size() > 3
+            && fileName.at(2) == QLatin1Char('_')
+            && catalogNumber >= 1 && catalogNumber <= 20) {
+            entry.insert(QStringLiteral("catalogNumber"), catalogNumber);
+        }
         entry.insert(QStringLiteral("description"), QString::fromLatin1(definition.description));
         entry.insert(QStringLiteral("originLabel"), QStringLiteral("SONKUPIK"));
         next.append(entry);

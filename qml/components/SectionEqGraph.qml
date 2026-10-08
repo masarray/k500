@@ -55,11 +55,9 @@ StudioPanel {
     property int modelDataSerial: 0
     property int lastUserBandSerial: 0
 
-    // HPF_LPF_STARTUP_DEFAULT_BYPASS_V1
-    // New/offline PEQ pages start with filter TYPE bypassed while preserving their
-    // frequency anchors. This priming happens once per persistent graph before the
-    // user can connect. Device readback remains authoritative and can replace it.
-    property bool startupCrossoverPrimed: false
+    // OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1 — no QML startup priming.
+    // All crossover models begin as Bypass in the engine constructor;
+    // authoritative Preview/connect readback replaces them without edits.
 
     // CROSSOVER_BYPASS_TYPE_STATE_V2
     // Bypass is a filter type, never a magic edge frequency. The HP/LP anchor
@@ -219,12 +217,6 @@ StudioPanel {
         curve.requestPaint()
     }
 
-    function ensureStartupCrossoverDefaults(){
-        if(startupCrossoverPrimed)return
-        startupCrossoverPrimed=true
-        if(String(bands.hpType).trim().toUpperCase()!=="BYPASS")bands.setHpType("Bypass")
-        if(String(bands.lpType).trim().toUpperCase()!=="BYPASS")bands.setLpType("Bypass")
-    }
     function captureEqState(){
         var result={bands:[]}
         for(var i=0;i<bands.count;++i){
@@ -344,7 +336,6 @@ StudioPanel {
         root.selectBand(0);root.primeCompareFromCurrent();curve.requestPaint()
     })
     Component.onCompleted: {
-        ensureStartupCrossoverDefaults()
         selectBand(0)
         Qt.callLater(function(){root.primeCompareFromCurrent();root.syncEqBypassFromDevice()})
     }
@@ -375,15 +366,17 @@ StudioPanel {
             RowLayout {
                 visible: root.showMicSelector
                 spacing: 7
-                SoftButton { Layout.preferredWidth:58;Layout.preferredHeight:27;text:"Mic A";compact:true;checked:root.micChannel===0;onClicked:root.micChannelRequested(0) }
-                SoftButton { Layout.preferredWidth:58;Layout.preferredHeight:27;text:"Mic B";compact:true;checked:root.micChannel===1;onClicked:root.micChannelRequested(1) }
+                SoftButton { Layout.preferredWidth:58;Layout.preferredHeight:28;text:"Mic A";compact:true;checked:root.micChannel===0;onClicked:root.micChannelRequested(0) }
+                SoftButton { Layout.preferredWidth:58;Layout.preferredHeight:28;text:"Mic B";compact:true;checked:root.micChannel===1;onClicked:root.micChannelRequested(1) }
 
+                // EQ_TOOLBAR_GEOMETRY_PARITY_V1 — all top-row keys share 28px
+                // height and the same switch geometry, with semantic colors intact.
                 // MIC_EQ_LINK_TOGGLE_V3 — exclusive A/B selector and an independent
                 // link switch share one optical center line.
                 Rectangle {
                     Layout.preferredWidth:104
-                    Layout.preferredHeight:27
-                    radius:7
+                    Layout.preferredHeight:28
+                    radius:8
                     color:root.eqLinked?"#102B2E":"#10161B"
                     border.width:1
                     border.color:root.eqLinked?Theme.accentSoft:"#29343C"
@@ -404,14 +397,14 @@ StudioPanel {
                             font.weight:Font.DemiBold
                         }
                         Rectangle {
-                            Layout.preferredWidth:30
-                            Layout.preferredHeight:15
+                            Layout.preferredWidth:31
+                            Layout.preferredHeight:16
                             Layout.alignment:Qt.AlignVCenter
                             radius:8
                             color:root.eqLinked?"#153F43":"#080C0F"
                             border.width:1;border.color:root.eqLinked?Theme.accent:"#35414A"
                             Rectangle {
-                                width:11;height:11;radius:6;y:2
+                                width:12;height:12;radius:6;y:2
                                 x:root.eqLinked?17:2
                                 color:root.eqLinked?Theme.accent:"#76838C"
                                 Behavior on x{NumberAnimation{duration:90;easing.type:Easing.OutCubic}}
