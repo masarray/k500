@@ -550,6 +550,12 @@ void K500PresetManager::onResponse(const K500Response &response)
     if (m_manager && m_manager->m_stage != K500DeviceManager::Stage::Idle
         && response.checksumOk && response.rsp == 0xC0 && !response.data.isEmpty()) {
         const int slot = qBound(1, static_cast<int>(static_cast<quint8>(response.data.at(0))) + 1, 10);
+        // OFFLINE_LAST_KNOWN_DEVICE_SLOT_V1: C0 owns both the live active slot
+        // and the retained UI selection. Disconnect clears only the live one.
+        if (m_lastKnownSlot != slot) {
+            m_lastKnownSlot = slot;
+            emit lastKnownSlotChanged();
+        }
         if (m_activeSlot != slot) {
             m_activeSlot = slot;
             emit activeSlotChanged();
@@ -579,6 +585,11 @@ void K500PresetManager::onResponse(const K500Response &response)
         } else if (m_activeSlot != m_requestedSlot) {
             m_activeSlot = m_requestedSlot;
             emit activeSlotChanged();
+        }
+        if (m_activeSlot >= 1 && m_activeSlot <= 10
+            && m_lastKnownSlot != m_activeSlot) {
+            m_lastKnownSlot = m_activeSlot;
+            emit lastKnownSlotChanged();
         }
         startReadback(ReadbackPurpose::Recall);
         return;
