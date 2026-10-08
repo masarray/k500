@@ -375,6 +375,38 @@ set(SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ACOUSTIC_NATURAL.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_REGGAE_DUB.k500"
 )
+# UAUDIO_COMPANION_PRESET_BANK_V1 — synthesize 11–20 during configure from the
+# exact 01–10 official donors. The source files never change and the generated
+# presets are embedded for fully offline use; no runtime Python dependency.
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(SONKUPIK_UAUDIO_PRESET_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated-uaudio-presets")
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_uaudio_presets.py"
+        --source "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets"
+        --output "${SONKUPIK_UAUDIO_PRESET_DIR}"
+    RESULT_VARIABLE SONKUPIK_UAUDIO_RESULT
+    OUTPUT_VARIABLE SONKUPIK_UAUDIO_LOG
+    ERROR_VARIABLE SONKUPIK_UAUDIO_ERROR
+)
+if(NOT SONKUPIK_UAUDIO_RESULT EQUAL 0)
+    message(FATAL_ERROR "Official UAUDIO preset generation failed: ${SONKUPIK_UAUDIO_ERROR}")
+endif()
+message(STATUS "${SONKUPIK_UAUDIO_LOG}")
+set(SONKUPIK_UAUDIO_PRESET_FILES)
+set(SONKUPIK_UAUDIO_INDEX 11)
+foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
+    get_filename_component(BASE_STEM "${PRESET_FILE}" NAME_WE)
+    string(REGEX REPLACE "^[0-9][0-9]_" "" BASE_STEM "${BASE_STEM}")
+    list(APPEND SONKUPIK_UAUDIO_PRESET_FILES
+        "${SONKUPIK_UAUDIO_PRESET_DIR}/${SONKUPIK_UAUDIO_INDEX}_${BASE_STEM}_UAUDIO.k500")
+    math(EXPR SONKUPIK_UAUDIO_INDEX "${SONKUPIK_UAUDIO_INDEX} + 1")
+endforeach()
+list(APPEND SONKUPIK_PRESET_FILES ${SONKUPIK_UAUDIO_PRESET_FILES})
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+    ${SONKUPIK_PRESET_FILES}
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_uaudio_presets.py")
+
 foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
     get_filename_component(PRESET_NAME "${PRESET_FILE}" NAME)
     set_source_files_properties("${PRESET_FILE}" PROPERTIES QT_RESOURCE_ALIAS "presets/${PRESET_NAME}")
