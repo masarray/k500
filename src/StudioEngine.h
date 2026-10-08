@@ -100,6 +100,8 @@ class StudioEngine final : public QObject
     Q_PROPERTY(EqBandModel *centerEqBands READ centerEqBands CONSTANT)
     Q_PROPERTY(EqBandModel *subEqBands READ subEqBands CONSTANT)
     Q_PROPERTY(QVariantMap deviceState READ deviceState NOTIFY deviceStateChanged)
+    // Last verified table survives disconnect as display-only; authority stays deviceStateReady.
+    Q_PROPERTY(QStringList retainedDeviceModeNames READ retainedDeviceModeNames NOTIFY deviceStateChanged)
     Q_PROPERTY(bool deviceStateReady READ deviceStateReady NOTIFY deviceStateChanged)
     Q_PROPERTY(int musicKey READ musicKey WRITE setMusicKey NOTIFY musicKeyChanged)
     Q_PROPERTY(double noiseGate READ noiseGate WRITE setNoiseGate NOTIFY noiseGateChanged)
@@ -139,6 +141,7 @@ public:
     EqBandModel *centerEqBands() { return &m_centerEqBands; }
     EqBandModel *subEqBands() { return &m_subEqBands; }
     QVariantMap deviceState() const { return m_deviceState; }
+    QStringList retainedDeviceModeNames() const { return m_retainedDeviceModeNames; }
     bool deviceStateReady() const { return m_deviceStateReady; }
 
     // ADJ_MANNER_SEMANTIC_SYNC_V2
@@ -322,6 +325,7 @@ private:
     EqBandModel m_subEqBands;
 
     QVariantMap m_deviceState;
+    QStringList m_retainedDeviceModeNames;
     bool m_deviceStateReady = false;
 
     int m_musicKey = 0;
