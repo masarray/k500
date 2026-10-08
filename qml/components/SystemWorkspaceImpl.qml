@@ -163,7 +163,14 @@ Item {
     property int pcLibraryTab: 0 // 0 = built-in, 1 = local folder
 
     function systemValue(key, fallback) {
-        var state = engine && engine.deviceState ? engine.deviceState : null
+        // OFFLINE_LAST_READBACK_VALUES_V1 — display confirmed session values
+        // after disconnect without treating them as *current* device authority.
+        // Offline explicit Preview still owns the editable engine state.
+        var state = null
+        if (root.engine && root.engine.deviceStateReady)
+            state = root.engine.deviceState
+        else if (!root.deviceConnected && root.engine)
+            state = root.engine.retainedDeviceState
         var system = state ? state.system : null
         var value = system ? system[key] : undefined
         return value === undefined || value === null || value === "" ? fallback : value
