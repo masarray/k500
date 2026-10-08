@@ -9,6 +9,7 @@
 #include <QFileInfo>
 #include <QSaveFile>
 #include <QSettings>
+#include <QStandardPaths>
 #include <algorithm>
 
 namespace {
@@ -91,10 +92,40 @@ K500PresetFileBridge::K500PresetFileBridge(QObject *parent)
 {
     rebuildBuiltInPresets();
 
+    // LOCAL_PRESET_LEGACY_FOLDER_DISCOVERY_V1 — older SonKuPik installations
+    // used Documents/SONKUPIK STUDIO Presets, while later builds remembered
+    // Documents/SonKuPikK500/Presets. A stale *empty* remembered directory
+    // must not hide real user presets that already exist in the legacy folder.
     const QString rememberedFolder = QSettings().value(
         QStringLiteral("pcPresetLibrary/folder")).toString();
-    if (!rememberedFolder.isEmpty() && QDir(rememberedFolder).exists()) {
-        m_presetFolder = QDir::cleanPath(rememberedFolder);
+    QStringList candidates;
+    if (!rememberedFolder.isEmpty())
+        candidates << QDir::cleanPath(rememberedFolder);
+    const QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    if (!documents.isEmpty())
+        candidates << QDir(documents).filePath(QStringLiteral("SONKUPIK STUDIO Presets"));
+    if (!rememberedFolder.isEmpty())
+        candidates << QDir(rememberedFolder).filePath(QStringLiteral("../../SONKUPIK STUDIO Presets"));
+    candidates << QDir::home().filePath(QStringLiteral("Documents/SONKUPIK STUDIO Presets"));
+
+    // Only specific, expected folder names are considered; never crawl the
+    // full Documents tree or import arbitrary files outside the user directory.
+    for (const QString &candidate : std::as_const(candidates)) {
+        const QDir folder(QDir::cleanPath(candidate));
+        if (!folder.exists())
+            continue;
+        if (!folder.entryList({QStringLiteral("*.k500")},
+                              QDir::Files | QDir::Readable | QDir::NoSymLinks).isEmpty()) {
+            m_presetFolder = folder.absolutePath();
+            break;
+        }
+    }
+    if (m_presetFolder.isEmpty() && !rememberedFolder.isEmpty()
+        && QDir(rememberedFolder).exists())
+        m_presetFolder = QDir(rememberedFolder).absolutePath();
+    if (!m_presetFolder.isEmpty()) {
+        if (QDir::cleanPath(rememberedFolder) != QDir::cleanPath(m_presetFolder))
+            QSettings().setValue(QStringLiteral("pcPresetLibrary/folder"), m_presetFolder);
         rebuildFolderPresets();
     } else {
         rebuildCombinedPresets();
