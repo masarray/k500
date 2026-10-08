@@ -25,7 +25,7 @@ StudioPanel {
                 anchors.left: parent.left
                 anchors.leftMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                text: "HPF / LPF"
+                text: "MUSIC HPF & LPF"
                 color: Theme.text
                 font.family: Theme.monoFamily
                 font.pixelSize: 10
