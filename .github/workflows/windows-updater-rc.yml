@@ -54,8 +54,542 @@ jobs:
           if ($version -ne '1.1.1') { throw "P4 updater RC requires source version 1.1.1; found $version" }
           $tag = "v$version-rc.$env:RC_NUMBER"
           $gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
-          if ($gate -notmatch '(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$') {
+          if ($gate -notmatch '(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*
+          $response = Invoke-WebRequest -Uri $url -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-updater-rc'
+            Accept = 'application/vnd.github+json'
+          } -SkipHttpErrorCheck -ErrorAction Stop
+          if ($response.StatusCode -eq 200) { throw "RC tag $tag already exists and is immutable. Start a NEW workflow run with an unused rc_number; do not rerun or overwrite an existing RC." }
+          if ($response.StatusCode -ne 404) { throw "Could not verify unused RC tag $tag (HTTP $($response.StatusCode))." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          Write-Host "Qualifying $tag from exact commit $env:GITHUB_SHA"
+
+      - name: Require exact-main qualification
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-updater-rc'
+            Accept = 'application/vnd.github+json'
+          }
+          $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/runs?head_sha=$env:GITHUB_SHA&per_page=100"
+          $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+          # CI_CONSOLIDATED_PIPELINE_V1 — normal qualification is one exact-SHA
+          # workflow. The RC job below still rebuilds/packages/installs the candidate
+          # independently; this gate only proves the source SHA passed normal CI.
+          $required = @('K500 CI')
+          foreach ($name in $required) {
+            $ok = @($response.workflow_runs | Where-Object {
+              $_.name -eq $name -and $_.head_sha -eq $env:GITHUB_SHA -and
+              $_.status -eq 'completed' -and $_.conclusion -eq 'success'
+            })
+            if ($ok.Count -eq 0) { throw "Exact commit has no successful '$name' workflow run." }
+            Write-Host "Exact-head gate PASS: $name"
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+          cmake --build build --config Release
+
+      - name: Run release regression suite
+        shell: pwsh
+        run: |
+          & build/k500_update_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Updater metadata integrity self-test failed' }
+          & build/k500_p2_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
+          & build/k500_p3_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
+          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
+          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.4 edit persistence failed' }
+          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
+
+      - name: Deploy direct application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
+          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
+          $helper = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
+          if ($helper.ExitCode -ne 0) { throw "Updater helper self-test failed: $($helper.ExitCode)" }
+          if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
+          windeployqt --release --qmldir qml package/SonKuPik-K500.exe
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=${{ steps.meta.outputs.version }}")) {
+            $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Direct app $arg failed with exit code $($p.ExitCode)" }
+          }
+
+      - name: Generate installer branding
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          python packaging/windows/generate_brand_assets.py --icon package/SonKuPik-K500.ico --wizard build/packaging/SonKuPik-K500-wizard.bmp --wizard-small build/packaging/SonKuPik-K500-wizard-small.bmp
+          if ($LASTEXITCODE -ne 0) { throw 'Installer branding generation failed' }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not $iscc -or -not (Test-Path $iscc)) { throw 'Inno Setup ISCC.exe not found.' }
+          "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Build machine and per-user candidates
+        shell: pwsh
+        run: |
+          $version = '${{ steps.meta.outputs.version }}'
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $env:SONKUPIK_APP_DIR = (Resolve-Path package).Path
+          $env:SONKUPIK_OUTPUT_DIR = (Resolve-Path dist).Path
+          $env:SONKUPIK_APP_ICON = (Resolve-Path package/SonKuPik-K500.ico).Path
+          $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard.bmp).Path
+          $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard-small.bmp).Path
+
+          & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Machine-wide Inno packaging failed' }
+          $machineStable = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
+          $machineRc = "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
+          if (-not (Test-Path $machineStable)) { throw 'Machine-wide Setup output missing' }
+          Move-Item $machineStable $machineRc -Force
+
+          & $env:INNO_ISCC "/DAppVersion=$version" "/DPerUser=1" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Per-user Inno packaging failed' }
+          $userStable = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
+          $userRc = "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
+          if (-not (Test-Path $userStable)) { throw 'Per-user Setup output missing' }
+          Move-Item $userStable $userRc -Force
+
+
+      - name: Validate machine-wide candidate
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $version = '${{ steps.meta.outputs.version }}'
+          $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Setup.exe").Path
+          $installDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-v11-rc-machine'
+          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Machine installer failed: $($install.ExitCode)" }
+          $machineReg = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $machineQuery = (& reg.exe QUERY $machineReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $machineQuery -notmatch [regex]::Escape($installDir)) {
+            throw "Machine installer registration is missing or points elsewhere: $machineQuery"
+          }
+          $app = Join-Path $installDir 'SonKuPik-K500.exe'
+          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=machine')) {
+            $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Machine candidate $arg failed: $($p.ExitCode)" }
+          }
+          $helper = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
+          if ($helper.ExitCode -ne 0) { throw 'Installed machine updater helper failed self-test' }
+          $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Machine candidate uninstall failed: $($uninstall.ExitCode)" }
+
+      - name: Validate per-user candidate
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $version = '${{ steps.meta.outputs.version }}'
+          $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe").Path
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik-K500-v11-rc-user'
+          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Per-user installer failed: $($install.ExitCode)" }
+          $userReg = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $userQuery = (& reg.exe QUERY $userReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $userQuery -notmatch [regex]::Escape($installDir)) {
+            throw "Per-user installer registration is missing or points elsewhere: $userQuery"
+          }
+          $app = Join-Path $installDir 'SonKuPik-K500.exe'
+          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
+            $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Per-user candidate $arg failed: $($p.ExitCode)" }
+          }
+          $helper = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
+          if ($helper.ExitCode -ne 0) { throw 'Installed per-user updater helper failed self-test' }
+          $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Per-user candidate uninstall failed: $($uninstall.ExitCode)" }
+
+      - name: Run deep updater lifecycle acceptance
+        shell: pwsh
+        run: |
+          ./tools/ci/updater_deep_acceptance.ps1 -Version '${{ steps.meta.outputs.version }}' -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" -PackageDir package -BuildDir build
+
+      - name: Generate and validate RC provenance
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $version = '${{ steps.meta.outputs.version }}'
+          $files = @(
+            Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
+            Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
+          )
+          $artifacts = @()
+          foreach ($file in ($files | Sort-Object Name)) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
+            $artifacts += [ordered]@{ file=$file.Name; sha256=$hash; bytes=$file.Length }
+          }
+          $gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
+          if ($gate -notmatch '(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$') { throw 'Acceptance token missing' }
+          $acceptance = $Matches[1]
+          $manifest = [ordered]@{
+            schema = 'sonkupik-k500-updater-rc-v1'
+            product = 'SonKuPik K500'
+            channel = 'updater-rc'
+            releaseTag = $tag
+            version = $version
+            commit = $env:GITHUB_SHA
+            generatedUtc = [DateTime]::UtcNow.ToString('o')
+            target = 'windows-x64'
+            qtVersion = $env:QT_VERSION
+            stableReleaseEligible = $false
+            updaterAcceptance = $acceptance
+            codeSigning = 'unsigned-open-source'
+            installerTechnology = 'Inno Setup 6'
+            installerScopes = @('machine','user')
+            migration = 'explicit-machine-to-user'
+            rollbackRecovery = $true
+            resumableDownloads = $true
+            requiredExactHeadWorkflows = @('K500 CI')
+            artifacts = $artifacts
+          }
+          $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/updater-rc-manifest.json
+          $check = Get-Content dist/updater-rc-manifest.json -Raw | ConvertFrom-Json
+          if ($check.stableReleaseEligible -ne $false) { throw 'RC must never be stable-release eligible' }
+          if ($check.artifacts.Count -ne 2) { throw 'RC manifest must describe exactly the machine and per-user installers' }
+          if ($check.commit -ne $env:GITHUB_SHA) { throw 'RC manifest commit mismatch' }
+
+      - name: Upload exact RC artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows
+          path: |
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
+            dist/SHA256SUMS.txt
+            dist/updater-rc-manifest.json
+          if-no-files-found: error
+
+      - name: Publish immutable GitHub prerelease
+        if: ${{ inputs.publish_prerelease }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: SonKuPik K500 ${{ steps.meta.outputs.tag }} — Updater RC
+          prerelease: true
+          make_latest: false
+          generate_release_notes: true
+          body: |
+            **Updater release candidate — not public stable.**
+
+            This exact build qualifies the v1.1.1 patch release on the proven v1.1 updater lifecycle: machine-wide and per-user installers, explicit no-admin migration, rollback/recovery, resumable downloads, and persistence safeguards.
+
+            Stable v1.1.1 has now been promoted from the accepted RC1 bytes. This version-specific RC workflow is retained for provenance; bump the source version before starting a new release line.
+
+            Windows binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
+          files: |
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
+            dist/SHA256SUMS.txt
+            dist/updater-rc-manifest.json
+          fail_on_unmatched_files: true
+          overwrite_files: false
+) {
             throw 'Updater acceptance record has no valid machine-readable token.'
+          }
+          # RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1 — once this version has an
+          # accepted immutable RC/stable promotion, publishing another rebuilt
+          # RC for the same source version would violate byte-identical provenance.
+          if ($gate -match '(?m)^UPDATER_V1_1_1_ACCEPTANCE=accepted\s*
+          $response = Invoke-WebRequest -Uri $url -Headers @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-updater-rc'
+            Accept = 'application/vnd.github+json'
+          } -SkipHttpErrorCheck -ErrorAction Stop
+          if ($response.StatusCode -eq 200) { throw "RC tag $tag already exists and is immutable. Start a NEW workflow run with an unused rc_number; do not rerun or overwrite an existing RC." }
+          if ($response.StatusCode -ne 404) { throw "Could not verify unused RC tag $tag (HTTP $($response.StatusCode))." }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "tag=$tag" >> $env:GITHUB_OUTPUT
+          Write-Host "Qualifying $tag from exact commit $env:GITHUB_SHA"
+
+      - name: Require exact-main qualification
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-updater-rc'
+            Accept = 'application/vnd.github+json'
+          }
+          $uri = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/actions/runs?head_sha=$env:GITHUB_SHA&per_page=100"
+          $response = Invoke-RestMethod -Uri $uri -Headers $headers -Method Get
+          # CI_CONSOLIDATED_PIPELINE_V1 — normal qualification is one exact-SHA
+          # workflow. The RC job below still rebuilds/packages/installs the candidate
+          # independently; this gate only proves the source SHA passed normal CI.
+          $required = @('K500 CI')
+          foreach ($name in $required) {
+            $ok = @($response.workflow_runs | Where-Object {
+              $_.name -eq $name -and $_.head_sha -eq $env:GITHUB_SHA -and
+              $_.status -eq 'completed' -and $_.conclusion -eq 'success'
+            })
+            if ($ok.Count -eq 0) { throw "Exact commit has no successful '$name' workflow run." }
+            Write-Host "Exact-head gate PASS: $name"
+          }
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: 'win64_msvc2022_64'
+          cache: true
+
+      - name: Activate MSVC 2022
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Configure and build
+        shell: pwsh
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER=cl
+          cmake --build build --config Release
+
+      - name: Run release regression suite
+        shell: pwsh
+        run: |
+          & build/k500_update_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'Updater metadata integrity self-test failed' }
+          & build/k500_p2_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P2 preset protocol self-test failed' }
+          & build/k500_p3_selftest.exe
+          if ($LASTEXITCODE -ne 0) { throw 'P3 codec self-test failed' }
+          & build/k500_p32_corpus_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.2 donor corpus failed' }
+          & build/k500_p34_edit_persistence_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P3.4 edit persistence failed' }
+          & build/k500_p42_batch_test.exe tests/fixtures/donor-sample.k500
+          if ($LASTEXITCODE -ne 0) { throw 'P4.2 donor batch failed' }
+
+      - name: Deploy direct application
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package,dist,build/packaging | Out-Null
+          Copy-Item build/SONKUPIK-STUDIO-Native-UI.exe package/SonKuPik-K500.exe
+          Copy-Item build/SonKuPik-K500-Updater.exe package/SonKuPik-K500-Updater.exe
+          $helper = Start-Process -FilePath 'package/SonKuPik-K500-Updater.exe' -ArgumentList '--self-test' -Wait -PassThru
+          if ($helper.ExitCode -ne 0) { throw "Updater helper self-test failed: $($helper.ExitCode)" }
+          if (Test-Path LICENSE) { Copy-Item LICENSE package/ }
+          windeployqt --release --qmldir qml package/SonKuPik-K500.exe
+          foreach ($arg in @('--font-self-test','--protocol-self-test','--engine-self-test', "--update-health-check=${{ steps.meta.outputs.version }}")) {
+            $p = Start-Process -FilePath 'package/SonKuPik-K500.exe' -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Direct app $arg failed with exit code $($p.ExitCode)" }
+          }
+
+      - name: Generate installer branding
+        shell: pwsh
+        run: |
+          python -m pip install --disable-pip-version-check --quiet pillow
+          python packaging/windows/generate_brand_assets.py --icon package/SonKuPik-K500.ico --wizard build/packaging/SonKuPik-K500-wizard.bmp --wizard-small build/packaging/SonKuPik-K500-wizard-small.bmp
+          if ($LASTEXITCODE -ne 0) { throw 'Installer branding generation failed' }
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          $iscc = (Get-Command ISCC.exe -ErrorAction SilentlyContinue).Source
+          if (-not $iscc) { $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" }
+          if (-not $iscc -or -not (Test-Path $iscc)) { throw 'Inno Setup ISCC.exe not found.' }
+          "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
+
+      - name: Build machine and per-user candidates
+        shell: pwsh
+        run: |
+          $version = '${{ steps.meta.outputs.version }}'
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $env:SONKUPIK_APP_DIR = (Resolve-Path package).Path
+          $env:SONKUPIK_OUTPUT_DIR = (Resolve-Path dist).Path
+          $env:SONKUPIK_APP_ICON = (Resolve-Path package/SonKuPik-K500.ico).Path
+          $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard.bmp).Path
+          $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard-small.bmp).Path
+
+          & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Machine-wide Inno packaging failed' }
+          $machineStable = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
+          $machineRc = "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
+          if (-not (Test-Path $machineStable)) { throw 'Machine-wide Setup output missing' }
+          Move-Item $machineStable $machineRc -Force
+
+          & $env:INNO_ISCC "/DAppVersion=$version" "/DPerUser=1" packaging/windows/installer.iss
+          if ($LASTEXITCODE -ne 0) { throw 'Per-user Inno packaging failed' }
+          $userStable = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
+          $userRc = "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
+          if (-not (Test-Path $userStable)) { throw 'Per-user Setup output missing' }
+          Move-Item $userStable $userRc -Force
+
+
+      - name: Validate machine-wide candidate
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $version = '${{ steps.meta.outputs.version }}'
+          $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Setup.exe").Path
+          $installDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-v11-rc-machine'
+          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Machine installer failed: $($install.ExitCode)" }
+          $machineReg = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $machineQuery = (& reg.exe QUERY $machineReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $machineQuery -notmatch [regex]::Escape($installDir)) {
+            throw "Machine installer registration is missing or points elsewhere: $machineQuery"
+          }
+          $app = Join-Path $installDir 'SonKuPik-K500.exe'
+          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=machine')) {
+            $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Machine candidate $arg failed: $($p.ExitCode)" }
+          }
+          $helper = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
+          if ($helper.ExitCode -ne 0) { throw 'Installed machine updater helper failed self-test' }
+          $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Machine candidate uninstall failed: $($uninstall.ExitCode)" }
+
+      - name: Validate per-user candidate
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $version = '${{ steps.meta.outputs.version }}'
+          $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe").Path
+          $installDir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik-K500-v11-rc-user'
+          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
+          if ($install.ExitCode -ne 0) { throw "Per-user installer failed: $($install.ExitCode)" }
+          $userReg = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $userQuery = (& reg.exe QUERY $userReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $userQuery -notmatch [regex]::Escape($installDir)) {
+            throw "Per-user installer registration is missing or points elsewhere: $userQuery"
+          }
+          $app = Join-Path $installDir 'SonKuPik-K500.exe'
+          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
+            $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
+            if ($p.ExitCode -ne 0) { throw "Per-user candidate $arg failed: $($p.ExitCode)" }
+          }
+          $helper = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
+          if ($helper.ExitCode -ne 0) { throw 'Installed per-user updater helper failed self-test' }
+          $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($uninstall.ExitCode -ne 0) { throw "Per-user candidate uninstall failed: $($uninstall.ExitCode)" }
+
+      - name: Run deep updater lifecycle acceptance
+        shell: pwsh
+        run: |
+          ./tools/ci/updater_deep_acceptance.ps1 -Version '${{ steps.meta.outputs.version }}' -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" -PackageDir package -BuildDir build
+
+      - name: Generate and validate RC provenance
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.meta.outputs.tag }}'
+          $version = '${{ steps.meta.outputs.version }}'
+          $files = @(
+            Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
+            Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
+          )
+          $artifacts = @()
+          foreach ($file in ($files | Sort-Object Name)) {
+            $hash = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
+            $artifacts += [ordered]@{ file=$file.Name; sha256=$hash; bytes=$file.Length }
+          }
+          $gate = Get-Content 'docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md' -Raw
+          if ($gate -notmatch '(?m)^UPDATER_V1_1_1_ACCEPTANCE=(pending|accepted)\s*$') { throw 'Acceptance token missing' }
+          $acceptance = $Matches[1]
+          $manifest = [ordered]@{
+            schema = 'sonkupik-k500-updater-rc-v1'
+            product = 'SonKuPik K500'
+            channel = 'updater-rc'
+            releaseTag = $tag
+            version = $version
+            commit = $env:GITHUB_SHA
+            generatedUtc = [DateTime]::UtcNow.ToString('o')
+            target = 'windows-x64'
+            qtVersion = $env:QT_VERSION
+            stableReleaseEligible = $false
+            updaterAcceptance = $acceptance
+            codeSigning = 'unsigned-open-source'
+            installerTechnology = 'Inno Setup 6'
+            installerScopes = @('machine','user')
+            migration = 'explicit-machine-to-user'
+            rollbackRecovery = $true
+            resumableDownloads = $true
+            requiredExactHeadWorkflows = @('K500 CI')
+            artifacts = $artifacts
+          }
+          $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/updater-rc-manifest.json
+          $check = Get-Content dist/updater-rc-manifest.json -Raw | ConvertFrom-Json
+          if ($check.stableReleaseEligible -ne $false) { throw 'RC must never be stable-release eligible' }
+          if ($check.artifacts.Count -ne 2) { throw 'RC manifest must describe exactly the machine and per-user installers' }
+          if ($check.commit -ne $env:GITHUB_SHA) { throw 'RC manifest commit mismatch' }
+
+      - name: Upload exact RC artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows
+          path: |
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
+            dist/SHA256SUMS.txt
+            dist/updater-rc-manifest.json
+          if-no-files-found: error
+
+      - name: Publish immutable GitHub prerelease
+        if: ${{ inputs.publish_prerelease }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: SonKuPik K500 ${{ steps.meta.outputs.tag }} — Updater RC
+          prerelease: true
+          make_latest: false
+          generate_release_notes: true
+          body: |
+            **Updater release candidate — not public stable.**
+
+            This exact build qualifies the v1.1.1 patch release on the proven v1.1 updater lifecycle: machine-wide and per-user installers, explicit no-admin migration, rollback/recovery, resumable downloads, and persistence safeguards.
+
+            Stable v1.1.1 has now been promoted from the accepted RC1 bytes. This version-specific RC workflow is retained for provenance; bump the source version before starting a new release line.
+
+            Windows binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
+          files: |
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
+            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
+            dist/SHA256SUMS.txt
+            dist/updater-rc-manifest.json
+          fail_on_unmatched_files: true
+          overwrite_files: false
+) {
+            throw 'v1.1.1 RC line is closed after acceptance/stable promotion. Bump the source version before starting a new RC line.'
           }
           $url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"
           $response = Invoke-WebRequest -Uri $url -Headers @{

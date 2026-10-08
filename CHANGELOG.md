@@ -50,7 +50,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Official SHA-256: `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1`.
 - The detailed audit and lock rationale are recorded in `docs/K500_MODE01_FLAGSHIP_R21_ACCEPTANCE.md`.
 
-## v1.1.1 — Balanced Enhanced Music Core candidate
+## v1.1.0 — Balanced Enhanced Music Core candidate
 
 ### Changed
 
@@ -66,7 +66,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Public RC/stable provenance must not consume these candidate bytes before that gate passes.
 
 
-## v1.1.1 — CI consolidation
+## v1.1.0 — CI consolidation
 
 ### Changed
 
@@ -78,7 +78,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Updater RC qualification now requires one successful exact-main `K500 CI` run instead of six independent workflow names.
 - Legacy milestone workflows were retired from active Actions; their historical implementation remains available through Git history.
 
-## v1.1.1 — Final K500 protocol and hardware-ownership closure
+## v1.1.0 — Final K500 protocol and hardware-ownership closure
 
 ### Added
 
@@ -103,7 +103,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - The next immutable public candidate is **v1.1.0-rc.5** from the exact post-merge `main` commit.
 - Stable v1.1.0 remains fail-closed until the exact RC5 machine and per-user installer bytes are accepted and recorded in the updater acceptance provenance gate.
 
-## v1.1.1 — Final musicality preset library
+## v1.1.0 — Final musicality preset library
 
 ### Changed
 
@@ -115,7 +115,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Updated release and consolidated CI guards so packaged, cached and GitHub-synced official presets converge on the evidence-approved mixed bank.
 
 
-## v1.1.1 — Voluntary QRIS support prompt
+## v1.1.0 — Voluntary QRIS support prompt
 
 ### Added
 
@@ -131,7 +131,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Donation remains optional and does not unlock, restrict, or modify any K500 feature.
 
 
-## v1.1.1 — Smart Installer public distribution
+## v1.1.0 — Smart Installer public distribution
 
 ### Changed
 
@@ -146,7 +146,7 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 - Stable manifest parsing already accepts the two-installer artifact model and regression coverage explicitly exercises both machine and per-user scope selection.
 - RC3 operator testing confirmed correct preset presentation, Program Files migration/UAC behavior, no-admin LocalAppData update, and foreground relaunch; automated migration sentinels cover Documents presets, QSettings, official cache, and uninstall-registration cleanup.
 
-## v1.1.1 — Synchronize official preset filenames
+## v1.1.0 — Synchronize official preset filenames
 
 ### Changed
 
@@ -156,14 +156,14 @@ All notable SonKuPik K500 changes are documented here. Hardware-facing statement
 
 
 
-## v1.1.1 — Preset 02 display rename
+## v1.1.0 — Preset 02 display rename
 
 ### Changed
 
 - Renamed official Slot 02 internal preset name from `BCAST HIFI V2` to `MC HOST RADIO`.
 - Audio parameters, EQ, dynamics, Reverb/Echo, routing, and donor sonic behavior are unchanged; only the visible/internal name field and additive checksum changed.
 
-## v1.1.1 — Final official preset library refresh
+## v1.1.0 — Final official preset library refresh
 
 ### Changed
 
@@ -228,7 +228,7 @@ Public stable release from commit `7d6ded580e15b652db97edf0700283e3fa931996`, pr
 ### Validation
 
 - The v1.0.3 device-validation line advanced through RC1/RC2 with exact-build CI and physical-capture-backed fixes before the final public stable package.
-- v1.0.3 remains historical stable release evidence; v1.1.0 is the current latest non-prerelease public stable.
+- v1.0.3 remains historical stable release evidence; the current latest non-prerelease public stable is v1.1.1.
 
 ## 1.0.2 — Smart Windows lifecycle
 

@@ -839,6 +839,47 @@ def check_release_contracts() -> None:
         'data-release-template="Smart Installer {tag}"',
     )
     require(
+        "AGENTS.md",
+        "Public stable line: **v1.1.1**",
+    )
+    forbid(
+        "AGENTS.md",
+        "Public stable line: **v1.1.0**",
+    )
+    require(
+        "docs/README.md",
+        "| Public stable | `v1.1.1`",
+        "| Stable source line | `v1.1.1`, promoted byte-identically from accepted `v1.1.1-rc.1`",
+        "V1_1_1_UPDATER_RC_ACCEPTANCE.md",
+        "landing buttons show the resolved stable tag",
+    )
+    forbid(
+        "docs/README.md",
+        "| Public stable | `v1.1.0`",
+        "| Stable source line | `v1.1.0`",
+    )
+    require(
+        "CHANGELOG.md",
+        "## v1.1.1 — Mode 02 flagship broadcast lock",
+        "## v1.1.1 — Mode 01 flagship singer-comfort lock",
+        "## v1.1.0 — Balanced Enhanced Music Core candidate",
+        "## v1.1.0 — Smart Installer public distribution",
+        "current latest non-prerelease public stable is v1.1.1",
+    )
+    forbid(
+        "CHANGELOG.md",
+        "## v1.1.1 — Balanced Enhanced Music Core candidate",
+        "## v1.1.1 — Smart Installer public distribution",
+        "v1.1.0 is the current latest non-prerelease public stable",
+    )
+    require(
+        ".github/workflows/windows-updater-rc.yml",
+        "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
+        "UPDATER_V1_1_1_ACCEPTANCE=accepted",
+        "v1.1.1 RC line is closed after acceptance/stable promotion",
+        "Bump the source version before starting a new RC line.",
+    )
+    require(
         "src/main.cpp",
         "DonationPromptController",
         'QStringLiteral("donationPrompt")',
