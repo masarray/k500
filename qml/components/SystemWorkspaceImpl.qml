@@ -211,17 +211,22 @@ Item {
         return -1
     }
     property int selectedDeviceSlot: 0
+    // DEVICE_SLOT_OFFLINE_SHADOW_V1 — a disconnected K500 has no ACTIVE
+    // authority, but its last successfully read ten names remain informative.
+    // Never infer physical slots from the PC preset collection.
     property var deviceSlots: {
-        if (!root.deviceConnected)
-            return root.defaultDeviceSlots
-        var names = root.systemValue("deviceModeNames", root.defaultDeviceSlots)
-        return names && names.length === 10 ? names : root.defaultDeviceSlots
+        var liveNames = root.deviceConnected
+                        ? root.systemValue("deviceModeNames", root.defaultDeviceSlots) : null
+        if (liveNames && liveNames.length === 10)
+            return liveNames
+        var retainedNames = root.engine ? root.engine.retainedDeviceModeNames : null
+        return retainedNames && retainedNames.length === 10 ? retainedNames : root.defaultDeviceSlots
     }
     // MODE_NAME_STORE_CAPTURED_V1 — table readback is hardware truth. Persistent
     // rename is allowed only for the ACTIVE slot because the native transaction
     // stores the current 0x0290 image after patching its 16-byte name field.
     readonly property string selectedDeviceModeName: {
-        if (!root.deviceConnected || root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
+        if (root.selectedDeviceSlot < 0 || root.selectedDeviceSlot >= root.deviceSlots.length)
             return ""
         return String(root.deviceSlots[root.selectedDeviceSlot] || "").slice(0, 16)
     }
@@ -305,6 +310,8 @@ Item {
             root.seedOfflineTogglesFromRetainedSession()
         if (root.activeDeviceSlot >= 0)
             root.selectedDeviceSlot = root.activeDeviceSlot
+        else if (root.presetManager && Number(root.presetManager.lastKnownSlot) > 0)
+            root.selectedDeviceSlot = Number(root.presetManager.lastKnownSlot) - 1
         root.modeNameDraft = root.selectedDeviceModeName
         root.btNameDraft = root.currentBtName
     }
