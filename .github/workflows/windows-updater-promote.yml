@@ -52,7 +52,9 @@ jobs:
           $machineHash = (Read-GateToken 'UPDATER_V1_1_2_MACHINE_SHA256').ToLowerInvariant()
           $userHash = (Read-GateToken 'UPDATER_V1_1_2_USER_SHA256').ToLowerInvariant()
           if ($state -ne 'accepted') { throw 'Stable updater promotion is blocked until acceptance is exactly accepted.' }
-          if ($tag -notmatch '^v1\.1\.1-rc\.[1-9][0-9]*$') { throw "Invalid accepted RC tag: $tag" }
+          # PROMOTION_RC_TAG_MATCHES_SOURCE_VERSION_V1 — only this source version's RC.
+          $expectedRcPattern = '^v' + [regex]::Escape($version) + '-rc\.[1-9][0-9]*$'
+          if ($tag -notmatch $expectedRcPattern) { throw "Invalid accepted RC tag: $tag (expected v$version-rc.N)" }
           if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Accepted RC commit must be a full 40-character SHA.' }
           foreach ($pair in @{ machine=$machineHash; user=$userHash }.GetEnumerator()) {
             if ($pair.Value -notmatch '^[0-9a-f]{64}$') { throw "Accepted $($pair.Key) SHA-256 is invalid." }

@@ -44,9 +44,9 @@ DSP/EQ or guarantees superior audio quality.
 - Plain click selects a single PC-library row.
 - **Ctrl+click** toggles individual rows; **Shift+click** selects a continuous
   range; **Ctrl+Shift+click** extends the selection.
-- **Add** stages selected valid rows in library order, skipping duplicates and
-  stopping at 10 destination slots. The source selection itself never writes
-  device hardware.
+- **Stage** adds selected valid rows in the order manually selected by the
+  user, including directional Shift ranges. It skips duplicates and stops at
+  ten destination slots. The source selection itself never writes hardware.
 - Double-click adds only the clicked preset. Add All retains its original
   first-valid-up-to-ten behavior; device upload stays 10→1 and is unchanged.
 - Refreshing the library clears positional source selections to avoid selecting
@@ -57,6 +57,29 @@ DSP/EQ or guarantees superior audio quality.
 The active **EQ BYPASS** toggle is ruby-red and returns to its original neutral
 state when not active, across the shared PEQ sections. This is purely visual,
 without bypass polarity or packet changes.
+
+## Final GUI copy and release-candidate freeze
+
+The System preset action reads **Mass Upload** (not ambiguous **Mass**).
+Its click still opens the offline staging dialog; actual USB transfer
+remains a separate explicit, guarded Upload action.
+
+**Code-freeze target:** the merge commit produced by the final Mass Upload
+label PR, after the existing exact-head PR CI and post-merge main CI pass.
+Freeze means **no further feature, preset, DSP, protocol, UX or installer
+changes** on the v1.1.2 candidate without an evidenced release-blocker and
+a separately reviewed correction. Record the exact 40-character final merge
+SHA and accepted RC binary hashes in the release-owner record before
+promotion. This paragraph is a preparation rule, **not hardware validation,
+RC acceptance, or permission to publish**.
+
+The release-candidate sequence remains: Windows GUI acceptance including
+the System button/10-slot Mass Upload at the supported window sizes and
+100/125/150% DPI, a verified K500 USB/HID write/readback session,
+immutable machine and per-user RC installers plus updater round-trip,
+`UPDATER_V1_1_2_ACCEPTANCE=accepted` in the dedicated reviewed gate PR,
+then manual byte-identical stable promotion. The public channel and
+download links continue to point at **v1.1.1** until that acceptance.
 
 ## Qualification before stable v1.1.2
 

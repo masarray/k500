@@ -656,7 +656,9 @@ Item {
                             }
                             SoftButton {
                                 Layout.fillWidth: true
-                                text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass"
+                                // FINAL_MASS_UPLOAD_LABEL_V1_1_2 — explicit action;
+                                // this opens staging, it does not initiate a device write.
+                                text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass Upload"
                                 compact: true
                                 // OFFLINE_MASS_PREP_V1 — preparation is local-only and
                                 // remains available without hardware. Final send is gated

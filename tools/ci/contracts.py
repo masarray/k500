@@ -783,6 +783,17 @@ def check_ui_contracts() -> None:
         "MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1",
     )
 
+    # FINAL_MASS_UPLOAD_LABEL_V1_1_2 — freeze the explicit control label
+    # without changing staging scope, hardware gates, or click action.
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "FINAL_MASS_UPLOAD_LABEL_V1_1_2",
+        'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass Upload"',
+        "enabled: !!root.fileBridge && (!root.presetManager || !root.presetManager.busy)",
+        "onClicked: massPresetDialog.openTransfer()",
+    )
+    forbid("qml/components/SystemWorkspaceImpl.qml", 'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass"')
+
     # QUIET_PRESET_COPY_V9 — remove redundant preset prose without ever
     # changing models, chronology, native Store/Recall, or meaningful errors.
     require(
@@ -1399,6 +1410,14 @@ def check_release_contracts() -> None:
         if token not in legacy_acceptance:
             FAILURES.append(f"historical v1.1.0 acceptance provenance changed: {token}")
 
+    # Freeze gate: the 1.1.2 promotion may only accept an RC tag that
+    # matches the source version. A stale 1.1.1 tag filter would make the
+    # public stable path impossible even with correct binary hashes.
+    forbid(
+        ".github/workflows/windows-updater-promote.yml",
+        "'^v1\\.1\\.1-rc",
+    )
+
     # Stable v1.1.1 accepted bytes remain immutable while qualifying the
     # independent v1.1.2 RC line.
     historic111 = read("docs/V1_1_1_UPDATER_RC_ACCEPTANCE.md")
@@ -1425,6 +1444,9 @@ def check_release_contracts() -> None:
         "docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md",
         "UPDATER_V1_1_2_ACCEPTED_COMMIT",
         "$stableTag = 'v1.1.2'",
+        "PROMOTION_RC_TAG_MATCHES_SOURCE_VERSION_V1",
+        "[regex]::Escape($version)",
+        "if ($tag -notmatch $expectedRcPattern)",
         "Public stable SonKuPik K500 v1.1.2.",
     )
 
