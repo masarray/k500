@@ -29,6 +29,30 @@ Item {
     }
     function longType(v) { return v === "LS" ? "LOW SHELF" : v === "HS" ? "HIGH SHELF" : "BELL" }
 
+    // VISUAL_INSPECTOR_SURFACE_V1 — purely presentational: no pointer
+    // interception, model replacement, shadow layers, or device writes.
+    // The floating inspector keeps its proven 320 x 86 interaction geometry.
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -4
+        radius: 9
+        color: "#10171D"
+        border.width: 1
+        border.color: "#3A4850"
+        z: -1
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.leftMargin: -4
+        anchors.verticalCenter: parent.verticalCenter
+        width: 3
+        height: 27
+        radius: 1.5
+        color: root.accentColor
+        opacity: 0.85
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 5
@@ -44,9 +68,9 @@ Item {
                     text: "BAND " + (root.bandIndex + 1)
                     color: Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 9
                     font.weight: Font.DemiBold
-                    font.letterSpacing: 1.2
+                    font.letterSpacing: 0.75
                 }
                 Text {
                     text: {
@@ -80,7 +104,7 @@ Item {
             ColumnLayout {
                 Layout.preferredWidth: 66
                 spacing: 2
-                Text { text: "TYPE"; color: Theme.textDim; font.family: Theme.monoFamily; font.pixelSize: 8; font.letterSpacing: 1.0 }
+                Text { text: "TYPE"; color: Theme.textDim; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.65 }
                 StudioComboBox {
                     Layout.fillWidth: true
                     Layout.preferredHeight: 28

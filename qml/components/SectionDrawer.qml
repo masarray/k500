@@ -23,7 +23,7 @@ StudioPanel {
                 color: Theme.textDim
                 renderType: Text.NativeRendering
                 font.family: Theme.monoFamily
-                font.pixelSize: Theme.navHeaderSize
+                font.pixelSize: 10
                 font.weight: Font.Medium
                 font.hintingPreference: Font.PreferFullHinting
                 font.letterSpacing: 0.85
@@ -59,6 +59,13 @@ StudioPanel {
                 border.width: 1
                 border.color: keyboardFocused ? Theme.focus
                               : active ? "#365860" : hovered ? Theme.border : "transparent"
+
+                // MICRO_TYPE_OPTICAL_POLISH_V1 — retain native text optical
+                // position during pointer press; avoid scale/font rerasterization.
+                transform: Translate {
+                    y: navPointer.pressed ? 1 : 0
+                    Behavior on y { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
+                }
 
                 // One strong focus cue instead of stacked neon outlines.
                 Rectangle {

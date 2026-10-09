@@ -901,12 +901,22 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="band"&&index===root.selectedIndex
                     readonly property color bandColor:root.colorFor(index)
                     Layout.fillWidth:true;Layout.preferredHeight:43;radius:10
-                    gradient:Gradient{GradientStop{position:0;color:bandPill.selected?"#103136":"#11171C"}GradientStop{position:1;color:bandPill.selected?"#081719":"#090D11"}}
-                    border.width:1;border.color:bandPill.selected?Theme.accentSoft:"#242C33"
+                    // VISUAL_BAND_CHIP_HIERARCHY_V1 — neutral values, hue reserved
+                    // for band identity; selected band remains cyan-highlighted.
+                    gradient:Gradient{GradientStop{position:0;color:bandPill.selected?"#162A2F":"#11181E"}GradientStop{position:1;color:bandPill.selected?"#0D1B20":"#0B1014"}}
+                    border.width:1;border.color:bandPill.selected?Theme.accentSoft:"#28343C"
+                    Rectangle {
+                        anchors.left:parent.left
+                        anchors.leftMargin:1
+                        anchors.verticalCenter:parent.verticalCenter
+                        width:3;height:22;radius:1.5
+                        color:bandPill.bandColor
+                        opacity:bandPill.selected?0.9:0.55
+                    }
                     Column {
-                        anchors.fill:parent;anchors.margins:6;spacing:0
-                        Row{width:parent.width;Text{text:"B"+(index+1);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-34);height:1}Text{text:root.typeShort(typeName);color:bandPill.selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
-                        Row{width:parent.width;Text{text:root.fmtF(freq);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Item{width:Math.max(0,parent.width-54);height:1}Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9}}
+                        anchors.fill:parent;anchors.margins:6;spacing:1
+                        Row{width:parent.width;Text{text:"B"+(index+1);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-34);height:1}Text{text:root.typeShort(typeName);color:bandPill.selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}}
+                        Row{width:parent.width;Text{text:root.fmtF(freq);color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-54);height:1}Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:10}}
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectBand(index)}
                 }
