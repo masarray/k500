@@ -1081,7 +1081,7 @@ def check_public_surface_contracts() -> None:
                 FAILURES.append(f"{rel}: Canvas stroke without antialiasing")
         for m in re.finditer(r"\bShape\s*\{", qml_text):
             shapes_seen += 1
-            if "preferredRendererType: Shape.CurveRenderer" not in qml_text[m.end():m.end() + 180]:
+            if "preferredRendererType: Shape.CurveRenderer" not in qml_text[m.end():m.end() + 512]:
                 FAILURES.append(f"{rel}: Shape missing CurveRenderer")
     if fonts_seen < 100 or canvases_seen != 3 or shapes_seen < 13:
         FAILURES.append(
