@@ -783,6 +783,17 @@ def check_ui_contracts() -> None:
         "MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1",
     )
 
+    # FINAL_MASS_UPLOAD_LABEL_V1_1_2 — freeze the explicit control label
+    # without changing staging scope, hardware gates, or click action.
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "FINAL_MASS_UPLOAD_LABEL_V1_1_2",
+        'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass Upload"',
+        "enabled: !!root.fileBridge && (!root.presetManager || !root.presetManager.busy)",
+        "onClicked: massPresetDialog.openTransfer()",
+    )
+    forbid("qml/components/SystemWorkspaceImpl.qml", 'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass"')
+
     # QUIET_PRESET_COPY_V9 — remove redundant preset prose without ever
     # changing models, chronology, native Store/Recall, or meaningful errors.
     require(
