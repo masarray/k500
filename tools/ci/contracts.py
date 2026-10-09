@@ -1001,6 +1001,40 @@ def check_public_surface_contracts() -> None:
         "y: navPointer.pressed ? 1 : 0",
         "strokeWidth: 1.85",
     )
+    # VISUAL_FOUNDATION_REGRESSION_V1 — fast source-only safeguards.
+    # Do not add a separate workflow for presentation refinements.
+    require(
+        "qml/theme/Theme.qml",
+        "VISUAL_FOUNDATION_V1",
+        "navActiveSurface",
+        "navSubtitleSize: 11",
+    )
+    require(
+        "qml/components/SectionDrawer.qml",
+        "MICRO_TYPE_OPTICAL_POLISH_V1",
+        "y: navPointer.pressed ? 1 : 0",
+        "Theme.navActiveSurface",
+        "Theme.navSubtitleSize",
+    )
+    require(
+        "qml/components/BandInspector.qml",
+        "VISUAL_INSPECTOR_SURFACE_V1",
+        "onClicked: root.resetRequested()",
+        "signal frequencyEdited(real value)",
+    )
+    require(
+        "qml/components/CrossoverInspector.qml",
+        "VISUAL_INSPECTOR_SURFACE_V1",
+        "onClicked: root.resetRequested()",
+        "signal typeEdited(string value)",
+    )
+    require(
+        "qml/components/SectionEqGraph.qml",
+        "VISUAL_BAND_CHIP_HIERARCHY_V1",
+        "model:root.bands",
+        "onClicked:root.selectBand(index)",
+    )
+
     require(
         "qml/components/TopBar.qml",
         "font.pixelSize: 10",

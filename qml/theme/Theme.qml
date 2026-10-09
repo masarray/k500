@@ -54,4 +54,18 @@ QtObject {
     readonly property int textM: 11
     readonly property int textL: 13
     readonly property int textXL: 16
+
+    // VISUAL_FOUNDATION_V1: semantic, compact-density roles for new refinement.
+    // Existing sizes remain unchanged until each component is audited.
+    readonly property int navTitleSize: 12
+    readonly property int navSubtitleSize: 11
+    readonly property int navHeaderSize: 10
+    readonly property int navItemHeight: 48
+    readonly property int navIconSize: 27
+    readonly property color navActiveSurface: "#17262B"
+    readonly property color navHoverSurface: "#182127"
+    readonly property color navIdleSurface: "transparent"
+    readonly property color navAccentRail: accent
+    readonly property color navActiveText: accent
+    readonly property color navSubtitleText: "#A4AEB7"
 }

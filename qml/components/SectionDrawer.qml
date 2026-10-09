@@ -26,7 +26,7 @@ StudioPanel {
                 font.pixelSize: 10
                 font.weight: Font.Medium
                 font.hintingPreference: Font.PreferFullHinting
-                font.letterSpacing: 1.25
+                font.letterSpacing: 0.85
             }
         }
 
@@ -48,92 +48,55 @@ StudioPanel {
                 required property var modelData
                 required property int index
                 readonly property bool active: index === root.selectedSection
+                readonly property bool hovered: navPointer.containsMouse
+                readonly property bool keyboardFocused: navPointer.activeFocus
 
                 Layout.fillWidth: true
-                Layout.preferredHeight: 48
-                radius: 8
+                Layout.preferredHeight: Theme.navItemHeight
+                radius: Theme.radius
+                color: active ? Theme.navActiveSurface
+                              : hovered ? Theme.navHoverSurface : Theme.navIdleSurface
                 border.width: 1
-                border.color: active ? "#4724E9F2" : navPointer.containsMouse ? "#27343D" : "transparent"
+                border.color: keyboardFocused ? Theme.focus
+                              : active ? "#365860" : hovered ? Theme.border : "transparent"
 
-                // MICRO_TYPE_OPTICAL_POLISH_V1
-                // Native text stays on integer pixels during press feedback.
+                // MICRO_TYPE_OPTICAL_POLISH_V1 — retain native text optical
+                // position during pointer press; avoid scale/font rerasterization.
                 transform: Translate {
                     y: navPointer.pressed ? 1 : 0
                     Behavior on y { NumberAnimation { duration: 50; easing.type: Easing.OutQuad } }
                 }
 
-                gradient: Gradient {
-                    orientation: Gradient.Horizontal
-                    GradientStop { position:0;color:active?"#1724E9F2":navPointer.containsMouse?"#09FFFFFF":"#00101418" }
-                    GradientStop { position:.58;color:active?"#0924E9F2":navPointer.containsMouse?"#04FFFFFF":"#00101418" }
-                    GradientStop { position:1;color:"#00101418" }
-                }
-
+                // One strong focus cue instead of stacked neon outlines.
                 Rectangle {
-                    visible: navItem.active
                     anchors.left: parent.left
-                    anchors.leftMargin: 1
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 1
-                    height: 25
-                    radius: .5
-                    color: Theme.accent
-                    opacity: .58
-                }
-
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.margins: 1
-                    radius: 7
-                    color: "transparent"
-                    border.width: 1
-                    border.color: navItem.active ? "#1024E9F2" : navPointer.containsMouse ? "#0AFFFFFF" : "transparent"
-                }
-
-                Rectangle {
-                    anchors.left: parent.left
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    anchors.leftMargin: 8
-                    anchors.rightMargin: 8
-                    anchors.topMargin: 1
-                    height: 1
-                    radius: .5
-                    color: navItem.active ? Theme.accent : "#FFFFFF"
-                    opacity: navItem.active ? .11 : navPointer.containsMouse ? .05 : 0
+                    width: 3
+                    height: 27
+                    radius: 1.5
+                    color: Theme.navAccentRail
+                    visible: navItem.active
                 }
 
                 Rectangle {
                     id: iconShell
                     anchors.left: parent.left
-                    anchors.leftMargin: 8
+                    anchors.leftMargin: 9
                     anchors.verticalCenter: parent.verticalCenter
-                    width: 27
-                    height: 27
+                    width: Theme.navIconSize
+                    height: Theme.navIconSize
                     radius: 6
-                    color: navItem.active ? "#0C242B2F" : "#07101518"
+                    color: navItem.active ? "#15343B" : "transparent"
                     border.width: 1
-                    border.color: navItem.active ? "#6824E9F2" : navPointer.containsMouse ? "#35434C" : Theme.borderSoft
-
-                    Rectangle {
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        anchors.top: parent.top
-                        anchors.leftMargin: 4
-                        anchors.rightMargin: 4
-                        anchors.topMargin: 1
-                        height: 1
-                        radius: .5
-                        color: navItem.active ? Theme.accent : "#FFFFFF"
-                        opacity: navItem.active ? .15 : .04
-                    }
+                    border.color: navItem.active ? "#456B74" : Theme.borderSoft
 
                     LucideIcon {
                         anchors.centerIn: parent
                         width: 16
                         height: 16
                         name: navItem.modelData.icon
-                        color: navItem.active ? Theme.accent : navPointer.containsMouse ? Theme.textSoft : Theme.textDim
+                        color: navItem.active ? Theme.accent
+                              : navItem.hovered ? Theme.textSoft : Theme.textDim
                         strokeWidth: 1.85
                     }
                 }
@@ -142,27 +105,28 @@ StudioPanel {
                     anchors.left: iconShell.right
                     anchors.leftMargin: 10
                     anchors.right: parent.right
-                    anchors.rightMargin: 7
+                    anchors.rightMargin: 6
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: -1
+                    spacing: 1
                     Text {
                         width: parent.width
                         text: navItem.modelData.name
-                        color: navItem.active ? Theme.accent : Theme.text
+                        color: navItem.active ? Theme.navActiveText : Theme.text
                         renderType: Text.NativeRendering
                         font.family: Theme.displayFamily
-                        font.pixelSize: 12
+                        font.pixelSize: Theme.navTitleSize
                         font.weight: Font.DemiBold
                         font.hintingPreference: Font.PreferFullHinting
+                        elide: Text.ElideRight
                     }
                     Text {
                         width: parent.width
                         text: navItem.modelData.sub
-                        color: Theme.textDim
+                        color: navItem.active ? Theme.navSubtitleText : Theme.textDim
                         renderType: Text.NativeRendering
                         font.family: Theme.fontFamily
-                        font.pixelSize: 10
-                        font.weight: Font.Medium
+                        font.pixelSize: Theme.navSubtitleSize
+                        font.weight: Font.Normal
                         font.hintingPreference: Font.PreferFullHinting
                         elide: Text.ElideRight
                     }
@@ -173,10 +137,12 @@ StudioPanel {
                     anchors.fill: parent
                     hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor
+                    acceptedButtons: Qt.LeftButton
                     onClicked: root.sectionSelected(navItem.index)
                 }
 
-                Behavior on border.color { ColorAnimation { duration: 80 } }
+                Behavior on color { ColorAnimation { duration: 90 } }
+                Behavior on border.color { ColorAnimation { duration: 90 } }
             }
         }
 

@@ -27,6 +27,30 @@ Item {
     // boundary. It does not change filter TYPE, so label it RESET EDGE rather
     // than a generic Reset/Reset Filter action.
 
+    // VISUAL_INSPECTOR_SURFACE_V1 — purely presentational: no pointer
+    // interception, model replacement, shadow layers, or device writes.
+    // The floating inspector keeps its proven 320 x 86 interaction geometry.
+    Rectangle {
+        anchors.fill: parent
+        anchors.margins: -4
+        radius: 9
+        color: "#10171D"
+        border.width: 1
+        border.color: "#3A4850"
+        z: -1
+    }
+
+    Rectangle {
+        anchors.left: parent.left
+        anchors.leftMargin: -4
+        anchors.verticalCenter: parent.verticalCenter
+        width: 3
+        height: 27
+        radius: 1.5
+        color: root.accentColor
+        opacity: 0.85
+    }
+
     ColumnLayout {
         anchors.fill: parent
         spacing: 5
@@ -42,9 +66,9 @@ Item {
                     text: root.highPass ? "HPF" : "LPF"
                     color: Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 9
                     font.weight: Font.DemiBold
-                    font.letterSpacing: 1.2
+                    font.letterSpacing: 0.75
                 }
                 Text {
                     text: root.bypassed
@@ -94,8 +118,8 @@ Item {
                     text: "TYPE"
                     color: Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
-                    font.letterSpacing: 1.0
+                    font.pixelSize: 9
+                    font.letterSpacing: 0.65
                 }
                 StudioComboBox {
                     Layout.fillWidth: true
