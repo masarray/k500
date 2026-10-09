@@ -563,7 +563,7 @@ Item {
                                                 text: String(modelData.displayName || modelData.fileName || "K500 PRESET")
                                                 color: validPreset ? Theme.text : Theme.textDim
                                                 font.family: Theme.monoFamily
-                                                font.pixelSize: Theme.systemListTitleSize
+                                                font.pixelSize: Theme.systemListTitleSize + 1
                                                 font.weight: Font.DemiBold
                                                 elide: Text.ElideRight
                                             }
@@ -571,9 +571,9 @@ Item {
                                                 visible: root.pcLibraryTab === 0
                                                 Layout.fillWidth: true
                                                 text: String(modelData.description || modelData.presetName || "")
-                                                color: Theme.textDim
+                                                color: Theme.textSoft
                                                 font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.systemCaptionSize
+                                                font.pixelSize: Theme.systemListTitleSize
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -581,7 +581,7 @@ Item {
                                             text: loadedPreset ? "STAGED" : validPreset ? "SELECT" : "INVALID"
                                             color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
                                             font.family: Theme.monoFamily
-                                            font.pixelSize: Theme.systemStatusSize
+                                            font.pixelSize: Theme.systemListTitleSize
                                             font.weight: Font.DemiBold
                                         }
                                     }
@@ -701,7 +701,9 @@ Item {
                         Layout.fillWidth:true
                         Layout.preferredHeight:35
                         Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
-                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"10 HARDWARE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
+                        // SYSTEM_OFFLINE_TRUTH_V7 — retained slot names are not verified
+                        // live data after disconnect; C0 alone owns ACTIVE identity.
+                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected?"10 DEVICE SLOTS":"OFFLINE · UNVERIFIED";color:root.deviceConnected?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
                         Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                     }
 
@@ -770,9 +772,9 @@ Item {
                                 text:"MODE NAME"
                                 color:Theme.textDim
                                 font.family:Theme.monoFamily
-                                font.pixelSize:Theme.systemCaptionSize
-                                font.letterSpacing:.55
-                                Layout.preferredWidth:68
+                                font.pixelSize:Theme.systemListTitleSize
+                                font.letterSpacing:.3
+                                Layout.preferredWidth:74
                             }
                             Rectangle {
                                 Layout.fillWidth:true
@@ -781,8 +783,11 @@ Item {
                                 color:"#080C10"
                                 border.width:1
                                 border.color:root.deviceConnected?Theme.borderSoft:"#20272D"
+                                // SYSTEM_MODE_NAME_SINGLE_SURFACE_V7 — no retained
+                                // mode draft behind the offline caption.
                                 TextInput {
                                     id: modeNameInput
+                                    visible:root.deviceConnected
                                     anchors.fill:parent
                                     anchors.leftMargin:9
                                     anchors.rightMargin:9
@@ -798,8 +803,8 @@ Item {
                                     color:readOnly?Theme.textDim:Theme.amber
                                     selectionColor:Theme.accentSoft
                                     font.family:Theme.monoFamily
-                                    font.pixelSize:9
-                                    font.weight:Font.Bold
+                                    font.pixelSize:Theme.systemListTitleSize
+                                    font.weight:Font.DemiBold
                                     clip:true
                                     onTextEdited:root.modeNameDraft=text
                                 }
@@ -811,7 +816,8 @@ Item {
                                     text:"Connect K500 to read"
                                     color:Theme.textDim
                                     font.family:Theme.monoFamily
-                                    font.pixelSize:8
+                                    font.pixelSize:Theme.systemListTitleSize
+                                    font.weight:Font.Medium
                                 }
                             }
                             SoftButton {
@@ -863,7 +869,6 @@ Item {
                                 enabled:root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
                                 onClicked:root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)
                             }
-                            SoftButton{Layout.fillWidth:true;text:"Reset all";compact:true;enabled:false}
                         }
                     }
                 }
@@ -912,7 +917,10 @@ Item {
                                     color:"#080C10"
                                     border.width:1
                                     border.color:root.btNameWriteReady?Theme.accentSoft:Theme.borderSoft
+                                    // SYSTEM_BT_NAME_SINGLE_SURFACE_V7 — connected
+                                    // editor and offline help never overlap.
                                     TextInput{
+                                        visible:root.deviceConnected
                                         anchors.fill:parent
                                         anchors.leftMargin:9
                                         anchors.rightMargin:9
@@ -930,6 +938,17 @@ Item {
                                         font.pixelSize:10
                                         font.weight:Font.Bold
                                         onTextEdited:root.btNameDraft=text
+                                    }
+                                    Text {
+                                        visible:!root.deviceConnected
+                                        anchors.left:parent.left
+                                        anchors.leftMargin:9
+                                        anchors.verticalCenter:parent.verticalCenter
+                                        text:"Connect K500 to read"
+                                        color:Theme.textDim
+                                        font.family:Theme.monoFamily
+                                        font.pixelSize:Theme.systemListTitleSize
+                                        font.weight:Font.Medium
                                     }
                                 }
                                 SoftButton{
@@ -1016,7 +1035,7 @@ Item {
                                         color:"#080C10"
                                         border.width:1
                                         border.color:Theme.borderSoft
-                                        Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                        Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.DemiBold}
                                     }
                                 }
                                 ColumnLayout {
@@ -1030,7 +1049,7 @@ Item {
                                         color:"#080C10"
                                         border.width:1
                                         border.color:Theme.borderSoft
-                                        Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                        Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.DemiBold}
                                     }
                                 }
                             }
@@ -1186,7 +1205,7 @@ Item {
                                                 }
                                             }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:recFader
                                                 Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
@@ -1249,7 +1268,7 @@ Item {
                                                 }
                                             }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:triggerFader
                                                 Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
