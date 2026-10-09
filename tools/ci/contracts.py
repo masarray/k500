@@ -1082,6 +1082,25 @@ def check_public_surface_contracts() -> None:
     forbid("qml/components/ParameterSlider.qml", "Text.Outline")
     forbid("qml/components/MasterStripPanel.qml", "Text.Outline")
 
+    # SYSTEM_DASHBOARD_OPTICAL_V2B — source-only regression guards.
+    require(
+        "qml/theme/Theme.qml",
+        "SYSTEM_DASHBOARD_OPTICAL_V2B",
+        "systemListTitleSize: 10",
+        "systemCaptionSize: 9",
+        "systemStatusSize: 9",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_SLOT_SCOPE_VISUAL_V2B",
+        'text:active?"ACTIVE":""',
+        "root.selectedDeviceSlot=index",
+        "readonly property var modelData: root.recordingChannels[index]",
+        "readonly property var modelData: root.micTriggerChannels[index]",
+        "property bool deferredModelSync: false",
+        "root.engine.editDevicePath(String(modelData.path),v)",
+    )
+
     require(
         "qml/components/TopBar.qml",
         "font.pixelSize: 10",

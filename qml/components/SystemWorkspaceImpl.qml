@@ -448,7 +448,8 @@ Item {
                     Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 35
-                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC PRESET LIBRARY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05 }
+                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC PRESET LIBRARY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking }
+                        Text { anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC ONLY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium }
                         Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft }
                     }
 
@@ -478,8 +479,8 @@ Item {
                                         text: modelData
                                         color: root.pcLibraryTab === index ? Theme.accent : Theme.textDim
                                         font.family: Theme.monoFamily
-                                        font.pixelSize: 8
-                                        font.weight: Font.Bold
+                                        font.pixelSize: Theme.systemListTitleSize
+                                        font.weight: Font.DemiBold
                                     }
                                     MouseArea {
                                         anchors.fill: parent
@@ -551,8 +552,8 @@ Item {
                                             text: String(index + 1).padStart(2, "0")
                                             color: validPreset ? Theme.amber : Theme.textDim
                                             font.family: Theme.monoFamily
-                                            font.pixelSize: 8
-                                            font.weight: Font.Bold
+                                            font.pixelSize: Theme.systemCaptionSize
+                                            font.weight: Font.DemiBold
                                         }
                                         ColumnLayout {
                                             Layout.fillWidth: true
@@ -562,8 +563,8 @@ Item {
                                                 text: String(modelData.displayName || modelData.fileName || "K500 PRESET")
                                                 color: validPreset ? Theme.text : Theme.textDim
                                                 font.family: Theme.monoFamily
-                                                font.pixelSize: 9
-                                                font.weight: Font.Bold
+                                                font.pixelSize: Theme.systemListTitleSize
+                                                font.weight: Font.DemiBold
                                                 elide: Text.ElideRight
                                             }
                                             Text {
@@ -572,7 +573,7 @@ Item {
                                                 text: String(modelData.description || modelData.presetName || "")
                                                 color: Theme.textDim
                                                 font.family: Theme.fontFamily
-                                                font.pixelSize: 8
+                                                font.pixelSize: Theme.systemCaptionSize
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -580,8 +581,8 @@ Item {
                                             text: loadedPreset ? "STAGED" : validPreset ? "SELECT" : "INVALID"
                                             color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
                                             font.family: Theme.monoFamily
-                                            font.pixelSize: 7
-                                            font.weight: Font.Bold
+                                            font.pixelSize: Theme.systemStatusSize
+                                            font.weight: Font.DemiBold
                                         }
                                     }
                                     MouseArea {
@@ -623,8 +624,8 @@ Item {
                                     text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET STAGED"
                                     color: root.fileBridge && root.fileBridge.loaded ? Theme.text : Theme.textDim
                                     font.family: Theme.monoFamily
-                                    font.pixelSize: 9
-                                    font.weight: Font.Bold
+                                    font.pixelSize: Theme.systemListTitleSize
+                                    font.weight: Font.DemiBold
                                     elide: Text.ElideRight
                                 }
                                 Text {
@@ -699,7 +700,8 @@ Item {
                     Item {
                         Layout.fillWidth:true
                         Layout.preferredHeight:35
-                        Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}
+                        Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
+                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"10 HARDWARE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
                         Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                     }
 
@@ -734,14 +736,23 @@ Item {
                                         radius:6
                                         readonly property bool active:root.deviceConnected && index===root.activeDeviceSlot
                                         readonly property bool selected:index===root.selectedDeviceSlot
-                                        color:selected?"#151B20":"#0D1115"
+                                        // SYSTEM_SLOT_SCOPE_VISUAL_V2B — selected is cyan;
+                                        // only confirmed live hardware ACTIVE is amber.
+                                        color:selected?Theme.systemSelectedSurface:active?Theme.systemActiveSurface:"#0D1115"
                                         border.width:1
-                                        border.color:active?"#8B6A08":selected?Theme.accentSoft:"#252D34"
+                                        border.color:active?Theme.amber:selected?Theme.accentSoft:"#252D34"
+                                        Rectangle {
+                                            anchors.left:parent.left
+                                            anchors.verticalCenter:parent.verticalCenter
+                                            width:3;height:Math.max(14,parent.height-12);radius:1.5
+                                            visible:active||selected
+                                            color:active?Theme.amber:Theme.accent
+                                        }
                                         RowLayout {
                                             anchors.fill:parent;anchors.leftMargin:9;anchors.rightMargin:9;spacing:7
-                                            Text{text:index+1;color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
-                                            Text{Layout.fillWidth:true;text:modelData;color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold;elide:Text.ElideRight}
-                                            Text{text:active?"ACTIVE":"";color:Theme.accent;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.Bold}
+                                            Text{text:String(index+1).padStart(2,"0");color:active?Theme.amber:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemListTitleSize;font.weight:Font.DemiBold}
+                                            Text{Layout.fillWidth:true;text:modelData;color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.systemListTitleSize;font.weight:Font.DemiBold;elide:Text.ElideRight}
+                                            Text{text:active?"ACTIVE":"";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:Theme.systemStatusSize;font.weight:Font.DemiBold}
                                         }
                                         MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;enabled:!root.presetManager||!root.presetManager.busy;onClicked:root.selectedDeviceSlot=index}
                                     }
@@ -759,8 +770,8 @@ Item {
                                 text:"MODE NAME"
                                 color:Theme.textDim
                                 font.family:Theme.monoFamily
-                                font.pixelSize:8
-                                font.letterSpacing:1.0
+                                font.pixelSize:Theme.systemCaptionSize
+                                font.letterSpacing:.55
                                 Layout.preferredWidth:68
                             }
                             Rectangle {
@@ -878,7 +889,7 @@ Item {
                         Item {
                             Layout.fillWidth:true
                             Layout.preferredHeight:35
-                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT / BLE IDENTITY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}
+                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT / BLE IDENTITY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
                         ColumnLayout {
@@ -888,7 +899,7 @@ Item {
                             spacing:7
                             RowLayout {
                                 Layout.fillWidth:true
-                                Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                                Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 Item{Layout.fillWidth:true}
                             }
                             RowLayout {
@@ -936,7 +947,7 @@ Item {
                                     onClicked:root.presetManager.resetBtName()
                                 }
                             }
-                            Text{text:"BLE NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                            Text{text:"BLE NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                             Rectangle {
                                 Layout.fillWidth:true
                                 Layout.preferredHeight:29
@@ -965,7 +976,7 @@ Item {
                                     text:"BT rename: max 8 characters · BLE read-only"
                                     color:Theme.textDim
                                     font.family:Theme.fontFamily
-                                    font.pixelSize:8
+                                    font.pixelSize:Theme.systemCaptionSize
                                 }
                             }
                             Item{Layout.fillHeight:true}
@@ -983,7 +994,7 @@ Item {
                         Item {
                             Layout.fillWidth:true
                             Layout.preferredHeight:35
-                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}
+                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
                         ColumnLayout {
@@ -997,7 +1008,7 @@ Item {
                                 ColumnLayout {
                                     Layout.fillWidth:true
                                     spacing:4
-                                    Text{text:"LOCK KEY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}
+                                    Text{text:"LOCK KEY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.0}
                                     Rectangle {
                                         Layout.fillWidth:true
                                         Layout.preferredHeight:29
@@ -1011,7 +1022,7 @@ Item {
                                 ColumnLayout {
                                     Layout.fillWidth:true
                                     spacing:4
-                                    Text{text:"ADMIN";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.0}
+                                    Text{text:"ADMIN";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.0}
                                     Rectangle {
                                         Layout.fillWidth:true
                                         Layout.preferredHeight:29
@@ -1034,8 +1045,8 @@ Item {
                                     anchors.fill:parent
                                     anchors.margins:9
                                     spacing:4
-                                    Text{text:"DEVICE MANAGED";color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:8;font.weight:Font.DemiBold}
-                                    Text{Layout.fillWidth:true;text:"Lock and Admin settings are read-only in K500.";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:8;wrapMode:Text.WordWrap}
+                                    Text{text:"DEVICE MANAGED";color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.DemiBold}
+                                    Text{Layout.fillWidth:true;text:"Lock and Admin settings are read-only in K500.";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:Theme.systemCaptionSize;wrapMode:Text.WordWrap}
                                     Item{Layout.fillHeight:true}
                                 }
                             }
@@ -1065,9 +1076,9 @@ Item {
                                 text:"MANUAL ADJUSTMENT"
                                 color:Theme.text
                                 font.family:Theme.monoFamily
-                                font.pixelSize:10
-                                font.weight:Font.Bold
-                                font.letterSpacing:1.05
+                                font.pixelSize:Theme.rackHeaderSize
+                                font.weight:Font.DemiBold
+                                font.letterSpacing:Theme.rackHeaderTracking
                             }
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
@@ -1134,14 +1145,14 @@ Item {
                 ColumnLayout {
                     anchors.fill:parent
                     spacing:0
-                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold;font.letterSpacing:1.05}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
                     RowLayout {
                         Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
                         Rectangle {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             ColumnLayout {
                                 anchors.fill:parent;anchors.margins:8;spacing:5
-                                Text{text:"RECORDING";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                                Text{text:"RECORDING";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
@@ -1175,7 +1186,7 @@ Item {
                                                 }
                                             }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textDim;style:recFader.highlighted?Text.Outline:Text.Normal;styleColor:recFader.highlighted?Qt.rgba(recFader.accentColor.r,recFader.accentColor.g,recFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:recFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:recFader
                                                 Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
@@ -1204,7 +1215,7 @@ Item {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             ColumnLayout {
                                 anchors.fill:parent;anchors.margins:8;spacing:5
-                                Text{text:"MIC TRIGGER";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:8;font.letterSpacing:1.1}
+                                Text{text:"MIC TRIGGER";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
@@ -1238,7 +1249,7 @@ Item {
                                                 }
                                             }
                                             Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textDim;style:triggerFader.highlighted?Text.Outline:Text.Normal;styleColor:triggerFader.highlighted?Qt.rgba(triggerFader.accentColor.r,triggerFader.accentColor.g,triggerFader.accentColor.b,.34):"transparent";font.family:Theme.monoFamily;font.pixelSize:8;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Normal;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}Behavior on styleColor{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:triggerFader
                                                 Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
