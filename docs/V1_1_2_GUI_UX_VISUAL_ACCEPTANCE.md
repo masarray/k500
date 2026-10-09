@@ -32,11 +32,11 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 | EQ | Fixed 8-page lifetime survives repeated section switches; PEQ drag, wheel-Q, bypass, reset, A/B and HPF/LPF inspector unchanged |
 | Filter dropdown | 10px value/options readable in compact heights, no text overlaps or clipped type labels |
 | System settings | Title/detail/APPLYING or SYNCING status legible inside unchanged 50px toggle rows; disabled, pending and offline states truthful |
-| System presets | PC staging separate from 10 physical slots; selected cyan is not hardware ACTIVE amber; Recall and Save remain explicitly gated |
-| Mode Name / BT Name | Offline: one clear “Connect K500 to read” hint per field and no overlapping retained draft; online: original edit, rename and verification gates preserved; inert Reset all hidden |
-| Small text | PC preset titles 11px, description/selection 10px, status and Recording/Mic Trigger captions readable on 100/125/150% Windows scaling |
+| System presets | One-line preset names, no repeated SELECT or marketing descriptions; STAGED/INVALID and real action errors remain visible. PC staging remains separate from physical slots; cyan selection is never hardware ACTIVE amber. Recall and Save remain explicitly gated |
+| Mode Name / BT Name | Offline: one clear “Connect K500 to read” hint per field and no overlapping retained draft; online: original edit, rename and verification gates preserved; BT 8-character write limit available via Rename tooltip, not permanent footer copy; inert Reset all hidden |
+| Small text | Preset names readable as a single line at 11px; retain user-critical STAGED/INVALID, sync failures and USB connection guidance while removing decorative/technical copy. Recording/Mic Trigger captions readable on 100/125/150% Windows scaling |
 | Font and graphic AA | All app text resolves through embedded Plus Jakarta Sans (four bundled faces) with native antialiasing; EQ curves, Canvas dial strokes and Lucide Shape icons remain smooth at 100/125/150% scaling; no doubled hover label outlines |
-| Mass Upload | At 0, 1, 5 and 10 staged slots, all rows 01–10 are understandable at both window sizes; Ctrl/Shift preserve manual order; Stage and Clear affect only PC-side plan; no last row clipped |
+| Mass Upload | At 0, 1, 5 and 10 staged slots, rows 01–10 remain visible without repeated NOT STAGED, source descriptions or duplicate slot badges. Ctrl/Shift retain chronological selection (discoverable in header help tooltip); stage origin/file traceability is available on hover. Stage/Clear affect PC-side plan only; no last row clipped |
 | Transfer | USB gate, ACK-driven progress, no duplicate writes; Slot 01 final Recall and 939-byte authoritative readback verified separately on real K500 |
 | Popups | About, donation/QRIS and updater text readable, no overlap/stacking, no accidental premature device writes |
 
@@ -45,7 +45,7 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 1. Verify exact-head Fast Contracts and Windows Build + Regression green; installer smoke only if affected files require it.
 2. Use runnable Windows artifact from that exact run for offline visual screenshots; test dialog popup, interactions, keyboard, wheel and long names.
 3. Separately on a test K500 via **USB HID**, verify Connect/readback/reconnect, slot truth and other hardware-specific assertions. Bluetooth remains experimental.
-4. If a screenshot fails, attach screenshot, Windows scaling, binary SHA, page, expected/actual and concise repro. Limit fixes to the owning component; rerun the existing consolidated CI.
+4. When checking quiet-copy UX, verify that invalid presets, failed sync, actual device transfer errors, verified progress and missing USB are still disclosed when actionable, while success/tutorial prose is not always visible. If a screenshot fails, attach scaling, binary SHA, page and repro; fix only the owning component and rerun the existing consolidated CI.
 5. Public v1.1.2 promotion requires review of this matrix **and** device-specific RC updater acceptance. CI/lint passing alone is not a visual or hardware release approval.
 
 ## Acceptance record

@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import QtQuick.Controls
 
 Item {
     id: root
@@ -449,7 +450,6 @@ Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 35
                         Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC PRESET LIBRARY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking }
-                        Text { anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC ONLY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium }
                         Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft }
                     }
 
@@ -532,7 +532,9 @@ Item {
                                     required property int index
                                     required property var modelData
                                     width: pcPresetList.width
-                                    height: root.pcLibraryTab === 0 ? 40 : 34
+                                    // SYSTEM_PRESET_NAME_ONLY_V9 — one readable line,
+                                    // no generic marketing subtitle per preset.
+                                    height: 34
                                     radius: 6
                                     readonly property bool validPreset: Boolean(modelData.valid)
                                     readonly property bool loadedPreset: root.fileBridge
@@ -555,30 +557,17 @@ Item {
                                             font.pixelSize: Theme.systemCaptionSize
                                             font.weight: Font.DemiBold
                                         }
-                                        ColumnLayout {
+                                        Text {
                                             Layout.fillWidth: true
-                                            spacing: -1
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: String(modelData.displayName || modelData.fileName || "K500 PRESET")
-                                                color: validPreset ? Theme.text : Theme.textDim
-                                                font.family: Theme.monoFamily
-                                                font.pixelSize: Theme.systemListTitleSize + 1
-                                                font.weight: Font.DemiBold
-                                                elide: Text.ElideRight
-                                            }
-                                            Text {
-                                                visible: root.pcLibraryTab === 0
-                                                Layout.fillWidth: true
-                                                text: String(modelData.description || modelData.presetName || "")
-                                                color: Theme.textSoft
-                                                font.family: Theme.fontFamily
-                                                font.pixelSize: Theme.systemListTitleSize
-                                                elide: Text.ElideRight
-                                            }
+                                            text: String(modelData.displayName || modelData.fileName || "K500 PRESET")
+                                            color: validPreset ? Theme.text : Theme.textDim
+                                            font.family: Theme.monoFamily
+                                            font.pixelSize: Theme.systemListTitleSize + 1
+                                            font.weight: Font.DemiBold
+                                            elide: Text.ElideRight
                                         }
                                         Text {
-                                            text: loadedPreset ? "STAGED" : validPreset ? "SELECT" : "INVALID"
+                                            text: loadedPreset ? "STAGED" : validPreset ? "" : "INVALID"
                                             color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
                                             font.family: Theme.monoFamily
                                             font.pixelSize: Theme.systemListTitleSize
@@ -642,18 +631,11 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
+                            // SYSTEM_QUIET_STATUS_V9 — always show an error or
+                            // transient action result, never permanent tutorials.
                             text: root.pcSaveNotice.length > 0 ? root.pcSaveNotice
-                                  : root.fileBridge && String(root.fileBridge.lastError || "").length > 0
-                                  ? String(root.fileBridge.lastError)
-                                  : (root.fileBridge && root.fileBridge.dirty
-                                     ? ("Verified edit · " + String(root.fileBridge.changedByteCount) + " changed byte(s) incl. checksum")
-                                     : (root.offlineEditMode
-                                        ? "Offline preview/edit · verified PEQ/fader edits persist to the staged preset"
-                                        : (root.offlineFileMode && root.stagedPresetReady
-                                           ? "Offline · press Preview to inspect and edit this preset"
-                                           : (root.pcUploadReady
-                                              ? ("Staged only · editor remains K500 truth · Upload to hardware slot " + String(root.selectedDeviceSlot + 1))
-                                              : "PC library is separate from the 10 hardware slots"))))
+                                  : (root.fileBridge && String(root.fileBridge.lastError || "").length > 0
+                                     ? String(root.fileBridge.lastError) : "")
                             color: root.pcSaveNotice.length > 0 || root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                             font.family: Theme.monoFamily
                             font.pixelSize: 8
@@ -703,7 +685,7 @@ Item {
                         Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
                         // SYSTEM_OFFLINE_TRUTH_V7 — retained slot names are not verified
                         // live data after disconnect; C0 alone owns ACTIVE identity.
-                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected?"10 DEVICE SLOTS":"OFFLINE · UNVERIFIED";color:root.deviceConnected?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
+                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected?"":"OFFLINE";color:root.deviceConnected?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
                         Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                     }
 
@@ -837,8 +819,8 @@ Item {
                             Layout.preferredHeight:48
                             title:"Use Init Vol"
                             detail:root.deviceConnected
-                                   ? "Use stored startup volume"
-                                   : "Device setting · not stored in preset"
+                                   ? "Startup volume"
+                                   : "Device-only setting"
                             iconName:"settings-2"
                             checked:root.deviceConnected
                                     ? (!!root.presetManager && root.presetManager.useInitVolume)
@@ -957,6 +939,12 @@ Item {
                                     compact:true
                                     enabled:root.btNameWriteReady
                                     onClicked:root.presetManager.setBtName(root.normalizedBtNameDraft())
+                                    // BT write limit differs from full hardware
+                                    // readback name length; never change validation.
+                                    HoverHandler { id: btRenameHelp }
+                                    ToolTip.visible: btRenameHelp.hovered
+                                    ToolTip.delay: 500
+                                    ToolTip.text: "Rename: 1–8 ASCII characters. BLE name is read-only."
                                 }
                                 SoftButton{
                                     Layout.preferredWidth:48
@@ -981,23 +969,6 @@ Item {
                                     font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold
                                 }
                             }
-                            Rectangle {
-                                Layout.fillWidth:true
-                                Layout.preferredHeight:31
-                                radius:7
-                                color:"#10161B"
-                                border.width:1
-                                border.color:Theme.borderSoft
-                                Text {
-                                    anchors.left:parent.left
-                                    anchors.leftMargin:9
-                                    anchors.verticalCenter:parent.verticalCenter
-                                    text:"BT rename: max 8 characters · BLE read-only"
-                                    color:Theme.textDim
-                                    font.family:Theme.fontFamily
-                                    font.pixelSize:Theme.systemCaptionSize
-                                }
-                            }
                             Item{Layout.fillHeight:true}
                         }
                     }
@@ -1014,6 +985,7 @@ Item {
                             Layout.fillWidth:true
                             Layout.preferredHeight:35
                             Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
+                            Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"READ ONLY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
                         ColumnLayout {
@@ -1051,22 +1023,6 @@ Item {
                                         border.color:Theme.borderSoft
                                         Text{anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected ? "NOT EXPOSED" : "OFFLINE";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.DemiBold}
                                     }
-                                }
-                            }
-                            Rectangle {
-                                Layout.fillWidth:true
-                                Layout.preferredHeight:62
-                                radius:8
-                                color:"#10161B"
-                                border.width:1
-                                border.color:Theme.borderSoft
-                                ColumnLayout {
-                                    anchors.fill:parent
-                                    anchors.margins:9
-                                    spacing:4
-                                    Text{text:"DEVICE MANAGED";color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.DemiBold}
-                                    Text{Layout.fillWidth:true;text:"Lock and Admin settings are read-only in K500.";color:Theme.textDim;font.family:Theme.fontFamily;font.pixelSize:Theme.systemCaptionSize;wrapMode:Text.WordWrap}
-                                    Item{Layout.fillHeight:true}
                                 }
                             }
                             Item{Layout.fillHeight:true}

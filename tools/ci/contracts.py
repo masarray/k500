@@ -454,9 +454,9 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        "\"Device setting · not stored in preset\"",
+        "\"Device-only setting\"",
         "\"Saved with preset\"",
-        "\"BT rename: max 8 characters · BLE read-only\"",
+        "\"Rename: 1–8 ASCII characters. BLE name is read-only.\"",
     )
     require(
         "src/k500/K500PresetManager.h",
@@ -778,9 +778,57 @@ def check_ui_contracts() -> None:
         "root.removeSelected()",
         "root.clearTarget()",
         "root.uploadTransfer()",
-        "UPLOAD PLAN ONLY",
+        "MASS_UPLOAD_QUIET_COPY_V9",
         "MASS_UPLOAD_SELECTION_ORDER_V2",
         "MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1",
+    )
+
+    # QUIET_PRESET_COPY_V9 — remove redundant preset prose without ever
+    # changing models, chronology, native Store/Recall, or meaningful errors.
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "MASS_UPLOAD_QUIET_COPY_V9",
+        'text: "MASS UPLOAD PRESETS"',
+        "ToolTip.text: \"Ctrl+click selects presets",
+        'text: "No presets. Choose Folder or Sync."',
+        'text: displayName',
+        "ToolTip.text: originLabel + \" · \" + fileName",
+        'text: root.selectedSourceIndexes.length > 1 ? "Stage ("',
+        'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload to K500"',
+        'root.presetManager.massUploadProgressPercent',
+        "root.fileBridge.officialSyncError",
+        'String(root.fileBridge.lastError)',
+        "Connect K500 via USB to upload",
+        "root.uploadTransfer()",
+    )
+    forbid(
+        "qml/components/MassUploadTransferWindow.qml",
+        'text: "NOT STAGED"',
+        'text: "UPLOAD PLAN ONLY',
+        'text: "SLOT " + String(index + 1)',
+        "text: String(modelData.description || modelData.fileName",
+        "Prepare the list offline;",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_PRESET_NAME_ONLY_V9",
+        "SYSTEM_QUIET_STATUS_V9",
+        "root.pcSaveNotice.length > 0 ? root.pcSaveNotice",
+        "String(root.fileBridge.lastError)",
+        'text: loadedPreset ? "STAGED" : validPreset ? "" : "INVALID"',
+        "root.loadPcLibraryEntry(index)",
+        'text:"READ ONLY"',
+        'ToolTip.text: "Rename: 1–8 ASCII characters. BLE name is read-only."',
+        'text:root.deviceConnected?"":"OFFLINE"',
+    )
+    forbid(
+        "qml/components/SystemWorkspaceImpl.qml",
+        'text:"PC ONLY"',
+        'text:"DEVICE MANAGED"',
+        "Lock and Admin settings are read-only in K500.",
+        'text: loadedPreset ? "STAGED" : validPreset ? "SELECT"',
+        'text: String(modelData.description || modelData.presetName',
+        "Offline preview/edit · verified PEQ/fader",
     )
 
     # MASS_UPLOAD_ACK_PROGRESS_V1 — progress only on device response ACK,
@@ -1206,7 +1254,7 @@ def check_public_surface_contracts() -> None:
         "onTextEdited:root.modeNameDraft=text",
         "text:root.btNameDraft",
         "onTextEdited:root.btNameDraft=text",
-        'text:root.deviceConnected?"10 DEVICE SLOTS":"OFFLINE · UNVERIFIED"',
+        'text:root.deviceConnected?"":"OFFLINE"',
         "root.activeDeviceSlot",
         'text:active?"ACTIVE":""',
         "onClicked:root.presetManager.renameActiveMode(root.normalizedModeNameDraft())",
