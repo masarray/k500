@@ -26,7 +26,7 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 | Surface | Visual and behavioral acceptance |
 |---|---|
 | Top Bar | Full 52px header, no collision of brand, transport, long live preset title, USB/BT selection, Connect, status, About and Report; report exports JSON |
-| Navigation | Music, Mic A/B, Reverb, Echo, Main, Surround, Center, Sub, System legible; exactly one selected page, no persistent secondary focus |
+| Navigation | Music, Mic A/B, Reverb, Echo, Main, Surround, Center, Subwoofer, System legible; exactly one selected page, no persistent secondary focus |
 | Music Input | Six exclusive sources; OPTIC/UAUDIO mirror only one verified DIGITAL gain; 160px faders and dB readouts readable, not clipped |
 | Music Tone | KEY DOWN / ORIGINAL / KEY UP and current pitch visibly readable; all five tone controls still obey verified ownership/readback |
 | EQ | Fixed 8-page lifetime survives repeated section switches; PEQ drag, wheel-Q, bypass, reset, A/B and HPF/LPF inspector unchanged |
@@ -35,6 +35,7 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 | System presets | PC staging separate from 10 physical slots; selected cyan is not hardware ACTIVE amber; Recall and Save remain explicitly gated |
 | Mode Name / BT Name | Offline: one clear “Connect K500 to read” hint per field and no overlapping retained draft; online: original edit, rename and verification gates preserved; inert Reset all hidden |
 | Small text | PC preset titles 11px, description/selection 10px, status and Recording/Mic Trigger captions readable on 100/125/150% Windows scaling |
+| Font and graphic AA | All app text resolves through embedded Plus Jakarta Sans (four bundled faces) with native antialiasing; EQ curves, Canvas dial strokes and Lucide Shape icons remain smooth at 100/125/150% scaling; no doubled hover label outlines |
 | Mass Upload | At 0, 1, 5 and 10 staged slots, all rows 01–10 are understandable at both window sizes; Ctrl/Shift preserve manual order; Stage and Clear affect only PC-side plan; no last row clipped |
 | Transfer | USB gate, ACK-driven progress, no duplicate writes; Slot 01 final Recall and 939-byte authoritative readback verified separately on real K500 |
 | Popups | About, donation/QRIS and updater text readable, no overlap/stacking, no accidental premature device writes |
