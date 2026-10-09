@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
 import QtQuick.Dialogs
+import QtQuick.Controls
 
 Window {
     id: root
@@ -255,26 +256,35 @@ Window {
             anchors.margins: 18
             spacing: 12
 
-            ColumnLayout {
+            // MASS_UPLOAD_QUIET_COPY_V9 — one title; shortcuts available on hover.
+            // MASS_UPLOAD_VISUAL_WORKFLOW_V3 — selection/staging/upload stay separate.
+            RowLayout {
                 Layout.fillWidth: true
-                spacing: 3
+                spacing: 8
                 Text {
-                    text: "MASS UPLOAD · PRESET TRANSFER"
+                    Layout.fillWidth: true
+                    text: "MASS UPLOAD PRESETS"
                     color: Theme.text
                     font.family: Theme.monoFamily
                     font.pixelSize: 12
                     font.weight: Font.Bold
-                    font.letterSpacing: 1.0
+                    font.letterSpacing: .65
                 }
                 Text {
-                    Layout.fillWidth: true
-                    // MASS_UPLOAD_VISUAL_WORKFLOW_V3 — distinguish selection,
-                    // offline staging, and irreversible hardware transfer.
-                    text: "01  SELECT PRESETS   →   02  STAGE SLOTS   →   03  UPLOAD VIA USB   ·   Ctrl+click sets pick order; Shift+click adds a directional range."
-                    color: Theme.textDim
-                    font.family: Theme.fontFamily
-                    font.pixelSize: 10
-                    wrapMode: Text.WordWrap
+                    text: "?"
+                    color: Theme.textSoft
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                    ToolTip.visible: workflowHelp.containsMouse
+                    ToolTip.delay: 450
+                    ToolTip.text: "Ctrl+click selects presets in your chosen order. Shift+click selects a range."
+                    MouseArea {
+                        id: workflowHelp
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.WhatsThisCursor
+                    }
                 }
             }
 
@@ -329,27 +339,17 @@ Window {
                             RowLayout {
                                 Layout.fillWidth: true
                                 spacing: 6
-                                ColumnLayout {
+                                // Normal sync success and folder paths are not
+                                // permanent captions. Keep failures and activity visible.
+                                Text {
                                     Layout.fillWidth: true
-                                    spacing: 1
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: root.fileBridge ? String(root.fileBridge.officialSyncStatus || "SonKuPik presets ready") : "SonKuPik presets ready"
-                                        color: root.fileBridge && String(root.fileBridge.officialSyncError || "").length > 0 ? Theme.amber : Theme.textSoft
-                                        font.family: Theme.monoFamily
-                                        font.pixelSize: 9
-                                        elide: Text.ElideRight
-                                    }
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0
-                                              ? ("LOCAL · " + String(root.fileBridge.presetFolder))
-                                              : "LOCAL · choose a folder for your own presets"
-                                        color: Theme.textSoft
-                                        font.family: Theme.monoFamily
-                                        font.pixelSize: 9
-                                        elide: Text.ElideMiddle
-                                    }
+                                    text: root.fileBridge && root.fileBridge.officialSyncBusy
+                                          ? "Syncing presets…"
+                                          : (root.fileBridge ? String(root.fileBridge.officialSyncError || "") : "")
+                                    color: root.fileBridge && root.fileBridge.officialSyncBusy ? Theme.textSoft : Theme.amber
+                                    font.family: Theme.monoFamily
+                                    font.pixelSize: 9
+                                    elide: Text.ElideRight
                                 }
                                 SoftButton {
                                     Layout.preferredWidth: 64
@@ -357,6 +357,11 @@ Window {
                                     compact: true
                                     enabled: !!root.fileBridge
                                     onClicked: folderDialog.open()
+                                    HoverHandler { id: folderHelp }
+                                    ToolTip.visible: folderHelp.hovered
+                                    ToolTip.delay: 500
+                                    ToolTip.text: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0
+                                                  ? String(root.fileBridge.presetFolder) : "Choose a folder of .k500 presets"
                                 }
                                 SoftButton {
                                     Layout.preferredWidth: 64
@@ -388,7 +393,7 @@ Window {
                                         required property int index
                                         required property var modelData
                                         width: sourceList.width
-                                        height: 38
+                                        height: 36
                                         radius: 6
                                         readonly property bool validPreset: Boolean(modelData.valid)
                                         readonly property bool selected: root.isSourceSelected(index)
@@ -425,26 +430,16 @@ Window {
                                                     font.weight: Font.Bold
                                                 }
                                             }
-                                            ColumnLayout {
+                                            // Source identity is number + name only.
+                                            // Leave modelData intact for native validation.
+                                            Text {
                                                 Layout.fillWidth: true
-                                                spacing: -1
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    text: String(modelData.displayName || modelData.presetName || modelData.fileName || "K500 PRESET")
-                                                    color: validPreset ? Theme.text : Theme.textDim
-                                                    font.family: Theme.monoFamily
-                                                    font.pixelSize: 10
-                                                    font.weight: Font.Bold
-                                                    elide: Text.ElideRight
-                                                }
-                                                Text {
-                                                    Layout.fillWidth: true
-                                                    text: String(modelData.description || modelData.fileName || "")
-                                                    color: Theme.textSoft
-                                                    font.family: Theme.fontFamily
-                                                    font.pixelSize: 9
-                                                    elide: Text.ElideRight
-                                                }
+                                                text: String(modelData.displayName || modelData.presetName || modelData.fileName || "K500 PRESET")
+                                                color: validPreset ? Theme.text : Theme.textDim
+                                                font.family: Theme.monoFamily
+                                                font.pixelSize: 11
+                                                font.weight: Font.DemiBold
+                                                elide: Text.ElideRight
                                             }
                                             Text {
                                                 text: !validPreset ? "INVALID"
@@ -472,7 +467,7 @@ Window {
                                         visible: sourceList.count === 0
                                         width: parent.width - 30
                                         horizontalAlignment: Text.AlignHCenter
-                                        text: "SonKuPik presets are available automatically.\nChoose a Local Folder to add your own presets."
+                                        text: "No presets. Choose Folder or Sync."
                                         color: Theme.textDim
                                         font.family: Theme.monoFamily
                                         font.pixelSize: 9
@@ -593,14 +588,6 @@ Window {
                                                     font.weight: Font.Medium
                                                 }
                                             }
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: "NOT STAGED"
-                                                color: Theme.textFaint
-                                                font.family: Theme.monoFamily
-                                                font.pixelSize: 9
-                                                font.weight: Font.Medium
-                                            }
                                         }
                                     }
                                 }
@@ -628,6 +615,11 @@ Window {
                                     color: selected ? "#15252A" : targetMouse.containsMouse ? "#12181D" : "#0D1115"
                                     border.width: 1
                                     border.color: selected ? Theme.accentSoft : "#252D34"
+                                    // Traceability remains available on hover, not
+                                    // duplicated under every destination preset.
+                                    ToolTip.visible: targetMouse.containsMouse
+                                    ToolTip.delay: 600
+                                    ToolTip.text: originLabel + " · " + fileName
 
                                     RowLayout {
                                         anchors.fill: parent
@@ -650,33 +642,14 @@ Window {
                                                 font.weight: Font.Bold
                                             }
                                         }
-                                        ColumnLayout {
-                                            Layout.fillWidth: true
-                                            spacing: -1
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: displayName
-                                                color: Theme.text
-                                                font.family: Theme.monoFamily
-                                                font.pixelSize: 10
-                                                font.weight: Font.DemiBold
-                                                elide: Text.ElideRight
-                                            }
-                                            Text {
-                                                Layout.fillWidth: true
-                                                text: originLabel + " · " + fileName
-                                                color: Theme.textDim
-                                                font.family: Theme.monoFamily
-                                                font.pixelSize: 9
-                                                elide: Text.ElideRight
-                                            }
-                                        }
                                         Text {
-                                            text: "SLOT " + String(index + 1).padStart(2, "0")
-                                            color: Theme.accent
+                                            Layout.fillWidth: true
+                                            text: displayName
+                                            color: Theme.text
                                             font.family: Theme.monoFamily
-                                            font.pixelSize: 9
+                                            font.pixelSize: 11
                                             font.weight: Font.DemiBold
+                                            elide: Text.ElideRight
                                         }
                                     }
 
@@ -692,17 +665,6 @@ Window {
 
                             }
                         }
-                        Text {
-                            Layout.fillWidth: true
-                            Layout.leftMargin: 12
-                            Layout.rightMargin: 12
-                            Layout.bottomMargin: 7
-                            text: "UPLOAD PLAN ONLY · K500 remains unchanged until transfer."
-                            color: Theme.textDim
-                            font.family: Theme.fontFamily
-                            font.pixelSize: 9
-                            elide: Text.ElideRight
-                        }
                     }
                 }
             }
@@ -715,8 +677,7 @@ Window {
                     text: root.fileBridge && String(root.fileBridge.lastError || "").length > 0
                           ? String(root.fileBridge.lastError)
                           : (root.presetManager && root.presetManager.usbStoreAvailable
-                             ? "Ready · upload validates every preset before any hardware write."
-                             : "Prepare the list offline; connect K500 via USB to enable final Mass Upload.")
+                             ? "" : "Connect K500 via USB to upload")
                     color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                     font.family: Theme.monoFamily
                     font.pixelSize: 9
