@@ -1158,21 +1158,21 @@ def check_public_surface_contracts() -> None:
     require(
         "qml/Main.qml",
         "MIN_WINDOW_LAYOUT_BUDGET_V6",
-        "minimumWidth: 1340",
+        "minimumWidth: 1344",
         "Layout.minimumWidth: 440",
         "Layout.minimumWidth: 224",
     )
     require(
         "qml/components/SectionWorkspace.qml",
         "MIN_WINDOW_LAYOUT_BUDGET_V6",
-        "Layout.minimumWidth: 414",
+        "Layout.minimumWidth: 422",
         "Layout.minimumWidth: 318",
         "Layout.minimumWidth:318",
-        "Layout.minimumWidth: 342",
-        "Layout.minimumWidth:342",
+        "Layout.minimumWidth: 346",
+        "Layout.minimumWidth:346",
     )
     require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:318", 3)
-    require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:342", 3)
+    require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:346", 3)
 
     window_min = re.search(r"(?m)^\s*minimumWidth:\s*(\d+)\s*$", read("qml/Main.qml"))
     if not window_min:
@@ -1180,8 +1180,8 @@ def check_public_surface_contracts() -> None:
     else:
         available = int(window_min.group(1)) - (2 * 12 + 170 + 12)
         music = 440 + 224 + 2 * 216 + 3 * 12
-        mic = 246 + 414 + 216 + 2 * 12 + 216 + 12
-        output = 318 + 342 + 216 + 2 * 12 + 216 + 12
+        mic = 246 + 422 + 216 + 2 * 12 + 216 + 12
+        output = 318 + 346 + 216 + 2 * 12 + 216 + 12
         for section, required in (("Music", music), ("Mic", mic), ("Output", output)):
             if required > available:
                 FAILURES.append(

@@ -126,8 +126,9 @@ Item {
                                     Layout.fillHeight: true
                                     Layout.preferredWidth: 520
                                     // MIN_WINDOW_LAYOUT_BUDGET_V6 — 164px graph,
-                                    // three 72px controls, 24px margins, 10px gap.
-                                    Layout.minimumWidth: 414
+                                    // three 72px controls + two 4px column gaps,
+                                    // 24px margins, 10px outer gap.
+                                    Layout.minimumWidth: 422
                                     title: "Vocal Dynamics"
                                     includeGate: true
                                     gate: Number(root.groupValue("mic","noiseGateDb",-70))
@@ -245,7 +246,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 440; Layout.minimumWidth: 342
+                                    Layout.fillWidth: true; Layout.fillHeight: true; Layout.preferredWidth: 440; Layout.minimumWidth: 346
                                     title: "Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","main","compThresholdDb",-3))
                                     ratio:Number(root.nestedValue("outputs","main","compRatio",18))
@@ -287,7 +288,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:342
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:346
                                     title:"Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","surround","compThresholdDb",-20))
                                     ratio:Number(root.nestedValue("outputs","surround","compRatio",100))
@@ -327,7 +328,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:342
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:346
                                     title:"Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","center","compThresholdDb",-20))
                                     ratio:Number(root.nestedValue("outputs","center","compRatio",100))
@@ -366,7 +367,7 @@ Item {
                                     ]
                                 }
                                 RackDynamicsPanel {
-                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:342
+                                    Layout.fillWidth:true; Layout.fillHeight:true; Layout.preferredWidth:440; Layout.minimumWidth:346
                                     title:"Output Compressor"
                                     threshold:Number(root.nestedValue("outputs","sub","compThresholdDb",-20))
                                     ratio:Number(root.nestedValue("outputs","sub","compRatio",100))

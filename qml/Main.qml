@@ -12,7 +12,7 @@ ApplicationWindow {
     height: 920
     // MIN_WINDOW_LAYOUT_BUDGET_V6 — fixed rack controls have an actual
     // minimum layout budget; avoid clipping them at 1260px.
-    minimumWidth: 1340
+    minimumWidth: 1344
     minimumHeight: 800
     // WINDOW_TITLE_RUNTIME_VERSION_V1 — CMake -> QCoreApplication -> Qt.application.version.
     // Never hard-code the public stable tag here: binary version is authoritative.

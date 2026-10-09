@@ -6,14 +6,14 @@
 ## V6 minimum-window width budget
 
 The former 1260px app minimum could squeeze the lower processor rack below
-its declared child minima. The 1340px minimum reserves 24px app margins,
-170px navigation and a 12px gap, leaving **1134px** for the processor.
+its declared child minima. The 1344px minimum reserves 24px app margins,
+170px navigation and a 12px gap, leaving **1138px** for the processor.
 
-| Lower rack | Required minimum | Workspace at 1340px |
+| Lower rack | Required minimum | Workspace at 1344px |
 |---|---:|---:|
-| Music | 1132px | 1134px |
-| Mic | 1128px | 1134px |
-| Main / Surround / Center / Sub | 1128px | 1134px |
+| Music | 1132px | 1138px |
+| Mic | 1136px | 1138px |
+| Main / Surround / Center / Sub | 1132px | 1138px |
 
 Both 216px right-hand columns, the 160px fader travel and 304px rack height
 stay unchanged. At the old minimum there was a 78px Music deficit. Still
@@ -21,7 +21,7 @@ capture real Windows images at 100%, 125%, and 150% to certify the result.
 
 ## Matrix: record screenshots + pass/fail
 
-Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** and minimum **1340×800** app window. Capture OS version, monitor resolution, binary/artifact name and exact Git SHA.
+Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** and minimum **1344×800** app window. Capture OS version, monitor resolution, binary/artifact name and exact Git SHA.
 
 | Surface | Visual and behavioral acceptance |
 |---|---|
@@ -49,7 +49,7 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 
 - Commit SHA / exact GitHub run / artifact:
 - Windows version / monitor / scaling:
-- Viewports checked (1484×920, 1340×800):
+- Viewports checked (1484×920, 1344×800):
 - Screenshot evidence links:
 - Hardware USB-connected? Device/firmware:
 - Failures / reproduction and fixes:
