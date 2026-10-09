@@ -454,9 +454,9 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        "\"Device setting · not stored in preset\"",
+        "\"Device-only setting\"",
         "\"Saved with preset\"",
-        "\"BT rename: max 8 characters · BLE read-only\"",
+        "\"Rename: 1–8 ASCII characters. BLE name is read-only.\"",
     )
     require(
         "src/k500/K500PresetManager.h",
@@ -807,7 +807,6 @@ def check_ui_contracts() -> None:
         'text: "UPLOAD PLAN ONLY',
         'text: "SLOT " + String(index + 1)',
         "text: String(modelData.description || modelData.fileName",
-        'text: originLabel + " · " + fileName',
         "Prepare the list offline;",
     )
     require(
