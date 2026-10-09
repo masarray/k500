@@ -1122,11 +1122,37 @@ def check_public_surface_contracts() -> None:
         "root.engine.editDevicePath(String(modelData.path),v)",
     )
 
+    # TOP_BAR_COHESION_V4 — source-only semantic/optical checks in K500 CI.
+    require(
+        "qml/theme/Theme.qml",
+        "TOP_BAR_COHESION_V4",
+        "topBarCaptionSize: 10",
+        "topBarContextNameSize: 11",
+        "topBarStatusSize: 10",
+        "topBarContextWidth: 176",
+    )
     require(
         "qml/components/TopBar.qml",
-        "font.pixelSize: 10",
+        "TOP_BAR_COHESION_V4",
+        "font.pixelSize: Theme.topBarCaptionSize",
+        "font.pixelSize: Theme.topBarContextNameSize",
+        "font.pixelSize: Theme.topBarStatusSize",
+        "Layout.preferredWidth: Theme.topBarContextWidth",
         "font.hintingPreference: Font.PreferFullHinting",
+        'text:"Report"',
+        "onClicked:supportReportDialog.open()",
+        'root.deviceManager.sendPlayerCommand("rewind")',
+        'root.deviceManager.sendPlayerCommand("playPause")',
+        'root.deviceManager.sendPlayerCommand("forward")',
+        "root.deviceManager.toggleMute()",
+        'root.deviceManager.setTransportMode("bt")',
+        'root.deviceManager.setTransportMode("usb")',
+        "root.deviceManager.toggleConnection()",
+        "signal aboutRequested()",
+        "onClicked:root.aboutRequested()",
     )
+    forbid("qml/components/TopBar.qml", 'text:"Support"')
+
     require(
         "qml/components/StudioKnob.qml",
         "font.pixelSize:root.premium ? 10 : 9",
