@@ -51,6 +51,7 @@ Item {
         else if(event.key===Qt.Key_Home){valueEdited(defaultValue);event.accepted=true}
     }
 
+    // RACK_READOUT_OPTICAL_V2 — highlight by color, not micro-text outlines.
     // CONTROL_CAPTION_AWARENESS_V1
     Text {
         id:caption
@@ -59,16 +60,13 @@ Item {
         width:root.captionWidth
         text:root.label
         color:root.highlighted ? root.accentColor : Theme.textDim
-        style:root.highlighted ? Text.Outline : Text.Normal
-        styleColor:root.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
         font.family:Theme.monoFamily
-        font.pixelSize:8
+        font.pixelSize:Theme.rackCaptionSize
         font.weight:root.highlighted ? Font.DemiBold : Font.Medium
-        font.letterSpacing:.8
+        font.letterSpacing:.55
         elide:Text.ElideRight
         verticalAlignment:Text.AlignVCenter
         Behavior on color { ColorAnimation { duration:75 } }
-        Behavior on styleColor { ColorAnimation { duration:75 } }
     }
 
     Rectangle {
@@ -109,8 +107,8 @@ Item {
         Row {
             anchors.centerIn:parent
             spacing:3
-            Text{text:root.display(root.value);color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}
-            Text{text:root.isOffValue(root.value)?"":root.unit;color:root.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}
+            Text{text:root.display(root.value);color:Theme.rackReadoutColor;font.family:Theme.monoFamily;font.pixelSize:Theme.rackReadoutSize;font.weight:Font.DemiBold}
+            Text{text:root.isOffValue(root.value)?"":root.unit;color:root.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.rackUnitSize;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}
         }
     }
 

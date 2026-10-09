@@ -110,9 +110,9 @@ StudioPanel {
                 text: root.title.toUpperCase()
                 color: Theme.text
                 font.family: Theme.monoFamily
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 1.05
+                font.pixelSize: Theme.rackHeaderSize
+                font.weight: Font.DemiBold
+                font.letterSpacing: Theme.rackHeaderTracking
                 elide: Text.ElideRight
                 width: parent.width - 24
             }
@@ -139,9 +139,9 @@ StudioPanel {
                     text: "OUTPUT DELAY"
                     color: Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
-                    font.weight: Font.DemiBold
-                    font.letterSpacing: .9
+                    font.pixelSize: Theme.rackCaptionSize
+                    font.weight: Font.Medium
+                    font.letterSpacing: .55
                     verticalAlignment: Text.AlignVCenter
                 }
 
@@ -158,8 +158,8 @@ StudioPanel {
                         text: "READ ONLY"
                         color: Theme.textDim
                         font.family: Theme.monoFamily
-                        font.pixelSize: 7
-                        font.weight: Font.Bold
+                        font.pixelSize: Theme.rackUnitSize
+                        font.weight: Font.DemiBold
                         font.letterSpacing: .45
                     }
                 }
