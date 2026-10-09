@@ -31,16 +31,22 @@ StudioPanel {
                 text: "MASTER VOLUME"
                 color: Theme.text
                 font.family: Theme.monoFamily
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 1.05
+                font.pixelSize: Theme.rackHeaderSize
+                font.weight: Font.DemiBold
+                font.letterSpacing: Theme.rackHeaderTracking
             }
-            Rectangle {
+            // PERSISTENT_MASTER_UTILITY_V2 — neutral, truthful scope label
+            // instead of a permanently amber status indicator.
+            Text {
                 anchors.right: parent.right
                 anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                width: 8; height: 8; radius: 4
-                color: Theme.amber
+                text: "GLOBAL"
+                color: Theme.textDim
+                font.family: Theme.monoFamily
+                font.pixelSize: Theme.rackCaptionSize
+                font.weight: Font.Medium
+                font.letterSpacing: .45
             }
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
@@ -82,14 +88,11 @@ StudioPanel {
                                 anchors.centerIn: parent
                                 text: modelData.label
                                 color: masterFader.highlighted ? masterFader.accentColor : Theme.textDim
-                                style: masterFader.highlighted ? Text.Outline : Text.Normal
-                                styleColor: masterFader.highlighted ? Qt.rgba(masterFader.accentColor.r,masterFader.accentColor.g,masterFader.accentColor.b,.34) : "transparent"
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 9
-                                font.weight: masterFader.highlighted ? Font.Bold : Font.DemiBold
-                                font.letterSpacing: .35
+                                font.pixelSize: Theme.rackReadoutSize
+                                font.weight: masterFader.highlighted ? Font.DemiBold : Font.Medium
+                                font.letterSpacing: .20
                                 Behavior on color { ColorAnimation { duration:75 } }
-                                Behavior on styleColor { ColorAnimation { duration:75 } }
                             }
                         }
 
@@ -131,10 +134,10 @@ StudioPanel {
                             Text {
                                 anchors.centerIn: parent
                                 text: Math.round(channel.liveValue)
-                                color: Theme.amber
+                                color: Theme.rackReadoutColor
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
+                                font.pixelSize: Theme.rackReadoutSize
+                                font.weight: Font.DemiBold
                             }
                             Behavior on border.color { ColorAnimation { duration: 75 } }
                         }

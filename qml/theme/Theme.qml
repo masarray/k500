@@ -59,6 +59,14 @@ QtObject {
     // Existing sizes remain unchanged until each component is audited.
     readonly property int navTitleSize: 12
     readonly property int navSubtitleSize: 11
+
+    // RACK_TYPE_HIERARCHY_V1 — optical roles without larger controls or racks.
+    readonly property int rackHeaderSize: 10
+    readonly property real rackHeaderTracking: 0.75
+    readonly property int rackCaptionSize: 9
+    readonly property int rackReadoutSize: 10
+    readonly property int rackUnitSize: 8
+    readonly property color rackReadoutColor: amber
     readonly property int navHeaderSize: 10
     readonly property int navItemHeight: 48
     readonly property int navIconSize: 27

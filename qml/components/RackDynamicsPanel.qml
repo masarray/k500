@@ -71,9 +71,9 @@ StudioPanel {
                 text: root.title.toUpperCase()
                 color: Theme.text
                 font.family: Theme.monoFamily
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 1.05
+                font.pixelSize: Theme.rackHeaderSize
+                font.weight: Font.DemiBold
+                font.letterSpacing: Theme.rackHeaderTracking
             }
             RowLayout {
                 anchors.right: parent.right
@@ -82,11 +82,11 @@ StudioPanel {
                 spacing: 7
                 Rectangle {
                     Layout.preferredWidth: 72; Layout.preferredHeight: 25; radius:8; color:"#0A0B08"; border.width:1; border.color:"#342A10"
-                    Text { anchors.centerIn:parent; text:"TH  "+Math.round(root.threshold)+" dB"; color:Theme.amber; font.family:Theme.monoFamily; font.pixelSize:9; font.weight:Font.Bold }
+                    Text { anchors.centerIn:parent; text:"TH  "+Math.round(root.threshold)+" dB"; color:Theme.amber; font.family:Theme.monoFamily; font.pixelSize:Theme.rackReadoutSize; font.weight:Font.DemiBold }
                 }
                 Rectangle {
                     Layout.preferredWidth: 44; Layout.preferredHeight: 25; radius:8; color:"#071113"; border.width:1; border.color:Theme.accentSoft
-                    Text { anchors.centerIn:parent; text:"1:"+Math.round(root.ratio); color:Theme.accent; font.family:Theme.monoFamily; font.pixelSize:9; font.weight:Font.Bold }
+                    Text { anchors.centerIn:parent; text:"1:"+Math.round(root.ratio); color:Theme.accent; font.family:Theme.monoFamily; font.pixelSize:Theme.rackReadoutSize; font.weight:Font.DemiBold }
                 }
             }
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }

@@ -181,9 +181,9 @@ StudioPanel {
                 text: root.title.toUpperCase()
                 color: Theme.text
                 font.family: Theme.monoFamily
-                font.pixelSize: 10
-                font.weight: Font.Bold
-                font.letterSpacing: 1.05
+                font.pixelSize: Theme.rackHeaderSize
+                font.weight: Font.DemiBold
+                font.letterSpacing: Theme.rackHeaderTracking
             }
             Text {
                 visible: root.compactCluster
@@ -191,11 +191,11 @@ StudioPanel {
                 anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
                 text: root.reverbMode ? "SPACE DESIGN" : "TIME DESIGN"
-                color: Theme.textFaint
+                color: Theme.textDim
                 font.family: Theme.monoFamily
-                font.pixelSize: 8
-                font.weight: Font.DemiBold
-                font.letterSpacing: 1.15
+                font.pixelSize: Theme.rackCaptionSize
+                font.weight: Font.Medium
+                font.letterSpacing: .55
             }
             Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft;opacity:.72 }
         }
@@ -813,14 +813,13 @@ StudioPanel {
                                             anchors.horizontalCenter: parent.horizontalCenter
                                             text: String(channel.modelData.label || "")
                                             color: channel.muted ? Theme.amber : rackFader.highlighted ? rackFader.accentColor : Theme.textDim
-                                            style: rackFader.highlighted ? Text.Outline : Text.Normal
-                                            styleColor: rackFader.highlighted ? Qt.rgba(rackFader.accentColor.r,rackFader.accentColor.g,rackFader.accentColor.b,.34) : "transparent"
                                             font.family: Theme.monoFamily
-                                            font.pixelSize: 9
-                                            font.weight: rackFader.highlighted || channel.muted ? Font.Bold : Font.DemiBold
-                                            font.letterSpacing: .35
+                                            // Long hardware labels retain the compact size.
+                                            font.pixelSize: String(channel.modelData.label || "").length > 7
+                                                            ? Theme.rackCaptionSize : Theme.rackReadoutSize
+                                            font.weight: rackFader.highlighted || channel.muted ? Font.DemiBold : Font.Medium
+                                            font.letterSpacing: .20
                                             Behavior on color { ColorAnimation { duration:75 } }
-                                            Behavior on styleColor { ColorAnimation { duration:75 } }
                                         }
                                         Text {
                                             anchors.horizontalCenter: parent.horizontalCenter
@@ -911,17 +910,17 @@ StudioPanel {
                                     spacing: 3
                                     Text {
                                         text: channel.localValue.toFixed(Number(channel.modelData.decimals || 0))
-                                        color: Theme.amber
+                                        color: Theme.rackReadoutColor
                                         font.family: Theme.monoFamily
-                                        font.pixelSize: 9
-                                        font.weight: Font.Bold
+                                        font.pixelSize: Theme.rackReadoutSize
+                                        font.weight: Font.DemiBold
                                     }
                                     Text {
                                         visible: String(channel.modelData.unit || "").length > 0
                                         text: String(channel.modelData.unit || "")
                                         color: rackFader.highlighted ? Theme.textSoft : Theme.textDim
                                         font.family: Theme.monoFamily
-                                        font.pixelSize: 7
+                                        font.pixelSize: Theme.rackUnitSize
                                         anchors.baseline: parent.children[0].baseline
                                         Behavior on color { ColorAnimation { duration:75 } }
                                     }

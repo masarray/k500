@@ -1035,6 +1035,53 @@ def check_public_surface_contracts() -> None:
         "onClicked:root.selectBand(index)",
     )
 
+    # RACK_TYPE_HIERARCHY_V1 — source-only checks in the existing single CI.
+    require(
+        "qml/theme/Theme.qml",
+        "RACK_TYPE_HIERARCHY_V1",
+        "rackHeaderTracking: 0.75",
+        "rackCaptionSize: 9",
+        "rackReadoutSize: 10",
+        "rackUnitSize: 8",
+    )
+    require(
+        "qml/components/ParameterSlider.qml",
+        "RACK_READOUT_OPTICAL_V2",
+        "font.pixelSize:Theme.rackCaptionSize",
+        "font.pixelSize:Theme.rackReadoutSize",
+        "onPositionChanged:function(event){if(pressed)setFromX(event.x)}",
+        "signal valueEdited(real newValue)",
+    )
+    require(
+        "qml/components/RackFaderPanel.qml",
+        "Theme.rackHeaderTracking",
+        "Theme.rackReadoutSize",
+        "LIVE_RACK_STABLE_DELEGATE_V1",
+        "onDraggingChanged:",
+    )
+    require(
+        "qml/components/RackDynamicsPanel.qml",
+        "Theme.rackHeaderTracking",
+        "function dispatchLive(field, value)",
+        "graph.requestPaint()",
+    )
+    require(
+        "qml/components/RackFilterPanel.qml",
+        "Theme.rackCaptionSize",
+        "root.editField(root.hpfIndex,v)",
+        "root.editField(root.lpfIndex,v)",
+    )
+    require(
+        "qml/components/MasterStripPanel.qml",
+        "PERSISTENT_MASTER_UTILITY_V2",
+        'text: "GLOBAL"',
+        "root.engine.masterMusic = v",
+        "root.engine.masterMic = v",
+        "root.engine.masterFx = v",
+    )
+    forbid("qml/components/ParameterSlider.qml", "Text.Outline")
+    forbid("qml/components/MasterStripPanel.qml", "Text.Outline")
+
     require(
         "qml/components/TopBar.qml",
         "font.pixelSize: 10",
