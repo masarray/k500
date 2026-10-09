@@ -83,4 +83,10 @@ QtObject {
     readonly property color navAccentRail: accent
     readonly property color navActiveText: accent
     readonly property color navSubtitleText: "#A4AEB7"
+
+    // TOP_BAR_COHESION_V4 — readable global context, no geometry inflation.
+    readonly property int topBarCaptionSize: 10
+    readonly property int topBarContextNameSize: 11
+    readonly property int topBarStatusSize: 10
+    readonly property int topBarContextWidth: 176
 }

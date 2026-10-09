@@ -93,7 +93,9 @@ StudioPanel {
         spacing: 8
 
         RowLayout {
-            Layout.preferredWidth: 288
+            // TOP_BAR_COHESION_V4 — allocate more width to active preset
+            // context, not decorative logo whitespace.
+            Layout.preferredWidth: 262
             Layout.minimumWidth: 252
             spacing: 10
 
@@ -108,8 +110,6 @@ StudioPanel {
                     GradientStop { position:.34;color:"#171F25" }
                     GradientStop { position:1;color:"#080C10" }
                 }
-                Rectangle { anchors.fill:parent;anchors.margins:1;radius:6;color:"transparent";border.width:1;border.color:"#12FFFFFF" }
-                Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:5;anchors.rightMargin:5;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.10 }
                 Image { anchors.fill:parent;anchors.margins:3;source:"qrc:/assets/SonKuPik-k500-logo.png";fillMode:Image.PreserveAspectFit;smooth:true }
             }
 
@@ -125,10 +125,10 @@ StudioPanel {
                     color:Theme.textDim
                     renderType:Text.NativeRendering
                     font.family:Theme.monoFamily
-                    font.pixelSize:9
+                    font.pixelSize:Theme.topBarCaptionSize
                     font.weight:Font.Medium
                     font.hintingPreference:Font.PreferFullHinting
-                    font.letterSpacing:1.15
+                    font.letterSpacing:.75
                 }
             }
             Item { Layout.fillWidth:true }
@@ -143,10 +143,7 @@ StudioPanel {
             color: "#080D11"
             border.width: 1
             border.color: "#26323A"
-            Rectangle { anchors.fill:parent;anchors.margins:1;radius:8;color:"transparent";border.width:1;border.color:"#0AFFFFFF" }
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:6;anchors.rightMargin:6;anchors.topMargin:1;height:1;color:"#FFFFFF";opacity:.07 }
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;anchors.leftMargin:6;anchors.rightMargin:6;anchors.bottomMargin:1;height:1;color:"#000000";opacity:.52 }
-
+            // Quiet transport bezel; button feedback already conveys state.
             RowLayout {
                 anchors.fill: parent
                 anchors.margins: 4
@@ -167,14 +164,22 @@ StudioPanel {
 
         Rectangle {
             id: presetContextChip
-            Layout.preferredWidth: 144
+            Layout.preferredWidth: Theme.topBarContextWidth
             Layout.preferredHeight: 34
             radius: 9
-            color: "#080D11"
+            color: "#0B1419"
             border.width: 1
             border.color: Qt.rgba(root.presetContextAccent.r, root.presetContextAccent.g, root.presetContextAccent.b,
-                                  root.presetContextKind === "NO PRESET" ? .18 : .42)
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:8;anchors.rightMargin:8;anchors.topMargin:1;height:1;color:root.presetContextAccent;opacity:root.presetContextKind==="NO PRESET"?.07:.18 }
+                                  root.presetContextKind === "NO PRESET" ? .18 : .35)
+            Rectangle {
+                anchors.left:parent.left
+                anchors.verticalCenter:parent.verticalCenter
+                width:2
+                height:20
+                radius:1
+                color:root.presetContextAccent
+                opacity:root.presetContextKind==="NO PRESET"?.22:.82
+            }
 
             Column {
                 anchors.left: parent.left
@@ -189,8 +194,8 @@ StudioPanel {
                     color: root.presetContextAccent
                     renderType: Text.NativeRendering
                     font.family: Theme.monoFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
+                    font.pixelSize: Theme.topBarCaptionSize
+                    font.weight: Font.DemiBold
                     font.hintingPreference: Font.PreferFullHinting
                     font.letterSpacing: .60
                     elide: Text.ElideRight
@@ -201,7 +206,7 @@ StudioPanel {
                     color: root.presetContextKind === "NO PRESET" ? Theme.textDim : Theme.text
                     renderType: Text.NativeRendering
                     font.family: Theme.fontFamily
-                    font.pixelSize: 10
+                    font.pixelSize: Theme.topBarContextNameSize
                     font.weight: Font.DemiBold
                     font.hintingPreference: Font.PreferFullHinting
                     elide: Text.ElideRight
@@ -212,6 +217,13 @@ StudioPanel {
             ToolTip.text: root.presetContextKind + " — " + root.presetContextName
             ToolTip.delay: 350
             MouseArea { id:presetContextHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton;cursorShape:Qt.ArrowCursor }
+        }
+
+        Rectangle {
+            Layout.preferredWidth: 1
+            Layout.preferredHeight: 20
+            color: Theme.borderSoft
+            opacity: .75
         }
 
         RowLayout {
@@ -262,14 +274,13 @@ StudioPanel {
 
         Rectangle {
             id: statusDisplay
-            Layout.preferredWidth: 76
+            Layout.preferredWidth: 82
             Layout.preferredHeight: 29
             radius: 8
             color: "#080D11"
             border.width: 1
             border.color: Qt.rgba(root.deviceStatusAccent.r,root.deviceStatusAccent.g,root.deviceStatusAccent.b,
-                                  root.deviceManager.connected||root.deviceBusy||root.deviceManager.status==="error"?.48:.22)
-            Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.top:parent.top;anchors.leftMargin:7;anchors.rightMargin:7;anchors.topMargin:1;height:1;color:root.deviceStatusAccent;opacity:root.deviceManager.connected||root.deviceBusy?.22:.08 }
+                                  root.deviceManager.connected||root.deviceBusy||root.deviceManager.status==="error"?.38:.18)
             Row {
                 anchors.centerIn: parent
                 spacing: 6
@@ -280,8 +291,8 @@ StudioPanel {
                     color: root.deviceStatusAccent
                     renderType: Text.NativeRendering
                     font.family: Theme.monoFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
+                    font.pixelSize: Theme.topBarStatusSize
+                    font.weight: Font.DemiBold
                     font.hintingPreference: Font.PreferFullHinting
                     font.letterSpacing: .55
                 }
@@ -312,13 +323,14 @@ StudioPanel {
         SoftButton {
             Layout.preferredWidth:94
             Layout.preferredHeight:30
-            text:"Support"
+            // Export JSON support report; not a donation action.
+            text:"Report"
             iconName:"file-down"
             compact:true
             toolbar:true
             onClicked:supportReportDialog.open()
             ToolTip.visible:supportHover.containsMouse
-            ToolTip.text:"Export bounded K500 diagnostics"
+            ToolTip.text:"Export K500 diagnostic report (JSON)"
             ToolTip.delay:350
             MouseArea { id:supportHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton }
         }
