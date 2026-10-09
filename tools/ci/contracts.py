@@ -1122,6 +1122,32 @@ def check_public_surface_contracts() -> None:
         "root.engine.editDevicePath(String(modelData.path),v)",
     )
 
+    # SYSTEM_OFFLINE_SINGLE_SURFACE_V7 — offline editor MUST be hidden
+    # rather than merely read-only, to prevent overdraw with status captions.
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_MODE_NAME_SINGLE_SURFACE_V7",
+        "SYSTEM_BT_NAME_SINGLE_SURFACE_V7",
+        "SYSTEM_OFFLINE_TRUTH_V7",
+        "id: modeNameInput",
+        "text:root.modeNameDraft",
+        "onTextEdited:root.modeNameDraft=text",
+        "text:root.btNameDraft",
+        "onTextEdited:root.btNameDraft=text",
+        'text:root.deviceConnected?"10 DEVICE SLOTS":"OFFLINE · UNVERIFIED"',
+        "root.activeDeviceSlot",
+        'text:active?"ACTIVE":""',
+        "onClicked:root.presetManager.renameActiveMode(root.normalizedModeNameDraft())",
+        "onClicked:root.presetManager.recallMode(root.selectedDeviceSlot+1)",
+        "onClicked:root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)",
+        "onClicked:root.presetManager.setBtName(root.normalizedBtNameDraft())",
+        "onClicked:root.presetManager.resetBtName()",
+    )
+    require_count("qml/components/SystemWorkspaceImpl.qml", "visible:root.deviceConnected", 2)
+    require_count("qml/components/SystemWorkspaceImpl.qml", 'text:"Connect K500 to read"', 2)
+    forbid("qml/components/SystemWorkspaceImpl.qml", 'text:"Reset all"')
+    forbid("qml/components/SystemWorkspaceImpl.qml", "Behavior on styleColor")
+
     # TOP_BAR_COHESION_V4 — source-only semantic/optical checks in K500 CI.
     require(
         "qml/theme/Theme.qml",

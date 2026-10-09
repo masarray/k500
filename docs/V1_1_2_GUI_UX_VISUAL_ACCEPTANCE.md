@@ -33,6 +33,8 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 | Filter dropdown | 10px value/options readable in compact heights, no text overlaps or clipped type labels |
 | System settings | Title/detail/APPLYING or SYNCING status legible inside unchanged 50px toggle rows; disabled, pending and offline states truthful |
 | System presets | PC staging separate from 10 physical slots; selected cyan is not hardware ACTIVE amber; Recall and Save remain explicitly gated |
+| Mode Name / BT Name | Offline: one clear “Connect K500 to read” hint per field and no overlapping retained draft; online: original edit, rename and verification gates preserved; inert Reset all hidden |
+| Small text | PC preset titles 11px, description/selection 10px, status and Recording/Mic Trigger captions readable on 100/125/150% Windows scaling |
 | Mass Upload | At 0, 1, 5 and 10 staged slots, all rows 01–10 are understandable at both window sizes; Ctrl/Shift preserve manual order; Stage and Clear affect only PC-side plan; no last row clipped |
 | Transfer | USB gate, ACK-driven progress, no duplicate writes; Slot 01 final Recall and 939-byte authoritative readback verified separately on real K500 |
 | Popups | About, donation/QRIS and updater text readable, no overlap/stacking, no accidental premature device writes |
