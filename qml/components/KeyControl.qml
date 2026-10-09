@@ -7,6 +7,7 @@ Item {
     property int key: 0
     property real slideOffset: 0
     property real slideOpacity: 1
+    // FINAL_MICRO_TEXT_READABILITY_V5 — preserve fixed 16px annotation rail.
     signal keyEdited(int newKey)
     implicitHeight: 62
     activeFocusOnTab: true
@@ -204,27 +205,27 @@ Item {
                 text: "KEY DOWN"
                 color: Theme.textDim
                 font.family: Theme.fontFamily
-                font.pixelSize: 7
+                font.pixelSize: Theme.rackCaptionSize
                 font.weight: Font.DemiBold
-                font.letterSpacing: 0.55
+                font.letterSpacing: 0.2
             }
             Item { Layout.fillWidth: true }
             Text {
                 text: root.key === 0 ? "ORIGINAL" : root.formatStep(root.key)
                 color: root.key === 0 ? Theme.accent : Theme.amber
                 font.family: Theme.fontFamily
-                font.pixelSize: 8
-                font.weight: Font.Bold
-                font.letterSpacing: 0.75
+                font.pixelSize: Theme.rackReadoutSize
+                font.weight: Font.DemiBold
+                font.letterSpacing: 0.2
             }
             Item { Layout.fillWidth: true }
             Text {
                 text: "KEY UP"
                 color: Theme.textDim
                 font.family: Theme.fontFamily
-                font.pixelSize: 7
+                font.pixelSize: Theme.rackCaptionSize
                 font.weight: Font.DemiBold
-                font.letterSpacing: 0.55
+                font.letterSpacing: 0.2
             }
         }
     }

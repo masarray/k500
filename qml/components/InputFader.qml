@@ -18,6 +18,7 @@ Item {
     signal activated()
     signal sourceRequested()
 
+    // FINAL_MICRO_TEXT_READABILITY_V5 — preserve source selection/fader geometry.
     implicitWidth: 76
     implicitHeight: 238
 
@@ -48,7 +49,7 @@ Item {
             text: root.label
             color: inputFader.highlighted ? root.accentColor : Theme.textDim
             font.family: Theme.monoFamily
-            font.pixelSize: 8
+            font.pixelSize: Theme.rackCaptionSize
             font.weight: Font.DemiBold
             font.letterSpacing: .45
             verticalAlignment: Text.AlignVCenter
@@ -90,15 +91,15 @@ Item {
                     text: root.value <= root.from + 0.1 ? "-∞" : root.value.toFixed(0)
                     color: Theme.amber
                     font.family: Theme.monoFamily
-                    font.pixelSize: 9
-                    font.weight: Font.Bold
+                    font.pixelSize: Theme.rackReadoutSize
+                    font.weight: Font.DemiBold
                 }
                 Text {
                     visible: root.value > root.from + 0.1
                     text: "dB"
                     color: inputFader.highlighted ? Theme.textSoft : Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 7
+                    font.pixelSize: Theme.rackUnitSize
                     anchors.baseline: parent.children[0].baseline
                     Behavior on color { ColorAnimation { duration:75 } }
                 }
