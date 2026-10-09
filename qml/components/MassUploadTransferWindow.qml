@@ -268,7 +268,9 @@ Window {
                 }
                 Text {
                     Layout.fillWidth: true
-                    text: "Ctrl+click builds your pick order. Shift+click adds a range in its direction. Add stages picks to K500 slots 01–10."
+                    // MASS_UPLOAD_VISUAL_WORKFLOW_V3 — distinguish selection,
+                    // offline staging, and irreversible hardware transfer.
+                    text: "01  SELECT PRESETS   →   02  STAGE SLOTS   →   03  UPLOAD VIA USB   ·   Ctrl+click sets pick order; Shift+click adds a directional range."
                     color: Theme.textDim
                     font.family: Theme.fontFamily
                     font.pixelSize: 10
@@ -301,9 +303,9 @@ Window {
                                 text: "PC PRESET COLLECTION"
                                 color: Theme.text
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                                font.letterSpacing: 0.9
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: .55
                             }
                             Text {
                                 anchors.right: parent.right
@@ -486,11 +488,13 @@ Window {
                     Layout.preferredWidth: 92
                     Layout.alignment: Qt.AlignVCenter
                     spacing: 8
-                    SoftButton { Layout.fillWidth: true; text: root.selectedSourceIndexes.length > 1 ? "Add (" + root.selectedSourceIndexes.length + ")  >" : "Add  >"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected() }
-                    SoftButton { Layout.fillWidth: true; text: "Add All  >>"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll() }
+                    // MASS_UPLOAD_STAGING_ACTIONS_V3 — these edit the PC-side
+                    // upload plan only. Existing selection chronology is unchanged.
+                    SoftButton { Layout.fillWidth: true; text: root.selectedSourceIndexes.length > 1 ? "Stage (" + root.selectedSourceIndexes.length + ") →" : "Stage →"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected() }
+                    SoftButton { Layout.fillWidth: true; text: "Fill slots →"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll() }
                     Item { Layout.preferredHeight: 12 }
-                    SoftButton { Layout.fillWidth: true; text: "<  Remove"; compact: true; enabled: root.targetIndex >= 0; onClicked: root.removeSelected() }
-                    SoftButton { Layout.fillWidth: true; text: "<<  Remove All"; compact: true; enabled: targetModel.count > 0; onClicked: root.clearTarget() }
+                    SoftButton { Layout.fillWidth: true; text: "← Remove"; compact: true; enabled: root.targetIndex >= 0; onClicked: root.removeSelected() }
+                    SoftButton { Layout.fillWidth: true; text: "Clear plan"; compact: true; enabled: targetModel.count > 0; onClicked: root.clearTarget() }
                 }
 
                 StudioPanel {
@@ -513,24 +517,25 @@ Window {
                                 text: "K500 DEVICE SLOTS"
                                 color: Theme.text
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 9
-                                font.weight: Font.Bold
-                                font.letterSpacing: 0.9
+                                font.pixelSize: 10
+                                font.weight: Font.DemiBold
+                                font.letterSpacing: .55
                             }
                             Text {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: String(targetModel.count) + " / 10"
+                                text: String(targetModel.count) + " / 10 STAGED"
                                 color: targetModel.count >= root.maxSlots ? Theme.amber : Theme.accent
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 8
-                                font.weight: Font.Bold
+                                font.pixelSize: 9
+                                font.weight: Font.DemiBold
                             }
                             Rectangle { anchors.left: parent.left; anchors.right: parent.right; anchors.bottom: parent.bottom; height: 1; color: Theme.borderSoft }
                         }
 
                         Rectangle {
+                            id: slotCanvas
                             Layout.fillWidth: true
                             Layout.fillHeight: true
                             Layout.margins: 10
@@ -540,10 +545,72 @@ Window {
                             border.color: "#050708"
                             clip: true
 
+                            // MASS_UPLOAD_TEN_SLOT_SKELETON_V3: an inert, fixed
+                            // 10-slot plan under the existing ListView. A staged
+                            // row fully overlays its matching placeholder. There
+                            // is no fake readback, second staging model, or edit.
+                            // The min-height dialog reduces rows instead of
+                            // clipping the last hardware slot.
+                            readonly property real slotRowHeight: Math.min(38, Math.max(24,
+                                (height - 12 - (root.maxSlots - 1) * 3) / root.maxSlots))
+
+                            Column {
+                                id: emptySlotPlan
+                                anchors.fill: parent
+                                anchors.margins: 6
+                                spacing: 3
+                                Repeater {
+                                    model: root.maxSlots
+                                    delegate: Rectangle {
+                                        required property int index
+                                        width: emptySlotPlan.width
+                                        height: slotCanvas.slotRowHeight
+                                        radius: 6
+                                        // Opacity, not visible: Column must retain
+                                        // empty-row geometry when slots are staged.
+                                        opacity: index < targetModel.count ? 0 : 1
+                                        color: "#0B1115"
+                                        border.width: 1
+                                        border.color: "#253039"
+                                        RowLayout {
+                                            anchors.fill: parent
+                                            anchors.leftMargin: 8
+                                            anchors.rightMargin: 8
+                                            spacing: 8
+                                            Rectangle {
+                                                Layout.preferredWidth: 30
+                                                Layout.preferredHeight: 21
+                                                radius: 5
+                                                color: "#11191E"
+                                                border.width: 1
+                                                border.color: Theme.borderSoft
+                                                Text {
+                                                    anchors.centerIn: parent
+                                                    text: String(index + 1).padStart(2, "0")
+                                                    color: Theme.textDim
+                                                    font.family: Theme.monoFamily
+                                                    font.pixelSize: 9
+                                                    font.weight: Font.Medium
+                                                }
+                                            }
+                                            Text {
+                                                Layout.fillWidth: true
+                                                text: "NOT STAGED"
+                                                color: Theme.textFaint
+                                                font.family: Theme.monoFamily
+                                                font.pixelSize: 9
+                                                font.weight: Font.Medium
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
                             ListView {
                                 id: targetList
                                 anchors.fill: parent
                                 anchors.margins: 6
+                                z: 1
                                 spacing: 3
                                 clip: true
                                 model: targetModel
@@ -555,7 +622,7 @@ Window {
                                     required property string path
                                     required property string originLabel
                                     width: targetList.width
-                                    height: 38
+                                    height: slotCanvas.slotRowHeight
                                     radius: 6
                                     readonly property bool selected: index === root.targetIndex
                                     color: selected ? "#15252A" : targetMouse.containsMouse ? "#12181D" : "#0D1115"
@@ -591,8 +658,8 @@ Window {
                                                 text: displayName
                                                 color: Theme.text
                                                 font.family: Theme.monoFamily
-                                                font.pixelSize: 9
-                                                font.weight: Font.Bold
+                                                font.pixelSize: 10
+                                                font.weight: Font.DemiBold
                                                 elide: Text.ElideRight
                                             }
                                             Text {
@@ -600,7 +667,7 @@ Window {
                                                 text: originLabel + " · " + fileName
                                                 color: Theme.textDim
                                                 font.family: Theme.monoFamily
-                                                font.pixelSize: 7
+                                                font.pixelSize: 9
                                                 elide: Text.ElideRight
                                             }
                                         }
@@ -608,8 +675,8 @@ Window {
                                             text: "SLOT " + String(index + 1).padStart(2, "0")
                                             color: Theme.accent
                                             font.family: Theme.monoFamily
-                                            font.pixelSize: 7
-                                            font.weight: Font.Bold
+                                            font.pixelSize: 9
+                                            font.weight: Font.DemiBold
                                         }
                                     }
 
@@ -623,18 +690,18 @@ Window {
                                     }
                                 }
 
-                                Text {
-                                    anchors.centerIn: parent
-                                    visible: targetModel.count === 0
-                                    width: parent.width - 30
-                                    horizontalAlignment: Text.AlignHCenter
-                                    text: "Add any SonKuPik or Local presets from the left.\nTheir order becomes Device Slot 01…10."
-                                    color: Theme.textDim
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 9
-                                    wrapMode: Text.WordWrap
-                                }
                             }
+                        }
+                        Text {
+                            Layout.fillWidth: true
+                            Layout.leftMargin: 12
+                            Layout.rightMargin: 12
+                            Layout.bottomMargin: 7
+                            text: "UPLOAD PLAN ONLY · K500 remains unchanged until transfer."
+                            color: Theme.textDim
+                            font.family: Theme.fontFamily
+                            font.pixelSize: 9
+                            elide: Text.ElideRight
                         }
                     }
                 }
@@ -652,7 +719,7 @@ Window {
                              : "Prepare the list offline; connect K500 via USB to enable final Mass Upload.")
                     color: root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                     font.family: Theme.monoFamily
-                    font.pixelSize: 8
+                    font.pixelSize: 9
                     elide: Text.ElideRight
                 }
                 SoftButton { Layout.preferredWidth: 86; text: "Cancel"; compact: true; onClicked: root.visible = false }

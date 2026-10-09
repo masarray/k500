@@ -762,6 +762,27 @@ def check_ui_contracts() -> None:
         "OFFLINE_PREVIEW_CANNOT_CLOBBER_DEVICE_HISTORY_V1",
     )
 
+    # MASS_UPLOAD_TEN_SLOT_SKELETON_V3 — inert 10-slot plan, not a
+    # second source of truth or rewritten hardware transfer semantics.
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "MASS_UPLOAD_VISUAL_WORKFLOW_V3",
+        "MASS_UPLOAD_STAGING_ACTIONS_V3",
+        "MASS_UPLOAD_TEN_SLOT_SKELETON_V3",
+        "model: root.maxSlots",
+        "opacity: index < targetModel.count ? 0 : 1",
+        "height: slotCanvas.slotRowHeight",
+        "model: targetModel",
+        "root.addSelected()",
+        "root.addAll()",
+        "root.removeSelected()",
+        "root.clearTarget()",
+        "root.uploadTransfer()",
+        "UPLOAD PLAN ONLY",
+        "MASS_UPLOAD_SELECTION_ORDER_V2",
+        "MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1",
+    )
+
     # MASS_UPLOAD_ACK_PROGRESS_V1 — progress only on device response ACK,
     # reserve final completion for the successful full Recall/readback. The
     # dialog cannot disappear or abort in the middle of a store transaction.
