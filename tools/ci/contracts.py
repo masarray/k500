@@ -1386,7 +1386,8 @@ def check_preset_sync() -> None:
         "fileBridge.combinedPresets",
         "SONKUPIK",
         "LOCAL",
-        "Remove All",
+        'text: "Clear plan"',
+        "onClicked: root.clearTarget()",
     )
     forbid(
         "src/k500/K500OfficialPresetSync.cpp",
