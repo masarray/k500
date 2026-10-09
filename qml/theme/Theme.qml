@@ -67,6 +67,13 @@ QtObject {
     readonly property int rackReadoutSize: 10
     readonly property int rackUnitSize: 8
     readonly property color rackReadoutColor: amber
+
+    // SYSTEM_DASHBOARD_OPTICAL_V2B — text hierarchy, never device authority.
+    readonly property int systemListTitleSize: 10
+    readonly property int systemCaptionSize: 9
+    readonly property int systemStatusSize: 9
+    readonly property color systemSelectedSurface: "#13272C"
+    readonly property color systemActiveSurface: "#242017"
     readonly property int navHeaderSize: 10
     readonly property int navItemHeight: 48
     readonly property int navIconSize: 27
