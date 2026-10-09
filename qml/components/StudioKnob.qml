@@ -71,6 +71,7 @@ Item {
     onEditableChanged: { if(!editable) dragging=false; dial.requestPaint() }
 
     // CONTROL_CAPTION_AWARENESS_V1
+    // CLEAN_NATIVE_GLYPH_AA_V8 — omit tiny halo outlines, retain native glyph AA.
     // MICRO_TYPE_OPTICAL_POLISH_V1 — premium dial captions get one extra pixel
     // for clean native rasterization while preserving the compact rack geometry.
     Text {
@@ -79,14 +80,11 @@ Item {
         anchors.horizontalCenter:parent.horizontalCenter
         text:root.title
         color:root.highlighted ? root.accentColor : Theme.textDim
-        style:root.highlighted ? Text.Outline : Text.Normal
-        styleColor:root.highlighted ? Qt.rgba(root.accentColor.r,root.accentColor.g,root.accentColor.b,.34) : "transparent"
         font.family:Theme.monoFamily
         font.pixelSize:root.premium ? 10 : 9
         font.weight:root.highlighted ? Font.DemiBold : Font.Medium
         font.letterSpacing:root.premium ? .95 : .75
         Behavior on color { ColorAnimation { duration:75 } }
-        Behavior on styleColor { ColorAnimation { duration:75 } }
     }
 
     Item {

@@ -1022,6 +1022,78 @@ def check_public_surface_contracts() -> None:
         "y: navPointer.pressed ? 1 : 0",
         "strokeWidth: 1.85",
     )
+    # SUBWOOFER_EMBEDDED_FONT_AA_V8 — audit every shipped QML file in
+    # the existing Fast Contracts, without adding expensive global MSAA.
+    require(
+        "qml/components/SectionDrawer.qml",
+        '{name:"Subwoofer", sub:"Bass management", icon:"activity"}',
+    )
+    require(
+        "qml/theme/Theme.qml",
+        'fontFamily: "Plus Jakarta Sans"',
+        'displayFamily: "Plus Jakarta Sans"',
+        'monoFamily: "Plus Jakarta Sans"',
+    )
+    require(
+        "src/main.cpp",
+        'const QString kUiFontFamily = QStringLiteral("Plus Jakarta Sans");',
+        "QFontDatabase::addApplicationFont(resource)",
+        "appFont.setStyleStrategy(QFont::PreferAntialias)",
+        "app.setFont(appFont)",
+    )
+    for weight in ("Regular", "Medium", "SemiBold", "Bold"):
+        name = f"PlusJakartaSans-{weight}.ttf"
+        require("src/main.cpp", f":/fonts/{name}")
+        require("CMakeLists.txt", f"resources/fonts/{name}")
+        if not (ROOT / "resources" / "fonts" / name).is_file():
+            FAILURES.append(f"Missing embedded Jakarta font: {name}")
+    require(
+        "src/AppVersionInit.cpp",
+        "UI_NATIVE_TEXT_RENDERING_V1",
+        "QQuickWindow::setTextRenderType(QQuickWindow::NativeTextRendering)",
+    )
+    require(
+        "src/EqCurveItem.cpp",
+        "P1_NATIVE_PEQ_ANALYTIC_AA_V1",
+        "edgeColor.setAlpha(0)",
+        "QSGMaterial::Blending",
+    )
+    require("qml/components/StudioKnob.qml", "CLEAN_NATIVE_GLYPH_AA_V8")
+    forbid("qml/components/StudioKnob.qml", "Text.Outline", "Behavior on styleColor")
+
+    allowed_fonts = {"Theme.fontFamily", "Theme.displayFamily", "Theme.monoFamily"}
+    fonts_seen = canvases_seen = shapes_seen = 0
+    for qml in sorted((ROOT / "qml").rglob("*.qml")):
+        qml_text = qml.read_text(encoding="utf-8")
+        rel = qml.relative_to(ROOT).as_posix()
+        for m in re.finditer(r"\bfont\.family\s*:\s*([^;\n}]+)", qml_text):
+            fonts_seen += 1
+            if m.group(1).strip() not in allowed_fonts:
+                FAILURES.append(f"{rel}: non-embedded font {m.group(1).strip()!r}")
+        if "Text.QtRendering" in qml_text or "PreferNoAntialias" in qml_text:
+            FAILURES.append(f"{rel}: native antialias rendering disabled")
+        for m in re.finditer(r"\bCanvas\s*\{", qml_text):
+            canvases_seen += 1
+            paint_at = qml_text.find("onPaint:", m.end())
+            if paint_at < 0 or not re.search(
+                r"\bantialiasing\s*:\s*true\b", qml_text[m.end():paint_at]
+            ):
+                FAILURES.append(f"{rel}: Canvas stroke without antialiasing")
+        for m in re.finditer(r"\bShape\s*\{", qml_text):
+            shapes_seen += 1
+            if "preferredRendererType: Shape.CurveRenderer" not in qml_text[m.end():m.end() + 180]:
+                FAILURES.append(f"{rel}: Shape missing CurveRenderer")
+    if fonts_seen < 100 or canvases_seen != 3 or shapes_seen < 13:
+        FAILURES.append(
+            f"UI font/AA scope shrank: {fonts_seen} fonts, "
+            f"{canvases_seen} Canvas, {shapes_seen} Shapes"
+        )
+    else:
+        PASSES.append(
+            f"Embedded Plus Jakarta / AA: {fonts_seen} font overrides, "
+            f"{canvases_seen} antialiased Canvas, {shapes_seen} curve Shapes"
+        )
+
     # VISUAL_FOUNDATION_REGRESSION_V1 — fast source-only safeguards.
     # Do not add a separate workflow for presentation refinements.
     require(

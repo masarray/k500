@@ -39,7 +39,7 @@ StudioPanel {
                 {name:"Main", sub:"Front output", icon:"speaker"},
                 {name:"Surround", sub:"Rear field", icon:"waves"},
                 {name:"Center", sub:"Vocal focus", icon:"radio-tower"},
-                {name:"Sub", sub:"Bass management", icon:"activity"},
+                {name:"Subwoofer", sub:"Bass management", icon:"activity"},
                 {name:"System", sub:"Global setup", icon:"settings-2"}
             ]
 
