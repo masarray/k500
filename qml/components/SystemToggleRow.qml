@@ -2,6 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 
 // SYSTEM_SETTING_TOGGLE_ROW_V2
+// FINAL_MICRO_TEXT_READABILITY_V5 — better text within same 50px row.
 // Reusable boolean setting for local-editor and hardware-backed states.
 // Normal state stays visually quiet; transient work gets the only status copy.
 Rectangle {
@@ -72,7 +73,7 @@ Rectangle {
                 text: root.title
                 color: Theme.text
                 font.family: Theme.fontFamily
-                font.pixelSize: 9
+                font.pixelSize: Theme.rackReadoutSize
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
@@ -86,7 +87,7 @@ Rectangle {
                     text: root.detail
                     color: Theme.textDim
                     font.family: Theme.fontFamily
-                    font.pixelSize: 7
+                    font.pixelSize: Theme.rackCaptionSize
                     elide: Text.ElideRight
                 }
 
@@ -96,7 +97,7 @@ Rectangle {
                     text: root.pending ? "APPLYING…" : root.statusText
                     color: root.pending ? Theme.amber : root.statusColor
                     font.family: Theme.monoFamily
-                    font.pixelSize: 7
+                    font.pixelSize: Theme.rackCaptionSize
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }

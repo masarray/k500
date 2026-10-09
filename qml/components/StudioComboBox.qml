@@ -8,6 +8,8 @@ ComboBox {
     property color accentColor: Theme.amber
     signal valueEdited(string newValue)
 
+    // FINAL_MICRO_TEXT_READABILITY_V5 — 10px dropdown value and options,
+    // with unchanged compact geometry and activation behavior.
     implicitHeight: 34
     leftPadding: 6
     rightPadding: 21
@@ -27,7 +29,7 @@ ComboBox {
         verticalAlignment: Text.AlignVCenter
         elide: Text.ElideRight
         font.family: Theme.monoFamily
-        font.pixelSize: 9
+        font.pixelSize: Theme.rackReadoutSize
         font.weight: Font.Bold
         font.letterSpacing: 0
     }
@@ -75,7 +77,7 @@ ComboBox {
             color: option.highlighted ? control.accentColor : Theme.textSoft
             verticalAlignment: Text.AlignVCenter
             font.family: Theme.monoFamily
-            font.pixelSize: 9
+            font.pixelSize: Theme.rackReadoutSize
             font.weight: option.highlighted ? Font.Bold : Font.Medium
         }
         background: Rectangle { radius:5;color:option.highlighted?Theme.amberFaint:"transparent";border.width:option.highlighted?1:0;border.color:Theme.amberSoft }

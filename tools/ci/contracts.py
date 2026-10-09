@@ -1153,6 +1153,47 @@ def check_public_surface_contracts() -> None:
     )
     forbid("qml/components/TopBar.qml", 'text:"Support"')
 
+    # FINAL_MICRO_TEXT_READABILITY_V5 — existing CI, no new workflows.
+    require(
+        "qml/components/SystemToggleRow.qml",
+        "FINAL_MICRO_TEXT_READABILITY_V5",
+        "implicitHeight: 50",
+        "font.pixelSize: Theme.rackReadoutSize",
+        "font.pixelSize: Theme.rackCaptionSize",
+        "root.toggleRequested(!root.checked)",
+        "root.blockedClicked()",
+    )
+    require(
+        "qml/components/KeyControl.qml",
+        "FINAL_MICRO_TEXT_READABILITY_V5",
+        "Layout.preferredHeight: 16",
+        "font.pixelSize: Theme.rackCaptionSize",
+        "font.pixelSize: Theme.rackReadoutSize",
+        "root.commit(root.key - 1)",
+        "root.commit(root.key + 1)",
+    )
+    require(
+        "qml/components/InputFader.qml",
+        "FINAL_MICRO_TEXT_READABILITY_V5",
+        "Layout.preferredHeight: 160",
+        "font.pixelSize: Theme.rackCaptionSize",
+        "font.pixelSize: Theme.rackReadoutSize",
+        "font.pixelSize: Theme.rackUnitSize",
+        "onClicked: root.sourceRequested()",
+        "onValueEdited: function(v) { root.valueEdited(v) }",
+    )
+    require(
+        "qml/components/StudioComboBox.qml",
+        "FINAL_MICRO_TEXT_READABILITY_V5",
+        "font.pixelSize: Theme.rackReadoutSize",
+        "onActivated: function(index)",
+        "control.valueEdited(control.value)",
+        "model:control.popup.visible?control.delegateModel:null",
+    )
+    forbid("qml/components/SystemToggleRow.qml", "font.pixelSize: 7")
+    forbid("qml/components/KeyControl.qml", "font.pixelSize: 7")
+    forbid("qml/components/InputFader.qml", "font.pixelSize: 7")
+
     require(
         "qml/components/StudioKnob.qml",
         "font.pixelSize:root.premium ? 10 : 9",
