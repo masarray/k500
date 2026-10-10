@@ -5,8 +5,8 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 ## Current stable baseline
 
 - Product: **SonKuPik K500**
-- Public stable line: **v1.1.1**
-- Pending source candidate: **v1.1.2**, not publicly promoted; see `docs/V1_1_2_CANDIDATE_SCOPE.md` and `docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md`.
+- Public stable line: **v1.1.2**, byte-identically promoted from accepted `v1.1.2-rc.2` on 2026-10-10.
+- Exact binary source: `8e3be5d4e567463e5bae4aa911537417aeba11b1`; acceptance evidence: `docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md`. Never rebuild or change these accepted installer bytes.
 - Qualified stable transport scope: **Windows x64 + USB HID**
 - Bluetooth SPP: implemented, **experimental / not yet hardware-qualified**
 - QML never owns raw device I/O.
