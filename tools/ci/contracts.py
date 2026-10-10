@@ -1054,6 +1054,30 @@ def check_public_surface_contracts() -> None:
         "onAboutRequested: aboutDialog.open()",
     )
 
+    # STARTUP_FRESH_RELEASE_DISCOVERY_V1 — reopening a previously checked
+    # installation MUST send a new GitHub Latest request; only a successful
+    # request made in the current process may activate the 6-hour throttle.
+    require(
+        "src/AppUpdateManager.h",
+        "STARTUP_FRESH_RELEASE_DISCOVERY_V1",
+        "bool m_successfulDiscoveryThisSession = false;",
+    )
+    require(
+        "src/AppUpdateManager.cpp",
+        "STARTUP_FRESH_RELEASE_DISCOVERY_V1",
+        "!userInitiated && m_candidateTag.isEmpty() && m_successfulDiscoveryThisSession",
+        "m_successfulDiscoveryThisSession = true;",
+        'QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc")',
+    )
+    require("qml/Main.qml",
+        "STARTUP_UPDATE_DISCOVERY_V1",
+        "interval: 2500",
+        "onTriggered: AppUpdater.checkForUpdates(false)",
+        "root.maybeOpenUpdateDialog()")
+    forbid("src/AppUpdateManager.cpp",
+        "if (!userInitiated && m_candidateTag.isEmpty()) {",
+    )
+
     # ABOUT_MANUAL_UPDATE_CHECK_V1 — explicit recovery path for users
     # whose background check is throttled or whose Inno registration is
     # missing/ambiguous. This requests no silent device or installer action.

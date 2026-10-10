@@ -16,6 +16,17 @@ LocalAppData by hand; preserve Documents, QSettings and user preset caches.
 If separate registered machine and per-user installs coexist, the updater
 intentionally fails closed rather than destroying either copy.
 
+**Post-v1.1.2 source change, not shipped in stable v1.1.2:**
+`STARTUP_FRESH_RELEASE_DISCOVERY_V1` also corrects the persisted
+successful-check timestamp: on every new application process the 2.5-second
+startup timer must contact GitHub Latest regardless of a successful request
+made by an earlier process. The six-hour throttle still applies *within*
+one process, and manual checks always bypass it. Release availability still
+shows the existing consent popup; the update coordinator still verifies
+checksum/manifest, preserves K500 device transactions, runs Inno and restarts
+only after a healthy install. This change requires an independent patch RC;
+it cannot retroactively rewrite the shipped v1.1.0 or v1.1.2 executable.
+
 **Post-v1.1.2 source change, not shipped in stable v1.1.2:** a compact
 **Cek Update** action in About calls `AppUpdater.checkForUpdates(true)`
 to bypass the six-hour throttle and displays version/status/error in the
