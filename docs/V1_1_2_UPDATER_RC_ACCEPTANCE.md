@@ -2,11 +2,11 @@
 
 > Release-specific fail-closed acceptance gate. Historical v1.1.0 and v1.1.1 acceptance records remain immutable.
 
-UPDATER_V1_1_2_ACCEPTANCE=pending
-UPDATER_V1_1_2_ACCEPTED_TAG=
-UPDATER_V1_1_2_ACCEPTED_COMMIT=
-UPDATER_V1_1_2_MACHINE_SHA256=
-UPDATER_V1_1_2_USER_SHA256=
+UPDATER_V1_1_2_ACCEPTANCE=accepted
+UPDATER_V1_1_2_ACCEPTED_TAG=v1.1.2-rc.2
+UPDATER_V1_1_2_ACCEPTED_COMMIT=8e3be5d4e567463e5bae4aa911537417aeba11b1
+UPDATER_V1_1_2_MACHINE_SHA256=decd7d8e54837d664fa586a7425b502faeec27dee280d9dc48f6f6989a23b8ab
+UPDATER_V1_1_2_USER_SHA256=f9a1f29a9b209f47ffeb4f289b0d28b38a9df10764927dcef304397c65b3171b
 
 ## Candidate scope and owner-requested changes
 
@@ -37,6 +37,22 @@ and the existing updater lifecycle must remain unchanged.
 - Record the exact tag, full 40-char commit and both SHA-256 digests above.
 - An actual Windows GUI check must confirm three new features and the title.
   Real-device K500 upload acceptance is required for public hardware claims.
+
+## Final owner acceptance — 2026-10-10
+
+The release owner confirmed RC.2 passed their Windows GUI and physical
+K500 USB tests, including Connect/Readback, Recall, Store and Mass Upload,
+and instructed release of public stable v1.1.2.
+
+Evidence:
+- [Main CI #38044817516](https://github.com/masarray/k500/actions/runs/38044817516): success on accepted source commit.
+- [RC.2 workflow #38045317595](https://github.com/masarray/k500/actions/runs/38045317595): success including both installer scopes, install/uninstall,
+  release regression, updater lifecycle, manifest and SHA validation.
+- [Immutable RC.2 release](https://github.com/masarray/k500/releases/tag/v1.1.2-rc.2): SHA-256 for both installers agrees with the exact tokens above.
+
+The stable workflow must reuse exactly these two verified installers,
+without rebuilding them. This owner acceptance is not automated proof
+that GitHub runners exercised physical K500 hardware.
 
 ## Promotion gate
 
