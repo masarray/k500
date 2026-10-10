@@ -804,7 +804,9 @@ def check_ui_contracts() -> None:
         'text: "No presets. Choose Folder or Sync."',
         'text: displayName',
         "ToolTip.text: originLabel + \" · \" + fileName",
-        'text: root.selectedSourceIndexes.length > 1 ? "Stage ("',
+        "FINAL_PLAIN_ADD_LABELS_V1_1_2",
+        'text: "Add"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected()',
+        'text: "Add All"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll()',
         'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload to K500"',
         'root.presetManager.massUploadProgressPercent',
         "root.fileBridge.officialSyncError",
@@ -819,6 +821,8 @@ def check_ui_contracts() -> None:
         'text: "SLOT " + String(index + 1)',
         "text: String(modelData.description || modelData.fileName",
         "Prepare the list offline;",
+        'text: "Stage',
+        'text: "Fill slots',
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",

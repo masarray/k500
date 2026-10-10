@@ -44,11 +44,14 @@ DSP/EQ or guarantees superior audio quality.
 - Plain click selects a single PC-library row.
 - **Ctrl+click** toggles individual rows; **Shift+click** selects a continuous
   range; **Ctrl+Shift+click** extends the selection.
-- **Stage** adds selected valid rows in the order manually selected by the
-  user, including directional Shift ranges. It skips duplicates and stops at
-  ten destination slots. The source selection itself never writes hardware.
+- **Add** appends selected valid rows in the order manually chosen by the user,
+  including directional Shift ranges. It skips duplicates and stops at ten
+  destination slots. **Add All** fills remaining slots in catalogue order
+  without overwriting existing picks. Neither action writes device hardware.
 - Double-click adds only the clicked preset. Add All retains its original
   first-valid-up-to-ten behavior; device upload stays 10→1 and is unchanged.
+  The visible action labels are exactly **Add** and **Add All**; the separate
+  **Upload to K500** is the only command that initiates USB transfer.
 - Refreshing the library clears positional source selections to avoid selecting
   a different preset after an asynchronous official sync.
 
