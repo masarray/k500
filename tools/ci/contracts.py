@@ -1054,6 +1054,24 @@ def check_public_surface_contracts() -> None:
         "onAboutRequested: aboutDialog.open()",
     )
 
+    # ABOUT_MANUAL_UPDATE_CHECK_V1 — explicit recovery path for users
+    # whose background check is throttled or whose Inno registration is
+    # missing/ambiguous. This requests no silent device or installer action.
+    require(
+        "qml/components/AboutDialog.qml",
+        "ABOUT_MANUAL_UPDATE_CHECK_V1",
+        "signal checkForUpdatesRequested()",
+        'text: "Cek Update"',
+        "root.checkForUpdatesRequested()",
+    )
+    require(
+        "qml/Main.qml",
+        "onCheckForUpdatesRequested:",
+        "AppUpdater.checkForUpdates(true)",
+        "updateDialog.open()",
+        "onTriggered: AppUpdater.checkForUpdates(false)",
+    )
+
     # Selected native-text / Lucide raster baseline. These are intentionally
     # small optical contracts, not a pixel-perfect theme snapshot.
     require(
