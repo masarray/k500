@@ -89,9 +89,9 @@ function Assert-MachineSetupBlocked([string] $name) {
     $p = Start-Process -FilePath $machine -ArgumentList @(
         '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/DIR="' + $blockedDir + '"')
     ) -Wait -PassThru
-    if ($p.ExitCode -ne 7) { throw "$name: expected Inno pre-install refusal (7), got $($p.ExitCode)" }
+    if ($p.ExitCode -ne 7) { throw "${name}: expected Inno pre-install refusal (7), got $($p.ExitCode)" }
     if (Test-Path (Join-Path $blockedDir 'SonKuPik-K500.exe')) {
-        throw "$name: blocked Setup wrote application files"
+        throw "${name}: blocked Setup wrote application files"
     }
 }
 & reg.exe QUERY $collisionKey /reg:64 *> $null
