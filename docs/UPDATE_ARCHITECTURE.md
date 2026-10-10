@@ -1,5 +1,53 @@
 # K500 Windows updater — engineering status
 
+## Release-1.1.2 updater troubleshooting and 1.1.3 UX follow-up
+
+In v1.1.0 and v1.1.2 the application **automatically discovers** new
+stable releases after the GUI starts (~2.5 seconds) and, during a session,
+every six hours. A persisted six-hour successful-discovery throttle applies;
+a version explicitly skipped in the update dialog stays skipped. Discovery
+opens a consent dialog; installing a new Setup is **not** an unattended write.
+Network errors on background discovery do not interrupt K500 control.
+
+For a v1.1.0 machine that does not display an update prompt, download the
+[latest stable machine Smart Installer](https://github.com/masarray/k500/releases/latest)
+and install in-place with the same scope. Do not delete Program Files or
+LocalAppData by hand; preserve Documents, QSettings and user preset caches.
+If separate registered machine and per-user installs coexist, the updater
+intentionally fails closed rather than destroying either copy.
+
+**Post-v1.1.2 source change, not shipped in stable v1.1.2:**
+`STARTUP_FRESH_RELEASE_DISCOVERY_V1` also corrects the persisted
+successful-check timestamp: on every new application process the 2.5-second
+startup timer must contact GitHub Latest regardless of a successful request
+made by an earlier process. The six-hour throttle still applies *within*
+one process, and manual checks always bypass it. Release availability still
+shows the existing consent popup; the update coordinator still verifies
+checksum/manifest, preserves K500 device transactions, runs Inno and restarts
+only after a healthy install. This change requires an independent patch RC;
+it cannot retroactively rewrite the shipped v1.1.0 or v1.1.2 executable.
+
+**Post-v1.1.2 source change, not shipped in stable v1.1.2:** a compact
+**Cek Update** action in About calls `AppUpdater.checkForUpdates(true)`
+to bypass the six-hour throttle and displays version/status/error in the
+existing premium UpdateDialog. This is a manual *check*, not implicit
+installation, and the source must be qualified in a future patch RC before
+the current v1.1.2 owner could receive it.
+
+Installer model remains **two distinct update scopes**: machine/HKLM
+(requires elevation) and per-user/HKCU (no elevation), using the same
+Inno AppId. Only one primary Smart Installer should be recommended in
+public-facing UI; the per-user package is the internal scope-matched
+update backend. They must not be collapsed or old assets renamed without
+1.0.x-to-current migration and recovery acceptance.
+
+SmartScreen reputation and UAC are separate Windows trust/privilege
+boundaries. Inno Setup cannot guarantee no SmartScreen warning while
+packages remain unsigned. Never disable security controls or blindly
+uninstall installations in either scope merely to suppress a warning.
+See [installer/updater issue #182](https://github.com/masarray/k500/issues/182).
+
+
 ## Current stable behavior
 
 The published v1.0.3 binary uses an in-app GitHub stable-release check,

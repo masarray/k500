@@ -403,10 +403,12 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
     }
 #endif
 
-    // SMART_UPDATE_THROTTLE_V1 — automatic discovery is deliberately quiet and
-    // bounded. Manual checks always bypass the throttle; failed checks are not
-    // cached, so a transient outage can recover on the next launch.
-    if (!userInitiated && m_candidateTag.isEmpty()) {
+    // STARTUP_FRESH_RELEASE_DISCOVERY_V1 — always check GitHub Latest once
+    // after EACH application start. The persisted QSettings timestamp must
+    // never suppress the first request of a new process; it is only a
+    // six-hour throttle for successful discoveries during THIS session.
+    // Manual checks bypass both guards, and network failures remain retryable.
+    if (!userInitiated && m_candidateTag.isEmpty() && m_successfulDiscoveryThisSession) {
         const QDateTime lastCheck = QSettings().value(
             QStringLiteral("updates/lastSuccessfulCheckUtc")).toDateTime();
         if (lastCheck.isValid()
@@ -438,6 +440,7 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
         }
 
         if (m_candidateTag.isEmpty()) {
+            m_successfulDiscoveryThisSession = true;
             QSettings().setValue(QStringLiteral("updates/lastSuccessfulCheckUtc"),
                                  QDateTime::currentDateTimeUtc());
         }

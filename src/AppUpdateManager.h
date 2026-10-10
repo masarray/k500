@@ -103,6 +103,9 @@ private:
     QString m_errorText;
     qreal m_progress = 0.0;
     bool m_updateAvailable = false;
+    // STARTUP_FRESH_RELEASE_DISCOVERY_V1 — never honor a prior process's
+    // successful-check timestamp as a reason to skip THIS startup.
+    bool m_successfulDiscoveryThisSession = false;
     bool m_migrationAvailable = false;
     bool m_migrationMode = false;
     bool m_deviceTransactionBusy = true; // Fail closed until QML supplies actual state.

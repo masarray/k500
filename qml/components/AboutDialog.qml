@@ -26,6 +26,7 @@ Popup {
                                                   ? Qt.application.version : "0.0.0"
     readonly property string youtubeUrl: SupportLinks.youtubeUrl
     readonly property string tokopediaUrl: SupportLinks.tokopediaUrl
+    signal checkForUpdatesRequested()
 
     Overlay.modal: Rectangle {
         color: "#B8060A0E"
@@ -185,24 +186,41 @@ Popup {
                         lineHeight: 1.10
                     }
 
-                    Rectangle {
-                        // ABOUT_VERSION_BELOW_SUBTITLE_V2
+                    // ABOUT_MANUAL_UPDATE_CHECK_V1 — explicit stable-check
+                    // action beside the installed version, not another
+                    // permanently visible text caption or network poll.
+                    RowLayout {
                         Layout.topMargin: 5
-                        Layout.preferredWidth: 92
-                        Layout.preferredHeight: 26
-                        radius: 7
-                        color: "#09171B"
-                        border.width: 1
-                        border.color: "#2B5960"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Versi: " + root.applicationVersion
-                            color: Theme.accent
-                            renderType: Text.NativeRendering
-                            font.family: Theme.monoFamily
-                            font.pixelSize: 9
-                            font.weight: Font.Bold
-                            font.hintingPreference: Font.PreferFullHinting
+                        spacing: 9
+                        Rectangle {
+                            // ABOUT_VERSION_BELOW_SUBTITLE_V2
+                            Layout.preferredWidth: 92
+                            Layout.preferredHeight: 26
+                            radius: 7
+                            color: "#09171B"
+                            border.width: 1
+                            border.color: "#2B5960"
+                            Text {
+                                anchors.centerIn: parent
+                                text: "Versi: " + root.applicationVersion
+                                color: Theme.accent
+                                renderType: Text.NativeRendering
+                                font.family: Theme.monoFamily
+                                font.pixelSize: 9
+                                font.weight: Font.Bold
+                                font.hintingPreference: Font.PreferFullHinting
+                            }
+                        }
+                        SoftButton {
+                            Layout.preferredWidth: 108
+                            Layout.preferredHeight: 26
+                            compact: true
+                            toolbar: true
+                            text: "Cek Update"
+                            onClicked: {
+                                root.close()
+                                root.checkForUpdatesRequested()
+                            }
                         }
                     }
                 }

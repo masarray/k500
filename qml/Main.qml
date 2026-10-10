@@ -159,6 +159,13 @@ ApplicationWindow {
     // application, not merely over the toolbar or current processor panel.
     AboutDialog {
         id: aboutDialog
+        // ABOUT_MANUAL_UPDATE_CHECK_V1 — bypass the six-hour silent check
+        // throttle and show current/latest/version or precise update error.
+        // The About popup closes before the update dialog is displayed.
+        onCheckForUpdatesRequested: {
+            AppUpdater.checkForUpdates(true)
+            updateDialog.open()
+        }
     }
 
     // DONATION_PROMPT_DAY3_V1 — one-time voluntary support prompt, eligible
