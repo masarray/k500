@@ -31,7 +31,7 @@ Test at **100%, 125%, and 150% Windows display scaling**, default **1484×920** 
 | Music Tone | KEY DOWN / ORIGINAL / KEY UP and current pitch visibly readable; all five tone controls still obey verified ownership/readback |
 | EQ | Fixed 8-page lifetime survives repeated section switches; PEQ drag, wheel-Q, bypass, reset, A/B and HPF/LPF inspector unchanged |
 | Filter dropdown | 10px value/options readable in compact heights, no text overlaps or clipped type labels |
-| System settings | Title/detail/APPLYING or SYNCING status legible inside unchanged 50px toggle rows; disabled, pending and offline states truthful |
+| System settings | At rest the rows show only Use Init Volume and VR / Trim Pot Off (no permanent Startup volume / front-panel subtitles); explanations appear on hover, while APPLYING/SYNCING and blocked-operation feedback remain visible, with disabled/pending/offline states truthful |
 | System presets | One-line preset names, no repeated SELECT or marketing descriptions; STAGED/INVALID and real action errors remain visible. PC staging remains separate from physical slots; cyan selection is never hardware ACTIVE amber. Recall and Save remain explicitly gated |
 | Mode Name / BT Name | Offline: one clear “Connect K500 to read” hint per field and no overlapping retained draft; online: original edit, rename and verification gates preserved; BT 8-character write limit available via Rename tooltip, not permanent footer copy; inert Reset all hidden |
 | Small text | Preset names readable as a single line at 11px; retain user-critical STAGED/INVALID, sync failures and USB connection guidance while removing decorative/technical copy. Recording/Mic Trigger captions readable on 100/125/150% Windows scaling |

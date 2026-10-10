@@ -819,10 +819,8 @@ Item {
                         SystemToggleRow {
                             Layout.fillWidth:true
                             Layout.preferredHeight:48
-                            title:"Use Init Vol"
-                            detail:root.deviceConnected
-                                   ? "Startup volume"
-                                   : "Device-only setting"
+                            title:"Use Init Volume"
+                            helpText:"Startup volume · Device-only setting"
                             iconName:"settings-2"
                             checked:root.deviceConnected
                                     ? (!!root.presetManager && root.presetManager.useInitVolume)
@@ -1072,9 +1070,9 @@ Item {
                                 anchors.verticalCenter:parent.verticalCenter
                                 height:50
                                 title:"VR / Trim Pot Off"
-                                detail:!root.deviceConnected && root.offlineEditMode
-                                       ? "Saved with preset"
-                                       : "Disable front-panel adjustment"
+                                helpText:!root.deviceConnected && root.offlineEditMode
+                                         ? "Saved with preset · Disable front-panel adjustment"
+                                         : "Disable front-panel adjustment"
                                 iconName:"sliders-horizontal"
                                 checked:root.deviceConnected
                                         ? (!!root.presetManager && root.presetManager.adjMannerVrOff)
