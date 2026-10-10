@@ -122,4 +122,7 @@ try {
     Remove-Item -LiteralPath $legacyDir -ErrorAction SilentlyContinue
 }
 
+# The final registry QUERY intentionally returns 1 when the fixture is absent.
+# Do not propagate that expected negative check as the script process exit code.
+$global:LASTEXITCODE = 0
 Write-Host "K500 installer smoke PASS"
