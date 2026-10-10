@@ -188,8 +188,7 @@ begin
   if ExitCode = 0 then
     Result := True
   else if ExitCode <> 1 then
-    ProbeError := Format('Uninstall registry probe failed (view %s, code %d).',
-      [View, ExitCode]);
+    ProbeError := Format('Uninstall registry probe failed (view %s, code %d).', [View, ExitCode]);
 end;
 
 function LegacyPerUserInstallPresent(var ProbeError: String): Boolean;
