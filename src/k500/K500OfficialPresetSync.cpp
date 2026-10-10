@@ -30,6 +30,9 @@ QNetworkRequest makeRequest(const QUrl &url, bool githubApi)
     }
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
+    // OFFLINE_PRESET_CACHE_FALLBACK_V1 — tiny catalog and .k500 assets must
+    // not leave the UI stuck "Checking…" when the PC loses connectivity.
+    request.setTransferTimeout(githubApi ? 12000 : 30000);
     return request;
 }
 
@@ -125,6 +128,7 @@ void K500PresetFileBridge::syncOfficialPresets()
         m_networkManager = new QNetworkAccessManager(this);
 
     m_officialUpdateCount = 0;
+    m_officialSyncNetworkFallback = false;
     m_officialSyncTotal = 0;
     m_officialDownloadQueue.clear();
     m_officialRemoteNames.clear();
@@ -134,10 +138,11 @@ void K500PresetFileBridge::syncOfficialPresets()
     connect(reply, &QNetworkReply::finished, this, [this, reply] {
         const QByteArray payload = reply->readAll();
         if (reply->error() != QNetworkReply::NoError) {
-            const QString reason = reply->errorString();
             reply->deleteLater();
+            // Offline is normal: keep the last-known-good official cache,
+            // keep bundled and LOCAL presets, and avoid a red error state.
             setOfficialSyncState(false,
-                QStringLiteral("Offline · using bundled/cached SonKuPik presets"), reason);
+                QStringLiteral("Network unavailable · using bundled/cached SonKuPik presets"));
             return;
         }
 
@@ -255,7 +260,9 @@ void K500PresetFileBridge::downloadNextOfficialPreset()
     connect(reply, &QNetworkReply::finished, this, [this, reply, name, gitSha] {
         const QByteArray bytes = reply->readAll();
         if (reply->error() != QNetworkReply::NoError) {
-            m_officialSyncError = QStringLiteral("%1: %2").arg(name, reply->errorString());
+            // Network loss midway through a catalog refresh cannot invalidate
+            // any previously validated remote or bundled preset.
+            m_officialSyncNetworkFallback = true;
         } else {
             QString validationError;
             if (!validPresetBytes(bytes, &validationError)) {
@@ -306,6 +313,9 @@ void K500PresetFileBridge::finishOfficialSync()
     QString status;
     if (!m_officialSyncError.isEmpty()) {
         status = QStringLiteral("Preset sync completed with fallback · %1 official ready")
+            .arg(officialCount);
+    } else if (m_officialSyncNetworkFallback) {
+        status = QStringLiteral("Network unavailable · %1 bundled/cached official presets ready")
             .arg(officialCount);
     } else if (m_officialUpdateCount > 0) {
         status = QStringLiteral("Updated %1 preset(s) · %2 official ready")
