@@ -454,8 +454,8 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        "\"Device-only setting\"",
-        "\"Saved with preset\"",
+        'helpText:"Startup volume · Device-only setting"',
+        '"Saved with preset · Disable front-panel adjustment"',
         "\"Rename: 1–8 ASCII characters. BLE name is read-only.\"",
     )
     require(
