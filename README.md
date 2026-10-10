@@ -41,11 +41,11 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
 >
-> **Release line:** **v1.1.1** is the current public stable. It includes the accepted post-v1.1.0 preset refresh, premium System toggles, capture-correct VR OFF behavior, disconnect/offline-edit handoff, and the associated regression hardening. The support scope remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
+> **Release line:** **v1.1.2** is the current public stable. It includes UAUDIO PC presets 11–20, count-aware Mass Upload (Add/Add All) with Ctrl/Shift selection, improved System controls, and readable embedded typography. The qualified support scope remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
 >
-> **Updater status:** **v1.1.1** was promoted byte-identically from accepted `v1.1.1-rc.1`, built from commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Machine and per-user installers were not rebuilt after acceptance. GitHub `/releases/latest`, the product landing API, and the same-origin Smart Installer route now resolve v1.1.1.
+> **Updater status:** **v1.1.2** was promoted byte-identically from accepted `v1.1.2-rc.2`, built from commit `8e3be5d4e567463e5bae4aa911537417aeba11b1`. Both installers retain the exact RC.2 SHA-256 digests; they were not rebuilt after acceptance. GitHub `/releases/latest` resolves v1.1.2; the landing API and same-origin Smart Installer route use that latest release dynamically.
 
-> **Development candidate:** v1.1.2 adds official PC-library UAUDIO presets 11–20, Mass Upload Ctrl/Shift selection, a red active EQ Bypass warning, and the runtime window-title version. This is source/RC work only; stable download remains v1.1.1 until accepted promotion. See [candidate scope](docs/V1_1_2_CANDIDATE_SCOPE.md) and [pending RC gate](docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md).
+> **Release provenance:** v1.1.2 also includes a red active EQ Bypass warning and version-correct Windows title bar. [Stable v1.1.2](https://github.com/masarray/k500/releases/tag/v1.1.2) was published after owner acceptance of RC.2; see the [accepted RC record](docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md) and [release model](docs/RELEASES.md).
 
 ## See the real app
 

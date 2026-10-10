@@ -1548,8 +1548,8 @@ def check_release_contracts() -> None:
     )
     require(
         "README.md",
-        "**v1.1.1** is the current public stable",
-        "promoted byte-identically from accepted `v1.1.1-rc.1`",
+        "**v1.1.2** is the current public stable",
+        "promoted byte-identically from accepted `v1.1.2-rc.2`",
         "landing API",
     )
     forbid(
@@ -1559,8 +1559,8 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/RELEASES.md",
-        "Current public stable: **v1.1.1**",
-        "Next patch candidate source line: **v1.1.2**",
+        "Current public stable: **v1.1.2**",
+        "## v1.1.2 stable record",
         "## v1.1.1 stable record",
         "122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03",
         "0387799511a2c05269f536112ec4a17d12d05487814ba16cce4a9774d4f8b389",
@@ -1572,6 +1572,8 @@ def check_release_contracts() -> None:
     )
     require(
         "CHANGELOG.md",
+        "## v1.1.2 — 2026-10-10",
+        "Released v1.1.2 stable from accepted `v1.1.2-rc.2`",
         "## v1.1.1 — 2026-10-08",
         "stable promotion completed without rebuilding",
         "landing `/api/release` endpoint",
@@ -1589,24 +1591,24 @@ def check_release_contracts() -> None:
     )
     require(
         "site/index.html",
-        "Download SonKuPik K500 v1.1.1",
+        "Download SonKuPik K500 v1.1.2",
         'data-release-template="Download SonKuPik K500 {tag}"',
         'data-release-template="Download {tag}"',
     )
     require(
         "site/features/index.html",
-        "Download v1.1.1",
+        "Download v1.1.2",
         'data-release-template="Download {tag}"',
     )
     require(
         "site/download/index.html",
-        "Download Smart Installer v1.1.1",
+        "Download Smart Installer v1.1.2",
         'data-release-template="Download Smart Installer {tag}"',
         'data-release-template="Smart Installer {tag}"',
     )
     require(
         "AGENTS.md",
-        "Public stable line: **v1.1.1**",
+        "Public stable line: **v1.1.2**",
     )
     forbid(
         "AGENTS.md",
@@ -1614,8 +1616,8 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/README.md",
-        "| Public stable | `v1.1.1`",
-        "| Stable source line | `v1.1.1`, promoted byte-identically from accepted `v1.1.1-rc.1`",
+        "| Public stable | `v1.1.2`",
+        "| Stable source line | `v1.1.2`, promoted byte-identically from accepted `v1.1.2-rc.2`",
         "V1_1_1_UPDATER_RC_ACCEPTANCE.md",
         "landing buttons show the resolved stable tag",
     )
@@ -1638,6 +1640,18 @@ def check_release_contracts() -> None:
         "## v1.1.1 — Smart Installer public distribution",
         "v1.1.0 is the current latest non-prerelease public stable",
     )
+    # POST_STABLE_112_SOURCE_TRUTH — no stale visible fallback or
+    # ambiguous current release metadata; dynamic download routes unchanged.
+    require("docs/RELEASES.md",
+        "decd7d8e54837d664fa586a7425b502faeec27dee280d9dc48f6f6989a23b8ab",
+        "f9a1f29a9b209f47ffeb4f289b0d28b38a9df10764927dcef304397c65b3171b",
+        "38046752955")
+    require("functions/api/release.js", "releases/latest", "channel: 'stable'")
+    require("functions/download/[kind].js", "releases/latest", "versioned: (tag) =>")
+    for page in ("site/index.html", "site/features/index.html", "site/download/index.html"):
+        if "v1.1.1" in read(page):
+            FAILURES.append(f"{page}: outdated public stable fallback")
+
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",

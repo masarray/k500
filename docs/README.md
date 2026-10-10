@@ -8,7 +8,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 
 - [User Guide](USER_GUIDE.md) — install, connect, edit, Preview, Save As, Upload, Mass Upload, preset Sync, diagnostics.
 - [Release Model](RELEASES.md) — stable/prerelease policy, package verification, official preset updates.
-- [v1.1.2 RC Acceptance](V1_1_2_UPDATER_RC_ACCEPTANCE.md) — pending candidate gate; public stable remains v1.1.1.
+- [v1.1.2 RC Acceptance](V1_1_2_UPDATER_RC_ACCEPTANCE.md) — accepted RC.2 and byte-identical v1.1.2 stable promotion.
 - [v1.1.2 Candidate Scope](V1_1_2_CANDIDATE_SCOPE.md) — UAUDIO 11–20, multiselect, bypass warning and title.
 - [v1.1.1 Patch RC Acceptance](V1_1_1_UPDATER_RC_ACCEPTANCE.md) — accepted RC1 provenance and byte-identical v1.1.1 stable-promotion record.
 - [v1.1.0 Updater RC Acceptance](V1_1_UPDATER_RC_ACCEPTANCE.md) — historical fail-closed updater qualification and stable-promotion record.
@@ -37,8 +37,8 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Contract | Current truth |
 |---|---|
 | Hardware-qualified baseline | `v1.0.0` |
-| Public stable | `v1.1.1` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
-| Stable source line | `v1.1.1`, promoted byte-identically from accepted `v1.1.1-rc.1` at `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13` |
+| Public stable | `v1.1.2` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Stable source line | `v1.1.2`, promoted byte-identically from accepted `v1.1.2-rc.2` at `8e3be5d4e567463e5bae4aa911537417aeba11b1` |
 | Product download router | [Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
@@ -52,7 +52,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Windows distribution | Smart Installer + scope-matched per-user updater package |
 | Code signing | unsigned open-source |
 
-The public download **routes** remain version-agnostic and resolve GitHub's canonical latest non-prerelease release. The landing buttons show the resolved stable tag (currently `v1.1.1`) and refresh that visible version from `/api/release`, so visitors can immediately see which installer is being offered without hard-coding future routes.
+The public download **routes** remain version-agnostic and resolve GitHub's canonical latest non-prerelease release. The landing buttons show the resolved stable tag (currently `v1.1.2`) and refresh that visible version from `/api/release`, so visitors can immediately see which installer is being offered without hard-coding future routes.
 
 ## Documentation principles
 

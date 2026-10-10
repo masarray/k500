@@ -8,11 +8,9 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.1.1**.
+Current public stable: **v1.1.2**.
 
-Next patch candidate source line: **v1.1.2** (not yet public stable).
-
-The v1.1.2 RC acceptance gate starts pending. Public download and updater channels remain at stable v1.1.1 until a separately accepted immutable RC is promoted.
+The v1.1.2 RC gate is accepted. Both installers were promoted byte-identically from immutable `v1.1.2-rc.2` following release-owner Windows and physical K500 USB acceptance. GitHub `releases/latest` points to v1.1.2; the landing routes resolve the stable tag dynamically.
 
 Stable **v1.1.1** was promoted byte-identically from accepted **v1.1.1-rc.1** at exact source commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Stable **v1.1.0** remains historical and was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`.
 
@@ -37,6 +35,17 @@ MAJOR.MINOR.PATCH
 - **MAJOR** — support/architecture/API expectations that intentionally reset compatibility expectations.
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
+
+## v1.1.2 stable record
+
+- Stable tag: `v1.1.2`
+- Accepted RC: `v1.1.2-rc.2`
+- Exact binary source SHA: `8e3be5d4e567463e5bae4aa911537417aeba11b1`
+- Acceptance merge commit: `7a67acd674f70fb0c30ff37fb2dd72b84e468ce1`
+- Machine Setup SHA-256: `decd7d8e54837d664fa586a7425b502faeec27dee280d9dc48f6f6989a23b8ab`
+- Per-user Setup SHA-256: `f9a1f29a9b209f47ffeb4f289b0d28b38a9df10764927dcef304397c65b3171b`
+- [Stable promotion run #38046752955](https://github.com/masarray/k500/actions/runs/38046752955) succeeded on 2026-10-10, revalidated both installers and published **byte-identical** assets without rebuild.
+- [GitHub Latest release](https://github.com/masarray/k500/releases/tag/v1.1.2) includes both setup EXEs, checksums and release manifest; Bluetooth SPP remains experimental.
 
 ## v1.1.1 stable record
 

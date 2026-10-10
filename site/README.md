@@ -25,7 +25,7 @@ GitHub Releases remains the upstream artifact store, but the visitor-facing down
 3. The Smart Installer is streamed through Cloudflare without buffering it in Worker memory.
 4. `Content-Disposition: attachment` keeps the user on the landing page while the file downloads.
 5. Range and validator headers are forwarded so large downloads remain resilient.
-6. Download CTAs show the resolved stable tag (for example `v1.1.1`) and refresh from the same `/api/release` authority that drives the release label.
+6. Download CTAs show the resolved stable tag (for example `v1.1.2`) and refresh from the same `/api/release` authority that drives the release label.
 
 This means a future stable release becomes the download target automatically without editing landing-page HTML.
 
