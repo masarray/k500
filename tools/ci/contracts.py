@@ -1566,6 +1566,27 @@ def check_release_contracts() -> None:
         "UsePreviousAppDir=no",
         "MIGRATE_LOCALAPPDATA_INSTALL_V1",
     )
+    # Installed machine Setup cannot execute a legacy per-user uninstaller.
+    require(
+        "packaging/windows/installer.iss",
+        "SAFE_CROSS_SCOPE_PREFLIGHT_V1",
+        "OriginalUserRegistrationExists('64', ProbeError)",
+        "OriginalUserRegistrationExists('32', ProbeError)",
+        "ExecAsOriginalUser",
+        "LegacyPerUserInstallPresent(ProbeError)",
+        "Machine Setup stopped before changing either copy.",
+    )
+    forbid(
+        "packaging/windows/installer.iss",
+        "procedure MigrateLegacyPerUserInstall",
+        "start \"\" /wait",
+    )
+    require(
+        "tools/ci/installer_smoke.ps1",
+        "Assert-MachineSetupBlocked",
+        "K500-CI-NEVER-EXECUTE",
+        "HKCU registration",
+    )
     require(
         "src/AppUpdateManager.cpp",
         "release-manifest.json",

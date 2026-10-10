@@ -79,4 +79,47 @@ foreach ($name in @("SonKuPik-K500.exe","SonKuPik-K500-Updater.exe","unins000.ex
 $uninstall = Start-Process -FilePath (Join-Path $dir "unins000.exe") -ArgumentList @("/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART") -Wait -PassThru
 if ($uninstall.ExitCode -ne 0) { throw "Per-user uninstall smoke failed: $($uninstall.ExitCode)" }
 
+
+Write-Host "==> Machine Setup refuses original-user HKCU registration"
+$machine = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Setup.exe").Path
+$collisionKey = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+$blockedDir = Join-Path $env:RUNNER_TEMP 'K500-CrossScope-Machine-Test'
+if (Test-Path $blockedDir) { throw "Pre-existing scope test directory; refusing to overwrite" }
+function Assert-MachineSetupBlocked([string] $name) {
+    $p = Start-Process -FilePath $machine -ArgumentList @(
+        '/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', ('/DIR="' + $blockedDir + '"')
+    ) -Wait -PassThru
+    if ($p.ExitCode -ne 7) { throw "$name: expected Inno pre-install refusal (7), got $($p.ExitCode)" }
+    if (Test-Path (Join-Path $blockedDir 'SonKuPik-K500.exe')) {
+        throw "$name: blocked Setup wrote application files"
+    }
+}
+& reg.exe QUERY $collisionKey /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "HKCU collision fixture would overwrite a registration" }
+& reg.exe ADD $collisionKey /v DisplayName /t REG_SZ /d 'K500 collision test' /f /reg:64 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Failed creating current-user collision registration" }
+try {
+    Assert-MachineSetupBlocked 'HKCU registration'
+} finally {
+    & reg.exe DELETE $collisionKey /f /reg:64 *> $null
+}
+& reg.exe QUERY $collisionKey /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Failed clearing scope collision registration" }
+
+Write-Host "==> Machine Setup refuses unregistered per-user legacy file without executing it"
+$legacyDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik K500'
+if (Test-Path $legacyDir) { throw "Refusing to alter pre-existing legacy directory" }
+New-Item -ItemType Directory -Path $legacyDir | Out-Null
+$sentinel = Join-Path $legacyDir 'unins000.exe'
+try {
+    [IO.File]::WriteAllText($sentinel, 'K500-CI-NEVER-EXECUTE')
+    Assert-MachineSetupBlocked 'Legacy unregistered install'
+    if ((Get-Content $sentinel -Raw) -ne 'K500-CI-NEVER-EXECUTE') {
+        throw "Existing legacy uninstaller sentinel was modified"
+    }
+} finally {
+    Remove-Item -LiteralPath $sentinel -Force -ErrorAction SilentlyContinue
+    Remove-Item -LiteralPath $legacyDir -ErrorAction SilentlyContinue
+}
+
 Write-Host "K500 installer smoke PASS"
