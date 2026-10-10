@@ -1078,6 +1078,39 @@ def check_public_surface_contracts() -> None:
         "if (!userInitiated && m_candidateTag.isEmpty()) {",
     )
 
+    # OFFLINE_NETWORK_BOUNDED_FALLBACK_V1 — loss of connectivity must not
+    # crash, block K500 device control, or advertise an update. Manual
+    # checks still provide diagnostics, not a silent lie.
+    require(
+        "src/AppUpdateManager.cpp",
+        "OFFLINE_NETWORK_BOUNDED_FALLBACK_V1",
+        "request.setTransferTimeout(12000)",
+        "void AppUpdateManager::handleDiscoveryFailure(bool userInitiated, const QString &reason)",
+        "handleDiscoveryFailure(userInitiated, reason);",
+        "HostNotFoundError",
+        "TimeoutError",
+    )
+    require(
+        "src/AppUpdateManagerSelfTest.cpp",
+        "OFFLINE_NETWORK_BOUNDED_FALLBACK_V1",
+        "manager.handleDiscoveryFailure(false",
+        "manager.handleDiscoveryFailure(true",
+        "offline automatic discovery exposed an error",
+    )
+    require(
+        "src/k500/K500OfficialPresetSync.cpp",
+        "OFFLINE_PRESET_CACHE_FALLBACK_V1",
+        "request.setTransferTimeout(githubApi ? 12000 : 30000)",
+        "Network unavailable · using bundled/cached SonKuPik presets",
+        "m_officialSyncNetworkFallback = true;",
+        "m_officialSyncNetworkFallback)",
+    )
+    forbid(
+        "src/k500/K500OfficialPresetSync.cpp",
+        "QStringLiteral(\"Offline · using bundled/cached SonKuPik presets\"), reason",
+        "m_officialSyncError = QStringLiteral(\"%1: %2\").arg(name, reply->errorString())",
+    )
+
     # ABOUT_MANUAL_UPDATE_CHECK_V1 — explicit recovery path for users
     # whose background check is throttled or whose Inno registration is
     # missing/ambiguous. This requests no silent device or installer action.

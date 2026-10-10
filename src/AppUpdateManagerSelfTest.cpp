@@ -27,6 +27,24 @@ bool AppUpdateManager::selfTest(QString *error)
     if (!manager.m_deviceTransactionBusy)
         return fail(QStringLiteral("device transaction gate did not return to busy state"));
 
+    // OFFLINE_NETWORK_BOUNDED_FALLBACK_V1 — simulate an unsuccessful network
+    // discovery without a real HTTP call or live USB hardware.
+    manager.setState(QStringLiteral("checking"), QStringLiteral("Checking for updates…"));
+    manager.handleDiscoveryFailure(false, QStringLiteral("Simulated internet outage"));
+    if (manager.state() != QStringLiteral("idle")
+        || !manager.statusText().isEmpty() || !manager.errorText().isEmpty()
+        || manager.busy() || manager.m_successfulDiscoveryThisSession)
+        return fail(QStringLiteral("offline automatic discovery exposed an error or blocked the application"));
+    manager.setState(QStringLiteral("checking"));
+    manager.handleDiscoveryFailure(true, QStringLiteral("Simulated internet outage"));
+    if (manager.state() != QStringLiteral("error")
+        || !manager.errorText().contains(QStringLiteral("Simulated internet outage"))
+        || manager.busy())
+        return fail(QStringLiteral("manual offline discovery hid the actionable error"));
+    manager.handleDiscoveryFailure(false, QStringLiteral("Simulated internet outage"));
+    if (manager.state() != QStringLiteral("idle") || !manager.errorText().isEmpty())
+        return fail(QStringLiteral("successful offline fallback did not clear the previous manual error"));
+
     manager.m_latestVersion = QStringLiteral("9.9.9");
     manager.m_installScope = InstallScope::Machine;
     manager.m_targetScope = InstallScope::Machine;

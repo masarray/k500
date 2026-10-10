@@ -79,6 +79,7 @@ private:
     void setProgress(qreal value);
     void resetReleaseMetadata();
     void handleLatestRelease(const QByteArray &payload, bool userInitiated);
+    void handleDiscoveryFailure(bool userInitiated, const QString &reason);
     void downloadManifest();
     void downloadChecksums();
     void downloadInstaller();

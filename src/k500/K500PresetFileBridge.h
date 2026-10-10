@@ -166,6 +166,9 @@ private:
 
     QNetworkAccessManager *m_networkManager = nullptr;
     bool m_officialSyncBusy = false;
+    // OFFLINE_PRESET_CACHE_FALLBACK_V1 — network loss is a normal fallback,
+    // not a user-facing error or a reason to invalidate cached presets.
+    bool m_officialSyncNetworkFallback = false;
     QString m_officialSyncStatus = QStringLiteral("Bundled SonKuPik presets ready");
     QString m_officialSyncError;
     int m_officialUpdateCount = 0;

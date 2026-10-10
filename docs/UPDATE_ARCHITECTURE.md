@@ -1,5 +1,27 @@
 # K500 Windows updater — engineering status
 
+## Offline-first resilience after v1.1.2 (future patch only)
+
+**K500 runs offline.** A failed background GitHub update check must not
+show an error popup, restart the app, block USB/HID control, or claim
+a new version is installed. A user-triggered **Cek Update** may show a
+friendly connection-unavailable explanation; it never installs anything
+unless the user explicitly confirms the verified update.
+
+`OFFLINE_NETWORK_BOUNDED_FALLBACK_V1` limits small GitHub API requests
+to 12 seconds, leaves large installer transfers to their own handling,
+and runs a network-free native self-test covering silent automatic failure,
+manual diagnostic failure, and clearing stale error state.
+`OFFLINE_PRESET_CACHE_FALLBACK_V1` bounds official preset catalog checks
+(12 seconds) and small preset downloads (30 seconds). When the network
+fails, all previously validated cached, bundled and local presets remain
+available; a neutral fallback status replaces a red connectivity error.
+Malformed or tampered catalog/preset data still report genuine
+validation errors and never overwrite valid cache data.
+
+These changes are in source only until a separately qualified future patch
+release. Existing public v1.1.2 installer bytes remain unchanged.
+
 ## Release-1.1.2 updater troubleshooting and 1.1.3 UX follow-up
 
 In v1.1.0 and v1.1.2 the application **automatically discovers** new

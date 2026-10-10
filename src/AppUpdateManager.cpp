@@ -385,7 +385,22 @@ QNetworkReply *AppUpdateManager::get(const QUrl &url, qint64 rangeStart)
         request.setRawHeader("Range", QByteArray("bytes=") + QByteArray::number(rangeStart) + '-');
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
                          QNetworkRequest::NoLessSafeRedirectPolicy);
+    // OFFLINE_NETWORK_BOUNDED_FALLBACK_V1 — GitHub API discovery and other
+    // tiny metadata calls must terminate promptly if Windows is offline.
+    // NEVER impose this API timeout on the larger installer download.
+    if (url.host().compare(QStringLiteral("api.github.com"), Qt::CaseInsensitive) == 0)
+        request.setTransferTimeout(12000);
     return m_network->get(request);
+}
+
+void AppUpdateManager::handleDiscoveryFailure(bool userInitiated, const QString &reason)
+{
+    // OFFLINE_NETWORK_BOUNDED_FALLBACK_V1 — no modal error and no stale
+    // update claim on background failure. An explicit manual request gets
+    // actionable diagnostics instead; K500 hardware work is unaffected.
+    setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
+             userInitiated ? QStringLiteral("Could not check for updates") : QString(),
+             userInitiated ? reason : QString());
 }
 
 void AppUpdateManager::checkForUpdates(bool userInitiated)
@@ -431,11 +446,18 @@ void AppUpdateManager::checkForUpdates(bool userInitiated)
         reply->deleteLater();
 
         if (error != QNetworkReply::NoError || !trustedGitHubApi(finalUrl)) {
-            const QString reason = error != QNetworkReply::NoError
-                ? errorString : QStringLiteral("Update discovery left the trusted GitHub API endpoint.");
-            setState(userInitiated ? QStringLiteral("error") : QStringLiteral("idle"),
-                     userInitiated ? QStringLiteral("Update check failed") : QString(),
-                     userInitiated ? reason : QString());
+            const bool connectivityFailure =
+                error == QNetworkReply::HostNotFoundError
+                || error == QNetworkReply::NetworkSessionFailedError
+                || error == QNetworkReply::TemporaryNetworkFailureError
+                || error == QNetworkReply::TimeoutError
+                || error == QNetworkReply::ConnectionRefusedError;
+            const QString reason = connectivityFailure
+                ? QStringLiteral("Internet tidak tersedia. SonKuPik K500 tetap dapat digunakan offline. Coba lagi saat terhubung.")
+                : error != QNetworkReply::NoError
+                    ? errorString
+                    : QStringLiteral("Update discovery left the trusted GitHub API endpoint.");
+            handleDiscoveryFailure(userInitiated, reason);
             return;
         }
 
