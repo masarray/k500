@@ -485,8 +485,11 @@ Window {
                     spacing: 8
                     // MASS_UPLOAD_STAGING_ACTIONS_V3 — these edit the PC-side
                     // upload plan only. Existing selection chronology is unchanged.
-                    SoftButton { Layout.fillWidth: true; text: root.selectedSourceIndexes.length > 1 ? "Stage (" + root.selectedSourceIndexes.length + ") →" : "Stage →"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected() }
-                    SoftButton { Layout.fillWidth: true; text: "Fill slots →"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll() }
+                    // FINAL_ADD_DIRECTION_COUNT_V1_1_2 — keep plain Add wording,
+                    // but preserve selected count and rightward action direction.
+                    // Both buttons stage a PC-side plan, never write USB.
+                    SoftButton { Layout.fillWidth: true; text: root.selectedSourceIndexes.length > 1 ? "Add (" + root.selectedSourceIndexes.length + ") →" : "Add →"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected() }
+                    SoftButton { Layout.fillWidth: true; text: "Add All →"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll() }
                     Item { Layout.preferredHeight: 12 }
                     SoftButton { Layout.fillWidth: true; text: "← Remove"; compact: true; enabled: root.targetIndex >= 0; onClicked: root.removeSelected() }
                     SoftButton { Layout.fillWidth: true; text: "Clear plan"; compact: true; enabled: targetModel.count > 0; onClicked: root.clearTarget() }

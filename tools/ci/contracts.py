@@ -454,8 +454,8 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        "\"Device-only setting\"",
-        "\"Saved with preset\"",
+        'helpText:"Startup volume · Device-only setting"',
+        '"Saved with preset · Disable front-panel adjustment"',
         "\"Rename: 1–8 ASCII characters. BLE name is read-only.\"",
     )
     require(
@@ -804,7 +804,9 @@ def check_ui_contracts() -> None:
         'text: "No presets. Choose Folder or Sync."',
         'text: displayName',
         "ToolTip.text: originLabel + \" · \" + fileName",
-        'text: root.selectedSourceIndexes.length > 1 ? "Stage ("',
+        "FINAL_ADD_DIRECTION_COUNT_V1_1_2",
+        'text: root.selectedSourceIndexes.length > 1 ? "Add (" + root.selectedSourceIndexes.length + ") →" : "Add →"; compact: true; enabled: root.selectedSourceIndexes.length > 0 && targetModel.count < root.maxSlots; onClicked: root.addSelected()',
+        'text: "Add All →"; compact: true; enabled: sourceList.count > 0 && targetModel.count < root.maxSlots; onClicked: root.addAll()',
         'text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload to K500"',
         'root.presetManager.massUploadProgressPercent',
         "root.fileBridge.officialSyncError",
@@ -819,6 +821,8 @@ def check_ui_contracts() -> None:
         'text: "SLOT " + String(index + 1)',
         "text: String(modelData.description || modelData.fileName",
         "Prepare the list offline;",
+        'text: "Stage',
+        'text: "Fill slots',
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
@@ -1081,6 +1085,35 @@ def check_public_surface_contracts() -> None:
         "y: navPointer.pressed ? 1 : 0",
         "strokeWidth: 1.85",
     )
+    # SYSTEM_CLEAN_TOGGLE_COPY_V1_1_2 — persistent helper text moves to
+    # context hover, while hardware APPLYING / SYNCING remain visible.
+    require(
+        "qml/components/SystemToggleRow.qml",
+        "SYSTEM_TOGGLE_CONTEXT_HELP_V1_1_2",
+        "property string helpText:",
+        "ToolTip.visible: interactionMouse.containsMouse && root.helpText.length > 0",
+        "ToolTip.text: root.helpText",
+        "visible: root.detail.length > 0 || root.pending || root.statusText.length > 0",
+        "visible: root.detail.length > 0",
+        'root.pending ? "APPLYING…" : root.statusText',
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        'title:"Use Init Volume"',
+        'helpText:"Startup volume · Device-only setting"',
+        'title:"VR / Trim Pot Off"',
+        '"Saved with preset · Disable front-panel adjustment"',
+        'onToggleRequested:root.requestUseInitVolumeToggle()',
+        'onToggleRequested:root.requestAdjMannerVrToggle()',
+        "SYSTEM_CALM_TOGGLE_COPY_V1",
+    )
+    forbid(
+        "qml/components/SystemWorkspaceImpl.qml",
+        'title:"Use Init Vol"',
+        'detail:root.deviceConnected',
+        'detail:!root.deviceConnected && root.offlineEditMode',
+    )
+
     # SUBWOOFER_EMBEDDED_FONT_AA_V8 — audit every shipped QML file in
     # the existing Fast Contracts, without adding expensive global MSAA.
     require(

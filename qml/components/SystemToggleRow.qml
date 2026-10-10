@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 
 // SYSTEM_SETTING_TOGGLE_ROW_V2
 // FINAL_MICRO_TEXT_READABILITY_V5 — better text within same 50px row.
@@ -10,6 +11,7 @@ Rectangle {
 
     property string title: ""
     property string detail: ""
+    property string helpText: ""
     property string statusText: ""
     property string iconName: ""
     property bool checked: false
@@ -32,6 +34,12 @@ Rectangle {
                                : root.checked ? "#2A3740"
                                : Theme.borderSoft
     opacity: root.available || root.checked ? 1.0 : 0.80
+
+    // SYSTEM_TOGGLE_CONTEXT_HELP_V1_1_2 — contextual help, not noisy captions.
+    // Pending/action feedback still appears as visible status on the row.
+    ToolTip.visible: interactionMouse.containsMouse && root.helpText.length > 0
+    ToolTip.delay: 650
+    ToolTip.text: root.helpText
 
     Behavior on color { ColorAnimation { duration: 90 } }
     Behavior on border.color { ColorAnimation { duration: 90 } }
@@ -79,10 +87,12 @@ Rectangle {
             }
 
             RowLayout {
+                visible: root.detail.length > 0 || root.pending || root.statusText.length > 0
                 Layout.fillWidth: true
                 spacing: 7
 
                 Text {
+                    visible: root.detail.length > 0
                     Layout.fillWidth: true
                     text: root.detail
                     color: Theme.textDim
