@@ -1642,7 +1642,7 @@ def check_release_contracts() -> None:
         "IsAdminInstallMode",
         "DefaultDirName={userpf}",
         "Start verified migration now?",
-        "No files changed.",
+        "Nothing changed.",
         "SW_SHOWNORMAL, ewNoWait",
     )
     require(
