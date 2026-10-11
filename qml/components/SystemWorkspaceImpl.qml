@@ -39,6 +39,29 @@ Item {
     property string systemControlHint: ""
     // SAVE_AS_EXPLICIT_SOURCE_GATE_V1 — live device readback is not a complete
     // 1144-byte .k500 document; never silently export fabricated file data.
+    // SINGLE_STORE_FEEDBACK_V1 — UI-only ACK/verification status for Save/Upload.
+    property string singleOpKind: ""
+    property string singleOpState: ""   // busy, success, error
+    property string singleOpMessage: ""
+    Timer {
+        id: singleOpDismiss
+        interval: root.singleOpState === "error" ? 6500 : 3300
+        repeat: false
+        onTriggered: root.singleOpState = ""
+    }
+    function beginSingleOperation(kind) {
+        singleOpDismiss.stop()
+        singleOpKind = kind
+        singleOpMessage = ""
+        singleOpState = "busy"
+    }
+    function finishSingleOperation(kind, success, description) {
+        if (kind !== singleOpKind || singleOpState !== "busy")
+            return
+        singleOpState = success ? "success" : "error"
+        singleOpMessage = String(description || "")
+        singleOpDismiss.restart()
+    }
     property string pcSaveNotice: ""
     Timer {
         id: pcSaveNoticeTimer
@@ -217,6 +240,7 @@ Item {
             return
         // Backend performs exact 0x0290 validation again before Store, then
         // recalls the same slot and full-readbacks the K500 before UI changes.
+        root.beginSingleOperation("Upload")
         root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1,
                                            root.fileBridge.deviceSlotImage())
     }
@@ -356,11 +380,23 @@ Item {
     Connections {
         target: root.presetManager
         enabled: !!root.presetManager
+        function onOperationCompleted(kind, slot) {
+            if (kind === "Save" || kind === "Upload")
+                root.finishSingleOperation(kind, true,
+                    "Slot " + slot + " berhasil disimpan dan dikonfirmasi K500.")
+        }
+        function onOperationFailed(kind, message) {
+            if (kind === "Save" || kind === "Upload")
+                root.finishSingleOperation(kind, false, message)
+        }
         function onActiveSlotChanged() {
             if (root.activeDeviceSlot >= 0)
                 root.selectedDeviceSlot = root.activeDeviceSlot
         }
         function onConnectedChanged() {
+            if (!root.deviceConnected && root.singleOpState === "busy")
+                root.finishSingleOperation(root.singleOpKind, false,
+                    "Koneksi terputus. Connect ulang dan periksa slot perangkat.")
             // DEVICE_TRUTH_EDIT_ISOLATION_V1 — a real K500 session always wins.
             // On connect, mirror the authoritative hydrated values into the
             // offline working shadow before LIVE editing starts. On disconnect,
@@ -849,7 +885,10 @@ Item {
                             SoftButton{
                                 Layout.fillWidth:true;text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Save";compact:true
                                 enabled:root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
-                                onClicked:root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)
+                                onClicked:{
+                                    root.beginSingleOperation("Save")
+                                    root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)
+                                }
                             }
                         }
                     }
@@ -1262,4 +1301,86 @@ Item {
             }
         }
     }
+
+    // SINGLE_STORE_STATUS_TOAST_V1 — compact, non-modal, no fake %.
+    // Mass Upload retains its separate ACK-driven full-screen progress.
+    Rectangle {
+        id: singleOpToast
+        z: 80
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.bottom: parent.bottom
+        anchors.bottomMargin: 16
+        width: Math.min(parent.width - 32, 450)
+        height: 86
+        radius: 10
+        visible: root.singleOpState !== ""
+        color: "#19252C"
+        border.width: 1
+        border.color: root.singleOpState === "error" ? "#D87078"
+                      : root.singleOpState === "success" ? "#55D4B5" : "#408FA2"
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: 12
+            spacing: 6
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 9
+                Text {
+                    text: root.singleOpState === "busy" ? "◌" :
+                          root.singleOpState === "success" ? "✓" : "!"
+                    color: root.singleOpState === "error" ? "#FF9DA3"
+                           : root.singleOpState === "success" ? "#6AE5C4" : Theme.accent
+                    font.pixelSize: 18; font.weight: Font.Bold
+                    RotationAnimator on rotation {
+                        from: 0; to: 360; duration: 900
+                        loops: Animation.Infinite
+                        running: root.singleOpState === "busy"
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    text: (root.singleOpKind === "Save" ? "SAVING PRESET" : "UPLOADING PRESET")
+                        + (root.singleOpState === "success" ? "  ·  COMPLETE"
+                          : root.singleOpState === "error" ? "  ·  INTERRUPTED" : "")
+                    color: Theme.text
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 12; font.weight: Font.Bold
+                }
+                Text {
+                    text: root.singleOpState === "busy" ? "WAIT"
+                          : root.singleOpState === "success" ? "VERIFIED" : "CHECK DEVICE"
+                    color: root.singleOpState === "error" ? "#FF9DA3" : Theme.textSoft
+                    font.family: Theme.monoFamily; font.pixelSize: 9
+                }
+            }
+            Text {
+                Layout.fillWidth: true
+                text: root.singleOpState === "busy" && root.presetManager
+                      ? String(root.presetManager.progress || "Menunggu perangkat K500…")
+                      : root.singleOpMessage
+                color: root.singleOpState === "error" ? "#FFB3B8" : Theme.textSoft
+                font.family: Theme.fontFamily; font.pixelSize: 11
+                elide: Text.ElideRight
+            }
+            Rectangle {
+                id: opTrack
+                Layout.fillWidth: true
+                Layout.preferredHeight: 4
+                radius: 2; clip: true; color: "#091115"
+                Rectangle {
+                    height: parent.height; radius: 2
+                    width: root.singleOpState === "busy" ? 78 : parent.width
+                    color: root.singleOpState === "error" ? "#D87078"
+                          : root.singleOpState === "success" ? "#55D4B5" : Theme.accent
+                    SequentialAnimation on x {
+                        running: root.singleOpState === "busy"
+                        loops: Animation.Infinite
+                        NumberAnimation { from: -78; to: opTrack.width; duration: 1100
+                                          easing.type: Easing.InOutSine }
+                    }
+                }
+            }
+        }
+    }
+
 }

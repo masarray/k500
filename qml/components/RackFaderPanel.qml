@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 
 StudioPanel {
     id: root
@@ -194,7 +195,7 @@ StudioPanel {
                 anchors.right: parent.right
                 anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 8
+                spacing: 7
                 Text {
                     text: "SYNC MASTER"
                     color: root.syncEngine && root.syncEngine.syncMasterInit
@@ -205,17 +206,18 @@ StudioPanel {
                     anchors.verticalCenter: parent.verticalCenter
                 }
                 Rectangle {
-                    width: 43
-                    height: 22
-                    radius: 11
+                    // COMPACT_TOGGLE_VISUAL_V1: smaller face, generous hit area.
+                    width: 32
+                    height: 17
+                    radius: 9
                     color: root.syncEngine && root.syncEngine.syncMasterInit ? "#153A40" : "#070C10"
                     border.width: 1
                     border.color: root.syncEngine && root.syncEngine.syncMasterInit
                                   ? Theme.accent : "#46545E"
                     Rectangle {
-                        width: 16
-                        height: 16
-                        radius: 8
+                        width: 11
+                        height: 11
+                        radius: 6
                         y: 3
                         x: root.syncEngine && root.syncEngine.syncMasterInit
                            ? parent.width - width - 3 : 3
@@ -224,8 +226,14 @@ StudioPanel {
                         Behavior on x { NumberAnimation { duration: 105 } }
                     }
                     MouseArea {
-                        anchors.fill: parent
+                        width: 44
+                        height: 31
+                        anchors.centerIn: parent
                         cursorShape: Qt.PointingHandCursor
+                        hoverEnabled: true
+                        ToolTip.visible: containsMouse
+                        ToolTip.delay: 650
+                        ToolTip.text: "Sync Master to Init before Save"
                         onClicked: {
                             if (root.syncEngine)
                                 root.syncEngine.syncMasterInit = !root.syncEngine.syncMasterInit

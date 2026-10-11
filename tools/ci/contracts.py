@@ -639,6 +639,46 @@ def check_ui_contracts() -> None:
         except subprocess.TimeoutExpired:
             FAILURES.append("Mass Upload real-QML selection regression timed out")
 
+        # MASS_TRANSFER_TRUE_MOVE_REGRESSION_V1 — same VM, ACTUAL QML
+        # move/drop functions, no second Windows build or workflow.
+        try:
+            move_test = subprocess.run(
+                [node, str(ROOT / "tools/ci/test_mass_transfer_move.js")],
+                text=True, capture_output=True, timeout=12, check=False,
+            )
+            if move_test.returncode:
+                FAILURES.append(
+                    "Mass Upload real-QML transfer/move test failed: "
+                    + (move_test.stderr or move_test.stdout)[-2200:]
+                )
+            else:
+                PASSES.append(move_test.stdout.strip())
+        except subprocess.TimeoutExpired:
+            FAILURES.append("Mass Upload transfer/move regression timed out")
+
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "MASS_TRANSFER_TRUE_MOVE_DND_V1",
+        "MASS_TRANSFER_INSERTION_GUIDE_V1",
+        "MASS_TRANSFER_FLOATING_PRESET_V1",
+        "targetModel.insert(at, next)", "targetModel.move(from, to, 1)",
+        "stagedRevision++", "root.finishTransferGesture(p.x, p.y)",
+        "dragConsumedClick = wasDragging",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SINGLE_STORE_FEEDBACK_V1", "SINGLE_STORE_STATUS_TOAST_V1",
+        'root.beginSingleOperation("Save")',
+        'root.beginSingleOperation("Upload")',
+        "function onOperationCompleted(kind, slot)",
+        "function onOperationFailed(kind, message)",
+        'root.presetManager.progress',
+    )
+    require("qml/components/RackFaderPanel.qml", "COMPACT_TOGGLE_VISUAL_V1",
+            "SYNC MASTER", "width: 32", "height: 17")
+    require("qml/components/SystemToggleRow.qml", "COMPACT_TOGGLE_VISUAL_V1",
+            "Layout.preferredWidth: 34", "Layout.preferredHeight: 18")
+
     # UX titles are section-specific, not generic or copy-pasted to wrong DSP.
     require(
         "qml/components/SectionWorkspace.qml",
@@ -852,7 +892,7 @@ def check_ui_contracts() -> None:
         "MASS_UPLOAD_QUIET_COPY_V9",
         'text: "MASS UPLOAD PRESETS"',
         "ToolTip.text: \"Ctrl+click selects presets",
-        'text: "No presets. Choose Folder or Sync."',
+        '"No presets. Choose Folder or Sync."',
         'text: displayName',
         "ToolTip.text: originLabel + \" · \" + fileName",
         "FINAL_ADD_DIRECTION_COUNT_V1_1_2",
@@ -1429,7 +1469,7 @@ def check_public_surface_contracts() -> None:
         'text:active?"ACTIVE":""',
         "onClicked:root.presetManager.renameActiveMode(root.normalizedModeNameDraft())",
         "onClicked:root.presetManager.recallMode(root.selectedDeviceSlot+1)",
-        "onClicked:root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)",
+        "root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)",
         "onClicked:root.presetManager.setBtName(root.normalizedBtNameDraft())",
         "onClicked:root.presetManager.resetBtName()",
     )
