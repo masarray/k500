@@ -10,6 +10,8 @@ StudioPanel {
     // STARTUP_LIMIT_STABLE_MODEL_V1 — live semantic values are resolved from
     // StudioEngine without replacing the Repeater model identity.
     property var valueResolver: null
+    // Presentation only: canonical sync and its preference live in StudioEngine.
+    property var syncEngine: null
     property bool interactionEnabled: true
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
@@ -184,6 +186,52 @@ StudioPanel {
                 font.pixelSize: Theme.rackHeaderSize
                 font.weight: Font.DemiBold
                 font.letterSpacing: Theme.rackHeaderTracking
+            }
+            // SYNC_MASTER_INIT_SWITCH_V1 — compact toggle in the existing
+            // 35px header, with no overlays or duplicate hardware authority.
+            Row {
+                visible: root.title === "Startup Limits" && !!root.syncEngine
+                anchors.right: parent.right
+                anchors.rightMargin: 12
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: 8
+                Text {
+                    text: "SYNC MASTER"
+                    color: root.syncEngine && root.syncEngine.syncMasterInit
+                           ? Theme.accent : Theme.textDim
+                    font.family: Theme.monoFamily
+                    font.pixelSize: Theme.rackCaptionSize
+                    font.weight: Font.DemiBold
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                Rectangle {
+                    width: 43
+                    height: 22
+                    radius: 11
+                    color: root.syncEngine && root.syncEngine.syncMasterInit ? "#153A40" : "#070C10"
+                    border.width: 1
+                    border.color: root.syncEngine && root.syncEngine.syncMasterInit
+                                  ? Theme.accent : "#46545E"
+                    Rectangle {
+                        width: 16
+                        height: 16
+                        radius: 8
+                        y: 3
+                        x: root.syncEngine && root.syncEngine.syncMasterInit
+                           ? parent.width - width - 3 : 3
+                        color: root.syncEngine && root.syncEngine.syncMasterInit
+                               ? Theme.accent : "#93A1AA"
+                        Behavior on x { NumberAnimation { duration: 105 } }
+                    }
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (root.syncEngine)
+                                root.syncEngine.syncMasterInit = !root.syncEngine.syncMasterInit
+                        }
+                    }
+                }
             }
             Text {
                 visible: root.compactCluster
@@ -738,6 +786,21 @@ StudioPanel {
                         Layout.fillHeight: true
                         property real localValue: root.resolvedChannelValue(modelData)
                         property bool deferredModelSync: false
+                        property bool initRecentlySynced: false
+                        Timer {
+                            id: syncPulseTimer
+                            interval: 620
+                            repeat: false
+                            onTriggered: channel.initRecentlySynced = false
+                        }
+                        Connections {
+                            target: root.title === "Startup Limits" ? root.syncEngine : null
+                            function onMasterInitMirrored(label) {
+                                if (label !== String(channel.modelData.label || "")) return
+                                channel.initRecentlySynced = true
+                                syncPulseTimer.restart()
+                            }
+                        }
                         // STARTUP_LIMIT_STABLE_MODEL_V1 — delegate identity must
                         // survive every live edit. Only sync an existing delegate
                         // in-place and never overwrite a gesture in progress.
@@ -752,6 +815,10 @@ StudioPanel {
                         readonly property bool channelEditable: root.interactionEnabled
                                                                 && (modelData.editable === undefined
                                                                     || Boolean(modelData.editable))
+                                                                && !(root.title === "Startup Limits"
+                                                                     && root.syncEngine && root.syncEngine.syncMasterInit
+                                                                     && ["MUSIC INIT", "MIC INIT", "EFFECT INIT"].indexOf(
+                                                                         String(modelData.label || "")) >= 0)
                         property bool muted: false
                         readonly property bool selected: root.selectedFader === channel.index
                         readonly property bool canMute: root.muteCapable(modelData.label)
@@ -904,7 +971,9 @@ StudioPanel {
                                 radius: 8
                                 color: channel.muted ? "#171208" : rackFader.highlighted ? "#081013" : "#05080A"
                                 border.width: 1
-                                border.color: channel.muted ? Theme.amber : rackFader.highlighted ? root.accentColor : "#020304"
+                                border.color: channel.initRecentlySynced ? Theme.accent
+                                      : channel.muted ? Theme.amber
+                                      : rackFader.highlighted ? root.accentColor : "#020304"
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: 3

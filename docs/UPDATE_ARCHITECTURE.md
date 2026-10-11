@@ -22,6 +22,38 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## SYNC MASTER / INIT (user opt-in; firmware behaviour unchanged)
+
+K500 firmware restores runtime Music/Mic/FX master levels from MUSIC INIT,
+MIC INIT and EFFECT INIT at power-cycle, not from the previous LIVE Master
+levels. Prior INIT defaults of 25 therefore caused the user-reported reset.
+
+The permanent StudioEngine owns a **default OFF** QSettings preference
+(`k500/syncMasterInit`). The System > Startup Limits header has a compact
+SYNC MASTER switch. When enabled in an authoritative connected LIVE session,
+an explicit user Master edit mirrors the corresponding INIT immediately in
+the GUI with a 620 ms pulse; a single 160 ms restartable timer coalesces the
+last INIT value per channel. Final commands use the **existing**
+K500Controller/DeviceManager canonical scheduler, including the shared Music
+and Mic full-block frames and the captured Effect Init path. No second
+transport queue, no extra Store/flash cycle, and no firmware update.
+
+System file preview, cold start, reconnect and reconciliation NEVER issue
+hidden writes merely because this preference is ON. Disconnect cancels a
+pending debounce, and an explicit INIT edit wins over any pending mirror.
+
+The existing permanent Save method is unchanged after its preflight: before
+LIVE is disabled, Save flushes pending INIT intents and waits for the existing
+scheduler/controller queue to drain plus a quiet interval (bounded 3 seconds).
+The exact native 939-byte device readback then verifies all three INIT bytes
+against the desired values when SYNC MASTER is active; only then does the
+original 0x41/0x42/0x43 Store chain start. Mismatch fails closed with no Store.
+This is not an additional Save command. Physical-device power-cycle and
+the device global Use Init Volume policy remain owner acceptance items.
+
+An actual StudioEngine/QTimer `--sync-master-init-self-test` runs in the
+existing consolidated Windows regression suite. No new GitHub workflow.
+
 ## Public stable Smart Installer route — version-gated before promotion
 
 The Cloudflare Pages `/download/windows` route resolves only GitHub

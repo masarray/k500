@@ -4,12 +4,15 @@
 #include "K500ResponseParser.h"
 
 #include <QByteArray>
+#include <QElapsedTimer>
+#include <array>
 #include <QObject>
 #include <QTimer>
 #include <QVariantList>
 #include <QVector>
 
 class K500DeviceManager;
+class StudioEngine;
 
 class K500PresetManager final : public QObject
 {
@@ -36,7 +39,7 @@ public:
     bool connected() const;
     bool busy() const { return m_operation != Operation::None; }
     bool recallBusy() const { return m_operation == Operation::Recall; }
-    bool storeBusy() const { return m_operation == Operation::Save || m_operation == Operation::Rename || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
+    bool storeBusy() const { return m_operation == Operation::SavePending || m_operation == Operation::Save || m_operation == Operation::Rename || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
     bool useInitBusy() const { return m_operation == Operation::UseInit; }
     bool adjMannerBusy() const { return m_operation == Operation::AdjManner; }
     bool useInitVolume() const { return m_useInitVolume; }
@@ -52,6 +55,7 @@ public:
     Q_INVOKABLE void recallMode(int slotOneBased);
     Q_INVOKABLE void setUseInitVolume(bool enabled);
     Q_INVOKABLE void setAdjMannerVrOff(bool enabled);
+    void setMasterInitSyncSource(StudioEngine *source) { m_syncSource = source; }
     Q_INVOKABLE void saveCurrentToSlot(int slotOneBased);
     Q_INVOKABLE void renameActiveMode(const QString &name);
     Q_INVOKABLE void setBtName(const QString &name);
@@ -76,12 +80,15 @@ signals:
     void lastKnownSlotChanged();
     void progressChanged();
     void massUploadProgressChanged();
+    // Direct connection in main.cpp flushes the lazy INIT intent before Save
+    // transitions LIVE OFF. This is NOT an extra Store/flash write.
+    void savePreflightRequested();
     void activeMemoryReady(const QByteArray &memory);
     void operationCompleted(const QString &kind, int slotOneBased);
     void operationFailed(const QString &kind, const QString &message);
 
 private:
-    enum class Operation { None, Recall, UseInit, AdjManner, BtName, Save, Rename, Upload, MassUpload };
+    enum class Operation { None, Recall, UseInit, AdjManner, BtName, SavePending, Save, Rename, Upload, MassUpload };
     enum class Step {
         Idle,
         RecallDelay,
@@ -108,6 +115,7 @@ private:
     void setProgress(const QString &progress);
     void setMassUploadProgressPercent(int percent);
     void updateMassUploadAcknowledgedProgress();
+    void pollSaveLiveDrain();
 
     bool send(const QByteArray &frame, const QString &label);
     void armTimeout(int ms, const QString &kind, const QString &message);
@@ -136,6 +144,12 @@ private:
     K500DeviceManager *m_manager = nullptr;
     K500ResponseParser m_parser;
     QTimer m_timeout;
+    QTimer m_saveLiveDrainTimer;
+    StudioEngine *m_syncSource = nullptr;
+    int m_saveDrainPolls = 0;
+    int m_saveQuietPolls = 0;
+    bool m_verifySaveInit = false;
+    std::array<int, 3> m_saveInitExpected{};
 
     Operation m_operation = Operation::None;
     Step m_step = Step::Idle;

@@ -2,6 +2,8 @@
 
 #include "K500DeviceManager.h"
 #include "K500Protocol.h"
+#include "../StudioEngine.h"
+#include "K500Controller.h"
 
 #include <QSet>
 #include <QVariantMap>
@@ -28,6 +30,9 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
     : QObject(parent), m_manager(manager)
 {
     m_timeout.setSingleShot(true);
+    m_saveLiveDrainTimer.setSingleShot(true);
+    connect(&m_saveLiveDrainTimer, &QTimer::timeout,
+            this, &K500PresetManager::pollSaveLiveDrain);
 
     if (!m_manager)
         return;
@@ -68,6 +73,7 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
             // back to the last accepted value before dropping device authority.
             if (busy()) {
                 clearTimeout();
+                m_saveLiveDrainTimer.stop();
                 const Operation interruptedOperation = m_operation;
                 if (interruptedOperation == Operation::UseInit
                     && (m_useInitVolume != m_previousUseInitVolume
@@ -124,6 +130,7 @@ QString K500PresetManager::operationName(Operation operation)
     case Operation::UseInit: return QStringLiteral("Use Init Volume");
     case Operation::AdjManner: return QStringLiteral("Adj Manner VR OFF");
     case Operation::BtName: return QStringLiteral("BT Name");
+    case Operation::SavePending: return QStringLiteral("Save");
     case Operation::Save: return QStringLiteral("Save");
     case Operation::Rename: return QStringLiteral("Rename Mode");
     case Operation::Upload: return QStringLiteral("Upload");
@@ -158,6 +165,8 @@ bool K500PresetManager::beginOperation(Operation operation, QString *error)
 void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
 {
     clearTimeout();
+    m_saveLiveDrainTimer.stop();
+    m_verifySaveInit = false;
     m_step = Step::Idle;
     m_readbackPurpose = ReadbackPurpose::None;
     m_operation = Operation::None;
@@ -178,6 +187,8 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
 void K500PresetManager::failOperation(const QString &kind, const QString &message)
 {
     clearTimeout();
+    m_saveLiveDrainTimer.stop();
+    m_verifySaveInit = false;
     const Operation failedOperation = m_operation;
     m_step = Step::Idle;
     m_readbackPurpose = ReadbackPurpose::None;
@@ -451,14 +462,70 @@ void K500PresetManager::saveCurrentToSlot(int slotOneBased)
         return;
     }
 
-    QString error;
-    if (!beginOperation(Operation::Save, &error)) {
-        if (m_manager) m_manager->setError(error);
-        emit operationFailed(QStringLiteral("Save"), error);
+    // SAVE_LIVE_DRAIN_BARRIER_V1. A click immediately after a Master gesture
+    // must not cancel the pending, coalesced INIT command when beginOperation
+    // disables LIVE. Flush once, wait for the existing scheduler to drain and
+    // settle, then run the SAME native Save readback/Store implementation.
+    if (busy() || !m_manager || !m_manager->m_liveEnabled
+        || m_manager->m_stage != K500DeviceManager::Stage::Ready) {
+        emit operationFailed(QStringLiteral("Save"),
+                             QStringLiteral("Tunggu proses K500 selesai sebelum Save."));
+        return;
+    }
+    m_requestedSlot = qBound(1, slotOneBased, 10);
+    m_saveDrainPolls = 0;
+    m_saveQuietPolls = 0;
+    m_operation = Operation::SavePending;
+    setProgress(QStringLiteral("Save · menunggu LIVE write selesai"));
+    emit busyChanged();
+    emit savePreflightRequested();
+    m_saveLiveDrainTimer.start(50);
+}
+
+void K500PresetManager::pollSaveLiveDrain()
+{
+    if (m_operation != Operation::SavePending || !m_manager)
+        return;
+    if (!connected() || !m_manager->m_liveEnabled) {
+        m_operation = Operation::None;
+        emit busyChanged();
+        emit operationFailed(QStringLiteral("Save"),
+                             QStringLiteral("K500 kehilangan koneksi LIVE sebelum Save."));
+        return;
+    }
+    const bool queued = !m_manager->m_transactionScheduler.empty()
+        || (m_manager->m_controller
+            && (m_manager->m_controller->hasQueuedLiveFrames()
+                || m_manager->m_controller->inFlightStateCount() > 0));
+    m_saveQuietPolls = queued ? 0 : m_saveQuietPolls + 1;
+    if (++m_saveDrainPolls > 60) {
+        m_operation = Operation::None;
+        emit busyChanged();
+        emit operationFailed(QStringLiteral("Save"),
+                             QStringLiteral("Save ditunda: write LIVE belum selesai. Coba setelah slider berhenti."));
+        return;
+    }
+    if (m_saveQuietPolls < 5) {
+        m_saveLiveDrainTimer.start(50);
         return;
     }
 
-    m_requestedSlot = qBound(1, slotOneBased, 10);
+    // Capture the actual desired INITs only after all lazy edits have drained.
+    m_verifySaveInit = m_syncSource && m_syncSource->syncMasterInit()
+        && m_syncSource->masterInitLiveAllowed();
+    if (m_verifySaveInit) {
+        m_saveInitExpected = {qRound(m_syncSource->musicInitVol()),
+                              qRound(m_syncSource->micInitVol()),
+                              qRound(m_syncSource->effectInitLevel())};
+    }
+
+    m_operation = Operation::None;
+    QString error;
+    if (!beginOperation(Operation::Save, &error)) {
+        m_verifySaveInit = false;
+        emit operationFailed(QStringLiteral("Save"), error);
+        return;
+    }
     m_storeChain = {};
     setProgress(QStringLiteral("Preparing slot %1 · fresh device readback").arg(m_requestedSlot));
     startReadback(ReadbackPurpose::SavePrepare);
@@ -769,6 +836,23 @@ void K500PresetManager::finishReadback()
     if (m_readbackMemory.size() != K500Protocol::ActiveMemorySize || m_readOffset < K500Protocol::ActiveMemorySize) {
         failOperation(operationName(m_operation), QStringLiteral("P2 full readback tidak lengkap."));
         return;
+    }
+
+    // Save must never commit stale INIT values from a still-in-flight or
+    // rejected write. These are ACTIVE-MEMORY offsets for file 0x000B,
+    // 0x0012 and 0x001D; do not reinterpret them as slot-file offsets.
+    if (m_readbackPurpose == ReadbackPurpose::SavePrepare && m_verifySaveInit) {
+        const std::array<int, 3> offsets{3, 10, 21};
+        for (int i = 0; i < 3; ++i) {
+            const int actual = static_cast<quint8>(m_readbackMemory.at(offsets[i]));
+            if (actual != m_saveInitExpected[i]) {
+                failOperation(QStringLiteral("Save"),
+                    QStringLiteral("SYNC MASTER belum terverifikasi di K500 (INIT %1: %2, diharapkan %3). "
+                                   "Preset tidak ditulis. Sambungkan kembali lalu coba Save.")
+                        .arg(i + 1).arg(actual).arg(m_saveInitExpected[i]));
+                return;
+            }
+        }
     }
 
     emit activeMemoryReady(m_readbackMemory);

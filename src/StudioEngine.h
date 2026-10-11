@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QList>
 #include <QObject>
+#include <QTimer>
 #include <QStringList>
 #include <QVariantMap>
 #include <QtGlobal>
@@ -120,6 +121,8 @@ class StudioEngine final : public QObject
     Q_PROPERTY(double bluetoothGain READ bluetoothGain WRITE setBluetoothGain NOTIFY bluetoothGainChanged)
     Q_PROPERTY(double uDiskGain READ uDiskGain WRITE setUDiskGain NOTIFY uDiskGainChanged)
     Q_PROPERTY(double digitalGain READ digitalGain WRITE setDigitalGain NOTIFY digitalGainChanged)
+    // SYNC_MASTER_INIT_LAZY_V1 — editor preference, never a hardware flag.
+    Q_PROPERTY(bool syncMasterInit READ syncMasterInit WRITE setSyncMasterInit NOTIFY syncMasterInitChanged)
     Q_PROPERTY(double masterMusic READ masterMusic WRITE setMasterMusic NOTIFY masterMusicChanged)
     Q_PROPERTY(double musicInitVol READ musicInitVol WRITE setMusicInitVol NOTIFY musicInitVolChanged)
     Q_PROPERTY(double musicMaxVol READ musicMaxVol WRITE setMusicMaxVol NOTIFY musicMaxVolChanged)
@@ -230,6 +233,13 @@ public:
     double bluetoothGain() const { return m_bluetoothGain; }
     double uDiskGain() const { return m_uDiskGain; }
     double digitalGain() const { return m_digitalGain; }
+    bool syncMasterInit() const { return m_syncMasterInit; }
+    bool masterInitLiveAllowed() const { return m_masterInitLiveAllowed; }
+    bool hasPendingMasterInitWrites() const { return m_pendingMasterInitMask != 0; }
+    void setMasterInitLiveAllowed(bool allowed);
+    // Save preflight flushes desired INIT before disabling LIVE. The existing
+    // canonical scheduler still handles coalescing and transport pacing.
+    void flushPendingMasterInitWrites();
     double masterMusic() const { return m_masterMusic; }
     double musicInitVol() const { return m_musicInitVol; }
     double musicMaxVol() const { return m_musicMaxVol; }
@@ -280,6 +290,7 @@ public slots:
     void setMicMaxVol(double value);
     void setMasterFx(double value);
     void setEffectInitLevel(double value);
+    Q_INVOKABLE void setSyncMasterInit(bool enabled);
 
 signals:
     void deviceStateChanged();
@@ -299,6 +310,8 @@ signals:
     void bluetoothGainChanged();
     void uDiskGainChanged();
     void digitalGainChanged();
+    void syncMasterInitChanged();
+    void masterInitMirrored(const QString &initLabel);
     void masterMusicChanged();
     void musicInitVolChanged();
     void musicMaxVolChanged();
@@ -321,6 +334,8 @@ private:
         return true;
     }
 
+    void queueMirroredInit(int channel);
+    void mirrorMasterToInit(int channel);
     void connectEqModel(EqBandModel *model, const QString &key);
     void syncMusicCrossoverModel();
 
@@ -364,6 +379,10 @@ private:
     double m_bluetoothGain = -3.0;
     double m_uDiskGain = -4.0;
     double m_digitalGain = -4.0;
+    bool m_syncMasterInit = false;
+    bool m_masterInitLiveAllowed = false;
+    quint8 m_pendingMasterInitMask = 0;
+    QTimer m_masterInitDebounce;
     double m_masterMusic = 35.0;
     double m_musicInitVol = 25.0;
     double m_musicMaxVol = 84.0;
