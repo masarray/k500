@@ -274,6 +274,13 @@ begin
 
   // All trust inputs must come from an exact 64-bit Machine registry entry.
   // No guessed paths, broad registry cleanup, or unsupported dual installs.
+  // Unknown 32-bit parallel machine registration makes automatic migration
+  // ambiguous. Never leave an orphaned Windows Installed Apps record.
+  if RegKeyExists(HKLM32, Key) then
+  begin
+    Reason := 'Multiple Windows machine registrations exist. Automatic migration was blocked before changes.';
+    Exit;
+  end;
   if not RegQueryStringValue(HKLM64, Key, 'Inno Setup: App Path', OldDir) or
      not RegQueryStringValue(HKLM64, Key, 'DisplayVersion', Version) or
      not NumericVersionOnly(Version) then
@@ -362,7 +369,7 @@ begin
       MsgBox('Verified migration started. This setup window will close.' + #13#10 +
              'The updater will verify the LocalAppData installation first, then request ' +
              'Windows permission to remove the old Program Files installation.' +
-             #13#10 + 'Do not restart the installer during migration.', mbInformation, MB_OK)
+             '' + #13#10 + 'Do not restart the installer during migration.', mbInformation, MB_OK)
     else
       MsgBox(Reason, mbError, MB_OK);
   end;
