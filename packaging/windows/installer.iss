@@ -351,11 +351,11 @@ begin
 
   if MsgBox('SonKuPik K500 is already installed in Program Files.' + #13#10#13#10 +
             'Move it to LocalAppData for future updates without administrator notices?' +
-            #13#10 + 'Your existing app and presets remain until the new app passes health checks.' +
-            #13#10#13#10 +
+            '' + #13#10 + 'Your existing app and presets remain until the new app passes health checks.' +
+            '' + #13#10#13#10 +
             'Windows will request administrator permission ONCE to remove the old Program Files installation.' +
-            #13#10 + 'Canceling that request will preserve the original installation.' +
-            #13#10#13#10 + 'Start verified migration now?',
+            '' + #13#10 + 'Canceling that request will preserve the original installation.' +
+            '' + #13#10#13#10 + 'Start verified migration now?',
             mbConfirmation, MB_YESNO) = IDYES then
   begin
     if BeginSmartMigration(Reason) then
