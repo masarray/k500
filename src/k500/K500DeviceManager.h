@@ -3,6 +3,7 @@
 #include "DevicePerformanceMonitor.h"
 #include "K500ResponseParser.h"
 #include "K500TransactionScheduler.h"
+#include "K500TransportAdmission.h"
 #include "K500WinIo.h"
 
 #include <QByteArray>
@@ -149,7 +150,16 @@ private:
     void onBytesReceived(const QByteArray &bytes);
     void handleResponse(const K500Response &response);
     void onIoError(const QString &message);
-    bool writeFrame(const QByteArray &frame, const QString &label);
+
+    // PRESET_EXCLUSIVE_TX_GATE_V2. The preset coordinator is the sole owner
+    // of HID/serial command writes while any Save/Upload/MassUpload/Recall
+    // transaction (including SavePending) is active. Existing scheduler and
+    // Player/E3/Heartbeat paths cannot bypass this at the final TX gateway.
+    using TxOwner = K500TransportAdmission::Owner;
+    bool presetTransactionActive() const;
+    bool presetSavePreflightPending() const;
+    bool writeFrame(const QByteArray &frame, const QString &label,
+                    TxOwner owner = TxOwner::Runtime);
     void resetConnectionState(bool keepError = false);
 
     K500Controller *m_controller = nullptr;

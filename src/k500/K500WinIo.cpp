@@ -5,6 +5,8 @@
 #include <QMetaObject>
 #include <QPointer>
 #include <QQueue>
+#include <QList>
+#include <utility>
 #include <QTimer>
 
 #ifdef Q_OS_WIN
@@ -42,6 +44,26 @@ public:
     K500WinIo *q = nullptr;
     Kind kind = Kind::None;
     QString label;
+    QList<quint64> pendingWriteDrainTokens;
+
+    void emitDrainedWhenIdle()
+    {
+#ifdef Q_OS_WIN
+        if (kind == Kind::UsbHid && (hidWritePending || !hidWriteQueue.isEmpty()
+                                     || !hidWriteBuffer.isEmpty()))
+            return;
+#endif
+        if (kind == Kind::None || pendingWriteDrainTokens.isEmpty())
+            return;
+        const auto tokens = std::exchange(pendingWriteDrainTokens, QList<quint64>{});
+        QPointer<K500WinIo> owner(q);
+        QMetaObject::invokeMethod(q, [owner, tokens] {
+            if (!owner)
+                return;
+            for (const quint64 token : tokens)
+                emit owner->writesDrained(token);
+        }, Qt::QueuedConnection);
+    }
 
 #ifdef Q_OS_WIN
     // P3_WINDOWS_RAII_V1
@@ -208,6 +230,8 @@ public:
     {
         if (closing || kind != Kind::UsbHid || !handle || !hidWriteEvent
             || hidWritePending || hidWriteQueue.isEmpty()) {
+            if (!closing)
+                emitDrainedWhenIdle();
             return;
         }
 
@@ -538,6 +562,7 @@ public:
         }
 
         hidWriteQueue.clear();
+        pendingWriteDrainTokens.clear();
 
         if (handle && kind == Kind::UsbHid) {
             if (hidReadPending)
@@ -751,6 +776,20 @@ QString K500WinIo::label() const
     return m_label;
 }
 
+bool K500WinIo::requestWriteDrain(quint64 token)
+{
+    if (!token || m_shutdown || !m_open || !d || !m_workerThread.isRunning())
+        return false;
+    // FIFO invocation order with writeProtocolFrame on the same worker.
+    // For HID, the callback waits until the LAST report completes.
+    Impl *worker = d;
+    QMetaObject::invokeMethod(worker, [worker, token] {
+        worker->pendingWriteDrainTokens.append(token);
+        worker->emitDrainedWhenIdle();
+    }, Qt::QueuedConnection);
+    return true;
+}
+
 bool K500WinIo::writeProtocolFrame(const QByteArray &btFrame, QString *error)
 {
 #ifdef Q_OS_WIN
@@ -766,9 +805,13 @@ bool K500WinIo::writeProtocolFrame(const QByteArray &btFrame, QString *error)
     // The worker serializes protocol frames and HID report chunks in FIFO order.
     Impl *worker = d;
     const QByteArray frame = btFrame;
-    QMetaObject::invokeMethod(worker, [worker, frame] {
-        worker->enqueueProtocolFrame(frame);
-    }, Qt::QueuedConnection);
+    if (!QMetaObject::invokeMethod(worker, [worker, frame] {
+            worker->enqueueProtocolFrame(frame);
+        }, Qt::QueuedConnection)) {
+        if (error) *error = QStringLiteral("Cannot enqueue native transport frame");
+        return false;
+    }
+    ++m_submittedFrameCount;
     return true;
 #else
     Q_UNUSED(btFrame)

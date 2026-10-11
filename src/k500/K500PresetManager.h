@@ -19,6 +19,7 @@ class K500PresetManager final : public QObject
     Q_OBJECT
     Q_PROPERTY(bool connected READ connected NOTIFY connectedChanged)
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(bool savePreflightPending READ savePreflightPending NOTIFY busyChanged)
     Q_PROPERTY(bool recallBusy READ recallBusy NOTIFY busyChanged)
     Q_PROPERTY(bool storeBusy READ storeBusy NOTIFY busyChanged)
     Q_PROPERTY(bool useInitBusy READ useInitBusy NOTIFY busyChanged)
@@ -38,6 +39,7 @@ public:
 
     bool connected() const;
     bool busy() const { return m_operation != Operation::None; }
+    bool savePreflightPending() const { return m_operation == Operation::SavePending; }
     bool recallBusy() const { return m_operation == Operation::Recall; }
     bool storeBusy() const { return m_operation == Operation::SavePending || m_operation == Operation::Save || m_operation == Operation::Rename || m_operation == Operation::Upload || m_operation == Operation::MassUpload; }
     bool useInitBusy() const { return m_operation == Operation::UseInit; }
@@ -148,6 +150,10 @@ private:
     StudioEngine *m_syncSource = nullptr;
     int m_saveDrainPolls = 0;
     int m_saveQuietPolls = 0;
+    quint64 m_saveDrainBarrierId = 0;
+    quint64 m_saveDrainSubmittedFrameCount = 0;
+    bool m_saveDrainRequested = false;
+    bool m_saveDrainCompleted = false;
     // Capture actual USER-approved LIVE levels *before* a 939-byte pre-Store
     // readback can overwrite the editor with persistent slot shadow bytes.
     // Mask bits match K500PresetProtocol::withStartupVolumeOverrides().
