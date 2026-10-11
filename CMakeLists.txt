@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.1.2 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.1.3 LANGUAGES CXX)
 
+# V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR
+# Candidate source version only: v1.1.2 is the accepted immutable public stable.
+# PR #183/#184 updater + offline-first fixes and PR #185/#186 Inno scope
+# preflight/Smart Installer are included in this future patch. The RC workflow
+# must package exact one-commit real-app binaries and keep legacy Machine/
+# Per-User updater assets. No stable publication before owner acceptance.
+#
 # V1_1_2_PATCH_RELEASE_QUALIFICATION_ANCHOR
 # v1.1.1 is the first patch release after public v1.1.0. The RC must contain
 # the exact current-main preset bank plus the post-v1.1.0 System-toggle UX,

@@ -37,26 +37,27 @@ jobs:
           $cmake = Get-Content CMakeLists.txt -Raw
           if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') { throw 'Version not found' }
           $version = $Matches[1]
-          if ($version -ne '1.1.2') { throw "P4 promotion requires source line 1.1.2; found $version" }
+          if ($version -ne '1.1.3') { throw "P4 promotion requires source line 1.1.3; found $version" }
 
-          $gate = Get-Content docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md -Raw
+          $gate = Get-Content docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md -Raw
           function Read-GateToken([string]$name) {
             $escaped = [regex]::Escape($name)
             $match = [regex]::Match($gate, "(?m)^$escaped=(.*)$")
             if (-not $match.Success) { throw "Acceptance record missing $name" }
             return $match.Groups[1].Value.Trim()
           }
-          $state = Read-GateToken 'UPDATER_V1_1_2_ACCEPTANCE'
-          $tag = Read-GateToken 'UPDATER_V1_1_2_ACCEPTED_TAG'
-          $commit = (Read-GateToken 'UPDATER_V1_1_2_ACCEPTED_COMMIT').ToLowerInvariant()
-          $machineHash = (Read-GateToken 'UPDATER_V1_1_2_MACHINE_SHA256').ToLowerInvariant()
-          $userHash = (Read-GateToken 'UPDATER_V1_1_2_USER_SHA256').ToLowerInvariant()
+          $state = Read-GateToken 'UPDATER_V1_1_3_ACCEPTANCE'
+          $tag = Read-GateToken 'UPDATER_V1_1_3_ACCEPTED_TAG'
+          $commit = (Read-GateToken 'UPDATER_V1_1_3_ACCEPTED_COMMIT').ToLowerInvariant()
+          $machineHash = (Read-GateToken 'UPDATER_V1_1_3_MACHINE_SHA256').ToLowerInvariant()
+          $userHash = (Read-GateToken 'UPDATER_V1_1_3_USER_SHA256').ToLowerInvariant()
+          $smartHash = (Read-GateToken 'UPDATER_V1_1_3_SMART_SHA256').ToLowerInvariant()
           if ($state -ne 'accepted') { throw 'Stable updater promotion is blocked until acceptance is exactly accepted.' }
           # PROMOTION_RC_TAG_MATCHES_SOURCE_VERSION_V1 — only this source version's RC.
           $expectedRcPattern = '^v' + [regex]::Escape($version) + '-rc\.[1-9][0-9]*$'
           if ($tag -notmatch $expectedRcPattern) { throw "Invalid accepted RC tag: $tag (expected v$version-rc.N)" }
           if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Accepted RC commit must be a full 40-character SHA.' }
-          foreach ($pair in @{ machine=$machineHash; user=$userHash }.GetEnumerator()) {
+          foreach ($pair in @{ machine=$machineHash; user=$userHash; smart=$smartHash }.GetEnumerator()) {
             if ($pair.Value -notmatch '^[0-9a-f]{64}$') { throw "Accepted $($pair.Key) SHA-256 is invalid." }
           }
 
@@ -89,7 +90,7 @@ jobs:
           }
           if ($resolvedCommit.ToLowerInvariant() -ne $commit) { throw 'Accepted RC tag commit differs from recorded accepted commit.' }
 
-          $stableTag = 'v1.1.2'
+          $stableTag = 'v1.1.3'
           $stableUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$stableTag"
           $response = Invoke-WebRequest -Uri $stableUrl -Headers @{
             Authorization = "Bearer $env:GH_TOKEN"
@@ -105,6 +106,7 @@ jobs:
           "accepted_commit=$commit" >> $env:GITHUB_OUTPUT
           "machine_sha256=$machineHash" >> $env:GITHUB_OUTPUT
           "user_sha256=$userHash" >> $env:GITHUB_OUTPUT
+          "smart_sha256=$smartHash" >> $env:GITHUB_OUTPUT
           Write-Host "Promotion locked to $tag @ $commit"
 
       - name: Download exact accepted prerelease assets
@@ -117,6 +119,7 @@ jobs:
           foreach ($pattern in @(
             "SonKuPik-K500-$tag-Windows-Setup.exe",
             "SonKuPik-K500-$tag-Windows-Setup-PerUser.exe",
+            "SonKuPik-K500-$tag-Windows-Smart-Installer.exe",
             'SHA256SUMS.txt',
             'updater-rc-manifest.json'
           )) {
@@ -132,14 +135,16 @@ jobs:
           $acceptedCommit = '${{ steps.accept.outputs.accepted_commit }}'
           $machineRc = "rc/SonKuPik-K500-$tag-Windows-Setup.exe"
           $userRc = "rc/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
-          foreach ($path in @($machineRc,$userRc,'rc/SHA256SUMS.txt','rc/updater-rc-manifest.json')) {
+          $smartRc = "rc/SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+          foreach ($path in @($machineRc,$userRc,$smartRc,'rc/SHA256SUMS.txt','rc/updater-rc-manifest.json')) {
             if (-not (Test-Path $path)) { throw "Accepted RC is missing $path" }
           }
           $expected = @{
             $machineRc = '${{ steps.accept.outputs.machine_sha256 }}'
             $userRc = '${{ steps.accept.outputs.user_sha256 }}'
+            $smartRc = '${{ steps.accept.outputs.smart_sha256 }}'
           }
-          foreach ($path in @($machineRc,$userRc)) {
+          foreach ($path in @($machineRc,$userRc,$smartRc)) {
             $actual = (Get-FileHash $path -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($actual -ne $expected[$path]) { throw "Accepted hash mismatch for $path" }
           }
@@ -154,7 +159,8 @@ jobs:
               $manifest.target -ne 'windows-x64' -or
               $manifest.installerTechnology -ne 'Inno Setup 6' -or
               $manifest.stableReleaseEligible -ne $false -or
-              $manifest.artifacts.Count -ne 2) {
+              $manifest.artifacts.Count -ne 3 -or
+              $manifest.publicInstaller -ne (Split-Path $smartRc -Leaf)) {
             throw 'Accepted RC manifest provenance is invalid.'
           }
           foreach ($path in @($machineRc,$userRc)) {
@@ -172,11 +178,14 @@ jobs:
 
           $machineStable = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
           $userStable = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
+          $smartStable = "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe"
           Copy-Item $machineRc $machineStable
           Copy-Item $userRc $userStable
+          Copy-Item $smartRc $smartStable
           foreach ($pair in @(
             @($machineStable,'${{ steps.accept.outputs.machine_sha256 }}'),
-            @($userStable,'${{ steps.accept.outputs.user_sha256 }}')
+            @($userStable,'${{ steps.accept.outputs.user_sha256 }}'),
+            @($smartStable,'${{ steps.accept.outputs.smart_sha256 }}')
           )) {
             $actual = (Get-FileHash $pair[0] -Algorithm SHA256).Hash.ToLowerInvariant()
             if ($actual -ne $pair[1]) { throw "Stable staging changed accepted bytes: $($pair[0])" }
@@ -220,6 +229,33 @@ jobs:
           $uninstall = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Promoted per-user uninstall failed: $($uninstall.ExitCode)" }
 
+      - name: Validate exact accepted native Smart Installer bytes
+        shell: pwsh
+        run: |
+          # ACCEPTED_SMART_REAL_APP_V1 — test accepted bytes, no rebuilding.
+          $version = '${{ steps.accept.outputs.version }}'
+          $setup = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe").Path
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik-K500-promoted-smart'
+          if (Test-Path $dir) { throw 'Smart promotion test destination already exists; refusing deletion' }
+          $installed = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$dir")) -Wait -PassThru
+          if ($installed.ExitCode -ne 0) { throw "Promoted Smart Installer failed: $($installed.ExitCode)" }
+          $app = Join-Path $dir 'SonKuPik-K500.exe'
+          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
+            $checked = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
+            if ($checked.ExitCode -ne 0) { throw "Promoted Smart Installer $arg failed: $($checked.ExitCode)" }
+          }
+          $marker = Join-Path $dir 'accepted-smart-owner-state.txt'
+          [IO.File]::WriteAllText($marker, 'PRESERVE-OWNER-STATE')
+          $reinstall = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$dir")) -Wait -PassThru
+          if ($reinstall.ExitCode -ne 0) { throw 'Promoted Smart reinstall failed to retain prior scope' }
+          if ((Get-Content $marker -Raw) -ne 'PRESERVE-OWNER-STATE') { throw 'Promoted Smart package modified sentinel' }
+          $remove = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($remove.ExitCode -ne 0) { throw 'Promoted Smart uninstallation failed' }
+          if (-not (Test-Path $marker)) { throw 'Promoted Smart uninstaller deleted user-owned file' }
+          Remove-Item -LiteralPath $marker -Force
+          Remove-Item -LiteralPath $dir -ErrorAction SilentlyContinue
+          $global:LASTEXITCODE = 0
+
       - name: Generate stable metadata around exact accepted bytes
         shell: pwsh
         env:
@@ -231,6 +267,7 @@ jobs:
           $releaseFiles = @(
             Get-Item "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
             Get-Item "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
+            Get-Item "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe"
           )
           $artifacts = @()
           foreach ($file in ($releaseFiles | Sort-Object Name)) {
@@ -263,8 +300,10 @@ jobs:
             stableReleaseEligible = $true
             codeSigning = 'unsigned-open-source'
             installerTechnology = 'Inno Setup 6'
-            distributionModel = 'smart-installer'
-            primaryDownload = "SonKuPik-K500-v$version-Windows-Setup.exe"
+            distributionModel = 'native-unified-smart-installer'
+            primaryDownload = "SonKuPik-K500-v$version-Windows-Smart-Installer.exe"
+            machinePackageRole = 'legacy-scope-matched-updater-backend'
+            manualSmartRollbackQualification = 'owner-accepted-in-gate'
             perUserPackageRole = 'scope-matched-updater-backend'
             officialPresetSource = "github:masarray/k500/resources/presets@$acceptedCommit"
             mode01NativeSha256 = $mode01AcceptedHash
@@ -276,9 +315,9 @@ jobs:
           $check = Get-Content dist/release-manifest.json -Raw | ConvertFrom-Json
           if ($check.channel -ne 'stable' -or $check.stableReleaseEligible -ne $true -or $check.commit -ne $acceptedCommit) { throw 'Stable promotion manifest identity failed.' }
           if ($check.acceptedRcTag -ne $acceptedTag -or $check.promotionModel -ne 'byte-identical-rc-artifact-promotion') { throw 'Stable manifest lost accepted RC provenance.' }
-          if ($check.artifacts.Count -ne 2) { throw 'Stable promotion manifest must contain exactly two installer artifacts.' }
+          if ($check.artifacts.Count -ne 3) { throw 'Stable promotion manifest must contain exactly three installer artifacts.' }
           $hashes = @($check.artifacts | ForEach-Object { [string]$_.sha256 })
-          foreach ($required in @('${{ steps.accept.outputs.machine_sha256 }}','${{ steps.accept.outputs.user_sha256 }}')) {
+          foreach ($required in @('${{ steps.accept.outputs.machine_sha256 }}','${{ steps.accept.outputs.user_sha256 }}','${{ steps.accept.outputs.smart_sha256 }}')) {
             if ($hashes -notcontains $required) { throw "Stable manifest is missing accepted RC hash $required" }
           }
 
@@ -289,6 +328,7 @@ jobs:
           path: |
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup-PerUser.exe
+            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Smart-Installer.exe
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           if-no-files-found: error
@@ -303,16 +343,17 @@ jobs:
           make_latest: true
           generate_release_notes: true
           body: |
-            Public stable SonKuPik K500 v1.1.2.
+            Public stable SonKuPik K500 v1.1.3.
 
-            The machine installer and scope-matched per-user updater package are the exact binary bytes accepted from `${{ steps.accept.outputs.accepted_tag }}` at commit `${{ steps.accept.outputs.accepted_commit }}`. Stable promotion did not rebuild them. The recommended public download is the Smart Installer; no portable package is published for v1.1.2.
+            The public native Smart Installer plus the scope-matched machine/per-user updater backends are the exact binary bytes accepted from `${{ steps.accept.outputs.accepted_tag }}` at commit `${{ steps.accept.outputs.accepted_commit }}`. Stable promotion did not rebuild them. The public download is the native scope-aware Smart Installer, and the two legacy asset names remain available for existing updater compatibility. No portable package is published for v1.1.3.
 
-            v1.1.2 rolls forward the accepted post-v1.1.0 preset, System UX, capture-backed protocol and offline-handoff corrections while preserving the proven updater lifecycle. Windows x64 + USB HID remains the hardware-qualified scope; Bluetooth SPP remains experimental.
+            v1.1.3 rolls forward the accepted post-v1.1.0 preset, System UX, capture-backed protocol and offline-handoff corrections while preserving the proven updater lifecycle. Windows x64 + USB HID remains the hardware-qualified scope; Bluetooth SPP remains experimental.
 
             Binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
           files: |
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup-PerUser.exe
+            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Smart-Installer.exe
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true

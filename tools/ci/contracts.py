@@ -1504,10 +1504,10 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.2 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must be 1.1.2 for the patch release")
-    if "V1_1_2_PATCH_RELEASE_QUALIFICATION_ANCHOR" not in cmake:
-        FAILURES.append("CMakeLists.txt: v1.1.2 qualification anchor missing")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.3 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: source version must be 1.1.3 for the candidate release")
+    if "V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR" not in cmake:
+        FAILURES.append("CMakeLists.txt: v1.1.3 qualification anchor missing")
 
     legacy_acceptance = read("docs/V1_1_UPDATER_RC_ACCEPTANCE.md")
     for token in (
@@ -1537,25 +1537,53 @@ def check_release_contracts() -> None:
         if token not in historic111:
             FAILURES.append(f"historical v1.1.1 RC acceptance changed: {token}")
 
-    acceptance = read("docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md")
-    if not re.search(r"(?m)^UPDATER_V1_1_2_ACCEPTANCE=(pending|accepted)\s*$", acceptance):
-        FAILURES.append("v1.1.2 updater acceptance machine-readable token missing")
+    # Historical v1.1.2 acceptance is immutable; new RC has independent gate.
+    historic112 = read("docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md")
+    for token in (
+        "UPDATER_V1_1_2_ACCEPTANCE=accepted",
+        "UPDATER_V1_1_2_ACCEPTED_TAG=v1.1.2-rc.2",
+        "UPDATER_V1_1_2_ACCEPTED_COMMIT=8e3be5d4e567463e5bae4aa911537417aeba11b1",
+        "UPDATER_V1_1_2_MACHINE_SHA256=decd7d8e54837d664fa586a7425b502faeec27dee280d9dc48f6f6989a23b8ab",
+        "UPDATER_V1_1_2_USER_SHA256=f9a1f29a9b209f47ffeb4f289b0d28b38a9df10764927dcef304397c65b3171b",
+    ):
+        if token not in historic112:
+            FAILURES.append(f"historical v1.1.2 acceptance was altered: {token}")
+
+    acceptance = read("docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md")
+    if not re.search(r"(?m)^UPDATER_V1_1_3_ACCEPTANCE=(pending|accepted)\s*$", acceptance):
+        FAILURES.append("v1.1.3 updater acceptance machine-readable gate missing")
+    for token in (
+        "UPDATER_V1_1_3_ACCEPTED_TAG=",
+        "UPDATER_V1_1_3_ACCEPTED_COMMIT=",
+        "UPDATER_V1_1_3_MACHINE_SHA256=",
+        "UPDATER_V1_1_3_USER_SHA256=",
+        "UPDATER_V1_1_3_SMART_SHA256=",
+    ):
+        if token not in acceptance:
+            FAILURES.append(f"v1.1.3 acceptance record missing: {token}")
+
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "v1.1.2-rc.${{ inputs.rc_number }}",
-        "docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_2_ACCEPTANCE",
-        "v1.1.2 candidate is pending independent acceptance",
+        "v1.1.3-rc.${{ inputs.rc_number }}",
+        "docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md",
+        "UPDATER_V1_1_3_ACCEPTANCE",
+        "RC_THREE_SCOPE_INSTALLERS_V1",
+        "REAL_APP_SMART_RC_ACCEPTANCE_V1",
+        "Windows-Smart-Installer.exe",
+        "if ($check.artifacts.Count -ne 3)",
+        "v1.1.3 candidate is pending independent acceptance",
     )
     require(
         ".github/workflows/windows-updater-promote.yml",
-        "docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_2_ACCEPTED_COMMIT",
-        "$stableTag = 'v1.1.2'",
+        "docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md",
+        "UPDATER_V1_1_3_ACCEPTED_COMMIT",
+        "UPDATER_V1_1_3_SMART_SHA256",
+        "$stableTag = 'v1.1.3'",
         "PROMOTION_RC_TAG_MATCHES_SOURCE_VERSION_V1",
         "[regex]::Escape($version)",
         "if ($tag -notmatch $expectedRcPattern)",
-        "Public stable SonKuPik K500 v1.1.2.",
+        "ACCEPTED_SMART_REAL_APP_V1",
+        "Public stable SonKuPik K500 v1.1.3.",
     )
 
     require(
@@ -1664,8 +1692,10 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-promote.yml",
         "byte-identical-rc-artifact-promotion",
-        "UPDATER_V1_1_2_ACCEPTED_COMMIT",
+        "UPDATER_V1_1_3_ACCEPTED_COMMIT",
+        "UPDATER_V1_1_3_SMART_SHA256",
         "Stable staging changed accepted bytes:",
+        "if ($check.artifacts.Count -ne 3)",
         "overwrite_files: false",
     )
     require(
@@ -1777,12 +1807,12 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_2_ACCEPTANCE=accepted",
-        "v1.1.2 RC line is closed after acceptance/stable promotion",
+        "UPDATER_V1_1_3_ACCEPTANCE=accepted",
+        "v1.1.3 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md' -Raw")
+    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md' -Raw")
     rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):

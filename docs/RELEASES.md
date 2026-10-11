@@ -36,6 +36,20 @@ MAJOR.MINOR.PATCH
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
 
+## v1.1.3 RC — preparing, not public stable
+
+- Application source version: `1.1.3`; **latest public stable stays v1.1.2**.
+- Manual `Windows Updater Release Candidate` now packages **three** installer
+  variants from one exact main commit and validates the native Smart Installer
+  using real deployed Qt application bytes.
+- Existing Machine/Per-User asset names remain unchanged for updater compatibility;
+  the Smart Installer is a third new public-facing candidate.
+- Separate pending gate: `docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md`.
+- Required manual work: `docs/V1_1_3_SMART_INSTALLER_FIELD_QA.md`.
+- Stable promotion is blocked until recorded three-package SHA-256 acceptance,
+  real Windows upgrade/failure matrix and physical USB/HID K500 owner acceptance.
+- No change to old v1.1.2 published EXEs, tag, or accepted SHA-256 digests.
+
 ## v1.1.2 stable record
 
 - Stable tag: `v1.1.2`
