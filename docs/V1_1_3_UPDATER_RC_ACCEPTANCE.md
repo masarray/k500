@@ -18,6 +18,16 @@ Program Files. CI forced `/CURRENTUSER` and `/DIR`, obscuring the interactive
 default-path regression. The immutable RC.1 binaries/checksums remain
 historical evidence, **not eligible for acceptance**.
 
+The corrected native Smart Installer must provide a **consent-based direct
+machine-to-user migration** when it discovers the exact canonical Program
+Files machine install. It delegates to the app-owned SHA-256 verified helper:
+machine backup + HKLM snapshot first, per-user install + health-check second,
+one normal UAC for the protected old uninstaller third. It must refuse
+ambiguous, stale, or dual registration before touching either copy. It must
+not claim cleanup until the old app, HKLM uninstall registration and canonical
+Program Files folder are absent. If residual files cannot be safely attributed
+to the old installer, report incomplete cleanup; never delete blindly.
+
 Any acceptable **v1.1.3-rc.2 or higher** must install in
 `%LOCALAPPDATA%\\Programs\\SonKuPik K500` **without admin UAC, all-users
 choice, or scope flags**. It must reject a registered old machine install

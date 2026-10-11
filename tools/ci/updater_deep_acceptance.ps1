@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$Version,
     [Parameter(Mandatory = $true)][string]$UserSetup,
+    [string]$SmartSetup = '',
     [string]$PackageDir = "package",
     [string]$BuildDir = "build"
 )
@@ -57,6 +58,7 @@ function Stop-RelaunchedK500 {
 $packageRoot = (Resolve-Path $PackageDir).Path
 $buildRoot = (Resolve-Path $BuildDir).Path
 $userSetupPath = (Resolve-Path $UserSetup).Path
+$migrationSetupPath = if ($SmartSetup) { (Resolve-Path $SmartSetup).Path } else { $userSetupPath }
 $productionHelper = Join-Path $packageRoot 'SonKuPik-K500-Updater.exe'
 $appFixture = Join-Path $packageRoot 'SonKuPik-K500.exe'
 $fixtureRoot = Join-Path $buildRoot 'packaging'
@@ -239,12 +241,12 @@ $migrationLog = Join-Path $env:TEMP 'SonKuPik-K500-RC-migration.log'
 $migrationBackup = Join-Path $env:TEMP 'SonKuPik-K500-RC-migration-recovery'
 Remove-Item $migrationLog -Force -ErrorAction SilentlyContinue
 if (Test-Path $migrationBackup) { Remove-Item $migrationBackup -Recurse -Force }
-$migrationHash = (Get-FileHash $userSetupPath -Algorithm SHA256).Hash.ToLowerInvariant()
+$migrationHash = (Get-FileHash $migrationSetupPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
 $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
 $migrationArgs = @(
     '--parent-pid', "$($parent.Id)",
-    '--setup', ('"' + $userSetupPath + '"'),
+    '--setup', ('"' + $migrationSetupPath + '"'),
     '--app', ('"' + (Join-Path $machineDir 'SonKuPik-K500.exe') + '"'),
     '--target-app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
     '--version', $Version,

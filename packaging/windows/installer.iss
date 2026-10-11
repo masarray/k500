@@ -128,6 +128,11 @@ VersionInfoCopyright=Copyright © 2026 SonKuPik
 Name: "desktopicon"; Description: "Create a &desktop shortcut"; GroupDescription: "Additional shortcuts:"; Flags: unchecked
 
 [Files]
+#if SmartInstaller
+; Solid compression: extract the small migration helper first, never decompress
+; the entire full-app payload merely to show the migration prompt.
+Source: "{#AppDir}\SonKuPik-K500-Updater.exe"; Flags: dontcopy
+#endif
 Source: "{#AppDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
@@ -223,6 +228,155 @@ begin
   Result := RegKeyExists(HKLM64, Key) or RegKeyExists(HKLM32, Key);
 end;
 
+// SMART_VERIFIED_MACHINE_TO_USER_HANDOFF_V1
+// This entrypoint never uninstalls or deletes Program Files itself. It only
+// stages the exact bundled updater helper under the current user's temp dir.
+// The helper verifies THIS setup's SHA-256, snapshots the registered old
+// program + HKLM uninstall record, performs a validated per-user install,
+// then asks for one legitimate UAC to remove the old machine installation.
+function SmartMigrationHelperAuthorized: Boolean;
+begin
+  Result := (ExpandConstant('{param:MIGRATEFROMMACHINE|0}') = '1') and
+            (ExpandConstant('{param:HELPERUPDATE|0}') = '1') and
+            (ExpandConstant('{param:AUToupdate|0}') = '1');
+end;
+
+function GetCurrentProcessId: Cardinal;
+  external 'GetCurrentProcessId@kernel32.dll stdcall';
+
+function NumericVersionOnly(const Value: String): Boolean;
+var
+  I: Integer;
+begin
+  Result := Value <> '';
+  for I := 1 to Length(Value) do
+    if not ((Value[I] >= '0') and (Value[I] <= '9') or (Value[I] = '.')) then
+      Result := False;
+end;
+
+function BeginSmartMigration(var Reason: String): Boolean;
+var
+  Key: String;
+  OldDir: String;
+  Version: String;
+  MachineRoot: String;
+  TargetDir: String;
+  SetupPath: String;
+  SetupHash: String;
+  StageDir: String;
+  StagedHelper: String;
+  Params: String;
+  ExitCode: Integer;
+begin
+  Result := False;
+  Reason := '';
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
+
+  // All trust inputs must come from an exact 64-bit Machine registry entry.
+  // No guessed paths, broad registry cleanup, or unsupported dual installs.
+  // Unknown 32-bit parallel machine registration makes automatic migration
+  // ambiguous. Never leave an orphaned Windows Installed Apps record.
+  if RegKeyExists(HKLM32, Key) then
+  begin
+    Reason := 'Multiple Windows machine registrations exist. Automatic migration was blocked before changes.';
+    Exit;
+  end;
+  if not RegQueryStringValue(HKLM64, Key, 'Inno Setup: App Path', OldDir) or
+     not RegQueryStringValue(HKLM64, Key, 'DisplayVersion', Version) or
+     not NumericVersionOnly(Version) then
+  begin
+    Reason := 'Previous machine installation cannot be verified. Nothing changed.';
+    Exit;
+  end;
+  MachineRoot := AddBackslash(ExpandConstant('{commonpf}')) + '{#AppName}';
+  if (CompareText(AddBackslash(OldDir), AddBackslash(MachineRoot)) <> 0) or
+     not FileExists(AddBackslash(OldDir) + '{#AppExeName}') or
+     not FileExists(AddBackslash(OldDir) + 'unins000.exe') then
+  begin
+    Reason := 'Existing Program Files location or uninstaller is not canonical. No changes made.';
+    Exit;
+  end;
+
+  TargetDir := AddBackslash(ExpandConstant('{userpf}')) + '{#AppName}';
+  if RegKeyExists(HKCU64, Key) or RegKeyExists(HKCU32, Key) or
+     DirExists(TargetDir) then
+  begin
+    Reason := 'A per-user copy or directory already exists. Refusing to replace unknown user data.';
+    Exit;
+  end;
+
+  SetupPath := ExpandConstant('{srcexe}');
+  SetupHash := Lowercase(GetSHA256OfFile(SetupPath));
+  if Length(SetupHash) <> 64 then
+  begin
+    Reason := 'Could not authenticate the exact Smart Setup bytes.';
+    Exit;
+  end;
+
+  StageDir := AddBackslash(GetTempDir) + 'SonKuPik-K500-Migration-' +
+              IntToStr(GetCurrentProcessId);
+  // A reused process ID cannot overwrite a previous recovery/log directory.
+  if DirExists(StageDir) or not CreateDir(StageDir) then
+  begin
+    Reason := 'A migration work directory already exists or cannot be created.';
+    Exit;
+  end;
+  ExtractTemporaryFile('SonKuPik-K500-Updater.exe');
+  StagedHelper := AddBackslash(StageDir) + 'SonKuPik-K500-Updater.exe';
+  if not FileCopy(AddBackslash(ExpandConstant('{tmp}')) +
+                  'SonKuPik-K500-Updater.exe', StagedHelper, True) then
+  begin
+    Reason := 'Bundled verified migration helper could not be staged.';
+    Exit;
+  end;
+
+  Params := '--parent-pid ' + IntToStr(GetCurrentProcessId) +
+    ' --setup "' + SetupPath + '"' +
+    ' --app "' + AddBackslash(OldDir) + '{#AppExeName}"' +
+    ' --target-app "' + AddBackslash(TargetDir) + '{#AppExeName}"' +
+    ' --version "{#AppVersion}"' +
+    ' --previous-version "' + Version + '"' +
+    ' --log "' + AddBackslash(StageDir) + 'migration.log"' +
+    ' --sha256 ' + SetupHash +
+    ' --scope user --mode migrate' +
+    ' --backup "' + AddBackslash(StageDir) + 'Recovery"';
+
+  Result := Exec(StagedHelper, Params, '', SW_SHOWNORMAL, ewNoWait, ExitCode);
+  if not Result then
+    Reason := 'Could not start verified migration helper (Windows code ' +
+              IntToStr(ExitCode) + ').';
+end;
+
+function InitializeSetup(): Boolean;
+var
+  Reason: String;
+begin
+  Result := True;
+  if SmartMigrationHelperAuthorized or not SmartMachineRegistrationPresent or
+     WizardSilent then
+    Exit;
+
+  if MsgBox('SonKuPik K500 is already installed in Program Files.' + #13#10#13#10 +
+            'Move it to LocalAppData for future updates without administrator notices?' +
+            '' + #13#10 + 'Your existing app and presets remain until the new app passes health checks.' +
+            '' + #13#10#13#10 +
+            'Windows will request administrator permission ONCE to remove the old Program Files installation.' +
+            '' + #13#10 + 'Canceling that request will preserve the original installation.' +
+            '' + #13#10#13#10 + 'Start verified migration now?',
+            mbConfirmation, MB_YESNO) = IDYES then
+  begin
+    if BeginSmartMigration(Reason) then
+      MsgBox('Verified migration started. This setup window will close.' + #13#10 +
+             'The updater will verify the LocalAppData installation first, then request ' +
+             'Windows permission to remove the old Program Files installation.' +
+             '' + #13#10 + 'Do not restart the installer during migration.', mbInformation, MB_OK)
+    else
+      MsgBox(Reason, mbError, MB_OK);
+  end;
+  // Never install a parallel HKCU copy while the HKLM machine copy exists.
+  Result := False;
+end;
+
 function SmartRegisteredDestinationSafe(var Reason: String): Boolean;
 var
   Key: String;
@@ -274,7 +428,9 @@ begin
     Log('PUBLIC_LOCALAPPDATA_ONLY_SMART_V1: rejected unexpected admin mode.');
     Exit;
   end;
-  Collision := SmartMachineRegistrationPresent;
+  // The app-owned helper explicitly requests a temporary two-scope handoff,
+  // but only after the old machine copy is snapshotted for recovery.
+  Collision := SmartMachineRegistrationPresent and not SmartMigrationHelperAuthorized;
 
   if Collision then
   begin

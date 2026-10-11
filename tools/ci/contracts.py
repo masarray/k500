@@ -1629,6 +1629,40 @@ def check_release_contracts() -> None:
         "Mass Upload offline guard regression (offline)",
         "node tools/ci/test_mass_upload_offline.js",
     )
+    # Machine-to-user must be initiated by explicit GUI consent and handed
+    # to the same transactional updater as the in-app migration, not a
+    # recursive filesystem deletion inside Inno.
+    require(
+        "packaging/windows/installer.iss",
+        "SMART_VERIFIED_MACHINE_TO_USER_HANDOFF_V1",
+        "BeginSmartMigration",
+        "SmartMigrationHelperAuthorized",
+        "ExtractTemporaryFile('SonKuPik-K500-Updater.exe')",
+        "GetSHA256OfFile(SetupPath)",
+        "IsAdminInstallMode",
+        "DefaultDirName={userpf}",
+        "Start verified migration now?",
+        "Nothing changed.",
+        "SW_SHOWNORMAL, ewNoWait",
+    )
+    require(
+        "packaging/windows/update_helper.cpp",
+        "SMART_POST_MIGRATION_PROGRAMFILES_CLEAN_V1",
+        "oldMachineRegistrationAbsent()",
+        "canonicalProgramFiles",
+        "oldDirectoryGone",
+        "return fail(request, 36,",
+    )
+    require(
+        "tools/ci/updater_deep_acceptance.ps1",
+        "[string]$SmartSetup",
+        "$migrationSetupPath",
+        "$migrationHash",
+    )
+    require(
+        ".github/workflows/windows-updater-rc.yml",
+        '-SmartSetup "dist/SonKuPik-K500-',
+    )
     # ISSUE182_PUBLIC_LOCALAPPDATA_ONLY_SMART_V1 — never default to
     # Program Files or use previous machine privileges on the public Setup.
     require(
