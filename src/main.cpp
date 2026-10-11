@@ -23,6 +23,7 @@
 #include "StudioEngine.h"
 #include "k500/K500Controller.h"
 #include "k500/K500DeviceManager.h"
+#include "k500/K500PresetManager.h"
 #include "k500/K500Frame.h"
 #include "k500/K500Protocol.h"
 #include "k500/K500ResponseParser.h"
@@ -178,6 +179,24 @@ int main(int argc, char *argv[])
                      &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
     QObject::connect(&deviceManager, &K500DeviceManager::adjMannerVrOffAccepted,
                      &studioEngine, &StudioEngine::syncAdjMannerVrOff);
+
+    // SYNC_MASTER_INIT_LAZY_V1 — the always-alive StudioEngine owns source
+    // synchronization even while the System workspace is lazy/unloaded.
+    const auto updateMasterInitAuthority = [&] {
+        studioEngine.setMasterInitLiveAllowed(deviceManager.connected()
+                                              && deviceManager.liveEnabled());
+    };
+    QObject::connect(&deviceManager, &K500DeviceManager::statusChanged,
+                     &studioEngine, updateMasterInitAuthority);
+    QObject::connect(&deviceManager, &K500DeviceManager::liveEnabledChanged,
+                     &studioEngine, updateMasterInitAuthority);
+    auto *presetManager = qobject_cast<K500PresetManager *>(deviceManager.presetManager());
+    if (presetManager) {
+        presetManager->setMasterInitSyncSource(&studioEngine);
+        QObject::connect(presetManager, &K500PresetManager::savePreflightRequested,
+                         &studioEngine, &StudioEngine::flushPendingMasterInitWrites);
+    }
+    updateMasterInitAuthority();
 
     // SYNC_MASTER_INIT_REGRESSION_V1 — real StudioEngine and real 160ms
     // debounce; no hardware I/O, no synthetic controller protocol edits.
