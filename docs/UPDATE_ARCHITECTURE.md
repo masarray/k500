@@ -22,6 +22,31 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## v1.1.3 — immutable three-installer RC pipeline (candidate, not public)
+
+**Next source line** is `1.1.3`, but public Latest stays **v1.1.2**. The
+existing manual Windows Updater Release Candidate workflow (no new workflow)
+now packages the same real-app commit into three Inno variants: original
+Machine Setup, original scope-matched Per-User Setup, and native Smart Setup.
+The new RC acceptance is `docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md`, initially
+`pending`. RC CI runs actual app health checks, same-scope Smart reinstall
+and user-owned sentinel protection, plus the established updater helper deep
+acceptance and rollback tests. Manifest and SHA256SUMS must list all **three**
+assets, with immutable tag-to-source provenance.
+
+The existing manual Stable Promotion workflow is also versioned to 1.1.3 and
+accepts three verified hash values. It cannot publish stable while the new
+gate is pending, cannot rebuild accepted installers, and cannot overwrite
+existing RC/stable tags. The published stable v1.1.2 binary and its acceptance
+record remain immutable. Landing `/download/windows` deliberately remains
+on accepted v1.1.2 while this RC is unqualified. When new stable promotion
+is genuinely accepted, separately switch the public download route to the
+Smart asset without renaming the legacy machine/per-user updater backends.
+
+See `docs/V1_1_3_SMART_INSTALLER_FIELD_QA.md` for manual GitHub Actions UI
+steps, real Windows legacy installation matrix and physical K500 USB/HID QA.
+No signing or Windows security bypass is assumed.
+
 ## Issue #182 — native unified Inno Smart Installer candidate (source-only)
 
 `NATIVE_SMART_INSTALLER_V1` adds a **third output of the existing Inno script**,
