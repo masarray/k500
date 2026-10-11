@@ -163,7 +163,7 @@ jobs:
               $manifest.publicInstaller -ne (Split-Path $smartRc -Leaf)) {
             throw 'Accepted RC manifest provenance is invalid.'
           }
-          foreach ($path in @($machineRc,$userRc)) {
+          foreach ($path in @($machineRc,$userRc,$smartRc)) {
             $name = Split-Path $path -Leaf
             $entry = @($manifest.artifacts | Where-Object { $_.file -eq $name })
             if ($entry.Count -ne 1) { throw "RC manifest does not uniquely identify $name" }
