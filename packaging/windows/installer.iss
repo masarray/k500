@@ -151,7 +151,9 @@ begin
   Result := ExpandConstant('{param:HELPERUPDATE|0}') = '1';
 end;
 
-#if PerUser == 0
+#if PerUser
+// Per-user backend has its own existing scope guard below.
+#else
 // MIGRATE_LOCALAPPDATA_INSTALL_V1 / SAFE_CROSS_SCOPE_PREFLIGHT_V1
 // Machine setup must not execute a current-user uninstaller from elevated
 // context. A failed or partial cross-scope uninstall could leave duplicates.
