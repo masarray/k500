@@ -22,6 +22,49 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## Issue #182 — native unified Inno Smart Installer candidate (source-only)
+
+`NATIVE_SMART_INSTALLER_V1` adds a **third output of the existing Inno script**,
+`SonKuPik-K500-v<VERSION>-Windows-Smart-Installer.exe`, using the same
+immutable AppId. It is built with `/DSmartInstaller=1` and must not be confused
+with the legacy Machine `Windows-Setup.exe` or Per-User
+`Windows-Setup-PerUser.exe`. Those two historical filenames remain unchanged
+because installed updaters select and verify their scope-matched assets.
+
+The new public-facing candidate uses **native Inno 6 privilege selection**:
+`PrivilegesRequired=lowest`, `PrivilegesRequiredOverridesAllowed=dialog`,
+`UsePreviousPrivileges=yes` and `{autopf}`. New installations default to the
+non-admin per-user mode, with a clear built-in choice for all users (Windows
+UAC when selected). On same-AppId reinstall, Inno reuses the previous scope;
+no custom elevated bootstrap executable, registry-name sweep, or network
+connection is required. **An explicit `/CURRENTUSER` or `/ALLUSERS` choice
+is not authorization for unverified cross-scope migration.**
+
+Before copying files, the smart variant checks for an opposite-scope
+registration; machine mode uses the original-user HKCU/LocalAppData preflight
+introduced in PR #185. It also checks the selected scope's recorded Inno
+application directory against the requested destination. A missing uninstaller,
+missing installed binary, missing registered path, existing unregistered binary,
+noncanonical previous directory, or ambiguous dual-install state **blocks**
+with repair guidance rather than overwriting files or inventing a cleanup plan.
+This preflight protects the current Windows user; installations in *other*
+Windows users' profiles cannot be safely enumerated or modified here.
+
+The existing consolidated Installer Smoke CI compiles all three modes and
+checks a fresh Smart per-user install, reinstall with **automatic previous
+scope reuse**, preservation of a user-owned sentinel, opposite machine-scope
+collision and stale HKCU registration. These are Windows fixture tests, not
+qualifications of the owner's old v1.0.x installed environments or real USB
+hardware. Manual installs do **not** yet have the application-owned helper's
+verified executable rollback transaction: do not claim full migration or
+install-time rollback is delivered. No recursive file deletion is performed.
+
+**Publication gate:** Source/CI only. Do not change the landing download route
+or stable release manifest to the candidate name until a new version/RC has
+qualified the third *real-app* installer, the RC/stable SHA-256 pipeline has
+been updated without changing accepted v1.1.2 bytes, and Windows/K500 field
+acceptance is complete. The current public v1.1.2 release is immutable.
+
 ## Issue #182 — safe machine installer preflight (candidate only)
 
 `SAFE_CROSS_SCOPE_PREFLIGHT_V1` replaces the unsafe earlier machine Setup path

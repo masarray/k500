@@ -65,6 +65,13 @@ if ($LASTEXITCODE -ne 0) { throw "Machine installer script failed to compile" }
 & $iscc "/DAppVersion=$version" "/DPerUser=1" packaging/windows/installer.iss
 if ($LASTEXITCODE -ne 0) { throw "Per-user installer script failed to compile" }
 
+Write-Host "==> Compile native scope-aware public Smart Installer"
+& $iscc "/DAppVersion=$version" "/DSmartInstaller=1" packaging/windows/installer.iss
+if ($LASTEXITCODE -ne 0) { throw "Native Smart Installer failed to compile" }
+$smart = "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe"
+if (-not (Test-Path $smart)) { throw "Native Smart Installer output missing" }
+$smart = (Resolve-Path $smart).Path
+
 $perUser = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
 if (-not (Test-Path $perUser)) { throw "Per-user installer output missing" }
 
@@ -120,6 +127,84 @@ try {
 } finally {
     Remove-Item -LiteralPath $sentinel -Force -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $legacyDir -ErrorAction SilentlyContinue
+}
+
+
+Write-Host "==> Smart Installer current-user fresh install and previous-scope reuse"
+$smartDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-CI-Smart'
+if (Test-Path $smartDir) { throw "Smart Installer test directory already exists" }
+$smartArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$smartDir"))
+$first = Start-Process -FilePath $smart -ArgumentList $smartArgs -Wait -PassThru
+if ($first.ExitCode -ne 0) { throw "Smart Installer first per-user install failed: $($first.ExitCode)" }
+if (-not (Test-Path (Join-Path $smartDir 'unins000.exe'))) {
+    throw "Smart Installer did not register install in selected current-user location"
+}
+$smartKey = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+$smartReg = & reg.exe QUERY $smartKey /v 'Inno Setup: App Path' /reg:64
+if ($LASTEXITCODE -ne 0 -or (($smartReg | Out-String) -notlike "*$smartDir*")) {
+    throw "Smart Installer did not retain a valid HKCU uninstall registration"
+}
+$userMarker = Join-Path $smartDir 'ci-user-owned-sentinel.txt'
+[IO.File]::WriteAllText($userMarker, 'KEEP-SMART-USER-DATA')
+# Omit /CURRENTUSER on the second install: UsePreviousPrivileges must detect
+# the existing Inno AppId and keep the per-user scope without a UAC request.
+$second = Start-Process -FilePath $smart -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$smartDir")
+) -Wait -PassThru
+if ($second.ExitCode -ne 0) { throw "Smart Installer did not reuse existing HKCU scope: $($second.ExitCode)" }
+if ((Get-Content $userMarker -Raw) -ne 'KEEP-SMART-USER-DATA') {
+    throw "Smart Installer changed the user-owned sentinel on upgrade"
+}
+$smartReg = & reg.exe QUERY $smartKey /v 'Inno Setup: App Path' /reg:64
+if ($LASTEXITCODE -ne 0 -or (($smartReg | Out-String) -notlike "*$smartDir*")) {
+    throw "Smart Installer upgrade lost its original HKCU registration"
+}
+$smartCleanup = Start-Process -FilePath (Join-Path $smartDir 'unins000.exe') -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+) -Wait -PassThru
+if ($smartCleanup.ExitCode -ne 0) { throw "Smart Installer uninstall failed" }
+Remove-Item -LiteralPath $userMarker -Force -ErrorAction SilentlyContinue
+Remove-Item -LiteralPath $smartDir -ErrorAction SilentlyContinue
+
+Write-Host "==> Smart Installer rejects opposite-scope registered machine install"
+$machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+& reg.exe QUERY $machineKey /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Smart machine collision fixture would overwrite an existing registration" }
+& reg.exe ADD $machineKey /v DisplayName /t REG_SZ /d 'K500 CI Smart machine scope' /f /reg:64 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Cannot add machine collision fixture" }
+try {
+    $blocked = Start-Process -FilePath $smart -ArgumentList @(
+        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$smartDir")
+    ) -Wait -PassThru
+    if ($blocked.ExitCode -ne 7) {
+        throw "Smart Installer did not block opposite scope (exit $($blocked.ExitCode))"
+    }
+    if (Test-Path (Join-Path $smartDir 'SonKuPik-K500.exe')) {
+        throw "Smart Installer wrote executable despite opposite scope"
+    }
+} finally {
+    & reg.exe DELETE $machineKey /f /reg:64 *> $null
+}
+& reg.exe QUERY $machineKey /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Smart machine collision registration was not removed" }
+
+Write-Host "==> Smart Installer fails closed on stale same-scope registration"
+& reg.exe QUERY $smartKey /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "HKCU stale fixture would overwrite an installed app" }
+& reg.exe ADD $smartKey /v DisplayName /t REG_SZ /d 'K500 CI Smart stale state' /f /reg:64 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Cannot add stale-registration fixture" }
+try {
+    $blocked = Start-Process -FilePath $smart -ArgumentList @(
+        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$smartDir")
+    ) -Wait -PassThru
+    if ($blocked.ExitCode -ne 7) {
+        throw "Smart Installer did not block stale same-scope registration: $($blocked.ExitCode)"
+    }
+    if (Test-Path (Join-Path $smartDir 'SonKuPik-K500.exe')) {
+        throw "Smart Installer wrote executable despite stale registration"
+    }
+} finally {
+    & reg.exe DELETE $smartKey /f /reg:64 *> $null
 }
 
 # The final registry QUERY intentionally returns 1 when the fixture is absent.
