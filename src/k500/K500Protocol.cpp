@@ -346,12 +346,13 @@ QByteArray topMusicBlock(const K500MusicBlockState &state, const QByteArray &dev
                          ? K500Frame::clampByte(qBound(0, state.noiseGateRaw, 41))
                          : mirrored(ReadbackOffset::MusicNoiseGate, 0x00)));
 
-    // TOP_MUSIC_TAIL_SOURCE_PENDING_20261004 — keep the pre-existing writer
-    // behavior for compatibility, but do NOT promote activeMemory[0x0007] as
-    // captured tail truth: 0x0007 is now proven Music HP Type, and the latest
-    // native CMD 0x02 capture can carry a different tail value. A dedicated
-    // donor-isolation capture is required before changing this preservation path.
-    body.append(char(mirrored(0x07, 0x02)));
+    // NATIVE_MUSIC_CMD02_TAIL_20261011_V1 — paired real USB PCAPNG traces:
+    // Native KTV sets the final CMD 0x02 payload byte to 0x00 even when
+    // activeMemory[0x0007] is 0x02 (Music HP Type). SonKuPik previously
+    // mirrored that unrelated filter byte and transmitted 0x02, differing
+    // from every Native KTV Master/Init write in this captured session.
+    // Use the captured 0x00 value, never invent tail state from a filter.
+    body.append(char(0x00));
     return K500Frame::build(body);
 }
 
@@ -787,7 +788,7 @@ bool selfTest(QString *error)
         return fail(QStringLiteral("crossover filter-code validity mismatch"));
 
     K500MusicBlockState music;
-    if (!expect(topMusicBlock(music, {}), {0xAA, 0x0D, 0x02, 0x23, 0x19, 0x54, 0x02, 0x09, 0x09, 0x09, 0x08, 0x08, 0x07, 0x00, 0x02, 0x2B}, QStringLiteral("top music default"))) return false;
+    if (!expect(topMusicBlock(music, {}), {0xAA,0x0D,0x02,0x23,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x00,0x00,0x2D}, QStringLiteral("top music default"))) return false;
 
     // MUSIC_MAX_NATIVE_CEILING_V1 — exact native capture points.
     K500MusicBlockState maxCapture;
@@ -802,16 +803,16 @@ bool selfTest(QString *error)
     maxScalars[0x03] = char(25);
     maxScalars[0x07] = char(2);
     if (!expect(topMusicBlock(maxCapture, maxScalars),
-                {0xAA,0x0D,0x02,0x19,0x19,0x3C,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x38},
+                {0xAA,0x0D,0x02,0x19,0x19,0x3C,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0x3A},
                 QStringLiteral("Music Max 60 preserves Top Music 25"))) return false;
     maxCapture.musicMaxVol = 20;
     if (!expect(topMusicBlock(maxCapture, maxScalars),
-                {0xAA,0x0D,0x02,0x14,0x19,0x14,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x65},
+                {0xAA,0x0D,0x02,0x14,0x19,0x14,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0x67},
                 QStringLiteral("Music Max 20 clamps Top Music to 20"))) return false;
     maxCapture.topMusicVol = 0;
     maxCapture.musicMaxVol = 84;
     if (!expect(topMusicBlock(maxCapture, maxScalars),
-                {0xAA,0x0D,0x02,0x00,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x02,0x39},
+                {0xAA,0x0D,0x02,0x00,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0x3B},
                 QStringLiteral("raising Music Max does not raise Top Music"))) return false;
 
     K500MusicBlockState gateCapture;
@@ -830,15 +831,15 @@ bool selfTest(QString *error)
     gateScalars[0x07] = char(0x13);
     gateCapture.noiseGateRaw = musicNoiseGateRaw(NativeRange::MusicNoiseGateOffDb);
     if (!expect(topMusicBlock(gateCapture, gateScalars),
-                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x00,0x13,0x24},
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x00,0x00,0x37},
                 QStringLiteral("Music Noise Gate OFF capture"))) return false;
     gateCapture.noiseGateRaw = musicNoiseGateRaw(-90);
     if (!expect(topMusicBlock(gateCapture, gateScalars),
-                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x01,0x13,0x23},
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x01,0x00,0x36},
                 QStringLiteral("Music Noise Gate -90 capture"))) return false;
     gateCapture.noiseGateRaw = musicNoiseGateRaw(-50);
     if (!expect(topMusicBlock(gateCapture, gateScalars),
-                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x00,0x0E},
                 QStringLiteral("Music Noise Gate -50 capture"))) return false;
 
     // MUSIC_TONE_READBACK_20261004_V1 — poison the historical 0x001B gate
@@ -851,7 +852,7 @@ bool selfTest(QString *error)
     reconnectGateScalars[ReadbackOffset::MusicNoiseGate] = char(0x29);
     reconnectGateScalars[0x1B] = char(0x7F); // poison old guessed gate donor
     if (!expect(topMusicBlock(reconnectGateCapture, reconnectGateScalars),
-                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x13,0xFB},
+                {0xAA,0x0D,0x02,0x19,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x29,0x00,0x0E},
                 QStringLiteral("Music Gate reconnect readback donor"))) return false;
 
     if (!expect(musicBass(-12.0), {0xAA,0x06,0x0C,0x02,0x00,0x00,0x00,0x09,0xE3},
@@ -868,7 +869,7 @@ bool selfTest(QString *error)
     scalars[0x1B] = char(0x7F); // poison historical guessed gate donor
     scalars[0x07] = char(0x06); // legacy tail seed, still evidence-gated
     music.topMusicVol = 70; music.musicInitVol = 49; music.musicMaxVol = 82; music.sourceRaw = 4; music.input1GainDb = 3.0; music.input2GainDb = -1.0; music.bluetoothGainDb = 5.0; music.uDiskGainDb = -3.0; music.digitalGainDb = -4.0; music.key = 3;
-    if (!expect(topMusicBlock(music, scalars), {0xAA, 0x0D, 0x02, 0x46, 0x31, 0x52, 0x04, 0x0F, 0x0B, 0x11, 0x09, 0x08, 0x0A, 0x0B, 0x06, 0xCD}, QStringLiteral("top music captured init scalar"))) return false;
+    if (!expect(topMusicBlock(music, scalars), {0xAA,0x0D,0x02,0x46,0x31,0x52,0x04,0x0F,0x0B,0x11,0x09,0x08,0x0A,0x0B,0x00,0xD3}, QStringLiteral("top music captured init scalar"))) return false;
 
     K500MusicBlockState musicInitCapture;
     musicInitCapture.topMusicVol = 25; musicInitCapture.musicInitVol = 84; musicInitCapture.musicMaxVol = 84;
@@ -881,6 +882,34 @@ bool selfTest(QString *error)
     if (!expect(K500Frame::toUsbFrame(topMusicBlock(musicInitCapture, musicInitScalars)),
                 {0xAA,0x0D,0x00,0x02,0x19,0x54,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0xE7},
                 QStringLiteral("Music Init 84 USB capture"))) return false;
+
+    // NATIVE_KTV_20261011_MUSIC_25_TO_15_WIRE_GOLDEN_V1:
+    // USB capture native 0x02 kept tail 00 despite HP Type 02 in memory.
+    // RSP 0xFD follows each write. SonKuPik's old tail 02 diverged.
+    K500MusicBlockState physicalMusic;
+    physicalMusic.topMusicVol = 24;
+    physicalMusic.musicInitVol = 25;
+    physicalMusic.musicMaxVol = 84;
+    physicalMusic.sourceRaw = 2;
+    physicalMusic.input1GainDb = -3;
+    physicalMusic.input2GainDb = -3;
+    physicalMusic.bluetoothGainDb = -3;
+    physicalMusic.uDiskGainDb = -4;
+    physicalMusic.digitalGainDb = -4;
+    physicalMusic.key = 0;
+    physicalMusic.noiseGateRaw = 21;
+    QByteArray physicalScalars(0x40, char(0));
+    physicalScalars[0x07] = char(0x02); // HP Type: must not leak into CMD 02 tail
+    if (!expect(K500Frame::toUsbFrame(topMusicBlock(physicalMusic, physicalScalars)),
+                {0xAA,0x0D,0x00,0x02,0x18,0x19,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0x23},
+                QStringLiteral("Native CMD02 Music Master 24 / Init 25")))
+        return false;
+    physicalMusic.topMusicVol = 15;
+    physicalMusic.musicInitVol = 15;
+    if (!expect(K500Frame::toUsbFrame(topMusicBlock(physicalMusic, physicalScalars)),
+                {0xAA,0x0D,0x00,0x02,0x0F,0x0F,0x54,0x02,0x09,0x09,0x09,0x08,0x08,0x07,0x15,0x00,0x36},
+                QStringLiteral("Native CMD02 Music Master 15 / Init 15")))
+        return false;
 
     K500MicBlockState mic;
     if (!expect(topMicBlock(mic, {}), {0xAA, 0x0E, 0x05, 0x23, 0x19, 0x54, 0x0B, 0x00, 0x00, 0x60, 0x60, 0x26, 0x03, 0x0A, 0x02, 0x00, 0x5D}, QStringLiteral("top mic default"))) return false;

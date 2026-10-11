@@ -148,8 +148,11 @@ private:
     StudioEngine *m_syncSource = nullptr;
     int m_saveDrainPolls = 0;
     int m_saveQuietPolls = 0;
-    bool m_verifySaveInit = false;
-    std::array<int, 3> m_saveInitExpected{};
+    // Capture actual USER-approved LIVE levels *before* a 939-byte pre-Store
+    // readback can overwrite the editor with persistent slot shadow bytes.
+    // Mask bits match K500PresetProtocol::withStartupVolumeOverrides().
+    quint8 m_saveVolumeMask = 0;
+    std::array<int, 6> m_saveVolumeLevels{};
 
     Operation m_operation = Operation::None;
     Step m_step = Step::Idle;
