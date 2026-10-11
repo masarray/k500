@@ -5,7 +5,6 @@
 #include <QMetaObject>
 #include <QPointer>
 #include <QQueue>
-#include <QPointer>
 #include <QList>
 #include <utility>
 #include <QTimer>
@@ -806,9 +805,13 @@ bool K500WinIo::writeProtocolFrame(const QByteArray &btFrame, QString *error)
     // The worker serializes protocol frames and HID report chunks in FIFO order.
     Impl *worker = d;
     const QByteArray frame = btFrame;
-    QMetaObject::invokeMethod(worker, [worker, frame] {
-        worker->enqueueProtocolFrame(frame);
-    }, Qt::QueuedConnection);
+    if (!QMetaObject::invokeMethod(worker, [worker, frame] {
+            worker->enqueueProtocolFrame(frame);
+        }, Qt::QueuedConnection)) {
+        if (error) *error = QStringLiteral("Cannot enqueue native transport frame");
+        return false;
+    }
+    ++m_submittedFrameCount;
     return true;
 #else
     Q_UNUSED(btFrame)

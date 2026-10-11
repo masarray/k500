@@ -30,6 +30,11 @@ bool runCycles(int count, QString *error)
             return false;
         }
 
+        if (io.submittedFrameCount() != 0) {
+            if (error)
+                *error = QStringLiteral("Closed transport admission counter moved despite rejected frame.");
+            return false;
+        }
         // PRESET_WORKER_DRAIN_BARRIER_V1 — closed workers must not
         // falsely acknowledge a write-drain barrier or start new work.
         if (io.requestWriteDrain(1) || io.requestWriteDrain(0)) {

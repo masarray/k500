@@ -151,6 +151,7 @@ private:
     int m_saveDrainPolls = 0;
     int m_saveQuietPolls = 0;
     quint64 m_saveDrainBarrierId = 0;
+    quint64 m_saveDrainSubmittedFrameCount = 0;
     bool m_saveDrainRequested = false;
     bool m_saveDrainCompleted = false;
     // Capture actual USER-approved LIVE levels *before* a 939-byte pre-Store

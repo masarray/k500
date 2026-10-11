@@ -43,7 +43,10 @@ The transaction state machine now has a testable, exact TX ownership policy:
 - **Save barrier:** after the controller/scheduler has settled, post an
   ordered token to the transport worker and wait asynchronously until
   **all earlier HID reports actually complete**, or serial WriteFile
-  finishes. If transport does not drain within the bounded Save preflight,
+  finishes. The GUI-thread admitted-frame counter is captured alongside the
+  token: if the user continues moving Master during preflight, any later LIVE
+  write invalidates that token and requires a fresh quiet/worker barrier.
+  If transport does not drain within the bounded Save preflight,
   fail before any Store starts. This barrier does not claim device ACK.
 - **Store:** success requires acknowledged final `0xBC`; chunk `0xBD`
   advances only in AwaitChunkAck. The state machine does not retry 0x41/42/43

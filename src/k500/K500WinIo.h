@@ -50,6 +50,9 @@ public:
     // (or serial WriteFile returned), not hardware DSP acknowledgement.
     // Do not block the GUI waiting for Win32 completion.
     bool requestWriteDrain(quint64 token);
+    // PRESET_DRAIN_GENERATION_FENCE_V1 — GUI-thread admission generation:
+    // any newer accepted frame invalidates a previously requested Save barrier.
+    quint64 submittedFrameCount() const { return m_submittedFrameCount; }
 
 signals:
     void bytesReceived(const QByteArray &bytes);
@@ -70,4 +73,5 @@ private:
     QString m_label;
     bool m_open = false;
     bool m_shutdown = false;
+    quint64 m_submittedFrameCount = 0;
 };

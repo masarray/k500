@@ -513,6 +513,15 @@ void K500PresetManager::pollSaveLiveDrain()
                              QStringLiteral("K500 kehilangan koneksi LIVE sebelum Save."));
         return;
     }
+    // PRESET_DRAIN_GENERATION_FENCE_V1 — worker may report an earlier
+    // token as drained while the user keeps moving a Master fader.
+    // Never reuse that token if ANY later LIVE frame was submitted.
+    if (m_saveDrainRequested && m_saveDrainSubmittedFrameCount
+                                 != m_manager->m_io.submittedFrameCount()) {
+        m_saveDrainRequested = false;
+        m_saveDrainCompleted = false;
+        m_saveQuietPolls = 0;
+    }
     const bool queued = !m_manager->m_transactionScheduler.empty()
         || (m_manager->m_controller
             && (m_manager->m_controller->hasQueuedLiveFrames()
@@ -544,6 +553,7 @@ void K500PresetManager::pollSaveLiveDrain()
         m_saveDrainRequested = true;
         m_saveDrainCompleted = false;
         ++m_saveDrainBarrierId;
+        m_saveDrainSubmittedFrameCount = m_manager->m_io.submittedFrameCount();
         if (!m_manager->m_io.requestWriteDrain(m_saveDrainBarrierId)) {
             m_operation = Operation::None;
             emit busyChanged();

@@ -680,7 +680,12 @@ def check_ui_contracts() -> None:
     require("src/k500/K500PresetManager.cpp",
             "PRESET_WORKER_DRAIN_BARRIER_V1",
             "requestWriteDrain(m_saveDrainBarrierId)",
-            "m_saveDrainCompleted", "m_playerStatusTimer.stop()")
+            "m_saveDrainCompleted", "m_playerStatusTimer.stop()",
+            "PRESET_DRAIN_GENERATION_FENCE_V1", "submittedFrameCount()")
+    require("src/k500/K500WinIo.cpp",
+            "m_submittedFrameCount", "Cannot enqueue native transport frame")
+    require("src/k500/K500WinIo.h",
+            "PRESET_DRAIN_GENERATION_FENCE_V1")
     require("src/k500/P2TransportLifecycleSelfTestMain.cpp",
             "PRESET_WORKER_DRAIN_BARRIER_V1", "io.requestWriteDrain(1)")
     require("src/k500/K500Protocol.cpp",
