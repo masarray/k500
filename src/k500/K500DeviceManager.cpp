@@ -143,7 +143,7 @@ void K500DeviceManager::disconnectDevice()
 
 void K500DeviceManager::sendPlayerCommand(const QString &command)
 {
-    if (!connected())
+    if (!connected() || presetTransactionActive())
         return;
 
     if (!writeFrame(K500Protocol::playerCommand(command),
@@ -156,14 +156,14 @@ void K500DeviceManager::sendPlayerCommand(const QString &command)
     // changes made outside SonKuPik.
     QTimer::singleShot(180, this, [this] {
         if (m_stage == Stage::Ready && connected() && m_liveEnabled
-            )
+            && !presetTransactionActive())
             writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status refresh"));
     });
 }
 
 void K500DeviceManager::toggleMute()
 {
-    if (!connected())
+    if (!connected() || presetTransactionActive())
         return;
     const bool next = !m_muted;
     if (writeFrame(K500Protocol::mute(next), next ? QStringLiteral("Mute ON")
@@ -173,9 +173,10 @@ void K500DeviceManager::toggleMute()
 
 void K500DeviceManager::sendLiveFrame(const QByteArray &frame, const QString &label)
 {
-    if (!connected() || !m_liveEnabled || frame.isEmpty())
+    if (!connected() || !m_liveEnabled
+        || (presetTransactionActive() && !presetSavePreflightPending()) || frame.isEmpty())
         return;
-    writeFrame(frame, label);
+    writeFrame(frame, label, TxOwner::Live);
 }
 
 
@@ -193,7 +194,8 @@ void K500DeviceManager::sendPlannedCommand(quint64 sessionEpoch, quint64 token,
                                    QStringLiteral("Stale command rejected after device-session change"));
         return;
     }
-    if (!connected() || !m_liveEnabled || frame.isEmpty()) {
+    if (!connected() || !m_liveEnabled
+        || (presetTransactionActive() && !presetSavePreflightPending()) || frame.isEmpty()) {
         emit commandDispatchResult(sessionEpoch, token, path, false,
                                    QStringLiteral("Native transport is not LIVE for this session"));
         return;
@@ -250,6 +252,7 @@ void K500DeviceManager::dispatchScheduledCommands()
 {
     m_schedulerTimer.stop();
     if (!m_controller || !connected() || !m_liveEnabled
+        || (presetTransactionActive() && !presetSavePreflightPending())
         || !m_transactionScheduler.sessionActive()) {
         cancelScheduledTransactions(QStringLiteral("Native transport left LIVE state before scheduler dispatch"));
         return;
@@ -272,7 +275,8 @@ void K500DeviceManager::dispatchScheduledCommands()
 
         const qint64 dispatchMs = schedulerNowMs();
         m_transactionScheduler.noteDispatched(*transaction, dispatchMs);
-        const bool accepted = writeFrame(transaction->frame, transaction->label);
+        const bool accepted = writeFrame(transaction->frame, transaction->label,
+                                         TxOwner::Live);
         emit commandDispatchResult(
             transaction->sessionEpoch, transaction->token, transaction->semanticPath, accepted,
             accepted ? QString{} : QStringLiteral("Native asynchronous transport rejected command"));
@@ -827,7 +831,9 @@ void K500DeviceManager::connectionTimeout()
 
 void K500DeviceManager::heartbeatTick()
 {
-    if (m_stage != Stage::Ready || !connected())
+    // An exclusive preset operation stops heartbeat production; a queued
+    // timer callback must not restart watchdog/TX during 0x41/0x42/0x43.
+    if (m_stage != Stage::Ready || !connected() || presetTransactionActive())
         return;
 
     if (m_lastValidRx.isValid() && m_lastValidRx.elapsed() > ConnectionWatchdogMs) {
@@ -847,7 +853,7 @@ void K500DeviceManager::playerStatusTick()
     // verification. A first upload may otherwise finish all Store ACKs (99%)
     // but lose its final C0/BF verification while RX/TX is shared.
     if (m_stage != Stage::Ready || !connected() || !m_liveEnabled
-        )
+        || presetTransactionActive())
         return;
 
     // Device-authoritative UI: do not predict play/pause locally. A 400 ms E3
@@ -927,8 +933,22 @@ void K500DeviceManager::onIoError(const QString &message)
     setStatus(QStringLiteral("error"));
 }
 
-bool K500DeviceManager::writeFrame(const QByteArray &frame, const QString &label)
+bool K500DeviceManager::presetTransactionActive() const
 {
+    return m_presetManager && m_presetManager->property("busy").toBool();
+}
+
+bool K500DeviceManager::presetSavePreflightPending() const
+{
+    return m_presetManager && m_presetManager->property("savePreflightPending").toBool();
+}
+
+bool K500DeviceManager::writeFrame(const QByteArray &frame, const QString &label,
+                                   TxOwner owner)
+{
+    if (!K500TransportAdmission::permits(presetTransactionActive(),
+                                         presetSavePreflightPending(), owner))
+        return false;
     if (frame.isEmpty() || !m_io.isOpen())
         return false;
 

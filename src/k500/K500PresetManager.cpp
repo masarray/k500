@@ -43,6 +43,15 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
     // DeviceManager; P2 responses are consumed only while its stage is Ready.
     connect(&m_manager->m_io, &K500WinIo::bytesReceived,
             this, &K500PresetManager::onBytesReceived);
+    // PRESET_WORKER_DRAIN_BARRIER_V1: a quiet GUI scheduler is not proof
+    // the Win32 HID worker has written the last outstanding report.
+    connect(&m_manager->m_io, &K500WinIo::writesDrained, this,
+            [this](quint64 token) {
+        if (m_operation == Operation::SavePending && m_saveDrainRequested
+            && token == m_saveDrainBarrierId) {
+            m_saveDrainCompleted = true;
+        }
+    });
     // ADJ_MANNER_VR_OFF_READBACK_20261004_V1 — hydrate the exact direct
     // active-memory flag on initial connect, Recall and authoritative reconciliation.
     connect(m_manager, &K500DeviceManager::activeMemoryReady,
@@ -74,6 +83,8 @@ K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent
             if (busy()) {
                 clearTimeout();
                 m_saveLiveDrainTimer.stop();
+                m_saveDrainRequested = false;
+                m_saveDrainCompleted = false;
                 const Operation interruptedOperation = m_operation;
                 if (interruptedOperation == Operation::UseInit
                     && (m_useInitVolume != m_previousUseInitVolume
@@ -156,6 +167,7 @@ bool K500PresetManager::beginOperation(Operation operation, QString *error)
     m_step = Step::Idle;
     m_readbackPurpose = ReadbackPurpose::None;
     m_manager->m_heartbeatTimer.stop();
+    m_manager->m_playerStatusTimer.stop();
     m_manager->setLiveEnabled(false); // also clears pending Controller live frames
     m_manager->setError({});
     emit busyChanged();
@@ -166,6 +178,8 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
 {
     clearTimeout();
     m_saveLiveDrainTimer.stop();
+    m_saveDrainRequested = false;
+    m_saveDrainCompleted = false;
     m_saveVolumeMask = 0;
     m_step = Step::Idle;
     m_readbackPurpose = ReadbackPurpose::None;
@@ -180,6 +194,7 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
         m_manager->setLiveEnabled(true);
         m_manager->m_lastValidRx.start();
         m_manager->m_heartbeatTimer.start();
+        m_manager->m_playerStatusTimer.start();
     }
     emit operationCompleted(kind, slotOneBased);
 }
@@ -188,6 +203,8 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
 {
     clearTimeout();
     m_saveLiveDrainTimer.stop();
+    m_saveDrainRequested = false;
+    m_saveDrainCompleted = false;
     m_saveVolumeMask = 0;
     const Operation failedOperation = m_operation;
     m_step = Step::Idle;
@@ -261,7 +278,8 @@ bool K500PresetManager::send(const QByteArray &frame, const QString &label)
 {
     if (!m_manager || frame.isEmpty())
         return false;
-    if (!m_manager->writeFrame(frame, label)) {
+    if (!m_manager->writeFrame(frame, label,
+                               K500DeviceManager::TxOwner::Preset)) {
         failOperation(operationName(m_operation),
                       QStringLiteral("Gagal mengirim %1.").arg(label));
         return false;
@@ -475,6 +493,8 @@ void K500PresetManager::saveCurrentToSlot(int slotOneBased)
     m_requestedSlot = qBound(1, slotOneBased, 10);
     m_saveDrainPolls = 0;
     m_saveQuietPolls = 0;
+    m_saveDrainRequested = false;
+    m_saveDrainCompleted = false;
     m_operation = Operation::SavePending;
     setProgress(QStringLiteral("Save · menunggu LIVE write selesai"));
     emit busyChanged();
@@ -497,7 +517,14 @@ void K500PresetManager::pollSaveLiveDrain()
         || (m_manager->m_controller
             && (m_manager->m_controller->hasQueuedLiveFrames()
                 || m_manager->m_controller->inFlightStateCount() > 0));
-    m_saveQuietPolls = queued ? 0 : m_saveQuietPolls + 1;
+    if (queued) {
+        // A new LIVE command invalidates any prior worker FIFO barrier.
+        m_saveQuietPolls = 0;
+        m_saveDrainRequested = false;
+        m_saveDrainCompleted = false;
+    } else {
+        ++m_saveQuietPolls;
+    }
     if (++m_saveDrainPolls > 60) {
         m_operation = Operation::None;
         emit busyChanged();
@@ -506,6 +533,28 @@ void K500PresetManager::pollSaveLiveDrain()
         return;
     }
     if (m_saveQuietPolls < 5) {
+        m_saveLiveDrainTimer.start(50);
+        return;
+    }
+
+    // The scheduler and controller are quiet. Now place a FIFO marker on
+    // the actual transport worker; await completion of every earlier HID
+    // report before giving the 939-byte readback and Store sole ownership.
+    if (!m_saveDrainRequested) {
+        m_saveDrainRequested = true;
+        m_saveDrainCompleted = false;
+        ++m_saveDrainBarrierId;
+        if (!m_manager->m_io.requestWriteDrain(m_saveDrainBarrierId)) {
+            m_operation = Operation::None;
+            emit busyChanged();
+            emit operationFailed(QStringLiteral("Save"),
+                                 QStringLiteral("Transport K500 tidak siap menuntaskan write sebelum Save."));
+            return;
+        }
+        m_saveLiveDrainTimer.start(50);
+        return;
+    }
+    if (!m_saveDrainCompleted) {
         m_saveLiveDrainTimer.start(50);
         return;
     }

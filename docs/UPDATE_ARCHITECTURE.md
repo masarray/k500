@@ -22,6 +22,46 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## Transaction safety audit: heartbeat / LIVE / Save / Upload / Mass Upload
+
+**2026-10-12 — TRANSPORT_EXCLUSIVE_SAVE_UPLOAD_MASS_AUDIT_V1.**
+Communication is multi-layered: StudioEngine desired edits → canonical
+controller → deterministic queue → asynchronous Win32 serial/HID worker →
+native DSP responses. A successful `writeProtocolFrame` call means
+**accepted into the worker**, not a completed USB report and **not** a K500
+command ACK. Save's previous 250 ms quiet check only observed the GUI
+scheduler/controller, which could race a still-pending HID WriteFile.
+
+The transaction state machine now has a testable, exact TX ownership policy:
+- **Idle:** runtime/player/heartbeat/LIVE frames allowed; preset frames refused.
+- **SavePending:** LIVE scheduler may finish final lazy Master→INIT writes;
+  heartbeat/player/mute/other background runtime frames refused.
+- **Exclusive operation** (Save, Recall, Rename, Upload, Mass Upload, device
+  setters): ONLY coordinator-owned preset frames may reach the shared TX
+  method. Player 400 ms timer and 3.2 s heartbeat are also stopped for
+  the duration and restarted only when operation successfully completes.
+- **Save barrier:** after the controller/scheduler has settled, post an
+  ordered token to the transport worker and wait asynchronously until
+  **all earlier HID reports actually complete**, or serial WriteFile
+  finishes. If transport does not drain within the bounded Save preflight,
+  fail before any Store starts. This barrier does not claim device ACK.
+- **Store:** success requires acknowledged final `0xBC`; chunk `0xBD`
+  advances only in AwaitChunkAck. The state machine does not retry 0x41/42/43
+  writes speculatively. Final Mass Upload uses bounded **read-only** retries
+  of Recall/939-byte verification after ACK. Under partial Store or uncertain
+  device state, fail closed and require reconnect, not blind retransmission.
+- **Disconnect/worker teardown:** pending drain tokens cleared; stale token
+  callback cannot release a subsequent Save preflight. Never report data
+  in support export.
+
+Automated proof includes admission truth table in the existing P2
+scheduler test, closed-transport drain rejection in the existing P2
+transport-lifecycle test, and all consolidated Windows protocol/codec/
+Mass Upload regression tests. These guards **do not replace real-hardware
+stress verification** of slow ACK, delayed 0xC0/BF, dropped USB cable,
+UAC/restart timing, Bluetooth read-only restrictions and repeated
+Save/Upload/Mass Upload. See user acceptance before stable promotion.
+
 ## Native KTV Music 25→15 Save capture parity — 2026-10-11
 
 **Source of truth:** user-supplied two USBPcap PCAPNG files, comparing a

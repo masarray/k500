@@ -659,6 +659,27 @@ def check_ui_contracts() -> None:
     require("src/StudioEngine.cpp", "SYNC_MASTER_INIT_LAZY_V1",
             "m_masterInitDebounce.setInterval(160)", "k500/syncMasterInit",
             "mirrorMasterToInit(0)", "mirrorMasterToInit(1)", "mirrorMasterToInit(2)")
+    # TRANSPORT_EXCLUSIVE_SAVE_UPLOAD_MASS_AUDIT_V1
+    require("src/k500/K500TransportAdmission.h",
+            "PRESET_EXCLUSIVE_TX_POLICY_V1",
+            "owner == Owner::Live && savePreflight")
+    require("src/k500/P2TransactionSchedulerSelfTestMain.cpp",
+            "PRESET_EXCLUSIVE_TX_POLICY_V1",
+            "SavePending must flush queued final Master/INIT writes",
+            "exclusive Store must suppress heartbeat/player")
+    require("src/k500/K500DeviceManager.cpp",
+            "presetTransactionActive()", "TxOwner::Live",
+            "presetSavePreflightPending()", "TxOwner::Preset")
+    require("src/k500/K500WinIo.cpp",
+            "PRESET_WORKER_DRAIN_BARRIER_V1",
+            "emitDrainedWhenIdle()", "requestWriteDrain(quint64 token)",
+            "hidWritePending", "writesDrained(token)")
+    require("src/k500/K500PresetManager.cpp",
+            "PRESET_WORKER_DRAIN_BARRIER_V1",
+            "requestWriteDrain(m_saveDrainBarrierId)",
+            "m_saveDrainCompleted", "m_playerStatusTimer.stop()")
+    require("src/k500/P2TransportLifecycleSelfTestMain.cpp",
+            "PRESET_WORKER_DRAIN_BARRIER_V1", "io.requestWriteDrain(1)")
     require("src/k500/K500Protocol.cpp",
             "NATIVE_MUSIC_CMD02_TAIL_20261011_V1",
             "NATIVE_KTV_20261011_MUSIC_25_TO_15_WIRE_GOLDEN_V1")

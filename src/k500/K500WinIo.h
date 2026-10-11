@@ -43,9 +43,18 @@ public:
     // driver failure is reported later through errorOccurred().
     bool writeProtocolFrame(const QByteArray &btFrame, QString *error = nullptr);
 
+    // PRESET_WORKER_DRAIN_BARRIER_V1
+    // An async writeProtocolFrame() result is only ENQUEUE acceptance.
+    // Request a FIFO worker barrier after all submitted command frames.
+    // writesDrained(token) means every preceding HID report has completed
+    // (or serial WriteFile returned), not hardware DSP acknowledgement.
+    // Do not block the GUI waiting for Win32 completion.
+    bool requestWriteDrain(quint64 token);
+
 signals:
     void bytesReceived(const QByteArray &bytes);
     void errorOccurred(const QString &message);
+    void writesDrained(quint64 token);
 
 private:
     // P2_ASYNC_TRANSPORT_WORKER_V1

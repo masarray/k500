@@ -1,4 +1,5 @@
 #include "K500TransactionScheduler.h"
+#include "K500TransportAdmission.h"
 
 #include <QCoreApplication>
 #include <QDebug>
@@ -37,6 +38,25 @@ int main(int argc, char **argv)
 {
     QCoreApplication app(argc, argv);
     bool ok = true;
+
+    // PRESET_EXCLUSIVE_TX_POLICY_V1 — no hardware necessary: strict
+    // exclusion across heartbeat/player, LIVE preflight and preset Store.
+    using namespace K500TransportAdmission;
+    ok &= require(permits(false, false, Owner::Runtime), "idle heartbeat/player allowed");
+    ok &= require(permits(false, false, Owner::Live), "idle LIVE allowed");
+    ok &= require(!permits(false, false, Owner::Preset), "idle unsolicited preset prohibited");
+    ok &= require(!permits(true, true, Owner::Runtime),
+                  "SavePending must suppress background E3 heartbeat/player");
+    ok &= require(permits(true, true, Owner::Live),
+                  "SavePending must flush queued final Master/INIT writes");
+    ok &= require(!permits(true, true, Owner::Preset),
+                  "SavePending cannot start Store before HID worker drains");
+    ok &= require(!permits(true, false, Owner::Runtime),
+                  "exclusive Store must suppress heartbeat/player");
+    ok &= require(!permits(true, false, Owner::Live),
+                  "exclusive Store must suppress all LIVE scheduler traffic");
+    ok &= require(permits(true, false, Owner::Preset),
+                  "exclusive Store only accepts coordinator-owned frames");
 
     {
         Scheduler scheduler;
