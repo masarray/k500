@@ -1821,7 +1821,7 @@ def check_release_contracts() -> None:
         workflow_lines = read(workflow).splitlines()
         script_block = False
         for number, line in enumerate(workflow_lines, start=1):
-            if re.match(r"^        run: \\|$", line):
+            if re.match(r"^        run: \|$", line):
                 script_block = True
                 continue
             if script_block and line.strip():
