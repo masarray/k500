@@ -198,8 +198,7 @@ jobs:
           $smartStable = "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe"
           $smartRc = "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
           if (-not (Test-Path $smartStable)) { throw 'Native Smart Installer Setup output missing' }
-          Move-Item $smartStable $smartRc
- -Force
+          Move-Item $smartStable $smartRc -Force
 
 
       - name: Validate machine-wide candidate
