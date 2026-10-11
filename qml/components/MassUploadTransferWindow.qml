@@ -449,7 +449,7 @@ Window {
                     font.weight: Font.DemiBold
                     ToolTip.visible: workflowHelp.containsMouse
                     ToolTip.delay: 450
-                    ToolTip.text: "Drag presets between panels; drag within Device Slots to reorder. Ctrl/Shift selects multiple presets."
+                    ToolTip.text: "Ctrl+click selects presets in your chosen order. Shift+click selects a range. Drag to move between panels and reorder."
                     MouseArea {
                         id: workflowHelp
                         anchors.fill: parent
