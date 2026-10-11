@@ -809,6 +809,22 @@ bool restoreMachineMigrationSource(const Request &request, std::wstring *error)
     return true;
 }
 
+// SMART_POST_MIGRATION_PROGRAMFILES_CLEAN_V1
+// Never claim successful machine->user migration while the prior HKLM Inno
+// uninstall record remains. This is exact-AppId verification, not a registry
+// sweep or a blind delete.
+bool oldMachineRegistrationAbsent()
+{
+    HKEY key = nullptr;
+    const LONG result = RegOpenKeyExW(HKEY_LOCAL_MACHINE, UninstallKey, 0,
+                                     KEY_READ | KEY_WOW64_64KEY, &key);
+    if (result == ERROR_SUCCESS) {
+        RegCloseKey(key);
+        return false;
+    }
+    return result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND;
+}
+
 int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 {
     const std::wstring sourceDir = parentDirectory(request.app);
@@ -919,7 +935,7 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     }
 
     if (uninstallError != ERROR_SUCCESS || uninstallExit != 0
-        || pathExists(request.app)) {
+        || pathExists(request.app) || !oldMachineRegistrationAbsent()) {
         const bool cleaned = cleanupPerUserMigration(request);
         std::wstring restoreError;
         const bool restored = restoreMachineMigrationSource(request, &restoreError);
@@ -939,8 +955,39 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             + L"\nRecovery snapshot was kept at:\n" + request.backup);
     }
 
+    // A successful old uninstaller should also remove its own Program Files
+    // directory and legacy shortcuts. Do not recurse/delete an unrecognized
+    // residual folder: it may contain someone else's data. Wait a bounded
+    // interval for Inno's deferred self-deletion before deciding.
+    wchar_t programFiles[MAX_PATH]{};
+    const DWORD programFilesLength = GetEnvironmentVariableW(
+        L"ProgramFiles", programFiles, MAX_PATH);
+    // Only the canonical protected Program Files layout is eligible for
+    // the strict no-residue public promise. Existing deep-acceptance tests
+    // intentionally stage temporary machine fixtures elsewhere.
+    const bool canonicalProgramFiles =
+        programFilesLength > 0 && programFilesLength < MAX_PATH &&
+        samePath(sourceDir, (fs::path(programFiles) / L"SonKuPik K500").wstring());
+    bool oldDirectoryGone = !pathExists(sourceDir);
+    for (int attempt = 0; canonicalProgramFiles && !oldDirectoryGone && attempt < 30; ++attempt) {
+        Sleep(100);
+        oldDirectoryGone = !pathExists(sourceDir);
+    }
+    if (canonicalProgramFiles && !oldDirectoryGone) {
+        // New user app is already healthy, old EXE and HKLM registration are
+        // gone. Preserve recovery snapshot and log, clearly report that the
+        // exact folder-clean requirement is NOT yet met.
+        startApplication(request.targetApp);
+        return fail(request, 36,
+            L"The verified LocalAppData app is installed, but the old Program Files "
+            L"folder still contains residual files. It was NOT deleted blindly. "
+            L"Inspect the old folder, installer log and recovery snapshot before "
+            L"claiming a clean migration. Recovery snapshot: " + request.backup);
+    }
+
     discardBackup();
-    logLine(request, L"Machine->user migration verified; old installation removed and recovery snapshot released.");
+    logLine(request, L"Machine->user migration verified; old application and HKLM uninstall registration absent;"
+                     L" canonical Program Files directory must also be absent; recovery snapshot released.");
     if (!startApplication(request.targetApp))
         return fail(request, 35,
             L"Migration completed and the new installation passed validation, "

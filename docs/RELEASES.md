@@ -46,6 +46,12 @@ Official presets can update independently through the in-app sync path and there
   the **public Smart Installer must install exclusively to LocalAppData**.
 - **RC.1 revoked for public Smart install scope regression**; RC.2+ must prove
   default no-admin LocalAppData, no CLI overrides. Existing RC.1 remains immutable.
+- Interactive public Smart Setup detects a registered canonical Program Files
+  copy and offers a **user-approved, rollback-capable migration** via the
+  existing verified updater helper. A single Windows elevation is still
+  required to remove protected old files; future current-user updates are
+  unelevated. Residual old Program Files files/registration must fail QA,
+  not be deleted blindly.
 - Separate pending gate: `docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md`.
 - Required manual work: `docs/V1_1_3_SMART_INSTALLER_FIELD_QA.md`.
 - Stable promotion is blocked until recorded three-package SHA-256 acceptance,

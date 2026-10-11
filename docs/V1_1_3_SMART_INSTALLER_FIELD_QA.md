@@ -35,13 +35,21 @@ and record any important customized settings. Do not manually delete
 - **Same-user upgrade:** run the Smart Installer again on a prior per-user
   installation in an isolated test environment; verify same LocalAppData
   path, retained LOCAL presets/settings/cache and no duplicate shortcuts.
-- **Old machine/Program Files installation:** Smart Installer must safely
-  **refuse** direct cross-scope installation; it must NOT silently inherit
-  Machine scope or write a second copy. The existing app's **Cek Update →
-  Pindah tanpa Admin** migration is a separate explicitly approved handoff:
-  it stages a verified LocalAppData copy, and removing the old protected
-  Program Files installation may need **one Windows administrator/UAC approval**.
-  Future per-user updates no longer request administrator privileges.
+- **Old machine/Program Files installation:** double-click the Smart Installer.
+  It should **identify the exact registered canonical Program Files copy** and
+  offer a clearly labeled **verified migration**, not inherit admin scope or
+  install a parallel copy. Choosing **No** must leave everything unchanged.
+  Choosing **Yes** stages the app-owned verified updater helper: snapshot
+  Program Files/HKLM, install and health-check LocalAppData, then request
+  **one normal Windows UAC approval** to run the original Program Files
+  uninstaller. Verify that the old application folder, old HKLM uninstall
+  registration, and old all-users shortcuts are gone; the new installed-app
+  registration and shortcuts belong to the current user. No user-owned
+  preset, cache or QSettings changes. If residual unknown files remain, the
+  migration must declare *incomplete cleanup* rather than silently deleting
+  anything. Future per-user updates need no administrator approval.
+  The in-app **Cek Update → Pindah tanpa Admin** is a separate fallback
+  through the same transactional helper.
 - **UAC cancellation during explicit migration:** on a disposable test
   snapshot, verify original app/presets survive and no ambiguous dual install.
 - **Conflicting registrations or stale installer:** use only dedicated

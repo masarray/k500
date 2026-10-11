@@ -82,11 +82,19 @@ allowed Machine/Program Files installation. A green CI that forces
 Corrected Smart Installer (RC.2+) uses `PrivilegesRequired=lowest`,
 `UsePreviousPrivileges=no` and `DefaultDirName={userpf}\\SonKuPik K500`
 (the LocalAppData Programs directory). There is no machine privilege override,
-no All Users chooser and no hidden Machine reuse. Existing HKLM registration
-triggers an explicit safe refusal rather than a second install. Migrating old
-Program Files installations is a separate verified updater handoff, with one
-legitimate UAC approval for the old protected uninstaller. Windows permissions
-are never bypassed.
+no All Users chooser and no hidden Machine reuse. Existing HKLM registration must never produce a second install without
+user approval. For the **exact canonical Program Files location** the
+interactive Smart Installer offers a verified migration and stages the
+bundled existing app-owned helper (no second Setup payload or custom
+recursive deletion). The helper SHA-256-verifies this Smart EXE, snapshots
+old machine files and HKLM uninstall metadata, installs and health-checks
+LocalAppData, then requests **one normal Windows UAC** to uninstall the
+protected old installation. It restores the old installation if authorized
+removal fails and refuses to claim success until machine registration and
+the canonical Program Files directory disappear. Stale/custom/dual installs
+fail closed before changes; silent Setup never starts a background migration.
+Windows permission is never bypassed. The GUI migration and residue checks
+must be field-tested on actual Windows, not inferred from CI fixtures.
 
 Before copying files, the Smart variant checks opposite-scope HKLM registration
 and the HKCU registered destination against the LocalAppData-only path. The
