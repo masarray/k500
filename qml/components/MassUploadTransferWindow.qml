@@ -382,7 +382,7 @@ Window {
     }
 
     function uploadTransfer() {
-        if (!fileBridge || !presetManager || targetModel.count === 0 || dragActive)
+        if (!fileBridge || !presetManager || targetModel.count === 0 || root.dragActive)
             return
         if (!presetManager.usbStoreAvailable) {
             root.connectNotice = "K500 belum terhubung lewat USB. Tutup jendela ini, lalu tekan Connect di bagian atas aplikasi."
