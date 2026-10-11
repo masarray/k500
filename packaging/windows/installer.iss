@@ -289,7 +289,7 @@ begin
     Exit;
   end;
   MachineRoot := AddBackslash(ExpandConstant('{commonpf}')) + '{#AppName}';
-  if CompareText(AddBackslash(OldDir), AddBackslash(MachineRoot)) <> 0 or
+  if (CompareText(AddBackslash(OldDir), AddBackslash(MachineRoot)) <> 0) or
      not FileExists(AddBackslash(OldDir) + '{#AppExeName}') or
      not FileExists(AddBackslash(OldDir) + 'unins000.exe') then
   begin
