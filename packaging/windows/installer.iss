@@ -56,17 +56,19 @@ AppSupportURL={#AppURL}/issues
 AppUpdatesURL={#AppURL}/releases
 
 ; SMART_INSTALL_LAYOUT_V2
-; Application/runtime belongs to Program Files. User .k500 content is created by
-; the application under Documents\SonKuPik K500\Presets and is never uninstalled.
+; Legacy machine backend uses Program Files, never as the public Smart default.
+; The application creates user-owned .k500 presets under Documents; installers
+; do not remove them.
 #if SmartInstaller
-; NATIVE_SMART_INSTALLER_V1 — Inno owns selection and persistence of scope.
-; An existing Inno AppId is kept in its original scope by UsePreviousPrivileges.
-; New users start with non-admin per-user as the recommended choice.
-DefaultDirName={autopf}\{#AppName}
+; NATIVE_SMART_INSTALLER_V1 / PUBLIC_LOCALAPPDATA_ONLY_SMART_V1
+; Public Smart Installer always targets %LOCALAPPDATA%\Programs\SonKuPik K500.
+; No ALLUSERS choice, privilege override, or prior machine-scope inheritance.
+; An existing machine registration is rejected safely before file changes;
+; explicit app-owned machine-to-user migration remains a separate action.
+DefaultDirName={userpf}\{#AppName}
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
-UsePreviousPrivileges=yes
+UsePreviousPrivileges=no
 #elif PerUser
 ; P2_INSTALL_SCOPE_V1 — separate per-user package, without UAC.
 DefaultDirName={userpf}\{#AppName}
@@ -80,7 +82,7 @@ PrivilegesRequired=admin
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 
-; Beginner-first wizard: use the one canonical machine location, avoid exposing
+; Beginner-first wizard: use a canonical scope-specific location, avoid exposing
 ; path/program-group decisions that would later make automatic updates ambiguous,
 ; and keep only the familiar optional desktop-shortcut choice.
 DisableDirPage=yes
@@ -136,7 +138,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; WorkingDir: "
 ; Normal interactive installation shows the usual Finish-page launch option.
 Filename: "{app}\{#AppExeName}"; Description: "Launch {#AppName}"; WorkingDir: "{app}"; Flags: nowait postinstall skipifsilent; Check: not IsAutoUpdate
 ; In-app updates are already user-approved in SonKuPik. After verified silent
-; replacement, reopen the newly installed Program Files binary automatically.
+; replacement, reopen the newly installed binary in its registered scope.
 ; Legacy app versions still rely on Inno to relaunch after /AUToupdate=1.
 ; The P1 coordinator uses /HELPERUPDATE=1 and performs its own health check
 ; before relaunch. Never run both relaunch paths at the same time.
@@ -235,16 +237,8 @@ begin
   Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
   Destination := ExpandConstant('{app}');
   Registered := '';
-  if IsAdminInstallMode then
-  begin
-    RegisteredPresent := RegKeyExists(HKLM64, Key) or RegKeyExists(HKLM32, Key);
-    GotPath := RegQueryStringValue(HKLM64, Key, 'Inno Setup: App Path', Registered);
-  end
-  else
-  begin
-    RegisteredPresent := RegKeyExists(HKCU64, Key) or RegKeyExists(HKCU32, Key);
-    GotPath := RegQueryStringValue(HKCU64, Key, 'Inno Setup: App Path', Registered);
-  end;
+  RegisteredPresent := RegKeyExists(HKCU64, Key) or RegKeyExists(HKCU32, Key);
+  GotPath := RegQueryStringValue(HKCU64, Key, 'Inno Setup: App Path', Registered);
 
   Result := False;
   if RegisteredPresent then
@@ -272,16 +266,22 @@ var
 begin
   Result := '';
   ProbeError := '';
+  // Enforce user scope even if a future packaging edit mistakenly overrides
+  // Inno privileges. Never write to Program Files or an HKLM registration.
   if IsAdminInstallMode then
-    Collision := LegacyPerUserInstallPresent(ProbeError)
-  else
-    Collision := SmartMachineRegistrationPresent;
+  begin
+    Result := 'Smart Installer is per-user only. Administrator installation is not supported.';
+    Log('PUBLIC_LOCALAPPDATA_ONLY_SMART_V1: rejected unexpected admin mode.');
+    Exit;
+  end;
+  Collision := SmartMachineRegistrationPresent;
 
   if Collision then
   begin
-    Result := 'A SonKuPik installation is registered in the other Windows scope. ' +
-      'Smart Installer stopped before changing either copy. ' +
-      'Use the previously installed scope or an explicitly verified migration.';
+    Result := 'A previous all-users SonKuPik installation exists in Program Files. ' +
+      'This Smart Installer only installs in LocalAppData, without administrator rights. ' +
+      'No files were changed. Open the existing app and use the explicit ' +
+      'Pindah tanpa Admin migration in Cek Update to move safely to per-user.';
     Log('NATIVE_SMART_INSTALLER_V1: blocked cross-scope installation collision.');
   end
   else if ProbeError <> '' then

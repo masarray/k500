@@ -130,12 +130,16 @@ try {
 }
 
 
-Write-Host "==> Smart Installer current-user fresh install and previous-scope reuse"
-$smartDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik-K500-CI-Smart'
+Write-Host "==> Smart Installer default LocalAppData without scope or directory overrides"
+$smartDir = Join-Path $env:LOCALAPPDATA 'Programs\SonKuPik K500'
 if (Test-Path $smartDir) { throw "Smart Installer test directory already exists" }
-$smartArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$smartDir"))
+$smartArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
 $first = Start-Process -FilePath $smart -ArgumentList $smartArgs -Wait -PassThru
 if ($first.ExitCode -ne 0) { throw "Smart Installer first per-user install failed: $($first.ExitCode)" }
+# No /DIR or /CURRENTUSER supplied: reject any unwanted Program Files default.
+if (-not (Test-Path (Join-Path $smartDir 'SonKuPik-K500.exe'))) {
+    throw 'Smart Installer default location must be LocalAppData/Programs/SonKuPik K500'
+}
 if (-not (Test-Path (Join-Path $smartDir 'unins000.exe'))) {
     throw "Smart Installer did not register install in selected current-user location"
 }
@@ -146,10 +150,10 @@ if ($LASTEXITCODE -ne 0 -or (($smartReg | Out-String) -notlike "*$smartDir*")) {
 }
 $userMarker = Join-Path $smartDir 'ci-user-owned-sentinel.txt'
 [IO.File]::WriteAllText($userMarker, 'KEEP-SMART-USER-DATA')
-# Omit /CURRENTUSER on the second install: UsePreviousPrivileges must detect
-# the existing Inno AppId and keep the per-user scope without a UAC request.
+# Fresh install and reinstall must both be per-user by construction, never
+# inherit an old machine scope or depend on explicit /CURRENTUSER.
 $second = Start-Process -FilePath $smart -ArgumentList @(
-    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$smartDir")
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
 ) -Wait -PassThru
 if ($second.ExitCode -ne 0) { throw "Smart Installer did not reuse existing HKCU scope: $($second.ExitCode)" }
 if ((Get-Content $userMarker -Raw) -ne 'KEEP-SMART-USER-DATA') {
@@ -174,7 +178,7 @@ if ($LASTEXITCODE -eq 0) { throw "Smart machine collision fixture would overwrit
 if ($LASTEXITCODE -ne 0) { throw "Cannot add machine collision fixture" }
 try {
     $blocked = Start-Process -FilePath $smart -ArgumentList @(
-        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$smartDir")
+        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
     ) -Wait -PassThru
     if ($blocked.ExitCode -ne 7) {
         throw "Smart Installer did not block opposite scope (exit $($blocked.ExitCode))"
@@ -195,7 +199,7 @@ if ($LASTEXITCODE -eq 0) { throw "HKCU stale fixture would overwrite an installe
 if ($LASTEXITCODE -ne 0) { throw "Cannot add stale-registration fixture" }
 try {
     $blocked = Start-Process -FilePath $smart -ArgumentList @(
-        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$smartDir")
+        '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
     ) -Wait -PassThru
     if ($blocked.ExitCode -ne 7) {
         throw "Smart Installer did not block stale same-scope registration: $($blocked.ExitCode)"

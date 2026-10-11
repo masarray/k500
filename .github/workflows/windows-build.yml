@@ -46,6 +46,10 @@ jobs:
         # Pure Node fetch mock, no GitHub token, packages, Qt or extra workflow.
         run: node tools/ci/test_download_route.js
 
+      - name: Mass Upload offline guard regression (offline)
+        # Executes real QML upload function with mocks; zero USB and no build.
+        run: node tools/ci/test_mass_upload_offline.js
+
       - name: Preset lab syntax
         run: python -m py_compile tools/k500_preset_lab.py
 

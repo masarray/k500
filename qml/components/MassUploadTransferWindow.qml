@@ -61,6 +61,15 @@ Window {
     property bool transferInFlight: false
     property bool transferSucceeded: false
     property string transferError: ""
+    // OFFLINE_MASS_UPLOAD_CONNECT_GUIDANCE_V1: keep the Upload action
+    // discoverable while offline; clicking only shows guidance, never sends IO.
+    property string connectNotice: ""
+    Timer {
+        id: connectNoticeTimer
+        interval: 5500
+        repeat: false
+        onTriggered: root.connectNotice = ""
+    }
     readonly property int verifiedPercent: root.presetManager
                                            ? Number(root.presetManager.massUploadProgressPercent || 0) : 0
     onClosing: function(close) {
@@ -222,6 +231,15 @@ Window {
     function uploadTransfer() {
         if (!fileBridge || !presetManager || targetModel.count === 0)
             return
+        if (!presetManager.usbStoreAvailable) {
+            root.connectNotice = "K500 belum terhubung lewat USB. Tutup jendela ini, lalu tekan Connect di bagian atas aplikasi."
+            connectNoticeTimer.restart()
+            return
+        }
+        if (presetManager.busy)
+            return
+        connectNoticeTimer.stop()
+        root.connectNotice = ""
         var paths = []
         for (var i = 0; i < targetModel.count; ++i)
             paths.push(String(targetModel.get(i).path))
@@ -693,10 +711,38 @@ Window {
                     compact: true
                     enabled: targetModel.count > 0
                              && !!root.presetManager
-                             && root.presetManager.usbStoreAvailable
                              && !root.presetManager.busy
                     onClicked: root.uploadTransfer()
                 }
+            }
+        }
+
+        // In-dialog toast: the Mass Upload window is modal, so the user must
+        // close it before pressing the main TopBar Connect button.
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: 60
+            width: Math.min(parent.width - 56, 720)
+            height: connectToastText.implicitHeight + 24
+            z: 80
+            radius: 9
+            color: "#46321E"
+            border.width: 1
+            border.color: "#E8B865"
+            visible: root.connectNotice.length > 0
+
+            Text {
+                id: connectToastText
+                anchors.fill: parent
+                anchors.margins: 12
+                text: root.connectNotice
+                color: "#FFF2D9"
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                wrapMode: Text.WordWrap
+                verticalAlignment: Text.AlignVCenter
             }
         }
 

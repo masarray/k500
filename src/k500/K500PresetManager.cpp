@@ -16,6 +16,12 @@ constexpr int BtIdentityTimeoutMs = 2200;
 constexpr int StoreAckTimeoutMs = 3500;
 constexpr int RecallSettleMs = 80;
 constexpr int SingleStoreBeginSettleMs = 80;
+// FINAL_MASS_VERIFY_RETRY_V1: Store writes are NEVER replayed. Allow the
+// device's flash commit to settle before first final Recall, then retry only
+// the idempotent Recall/939-byte readback transaction at most twice.
+constexpr int FinalMassRecallSettleMs = 320;
+constexpr int FinalMassRetryBackoffMs = 450;
+constexpr int MaxFinalMassVerificationRetries = 2;
 }
 
 K500PresetManager::K500PresetManager(K500DeviceManager *manager, QObject *parent)
@@ -157,6 +163,7 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
     m_operation = Operation::None;
     m_pendingReadLength = 0;
     m_pendingStoreLength = 0;
+    m_finalMassVerificationRetries = 0;
     emit busyChanged();
 
     if (m_manager && m_manager->connected() && m_manager->m_stage == K500DeviceManager::Stage::Ready) {
@@ -177,6 +184,7 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
     m_operation = Operation::None;
     m_pendingReadLength = 0;
     m_pendingStoreLength = 0;
+    m_finalMassVerificationRetries = 0;
 
     if (failedOperation == Operation::UseInit
         && (m_useInitVolume != m_previousUseInitVolume
@@ -255,6 +263,13 @@ void K500PresetManager::armTimeout(int ms, const QString &kind, const QString &m
     m_timeout.stop();
     QObject::disconnect(&m_timeout, nullptr, this, nullptr);
     connect(&m_timeout, &QTimer::timeout, this, [this, kind, message] {
+        if (m_operation == Operation::MassUpload
+            && (m_step == Step::AwaitRecallHandshake
+                || (m_step == Step::Readback
+                    && m_readbackPurpose == ReadbackPurpose::Recall))) {
+            retryFinalMassVerification(message);
+            return;
+        }
         failOperation(kind, message);
     });
     m_timeout.start(ms);
@@ -534,6 +549,7 @@ void K500PresetManager::massUploadSlotImages(const QVariantList &entries)
     }
 
     setMassUploadProgressPercent(0);
+    m_finalMassVerificationRetries = 0;
     m_massEntries = normalized;
     m_massIndex = -1;
     m_storeChain = {};
@@ -601,6 +617,14 @@ void K500PresetManager::onResponse(const K500Response &response)
 
     if (m_step == Step::AwaitRecallHandshake && response.rsp == 0xC0) {
         clearTimeout();
+        if (m_operation == Operation::MassUpload
+            && (response.data.isEmpty()
+                || static_cast<quint8>(response.data.at(0)) != 0)) {
+            // The final device slot must actually be Slot 01, not a guessed
+            // fallback. A stale/early C0 is not verification.
+            retryFinalMassVerification(QStringLiteral("Final C0 did not confirm Slot 01."));
+            return;
+        }
         if (!response.data.isEmpty()) {
             const int slot = qBound(1, static_cast<int>(static_cast<quint8>(response.data.at(0))) + 1, 10);
             if (m_activeSlot != slot) {
@@ -716,10 +740,13 @@ void K500PresetManager::acceptReadBlock(const QByteArray &data)
 {
     clearTimeout();
     if (m_pendingReadLength <= 0 || data.size() < m_pendingReadLength) {
-        failOperation(operationName(m_operation),
-                      QStringLiteral("P2 readback block 0x%1 terlalu pendek: %2/%3 byte.")
-                          .arg(m_readOffset, 4, 16, QLatin1Char('0'))
-                          .arg(data.size()).arg(m_pendingReadLength));
+        const QString error = QStringLiteral("P2 readback block 0x%1 terlalu pendek: %2/%3 byte.")
+                                  .arg(m_readOffset, 4, 16, QLatin1Char('0'))
+                                  .arg(data.size()).arg(m_pendingReadLength);
+        if (m_operation == Operation::MassUpload && m_readbackPurpose == ReadbackPurpose::Recall)
+            retryFinalMassVerification(error);
+        else
+            failOperation(operationName(m_operation), error);
         return;
     }
 
@@ -905,14 +932,14 @@ void K500PresetManager::acceptStoreCommit()
         m_massEntries.clear();
         m_massIndex = -1;
         m_requestedSlot = 1;
-        setProgress(QStringLiteral("%1 slot uploaded · recalling slot 1 before LIVE resumes").arg(count));
+        setProgress(QStringLiteral("%1 slot acknowledged · waiting for final Slot 01 verification").arg(count));
         m_step = Step::RecallDelay;
-        if (!send(K500PresetProtocol::recallMode(m_requestedSlot),
-                  QStringLiteral("Mass Upload final recall slot 1 · mask 0x03")))
-            return;
-        QTimer::singleShot(RecallSettleMs, this, [this] {
+        // Flash commit ACK 0xBC does not mean C0/BF is immediately ready.
+        // Delay only final verification; never repeat the non-idempotent
+        // 0x41/0x42/0x43 store sequence.
+        QTimer::singleShot(FinalMassRecallSettleMs, this, [this] {
             if (m_operation == Operation::MassUpload && m_step == Step::RecallDelay)
-                sendRecallHandshake();
+                beginFinalMassRecall();
         });
         return;
     }
@@ -946,6 +973,55 @@ void K500PresetManager::acceptStoreCommit()
     }
 
     finishOperation(QStringLiteral("Save"), m_requestedSlot);
+}
+
+void K500PresetManager::beginFinalMassRecall()
+{
+    if (m_operation != Operation::MassUpload || m_step != Step::RecallDelay)
+        return;
+    m_requestedSlot = 1;
+    // Discard a partial BF/C0 frame from the previous timed-out attempt.
+    m_parser.reset();
+    setProgress(QStringLiteral("Memeriksa Slot 01 · final Recall/readback · percobaan %1/%2")
+                    .arg(m_finalMassVerificationRetries + 1)
+                    .arg(MaxFinalMassVerificationRetries + 1));
+    if (!send(K500PresetProtocol::recallMode(1),
+              QStringLiteral("Mass Upload final Recall Slot 01, verify-only")))
+        return;
+    QTimer::singleShot(RecallSettleMs, this, [this] {
+        if (m_operation == Operation::MassUpload && m_step == Step::RecallDelay)
+            sendRecallHandshake();
+    });
+}
+
+void K500PresetManager::retryFinalMassVerification(const QString &reason)
+{
+    if (m_operation != Operation::MassUpload
+        || (m_step != Step::AwaitRecallHandshake
+            && !(m_step == Step::Readback
+                 && m_readbackPurpose == ReadbackPurpose::Recall))) {
+        return;
+    }
+    clearTimeout();
+    if (m_finalMassVerificationRetries >= MaxFinalMassVerificationRetries) {
+        failOperation(QStringLiteral("Mass Upload"),
+                      QStringLiteral("Seluruh Store sudah ACK (99%), tetapi verifikasi Slot 01/939 byte gagal setelah %1 percobaan: %2. "
+                                     "Sambungkan ulang K500 dan periksa isi slot sebelum mengulang Upload.")
+                          .arg(MaxFinalMassVerificationRetries + 1).arg(reason));
+        return;
+    }
+
+    ++m_finalMassVerificationRetries;
+    m_readbackPurpose = ReadbackPurpose::None;
+    m_pendingReadLength = 0;
+    m_readOffset = 0;
+    m_step = Step::RecallDelay;
+    setProgress(QStringLiteral("Store sudah ACK · verifikasi akhir tertunda (%1). Coba Recall ulang tanpa menulis slot.")
+                    .arg(reason));
+    QTimer::singleShot(FinalMassRetryBackoffMs, this, [this] {
+        if (m_operation == Operation::MassUpload && m_step == Step::RecallDelay)
+            beginFinalMassRecall();
+    });
 }
 
 void K500PresetManager::startNextMassEntry()
