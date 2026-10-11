@@ -22,6 +22,26 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## Issue #182 — safe machine installer preflight (candidate only)
+
+`SAFE_CROSS_SCOPE_PREFLIGHT_V1` replaces the unsafe earlier machine Setup path
+that invoked a current-user LocalAppData uninstaller and continued even if it
+failed. Before installation, machine Setup now checks the **original Windows
+user**, not the elevated admin account, for Inno HKCU registrations in both
+views and the canonical legacy `%LOCALAPPDATA%\\Programs\\SonKuPik K500\\unins000.exe`.
+An existing per-user installation or an indeterminate probe aborts Setup
+before writing files; no old uninstaller is executed, and user-owned presets,
+QSettings and cache are untouched. Same-scope machine upgrades remain possible.
+
+This is a **safety gate, not finished automated reverse migration**. A user
+with an existing per-user copy still needs an explicit, verified scope-migration
+or repair flow. The app-owned machine-to-user recovery helper is unchanged.
+Fast Contracts and the existing Windows Installer Smoke job validate the source
+and current-user collision scenarios without creating any additional workflows.
+Windows legacy-upgrade matrix, actual UAC cancellation, recovery scenarios and
+physical USB/HID K500 tests are still release-blocking. The accepted v1.1.2
+binaries cannot change retroactively; this applies only to a future RC.
+
 ## Release-1.1.2 updater troubleshooting and 1.1.3 UX follow-up
 
 In v1.1.0 and v1.1.2 the application **automatically discovers** new

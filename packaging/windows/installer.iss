@@ -166,36 +166,78 @@ begin
              'Use SonKuPik''s explicit migration action instead.', mbError, MB_OK);
   end;
 end;
-#else
-procedure MigrateLegacyPerUserInstall;
-var
-  Cmd: String;
-  Params: String;
-  ResultCode: Integer;
-begin
-  { MIGRATE_LOCALAPPDATA_INSTALL_V1 }
-  { v1.0.1 was a per-user install. An elevated machine-wide Setup can run under }
-  { different credentials, so the Inno LocalAppData constant is not reliable here. }
-  { Execute a tiny cmd under the ORIGINAL user and let that process expand its }
-  { own %LOCALAPPDATA%. This never touches Documents, presets, or QSettings. }
-  Cmd := ExpandConstant('{cmd}');
-  Params := '/C if exist "%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
-            'start "" /wait "%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
-            '/VERYSILENT /SUPPRESSMSGBOXES /NORESTART';
 
-  Log('Checking original user profile for legacy per-user SonKuPik K500 install.');
-  if ExecAsOriginalUser(Cmd, Params, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
-    Log(Format('Legacy per-user migration command finished with code %d.', [ResultCode]))
-  else
-    Log('Legacy per-user migration command could not be started; canonical Program Files install will continue.');
+#else
+// MIGRATE_LOCALAPPDATA_INSTALL_V1 / SAFE_CROSS_SCOPE_PREFLIGHT_V1
+// Machine setup must not execute a current-user uninstaller from elevated
+// context. A failed or partial cross-scope uninstall could leave duplicates.
+// Only the existing app-owned helper may run an explicitly approved migration.
+function OriginalUserRegistrationExists(const View: String; var ProbeError: String): Boolean;
+var
+  ExitCode: Integer;
+  Args: String;
+begin
+  Result := False;
+  Args := 'QUERY "HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1" /reg:' + View;
+  if not ExecAsOriginalUser(ExpandConstant('{sys}\reg.exe'), Args, '',
+    SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  begin
+    ProbeError := 'Could not inspect original-user uninstall registration.';
+    Exit;
+  end;
+  if ExitCode = 0 then
+    Result := True
+  else if ExitCode <> 1 then
+    ProbeError := Format('Uninstall registry probe failed (view %s, code %d).', [View, ExitCode]);
+end;
+
+function LegacyPerUserInstallPresent(var ProbeError: String): Boolean;
+var
+  ExitCode: Integer;
+  Args: String;
+begin
+  ProbeError := '';
+  Result := OriginalUserRegistrationExists('64', ProbeError);
+  if Result or (ProbeError <> '') then Exit;
+  Result := OriginalUserRegistrationExists('32', ProbeError);
+  if Result or (ProbeError <> '') then Exit;
+
+  // Old unregistered per-user Inno layouts are detected without executing any
+  // user-writable file or removing an application/preset directory.
+  Args := '/D /C if not defined LOCALAPPDATA (exit /B 43) else if exist ' +
+    '"%LOCALAPPDATA%\Programs\{#AppName}\unins000.exe" ' +
+    '(exit /B 42) else (exit /B 0)';
+  if not ExecAsOriginalUser(ExpandConstant('{cmd}'), Args, '',
+    SW_HIDE, ewWaitUntilTerminated, ExitCode) then
+  begin
+    ProbeError := 'Could not inspect original-user LocalAppData.';
+    Exit;
+  end;
+  if ExitCode = 42 then
+    Result := True
+  else if ExitCode <> 0 then
+    ProbeError := Format('Legacy installation probe failed (code %d).', [ExitCode]);
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ProbeError: String;
 begin
-  { Run before new files/shortcuts are written, so a legacy uninstaller cannot }
-  { remove the new common Start Menu/Desktop entries. }
-  MigrateLegacyPerUserInstall;
   Result := '';
+  if LegacyPerUserInstallPresent(ProbeError) then
+  begin
+    Result := 'An existing per-user SonKuPik K500 installation was detected. ' +
+      'Machine Setup stopped before changing either copy. Review the existing ' +
+      'installation in Windows Installed Apps, or use an explicitly verified ' +
+      'migration. Do not remove application directories manually.';
+    Log('SAFE_CROSS_SCOPE_PREFLIGHT_V1: existing per-user installation; aborted.');
+  end
+  else if ProbeError <> '' then
+  begin
+    Result := 'Machine Setup could not safely inspect the current-user install. ' +
+      'No changes were made. Details: ' + ProbeError;
+    Log('SAFE_CROSS_SCOPE_PREFLIGHT_V1: unknown install state; aborted: ' + ProbeError);
+  end;
 end;
 
 #endif
