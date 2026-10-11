@@ -1619,6 +1619,22 @@ def check_release_contracts() -> None:
     require(
         "functions/download/[kind].js",
         "SonKuPik-K500-${tag}-Windows-Setup.exe",
+        "PUBLIC_SMART_INSTALLER_VERSION_GATE_V1",
+        "stableInstallerAsset(tag, descriptor)",
+        "Windows-Smart-Installer.exe",
+        "releases/latest",
+    )
+    require(
+        "tools/ci/test_download_route.js",
+        "PASS: stable Smart download routing",
+        "v1.1.2",
+        "v1.1.3",
+        "v1.1.3-rc.1",
+    )
+    require(
+        ".github/workflows/windows-build.yml",
+        "Stable Windows download routing regression (offline)",
+        "node tools/ci/test_download_route.js",
     )
     # Installed machine Setup cannot execute a legacy per-user uninstaller.
     require(

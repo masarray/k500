@@ -22,6 +22,25 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## Public stable Smart Installer route — version-gated before promotion
+
+The Cloudflare Pages `/download/windows` route resolves only GitHub
+`/releases/latest`. For the currently published **stable v1.1.2** (and
+historical versions), it returns the original Machine Setup asset.
+Only after the accepted **stable v1.1.3 or newer** actually becomes
+`/releases/latest` does it return `Windows-Smart-Installer.exe`.
+Machine/Per-User asset names remain unchanged for the in-app updater.
+A missing native Smart asset fails closed (503), never silently falling
+back to a different installer. Both `/api/release` and the download route
+reject prerelease/build-metadata tags as stable. This is exercised through
+an offline Node test in the existing Fast Contracts job: old releases,
+new release, RC, missing artifact, GET/HEAD/Range. No extra CI workflow.
+
+Implementing this gate does **not** publish v1.1.3 stable, mark the
+acceptance record as accepted, or alter current v1.1.2 public behavior.
+After the owner accepts real Windows upgrades and K500 USB/HID results,
+the promotion workflow can publish v1.1.3 and the route then switches
+automatically; fallback HTML labels are reviewed separately at promotion.
 ## v1.1.3 — immutable three-installer RC pipeline (candidate, not public)
 
 **Next source line** is `1.1.3`, but public Latest stays **v1.1.2**. The

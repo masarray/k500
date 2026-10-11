@@ -18,7 +18,7 @@ async function resolveLatestTag() {
   if (!match) throw new Error('Unable to parse latest release tag');
 
   const tag = decodeURIComponent(match[1]);
-  if (!/^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(tag)) {
+  if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(tag)) {
     throw new Error('Unexpected release tag format');
   }
   return tag;
