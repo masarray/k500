@@ -128,6 +128,8 @@ private:
     void sendStoreCommit();
     void acceptStoreCommit();
     void startNextMassEntry();
+    void beginFinalMassRecall();
+    void retryFinalMassVerification(const QString &reason);
 
     static QString operationName(Operation operation);
 
@@ -165,4 +167,5 @@ private:
 
     QVector<MassEntry> m_massEntries;
     int m_massIndex = -1;
+    int m_finalMassVerificationRetries = 0;
 };

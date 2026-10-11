@@ -59,8 +59,8 @@ gate is pending, cannot rebuild accepted installers, and cannot overwrite
 existing RC/stable tags. The published stable v1.1.2 binary and its acceptance
 record remain immutable. Landing `/download/windows` deliberately remains
 on accepted v1.1.2 while this RC is unqualified. When new stable promotion
-is genuinely accepted, separately switch the public download route to the
-Smart asset without renaming the legacy machine/per-user updater backends.
+is genuinely accepted, the version-aware public download route automatically
+switches to the Smart asset without renaming the legacy updater backends.
 
 See `docs/V1_1_3_SMART_INSTALLER_FIELD_QA.md` for manual GitHub Actions UI
 steps, real Windows legacy installation matrix and physical K500 USB/HID QA.
@@ -75,19 +75,23 @@ with the legacy Machine `Windows-Setup.exe` or Per-User
 `Windows-Setup-PerUser.exe`. Those two historical filenames remain unchanged
 because installed updaters select and verify their scope-matched assets.
 
-The new public-facing candidate uses **native Inno 6 privilege selection**:
-`PrivilegesRequired=lowest`, `PrivilegesRequiredOverridesAllowed=dialog`,
-`UsePreviousPrivileges=yes` and `{autopf}`. New installations default to the
-non-admin per-user mode, with a clear built-in choice for all users (Windows
-UAC when selected). On same-AppId reinstall, Inno reuses the previous scope;
-no custom elevated bootstrap executable, registry-name sweep, or network
-connection is required. **An explicit `/CURRENTUSER` or `/ALLUSERS` choice
-is not authorization for unverified cross-scope migration.**
+**RC.1 was revoked** because native Inno scope override/previous privileges
+allowed Machine/Program Files installation. A green CI that forces
+`/CURRENTUSER /DIR` was insufficient to prove the real GUI default.
 
-Before copying files, the smart variant checks for an opposite-scope
-registration; machine mode uses the original-user HKCU/LocalAppData preflight
-introduced in PR #185. It also checks the selected scope's recorded Inno
-application directory against the requested destination. A missing uninstaller,
+Corrected Smart Installer (RC.2+) uses `PrivilegesRequired=lowest`,
+`UsePreviousPrivileges=no` and `DefaultDirName={userpf}\\SonKuPik K500`
+(the LocalAppData Programs directory). There is no machine privilege override,
+no All Users chooser and no hidden Machine reuse. Existing HKLM registration
+triggers an explicit safe refusal rather than a second install. Migrating old
+Program Files installations is a separate verified updater handoff, with one
+legitimate UAC approval for the old protected uninstaller. Windows permissions
+are never bypassed.
+
+Before copying files, the Smart variant checks opposite-scope HKLM registration
+and the HKCU registered destination against the LocalAppData-only path. The
+legacy Machine backend still runs the original-user HKCU/LocalAppData preflight
+introduced in PR #185. No new public machine-mode install is permitted. A missing uninstaller,
 missing installed binary, missing registered path, existing unregistered binary,
 noncanonical previous directory, or ambiguous dual-install state **blocks**
 with repair guidance rather than overwriting files or inventing a cleanup plan.
@@ -95,8 +99,8 @@ This preflight protects the current Windows user; installations in *other*
 Windows users' profiles cannot be safely enumerated or modified here.
 
 The existing consolidated Installer Smoke CI compiles all three modes and
-checks a fresh Smart per-user install, reinstall with **automatic previous
-scope reuse**, preservation of a user-owned sentinel, opposite machine-scope
+checks a **default-path Smart per-user installation (no /DIR, no /CURRENTUSER)**,
+reinstall, preservation of a user-owned sentinel, opposite machine-scope
 collision and stale HKCU registration. These are Windows fixture tests, not
 qualifications of the owner's old v1.0.x installed environments or real USB
 hardware. Manual installs do **not** yet have the application-owned helper's

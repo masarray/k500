@@ -155,7 +155,8 @@ void K500DeviceManager::sendPlayerCommand(const QString &command)
     // the manufacturer app so play/pause reflects BT/MP3 truth, including
     // changes made outside SonKuPik.
     QTimer::singleShot(180, this, [this] {
-        if (m_stage == Stage::Ready && connected())
+        if (m_stage == Stage::Ready && connected() && m_liveEnabled
+            )
             writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status refresh"));
     });
 }
@@ -841,7 +842,12 @@ void K500DeviceManager::heartbeatTick()
 
 void K500DeviceManager::playerStatusTick()
 {
-    if (m_stage != Stage::Ready || !connected())
+    // PRESET_EXCLUSIVE_RX_TX_BARRIER_V1: 400-ms player polling must never
+    // interleave E3 with Store 0x41/0x42/0x43, Recall 0x40, or 939-byte BF
+    // verification. A first upload may otherwise finish all Store ACKs (99%)
+    // but lose its final C0/BF verification while RX/TX is shared.
+    if (m_stage != Stage::Ready || !connected() || !m_liveEnabled
+        )
         return;
 
     // Device-authoritative UI: do not predict play/pause locally. A 400 ms E3

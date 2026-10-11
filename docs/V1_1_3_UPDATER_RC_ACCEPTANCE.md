@@ -10,6 +10,24 @@ UPDATER_V1_1_3_MACHINE_SHA256=pending
 UPDATER_V1_1_3_USER_SHA256=pending
 UPDATER_V1_1_3_SMART_SHA256=pending
 
+## Revoked public Smart candidate — v1.1.3-rc.1
+
+**DO NOT PROMOTE v1.1.3-rc.1.** Although its CI passed, the public Smart
+configuration inherited previous Machine privileges and could install to
+Program Files. CI forced `/CURRENTUSER` and `/DIR`, obscuring the interactive
+default-path regression. The immutable RC.1 binaries/checksums remain
+historical evidence, **not eligible for acceptance**.
+
+Any acceptable **v1.1.3-rc.2 or higher** must install in
+`%LOCALAPPDATA%\\Programs\\SonKuPik K500` **without admin UAC, all-users
+choice, or scope flags**. It must reject a registered old machine install
+without writing another copy, and separately offer a user-approved
+**transactional** machine-to-user migration that verifies the LocalAppData
+copy and cleans the old Program Files uninstall registration/files/shortcuts.
+Removing a protected machine installation requires a **single authorized
+elevation**; there is no safe way to bypass Windows permissions.
+
+
 ## Exact source scope
 
 - v1.1.2 public installer bytes and historical acceptance record are frozen.
@@ -30,8 +48,9 @@ UPDATER_V1_1_3_SMART_SHA256=pending
    with an unused positive `rc_number`. Publishing as GitHub *prerelease*
    must not change `/releases/latest`.
 3. RC builds the real app once; machine/per-user/Smart installers are built
-   from those exact bytes. All pass installed-app health checks; the native
-   Smart user-mode reinstall preserves user state and registered scope.
+   from those exact bytes. All pass installed-app health checks; the Smart
+   must use the **native default LocalAppData path with no /DIR or
+   /CURRENTUSER**, reinstall without UAC, and preserve HKCU/state.
 4. App-owned updater helper and deep migration/rollback/sentinel suite pass.
 5. RC manifest and `SHA256SUMS.txt` list **three** named installers.
 6. RC workflow uploads the exact immutable binaries and provenance.

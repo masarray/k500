@@ -1569,6 +1569,7 @@ def check_release_contracts() -> None:
         "UPDATER_V1_1_3_ACCEPTANCE",
         "RC_THREE_SCOPE_INSTALLERS_V1",
         "REAL_APP_SMART_RC_ACCEPTANCE_V1",
+        "Public Smart default is not LocalAppData; Program Files is forbidden",
         "Windows-Smart-Installer.exe",
         "if ($check.artifacts.Count -ne 3)",
         "v1.1.3 candidate is pending independent acceptance",
@@ -1583,6 +1584,7 @@ def check_release_contracts() -> None:
         "[regex]::Escape($version)",
         "if ($tag -notmatch $expectedRcPattern)",
         "ACCEPTED_SMART_REAL_APP_V1",
+        "PUBLIC_LOCALAPPDATA_RC1_REVOKED_V1",
         "Public stable SonKuPik K500 v1.1.3.",
     )
 
@@ -1594,24 +1596,63 @@ def check_release_contracts() -> None:
         "UsePreviousAppDir=no",
         "MIGRATE_LOCALAPPDATA_INSTALL_V1",
     )
-    # ISSUE182_NATIVE_SMART_INSTALLER_V1: one native Inno artifact selects
-    # new/previous scope without renaming legacy machine/user backend assets.
+    require(
+        "qml/components/MassUploadTransferWindow.qml",
+        "OFFLINE_MASS_UPLOAD_CONNECT_GUIDANCE_V1",
+        'root.connectNotice = "K500 belum terhubung lewat USB.',
+        "connectNoticeTimer.restart()",
+        "id: connectToastText",
+    )
+    require(
+        "src/k500/K500DeviceManager.cpp",
+        "PRESET_EXCLUSIVE_RX_TX_BARRIER_V1",
+        "if (m_stage != Stage::Ready || !connected() || !m_liveEnabled",
+        'QStringLiteral("Player status poll")',
+    )
+    require(
+        "src/k500/K500PresetManager.cpp",
+        "FINAL_MASS_VERIFY_RETRY_V1",
+        "MaxFinalMassVerificationRetries = 2",
+        "beginFinalMassRecall()",
+        "retryFinalMassVerification",
+        "FinalMassRecallSettleMs",
+        "setMassUploadProgressPercent(100)",
+    )
+    require(
+        "tools/ci/test_mass_upload_offline.js",
+        "PASS: Mass Upload offline Connect guidance",
+        "uploadTransfer",
+        "offline must never send Store writes",
+    )
+    require(
+        ".github/workflows/windows-build.yml",
+        "Mass Upload offline guard regression (offline)",
+        "node tools/ci/test_mass_upload_offline.js",
+    )
+    # ISSUE182_PUBLIC_LOCALAPPDATA_ONLY_SMART_V1 — never default to
+    # Program Files or use previous machine privileges on the public Setup.
     require(
         "packaging/windows/installer.iss",
         "NATIVE_SMART_INSTALLER_V1",
-        "PrivilegesRequiredOverridesAllowed=dialog",
-        "UsePreviousPrivileges=yes",
-        "DefaultDirName={autopf}",
+        "PUBLIC_LOCALAPPDATA_ONLY_SMART_V1",
+        "DefaultDirName={userpf}",
+        "PrivilegesRequired=lowest",
+        "UsePreviousPrivileges=no",
         "SonKuPik-K500-v{#AppVersion}-Windows-Smart-Installer",
         "IsAdminInstallMode",
         "SMART_SAME_SCOPE_DESTINATION_GUARD_V1",
         "SmartRegisteredDestinationSafe",
-        "LegacyPerUserInstallPresent(ProbeError)",
+        "SmartMachineRegistrationPresent",
     )
+    smart_setup = read("packaging/windows/installer.iss").split(
+        "PUBLIC_LOCALAPPDATA_ONLY_SMART_V1", 1
+    )[1].split("#elif PerUser", 1)[0]
+    if "PrivilegesRequiredOverridesAllowed" in smart_setup or "DefaultDirName={autopf}" in smart_setup:
+        FAILURES.append("public Smart setup must not permit machine scope or Program Files default")
     require(
         "tools/ci/installer_smoke.ps1",
         '"/DSmartInstaller=1"',
-        "Smart Installer current-user fresh install and previous-scope reuse",
+        "Smart Installer default LocalAppData without scope or directory overrides",
         "Smart Installer rejects opposite-scope registered machine install",
         "Smart Installer fails closed on stale same-scope registration",
         "KEEP-SMART-USER-DATA",

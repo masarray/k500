@@ -2,14 +2,17 @@
 
 **Public stable v1.1.2 remains untouched.** This checklist tests a GitHub
 `v1.1.3-rc.N` **prerelease**, not the latest production download.
+**Do not use v1.1.3-rc.1**: its public Smart installer could inherit a
+machine/Program Files scope. The corrected target is **v1.1.3-rc.2+**
+and must pass the actual default-directory checks.
 
 ## A. GitHub Actions — no terminal commands
 
 1. Open the repository [Actions](https://github.com/masarray/k500/actions).
 2. Confirm the latest `K500 CI` run on `main` is **green**.
 3. Select **Windows Updater Release Candidate**, then **Run workflow**.
-4. Select branch `main`, a **new unused positive** `rc_number` (first new RC:
-   `1` if that tag does not exist), and enable **Publish candidate as GitHub
+4. Select branch `main`, a **new unused positive** `rc_number` (next corrected candidate:
+   `2` if that tag does not already exist), and enable **Publish candidate as GitHub
    prerelease**. Click the green **Run workflow** button once.
 5. Open the new run. All steps must be green, including exact-head check,
    real-app Smart install/reinstall, updater deep acceptance, checksums and
@@ -24,17 +27,23 @@ Before running RC: close K500, export/back up your LOCAL `.k500` presets
 and record any important customized settings. Do not manually delete
 `Program Files`, `LocalAppData`, registry keys or personal presets.
 
-- **Clean per-user:** run Smart Installer; select **current user**. It should
-  install without administrator UAC, launch with version **1.1.3**, and
-  show Windows Installed Apps once.
-- **Same-scope upgrade:** with a real older SonKuPik installation in an
-  isolated test environment, run Smart Installer again. It must retain scope,
-  keep LOCAL presets/settings/cache, and not create duplicate shortcuts.
-- **Machine mode:** choose **all users** on a clean snapshot. UAC must be
-  normal and user-controlled. Verify Program Files installation and no
-  second per-user copy.
-- **UAC cancel:** cancel the Windows permission dialog on a disposable
-  machine-mode test. Verify the original app and user data still work.
+- **Clean per-user:** double-click Smart Installer without any switches or
+  directory selection. It **must** install to
+  `%LOCALAPPDATA%\Programs\SonKuPik K500` and create a current-user/HKCU
+  registration. **No administrator/UAC dialog, no All Users choice, and no
+  Program Files folder**. Verify app version 1.1.3 and Windows Installed Apps.
+- **Same-user upgrade:** run the Smart Installer again on a prior per-user
+  installation in an isolated test environment; verify same LocalAppData
+  path, retained LOCAL presets/settings/cache and no duplicate shortcuts.
+- **Old machine/Program Files installation:** Smart Installer must safely
+  **refuse** direct cross-scope installation; it must NOT silently inherit
+  Machine scope or write a second copy. The existing app's **Cek Update →
+  Pindah tanpa Admin** migration is a separate explicitly approved handoff:
+  it stages a verified LocalAppData copy, and removing the old protected
+  Program Files installation may need **one Windows administrator/UAC approval**.
+  Future per-user updates no longer request administrator privileges.
+- **UAC cancellation during explicit migration:** on a disposable test
+  snapshot, verify original app/presets survive and no ambiguous dual install.
 - **Conflicting registrations or stale installer:** use only dedicated
   snapshots/VM fixtures; installer must stop clearly without deleting
   either copy. **Never deliberately corrupt your everyday PC's registry.**
@@ -47,9 +56,9 @@ and record any important customized settings. Do not manually delete
 For legacy version matrix (1.0.x, 1.1.0, 1.1.1, 1.1.2), run each real
 install in an isolated Windows snapshot and record its original scope,
 upgrade result, health check, uninstall registration, whether shortcuts are
-duplicated, and whether data remains unchanged. If installer blocks a
-cross-scope migration, count that as **safe refusal**, not a successful
-migration. Note the blocked scenario for a later transactional repair.
+duplicated, and whether data remains unchanged. If installer blocks a cross-scope migration, record it as a **safe refusal**, not
+as a successful one-step migration. Test the separate app-owned migration
+flow and its UAC-cancel / rollback behavior independently.
 
 ## C. Physical USB/HID — only after the Windows GUI is stable
 
@@ -71,7 +80,7 @@ USB/HID field acceptance.
 
 ## D. Report results back in this conversation
 
-Provide the **RC tag** (for example `v1.1.3-rc.1`), your Windows edition,
+Provide the **RC tag** (for example `v1.1.3-rc.2`), your Windows edition,
 previous SonKuPik version/scope (if upgrading), whether the Smart wizard
 completed, whether presets/QSettings survived, results for
 Connect/Readback/Recall/Store/Mass Upload, and any screenshots/logs.

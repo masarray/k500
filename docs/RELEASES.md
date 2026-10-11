@@ -43,7 +43,9 @@ Official presets can update independently through the in-app sync path and there
   variants from one exact main commit and validates the native Smart Installer
   using real deployed Qt application bytes.
 - Existing Machine/Per-User asset names remain unchanged for updater compatibility;
-  the Smart Installer is a third new public-facing candidate.
+  the **public Smart Installer must install exclusively to LocalAppData**.
+- **RC.1 revoked for public Smart install scope regression**; RC.2+ must prove
+  default no-admin LocalAppData, no CLI overrides. Existing RC.1 remains immutable.
 - Separate pending gate: `docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md`.
 - Required manual work: `docs/V1_1_3_SMART_INSTALLER_FIELD_QA.md`.
 - Stable promotion is blocked until recorded three-package SHA-256 acceptance,
@@ -95,7 +97,13 @@ SHA256SUMS.txt
 release-manifest.json
 ```
 
-The machine Setup is the recommended **Smart Installer** for users. The per-user Setup is retained as a scope-matched updater backend so **Update tanpa Admin** can install/update in LocalAppData without elevation. v1.1+ does not publish a Portable ZIP. Historical v1.0.x releases retain their already-published portable artifacts unchanged.
+Historical public v1.1.2 still serves the Machine Setup asset. For **accepted
+v1.1.3+**, the public Smart Installer must be **LocalAppData-only with no UAC**;
+Machine/Per-User Setups stay as legacy, scope-matched updater backends.
+Migrating an old Program Files installation needs an explicit verified
+machine-to-user handoff and a **single authorized UAC** to remove protected
+machine files; no all-users fallback or automatic dual registration is allowed.
+v1.1+ does not publish Portable ZIP, historical v1.0.x assets stay unchanged.
 
 ## Release manifest
 

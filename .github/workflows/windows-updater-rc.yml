@@ -258,14 +258,18 @@ jobs:
           $tag = '${{ steps.meta.outputs.tag }}'
           $version = '${{ steps.meta.outputs.version }}'
           $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe").Path
-          $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik-K500-v113-smart-rc'
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik K500'
           if (Test-Path $dir) { throw 'Smart RC destination already exists; refusing to erase files' }
           $key = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
           & reg.exe QUERY $key /reg:64 *> $null
           if ($LASTEXITCODE -eq 0) { throw 'Smart RC test would overwrite registered software' }
-          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$dir")) -Wait -PassThru
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Smart RC fresh user installation failed: $($install.ExitCode)" }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
+          if (-not (Test-Path $app)) { throw 'Public Smart default is not LocalAppData; Program Files is forbidden' }
+          $machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          & reg.exe QUERY $machineKey /reg:64 *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Public Smart unexpectedly registered an admin/machine install' }
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
             $test = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
             if ($test.ExitCode -ne 0) { throw "Smart RC actual application $arg failed: $($test.ExitCode)" }
@@ -274,9 +278,9 @@ jobs:
           if ($helper.ExitCode -ne 0) { throw 'Smart RC installed updater helper failed self-test' }
           $marker = Join-Path $dir 'smart-rc-user-state-sentinel.txt'
           [IO.File]::WriteAllText($marker, 'KEEP-RC-USER-STATE')
-          # The second install uses Inno's previous-scope authority, not a
-          # per-user command-line override. User-owned content must survive.
-          $upgrade = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$dir")) -Wait -PassThru
+          # No scope/directory override on either invocation: the installer itself
+          # must choose LocalAppData and preserve owner-owned content.
+          $upgrade = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($upgrade.ExitCode -ne 0) { throw "Smart RC scope-preserving reinstall failed: $($upgrade.ExitCode)" }
           if ((Get-Content $marker -Raw) -ne 'KEEP-RC-USER-STATE') { throw 'Smart RC reinstall changed user-owned sentinel' }
           $registered = (& reg.exe QUERY $key /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)

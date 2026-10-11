@@ -56,6 +56,9 @@ jobs:
           # PROMOTION_RC_TAG_MATCHES_SOURCE_VERSION_V1 — only this source version's RC.
           $expectedRcPattern = '^v' + [regex]::Escape($version) + '-rc\.[1-9][0-9]*$'
           if ($tag -notmatch $expectedRcPattern) { throw "Invalid accepted RC tag: $tag (expected v$version-rc.N)" }
+          # PUBLIC_LOCALAPPDATA_RC1_REVOKED_V1: RC.1 can reuse machine scope,
+          # contrary to the public no-admin LocalAppData contract.
+          if ($tag -eq 'v1.1.3-rc.1') { throw 'RC.1 is disqualified: public Smart may install into Program Files. Require corrected RC.2+.' }
           if ($commit -notmatch '^[0-9a-f]{40}$') { throw 'Accepted RC commit must be a full 40-character SHA.' }
           foreach ($pair in @{ machine=$machineHash; user=$userHash; smart=$smartHash }.GetEnumerator()) {
             if ($pair.Value -notmatch '^[0-9a-f]{64}$') { throw "Accepted $($pair.Key) SHA-256 is invalid." }
@@ -198,9 +201,13 @@ jobs:
           $setup = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Setup.exe").Path
           $dir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-promoted-machine'
           if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$dir")) -Wait -PassThru
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Promoted machine installer failed: $($install.ExitCode)" }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
+          if (-not (Test-Path $app)) { throw 'Promoted public Smart defaulted outside LocalAppData' }
+          $machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          & reg.exe QUERY $machineKey /reg:64 *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Promoted public Smart unexpectedly registered all-users' }
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=machine')) {
             $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "Promoted machine $arg failed: $($p.ExitCode)" }
@@ -235,9 +242,9 @@ jobs:
           # ACCEPTED_SMART_REAL_APP_V1 — test accepted bytes, no rebuilding.
           $version = '${{ steps.accept.outputs.version }}'
           $setup = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe").Path
-          $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik-K500-promoted-smart'
+          $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik K500'
           if (Test-Path $dir) { throw 'Smart promotion test destination already exists; refusing deletion' }
-          $installed = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/CURRENTUSER',("/DIR=$dir")) -Wait -PassThru
+          $installed = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($installed.ExitCode -ne 0) { throw "Promoted Smart Installer failed: $($installed.ExitCode)" }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
