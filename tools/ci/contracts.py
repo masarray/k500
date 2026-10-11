@@ -1811,6 +1811,30 @@ def check_release_contracts() -> None:
         "v1.1.3 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
+    # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
+    # scripts never acquire a de-indented argument or command outside run: |.
+    # This is intentionally a cheap static contract, not another CI workflow.
+    for workflow in (
+        ".github/workflows/windows-updater-rc.yml",
+        ".github/workflows/windows-updater-promote.yml",
+    ):
+        workflow_lines = read(workflow).splitlines()
+        script_block = False
+        for number, line in enumerate(workflow_lines, start=1):
+            if re.match(r"^        run: \\|$", line):
+                script_block = True
+                continue
+            if script_block and line.strip():
+                indent = len(line) - len(line.lstrip(" "))
+                if indent < 10:
+                    script_block = False
+                    if indent not in (0, 2, 4, 6, 8):
+                        FAILURES.append(
+                            f"{workflow}:{number}: de-indented shell fragment: {line.strip()}"
+                        )
+            if re.match(r"^\s{1,5}-Force(?:\s|$)", line):
+                FAILURES.append(f"{workflow}:{number}: orphaned PowerShell -Force")
+
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
     rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md' -Raw")
     rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
