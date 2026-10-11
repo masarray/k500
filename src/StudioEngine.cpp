@@ -3,6 +3,7 @@
 
 #include <QtMath>
 #include <QScopedValueRollback>
+#include <QSettings>
 
 namespace {
 constexpr int ActiveMemorySize = 0x03AB;
@@ -333,6 +334,12 @@ void EqBandModel::syncCrossover(double hpfHz, double lpfHz,
 StudioEngine::StudioEngine(QObject *parent)
     : QObject(parent)
 {
+    // OFF by default; preference does not synthesize edits during hydration.
+    m_syncMasterInit = QSettings().value(QStringLiteral("k500/syncMasterInit"), false).toBool();
+    m_masterInitDebounce.setSingleShot(true);
+    m_masterInitDebounce.setInterval(160);
+    connect(&m_masterInitDebounce, &QTimer::timeout, this,
+            &StudioEngine::flushPendingMasterInitWrites);
     // OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1 — construct all nine EQ models
     // with HP/LP Type Bypass *before* connecting edit signals. There is no
     // startup setter, delayed QML replay, stateEdited or hardware write.
@@ -945,16 +952,102 @@ void StudioEngine::setDigitalGain(double value)
     if (assign(m_digitalGain, clampValue(value, -60.0, 10.0), "music.digitalGainDb")) emit digitalGainChanged();
 }
 
+// SYNC_MASTER_INIT_LAZY_V1: transient UI mirroring, exactly one debounced
+// INIT path per channel. Only user edits in an authoritative LIVE session
+// can generate writes: cold start, file Preview and reconnect never replay it.
+void StudioEngine::setSyncMasterInit(bool enabled)
+{
+    if (m_syncMasterInit == enabled)
+        return;
+    if (!enabled && m_masterInitLiveAllowed)
+        flushPendingMasterInitWrites();
+    m_syncMasterInit = enabled;
+    QSettings().setValue(QStringLiteral("k500/syncMasterInit"), enabled);
+    emit syncMasterInitChanged();
+    if (enabled && m_masterInitLiveAllowed) {
+        for (int channel = 0; channel < 3; ++channel)
+            mirrorMasterToInit(channel);
+    }
+}
+
+void StudioEngine::setMasterInitLiveAllowed(bool allowed)
+{
+    if (m_masterInitLiveAllowed == allowed)
+        return;
+    m_masterInitLiveAllowed = allowed;
+    if (!allowed) {
+        m_masterInitDebounce.stop();
+        m_pendingMasterInitMask = 0;
+    }
+    // Connection/reconciliation never auto-sync hardware INIT. Only a
+    // subsequent explicit Master edit or enabling the switch can do so.
+}
+
+void StudioEngine::queueMirroredInit(int channel)
+{
+    if (!m_syncMasterInit || !m_masterInitLiveAllowed)
+        return;
+    m_pendingMasterInitMask |= static_cast<quint8>(1u << channel);
+    m_masterInitDebounce.start();
+    static const char *const labels[] = {"MUSIC INIT", "MIC INIT", "EFFECT INIT"};
+    emit masterInitMirrored(QString::fromLatin1(labels[channel]));
+}
+
+void StudioEngine::mirrorMasterToInit(int channel)
+{
+    if (!m_syncMasterInit || !m_masterInitLiveAllowed)
+        return;
+    if (channel == 0) {
+        const double next = qBound(0.0, m_masterMusic, 84.0);
+        if (qFuzzyCompare(m_musicInitVol + 1000.0, next + 1000.0))
+            return;
+        m_musicInitVol = next;
+        emit musicInitVolChanged();
+    } else if (channel == 1) {
+        const double next = qBound(0.0, m_masterMic, 84.0);
+        if (qFuzzyCompare(m_micInitVol + 1000.0, next + 1000.0))
+            return;
+        m_micInitVol = next;
+        emit micInitVolChanged();
+    } else {
+        const double next = qBound(0.0, m_masterFx, 84.0);
+        if (qFuzzyCompare(m_effectInitLevel + 1000.0, next + 1000.0))
+            return;
+        m_effectInitLevel = next;
+        emit effectInitLevelChanged();
+    }
+    queueMirroredInit(channel);
+}
+
+void StudioEngine::flushPendingMasterInitWrites()
+{
+    m_masterInitDebounce.stop();
+    const quint8 mask = m_pendingMasterInitMask;
+    m_pendingMasterInitMask = 0;
+    if (!m_masterInitLiveAllowed)
+        return;
+    if (mask & 0x01u)
+        emit stateEdited(QStringLiteral("system.musicInitVol"), m_musicInitVol);
+    if (mask & 0x02u)
+        emit stateEdited(QStringLiteral("system.micInitVol"), m_micInitVol);
+    if (mask & 0x04u)
+        emit stateEdited(QStringLiteral("system.effectInitLevel"), m_effectInitLevel);
+}
+
 void StudioEngine::setMasterMusic(double value)
 {
     // MUSIC_MAX_NATIVE_CEILING_V1 — keep the visual fader on the native 0..84
     // ruler, but never let the desired Top Music value exceed Music Max.
-    if (assign(m_masterMusic, clampValue(value, 0.0, m_musicMaxVol), "system.topMusicVol"))
+    if (assign(m_masterMusic, clampValue(value, 0.0, m_musicMaxVol), "system.topMusicVol")) {
         emit masterMusicChanged();
+        mirrorMasterToInit(0);
+    }
 }
 
 void StudioEngine::setMusicInitVol(double value)
 {
+    // Explicit INIT edit wins over a previously queued lazy mirror.
+    m_pendingMasterInitMask &= ~quint8(0x01);
     if (assign(m_musicInitVol,
                clampValue(value, K500Protocol::NativeRange::StartupLevelMin,
                           K500Protocol::NativeRange::StartupLevelMax),
@@ -987,12 +1080,15 @@ void StudioEngine::setMasterMic(double value)
 {
     // MIC_MAX_NATIVE_CEILING_V1 — physical sweep proves the same hard-ceiling
     // behavior as Music Max.
-    if (assign(m_masterMic, clampValue(value, 0.0, m_micMaxVol), "system.topMicVol"))
+    if (assign(m_masterMic, clampValue(value, 0.0, m_micMaxVol), "system.topMicVol")) {
         emit masterMicChanged();
+        mirrorMasterToInit(1);
+    }
 }
 
 void StudioEngine::setMicInitVol(double value)
 {
+    m_pendingMasterInitMask &= ~quint8(0x02);
     if (assign(m_micInitVol,
                clampValue(value, K500Protocol::NativeRange::StartupLevelMin,
                           K500Protocol::NativeRange::StartupLevelMax),
@@ -1021,11 +1117,15 @@ void StudioEngine::setMicMaxVol(double value)
 
 void StudioEngine::setMasterFx(double value)
 {
-    if (assign(m_masterFx, clampValue(value, 0.0, 100.0), "system.topEffectVol")) emit masterFxChanged();
+    if (assign(m_masterFx, clampValue(value, 0.0, 84.0), "system.topEffectVol")) {
+        emit masterFxChanged();
+        mirrorMasterToInit(2);
+    }
 }
 
 void StudioEngine::setEffectInitLevel(double value)
 {
+    m_pendingMasterInitMask &= ~quint8(0x04);
     if (assign(m_effectInitLevel,
                clampValue(value, K500Protocol::NativeRange::StartupLevelMin,
                           K500Protocol::NativeRange::StartupLevelMax),

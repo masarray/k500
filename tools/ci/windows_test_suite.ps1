@@ -103,7 +103,7 @@ $cmakeVersionMatch = [regex]::Match(
 if (-not $cmakeVersionMatch.Success) { throw "Could not derive runtime version from CMakeLists.txt" }
 $runtimeVersion = $cmakeVersionMatch.Groups[1].Value
 
-foreach ($arg in @("--font-self-test", "--protocol-self-test", "--update-health-check=$runtimeVersion")) {
+foreach ($arg in @("--font-self-test", "--protocol-self-test", "--sync-master-init-self-test", "--update-health-check=$runtimeVersion")) {
     Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @($arg) "Runtime $arg"
 }
 

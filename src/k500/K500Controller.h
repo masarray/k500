@@ -34,6 +34,7 @@ public:
     QString canonicalSnapshotSha256() const { return m_canonicalState.snapshotSha256Hex(); }
     int desiredStateCount() const { return m_canonicalState.desiredCount(); }
     int inFlightStateCount() const { return m_canonicalState.inFlightCount(); }
+    bool hasQueuedLiveFrames() const { return !m_pendingBlockFrames.isEmpty() || !m_pendingEqFrames.isEmpty(); }
     qulonglong authoritativeSnapshotGeneration() const { return m_canonicalState.snapshotGeneration(); }
     int divergentDesiredStateCount() const { return m_canonicalState.divergentDesiredCount(); }
 

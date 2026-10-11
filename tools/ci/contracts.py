@@ -652,6 +652,22 @@ def check_ui_contracts() -> None:
     ) != 4:
         FAILURES.append("all four output sections must say X-OVER & SPK DELAY")
     require("qml/components/FilterPanel.qml", 'text: "MUSIC HPF & LPF"')
+    # SYNC_MASTER_INIT_LAZY_V1 — real native self-test runs inside the existing
+    # Windows regression suite. CI should never compile a second app.
+    require("src/StudioEngine.h", "syncMasterInit", "hasPendingMasterInitWrites",
+            "flushPendingMasterInitWrites", "masterInitMirrored")
+    require("src/StudioEngine.cpp", "SYNC_MASTER_INIT_LAZY_V1",
+            "m_masterInitDebounce.setInterval(160)", "k500/syncMasterInit",
+            "mirrorMasterToInit(0)", "mirrorMasterToInit(1)", "mirrorMasterToInit(2)")
+    require("src/k500/K500PresetManager.cpp", "SAVE_LIVE_DRAIN_BARRIER_V1",
+            "savePreflightRequested()", "m_saveInitExpected",
+            "Preset tidak ditulis")
+    require("qml/components/RackFaderPanel.qml", "SYNC_MASTER_INIT_SWITCH_V1",
+            "SYNC MASTER", "initRecentlySynced")
+    require("qml/components/SystemWorkspaceImpl.qml", "syncEngine:root.engine")
+    require("src/main.cpp", "SYNC_MASTER_INIT_REGRESSION_V1",
+            "--sync-master-init-self-test", "savePreflightRequested")
+    require("tools/ci/windows_test_suite.ps1", "--sync-master-init-self-test")
     require("qml/components/MasterStripPanel.qml", 'text: "MASTER VOLUME"')
     require("qml/components/MusicTonePanel.qml", 'text: "PITCH SHIFTER (NADA MUSIK)"')
     forbid("qml/components/SectionWorkspace.qml", '"Band Limits / Delay"')

@@ -1107,6 +1107,7 @@ Item {
                 Layout.fillHeight:true
                 Layout.preferredWidth:466
                 title:"Startup Limits"
+                syncEngine:root.engine
                 channels:root.startupLimitChannels
                 valueResolver:root.startupLimitValue
                 interactionEnabled:root.deviceConnected && root.engine.deviceStateReady

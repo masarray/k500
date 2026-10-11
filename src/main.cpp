@@ -7,6 +7,7 @@
 #include <QList>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QSettings>
 #include <QStringList>
 #include <QTimer>
 #include <QWindow>
@@ -22,6 +23,7 @@
 #include "StudioEngine.h"
 #include "k500/K500Controller.h"
 #include "k500/K500DeviceManager.h"
+#include "k500/K500PresetManager.h"
 #include "k500/K500Frame.h"
 #include "k500/K500Protocol.h"
 #include "k500/K500ResponseParser.h"
@@ -177,6 +179,109 @@ int main(int argc, char *argv[])
                      &studioEngine, &StudioEngine::hydrateFromDeviceMemory);
     QObject::connect(&deviceManager, &K500DeviceManager::adjMannerVrOffAccepted,
                      &studioEngine, &StudioEngine::syncAdjMannerVrOff);
+
+    // SYNC_MASTER_INIT_LAZY_V1 — the always-alive StudioEngine owns source
+    // synchronization even while the System workspace is lazy/unloaded.
+    const auto updateMasterInitAuthority = [&] {
+        studioEngine.setMasterInitLiveAllowed(deviceManager.connected()
+                                              && deviceManager.liveEnabled());
+    };
+    QObject::connect(&deviceManager, &K500DeviceManager::statusChanged,
+                     &studioEngine, updateMasterInitAuthority);
+    QObject::connect(&deviceManager, &K500DeviceManager::liveEnabledChanged,
+                     &studioEngine, updateMasterInitAuthority);
+    auto *presetManager = qobject_cast<K500PresetManager *>(deviceManager.presetManager());
+    if (presetManager) {
+        presetManager->setMasterInitSyncSource(&studioEngine);
+        QObject::connect(presetManager, &K500PresetManager::savePreflightRequested,
+                         &studioEngine, &StudioEngine::flushPendingMasterInitWrites);
+    }
+    updateMasterInitAuthority();
+
+    // SYNC_MASTER_INIT_REGRESSION_V1 — real StudioEngine and real 160ms
+    // debounce; no hardware I/O, no synthetic controller protocol edits.
+    if (app.arguments().contains(QStringLiteral("--sync-master-init-self-test"))) {
+        QSettings settings;
+        const QVariant previous = settings.value(QStringLiteral("k500/syncMasterInit"));
+        const bool existed = settings.contains(QStringLiteral("k500/syncMasterInit"));
+        const auto restore = [&] {
+            studioEngine.setMasterInitLiveAllowed(false);
+            if (existed) settings.setValue(QStringLiteral("k500/syncMasterInit"), previous);
+            else settings.remove(QStringLiteral("k500/syncMasterInit"));
+        };
+        QStringList initPaths;
+        QList<int> initValues;
+        QObject::connect(&studioEngine, &StudioEngine::stateEdited, &app,
+                         [&](const QString &path, const QVariant &value) {
+            if (path == QStringLiteral("system.musicInitVol")
+                || path == QStringLiteral("system.micInitVol")
+                || path == QStringLiteral("system.effectInitLevel")) {
+                initPaths.append(path);
+                initValues.append(qRound(value.toDouble()));
+            }
+        });
+        studioEngine.setMasterInitLiveAllowed(false);
+        studioEngine.setSyncMasterInit(false);
+        const double initialMusic = studioEngine.musicInitVol();
+        studioEngine.setMasterMusic(38);
+        studioEngine.setSyncMasterInit(true); // offline: preference ONLY
+        if (studioEngine.musicInitVol() != initialMusic || !initPaths.isEmpty()) {
+            restore();
+            return 31;
+        }
+        studioEngine.setMasterInitLiveAllowed(true);
+        studioEngine.setMasterMusic(40);
+        studioEngine.setMasterMusic(41);
+        studioEngine.setMasterMusic(42);
+        if (studioEngine.musicInitVol() != 42 || !initPaths.isEmpty()
+            || !studioEngine.hasPendingMasterInitWrites()) {
+            restore();
+            return 32;
+        }
+        QEventLoop wait;
+        QTimer::singleShot(240, &wait, &QEventLoop::quit);
+        wait.exec();
+        if (initPaths.size() != 1
+            || initPaths.at(0) != QStringLiteral("system.musicInitVol")
+            || initValues.at(0) != 42
+            || studioEngine.hasPendingMasterInitWrites()) {
+            restore();
+            return 33;
+        }
+        studioEngine.setMasterMic(52);
+        studioEngine.setMasterFx(47);
+        if (studioEngine.micInitVol() != 52 || studioEngine.effectInitLevel() != 47
+            || initPaths.size() != 1) {
+            restore();
+            return 34;
+        }
+        studioEngine.flushPendingMasterInitWrites(); // Save preflight barrier
+        studioEngine.flushPendingMasterInitWrites(); // idempotent
+        if (initPaths.size() != 3
+            || initPaths.at(1) != QStringLiteral("system.micInitVol")
+            || initPaths.at(2) != QStringLiteral("system.effectInitLevel")
+            || initValues.at(1) != 52 || initValues.at(2) != 47) {
+            restore();
+            return 35;
+        }
+        studioEngine.setMasterMic(54);
+        studioEngine.setMicInitVol(28); // manual INIT edit cancels lazy mirror
+        studioEngine.flushPendingMasterInitWrites();
+        if (initPaths.size() != 4 || initValues.last() != 28) {
+            restore();
+            return 36;
+        }
+        studioEngine.setMasterInitLiveAllowed(false); // disconnect flush forbidden
+        studioEngine.setMasterFx(61);
+        if (studioEngine.effectInitLevel() != 47 || initPaths.size() != 4) {
+            restore();
+            return 37;
+        }
+        studioEngine.setSyncMasterInit(false);
+        restore();
+        qInfo() << "SYNC MASTER/INIT 160ms debounce + Save flush self-test PASS";
+        return 0;
+    }
 
     if (app.arguments().contains(QStringLiteral("--trace-k500"))) {
         QObject::connect(&deviceManager, &K500DeviceManager::logLine,
