@@ -20,6 +20,14 @@
 #ifndef PerUser
   #define PerUser 0
 #endif
+#ifndef SmartInstaller
+  #define SmartInstaller 0
+#endif
+#if SmartInstaller
+  #if PerUser
+    #error SmartInstaller and PerUser outputs are mutually exclusive
+  #endif
+#endif
 
 #if AppDir == ""
   #error SONKUPIK_APP_DIR is required
@@ -50,7 +58,16 @@ AppUpdatesURL={#AppURL}/releases
 ; SMART_INSTALL_LAYOUT_V2
 ; Application/runtime belongs to Program Files. User .k500 content is created by
 ; the application under Documents\SonKuPik K500\Presets and is never uninstalled.
-#if PerUser
+#if SmartInstaller
+; NATIVE_SMART_INSTALLER_V1 — Inno owns selection and persistence of scope.
+; An existing Inno AppId is kept in its original scope by UsePreviousPrivileges.
+; New users start with non-admin per-user as the recommended choice.
+DefaultDirName={autopf}\{#AppName}
+DefaultGroupName={#AppName}
+PrivilegesRequired=lowest
+PrivilegesRequiredOverridesAllowed=dialog
+UsePreviousPrivileges=yes
+#elif PerUser
 ; P2_INSTALL_SCOPE_V1 — separate per-user package, without UAC.
 DefaultDirName={userpf}\{#AppName}
 DefaultGroupName={#AppName}
@@ -74,7 +91,9 @@ DisableWelcomePage=no
 DisableReadyPage=no
 
 OutputDir={#OutputDir}
-#if PerUser
+#if SmartInstaller
+OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Smart-Installer
+#elif PerUser
 OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup-PerUser
 #else
 OutputBaseFilename=SonKuPik-K500-v{#AppVersion}-Windows-Setup
@@ -135,38 +154,7 @@ begin
 end;
 
 #if PerUser
-// P3_EXPLICIT_SCOPE_MIGRATION_V1
-// Per-user Setup normally refuses an existing machine-wide registration.
-// Only the app-owned helper may bypass that collision guard, and only when all
-// internal handoff markers are present. The helper validates the new install
-// before it elevates the OLD uninstaller, so migration is reversible until then.
-function IsExplicitMachineMigration: Boolean;
-begin
-  Result := (ExpandConstant('{param:MIGRATEFROMMACHINE|0}') = '1') and
-            (ExpandConstant('{param:HELPERUPDATE|0}') = '1') and
-            (ExpandConstant('{param:AUToupdate|0}') = '1');
-end;
-
-function InitializeSetup(): Boolean;
-var
-  MachineKey: String;
-  MachineExists: Boolean;
-begin
-  MachineKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
-  MachineExists := RegKeyExists(HKLM64, MachineKey) or RegKeyExists(HKLM32, MachineKey);
-  Result := (not MachineExists) or IsExplicitMachineMigration;
-  if MachineExists and IsExplicitMachineMigration then
-    Log('Explicit app-owned machine-to-user migration accepted; old machine install remains until helper health-check succeeds.')
-  else if not Result then
-  begin
-    Log('Per-user install refused: existing machine-wide SonKuPik registration.');
-    if not WizardSilent then
-      MsgBox('An all-users SonKuPik K500 installation already exists. ' +
-             'This per-user installer will not create a second copy. ' +
-             'Use SonKuPik''s explicit migration action instead.', mbError, MB_OK);
-  end;
-end;
-
+// Per-user backend has its own existing scope guard below.
 #else
 // MIGRATE_LOCALAPPDATA_INSTALL_V1 / SAFE_CROSS_SCOPE_PREFLIGHT_V1
 // Machine setup must not execute a current-user uninstaller from elevated
@@ -219,6 +207,133 @@ begin
     ProbeError := Format('Legacy installation probe failed (code %d).', [ExitCode]);
 end;
 
+#endif
+
+#if SmartInstaller
+// Keep the same AppId as legacy installers. The prior scope is picked by
+// Inno Setup itself; an explicit opposite-scope CLI override cannot bypass
+// these pre-install collision guards.
+function SmartMachineRegistrationPresent: Boolean;
+var
+  Key: String;
+begin
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
+  Result := RegKeyExists(HKLM64, Key) or RegKeyExists(HKLM32, Key);
+end;
+
+function SmartRegisteredDestinationSafe(var Reason: String): Boolean;
+var
+  Key: String;
+  Registered: String;
+  Destination: String;
+  RegisteredPresent: Boolean;
+  GotPath: Boolean;
+begin
+  // SMART_SAME_SCOPE_DESTINATION_GUARD_V1: Do not let a new canonical
+  // install silently strand an existing noncanonical same-scope copy.
+  Reason := '';
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
+  Destination := ExpandConstant('{app}');
+  Registered := '';
+  if IsAdminInstallMode then
+  begin
+    RegisteredPresent := RegKeyExists(HKLM64, Key) or RegKeyExists(HKLM32, Key);
+    GotPath := RegQueryStringValue(HKLM64, Key, 'Inno Setup: App Path', Registered);
+  end
+  else
+  begin
+    RegisteredPresent := RegKeyExists(HKCU64, Key) or RegKeyExists(HKCU32, Key);
+    GotPath := RegQueryStringValue(HKCU64, Key, 'Inno Setup: App Path', Registered);
+  end;
+
+  Result := False;
+  if RegisteredPresent then
+  begin
+    if not GotPath or (Registered = '') then
+      Reason := 'Existing install registration lacks a verifiable application path.'
+    else if CompareText(AddBackslash(Registered), AddBackslash(Destination)) <> 0 then
+      Reason := 'An existing same-scope installation uses a different folder. Setup will not leave two copies.'
+    else if not FileExists(AddBackslash(Registered) + 'unins000.exe') or
+            not FileExists(AddBackslash(Registered) + '{#AppExeName}') then
+      Reason := 'Existing installation files or its uninstaller are missing. Manual repair is required.'
+    else
+      Result := True;
+  end
+  else if FileExists(AddBackslash(Destination) + '{#AppExeName}') then
+    Reason := 'An unregistered executable already exists at the installation destination.'
+  else
+    Result := True;
+end;
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
+var
+  ProbeError: String;
+  Collision: Boolean;
+begin
+  Result := '';
+  ProbeError := '';
+  if IsAdminInstallMode then
+    Collision := LegacyPerUserInstallPresent(ProbeError)
+  else
+    Collision := SmartMachineRegistrationPresent;
+
+  if Collision then
+  begin
+    Result := 'A SonKuPik installation is registered in the other Windows scope. ' +
+      'Smart Installer stopped before changing either copy. ' +
+      'Use the previously installed scope or an explicitly verified migration.';
+    Log('NATIVE_SMART_INSTALLER_V1: blocked cross-scope installation collision.');
+  end
+  else if ProbeError <> '' then
+  begin
+    Result := 'Smart Installer could not verify the existing user installation. ' +
+      'No changes were made. Details: ' + ProbeError;
+    Log('NATIVE_SMART_INSTALLER_V1: blocked indeterminate inventory: ' + ProbeError);
+  end
+  else if not SmartRegisteredDestinationSafe(ProbeError) then
+  begin
+    Result := 'Smart Installer cannot safely reuse this installation location. ' +
+      'No changes were made. Details: ' + ProbeError;
+    Log('NATIVE_SMART_INSTALLER_V1: blocked unsafe destination: ' + ProbeError);
+  end;
+end;
+
+#elif PerUser
+// P3_EXPLICIT_SCOPE_MIGRATION_V1
+// Per-user Setup normally refuses an existing machine-wide registration.
+// Only the app-owned helper may bypass that collision guard, and only when all
+// internal handoff markers are present. The helper validates the new install
+// before it elevates the OLD uninstaller, so migration is reversible until then.
+function IsExplicitMachineMigration: Boolean;
+begin
+  Result := (ExpandConstant('{param:MIGRATEFROMMACHINE|0}') = '1') and
+            (ExpandConstant('{param:HELPERUPDATE|0}') = '1') and
+            (ExpandConstant('{param:AUToupdate|0}') = '1');
+end;
+
+function InitializeSetup(): Boolean;
+var
+  MachineKey: String;
+  MachineExists: Boolean;
+begin
+  MachineKey := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
+  MachineExists := RegKeyExists(HKLM64, MachineKey) or RegKeyExists(HKLM32, MachineKey);
+  Result := (not MachineExists) or IsExplicitMachineMigration;
+  if MachineExists and IsExplicitMachineMigration then
+    Log('Explicit app-owned machine-to-user migration accepted; old machine install remains until helper health-check succeeds.')
+  else if not Result then
+  begin
+    Log('Per-user install refused: existing machine-wide SonKuPik registration.');
+    if not WizardSilent then
+      MsgBox('An all-users SonKuPik K500 installation already exists. ' +
+             'This per-user installer will not create a second copy. ' +
+             'Use SonKuPik''s explicit migration action instead.', mbError, MB_OK);
+  end;
+end;
+
+#else
+// SMART_INSTALL_MACHINE_SCOPE_GUARD_V1 — backend machine Setup shares the
+// same original-user collision probe as the public Smart Installer.
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var
   ProbeError: String;

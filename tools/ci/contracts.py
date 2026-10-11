@@ -1566,6 +1566,32 @@ def check_release_contracts() -> None:
         "UsePreviousAppDir=no",
         "MIGRATE_LOCALAPPDATA_INSTALL_V1",
     )
+    # ISSUE182_NATIVE_SMART_INSTALLER_V1: one native Inno artifact selects
+    # new/previous scope without renaming legacy machine/user backend assets.
+    require(
+        "packaging/windows/installer.iss",
+        "NATIVE_SMART_INSTALLER_V1",
+        "PrivilegesRequiredOverridesAllowed=dialog",
+        "UsePreviousPrivileges=yes",
+        "DefaultDirName={autopf}",
+        "SonKuPik-K500-v{#AppVersion}-Windows-Smart-Installer",
+        "IsAdminInstallMode",
+        "SMART_SAME_SCOPE_DESTINATION_GUARD_V1",
+        "SmartRegisteredDestinationSafe",
+        "LegacyPerUserInstallPresent(ProbeError)",
+    )
+    require(
+        "tools/ci/installer_smoke.ps1",
+        '"/DSmartInstaller=1"',
+        "Smart Installer current-user fresh install and previous-scope reuse",
+        "Smart Installer rejects opposite-scope registered machine install",
+        "Smart Installer fails closed on stale same-scope registration",
+        "KEEP-SMART-USER-DATA",
+    )
+    require(
+        "functions/download/[kind].js",
+        "SonKuPik-K500-${tag}-Windows-Setup.exe",
+    )
     # Installed machine Setup cannot execute a legacy per-user uninstaller.
     require(
         "packaging/windows/installer.iss",
