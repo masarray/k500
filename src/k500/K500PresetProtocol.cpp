@@ -86,6 +86,33 @@ QByteArray withModeName(const QByteArray &image, const QString &name, QString *e
     return out;
 }
 
+QByteArray withStartupVolumeOverrides(const QByteArray &image,
+                                      const std::array<int, 6> &values,
+                                      quint8 mask, QString *error)
+{
+    // Native KTV capture (2026-10-11) writes a staged 0x0290 image.
+    // Its untouched device seed differed from Store at ONLY 0x0000/0x0003
+    // for Music Master/Init 25 -> 15. A fresh 0x40 readback in SonKuPik
+    // still returned both 25 and is not proof that a LIVE write failed.
+    if (!validImage(image) || (mask & 0xC0u)) {
+        if (error) *error = QStringLiteral("Invalid Store image or volume mask.");
+        return {};
+    }
+    constexpr std::array<int, 6> offsets{{0x0000, 0x0001, 0x0002,
+                                          0x0003, 0x000A, 0x0015}};
+    QByteArray staged = image;
+    for (int i = 0; i < 6; ++i) {
+        if (!(mask & (1u << i)))
+            continue;
+        if (values[i] < 0 || values[i] > 84) {
+            if (error) *error = QStringLiteral("Unsafe staged volume level.");
+            return {};
+        }
+        staged[offsets[i]] = char(values[i]);
+    }
+    return staged;
+}
+
 QByteArray storeBegin(const QByteArray &image, const K500StoreChain &chain)
 {
     if (!validImage(image))
@@ -231,6 +258,38 @@ bool selfTest(QString *error)
     const K500StoreChain outputChain = nextStoreChain(customImage, commit);
     if (outputChain.first != 0x12 || outputChain.second != 0x34 || outputChain.third != 0x38)
         return fail(QStringLiteral("mass-upload chain derivation mismatch"));
+
+    // NATIVE_KTV_20261011_MUSIC_STORE_GOLDEN_V1
+    // Capture NativeKTV_Connect_MusicVol_MusicInit_25_15_SAVE.pcapng:
+    // initial 939-byte active image offsets [0,3] = 25,25;
+    // native 0x42 Store image offsets [0,3] = 15,15; all other bytes in
+    // first 600 captured Store bytes are unchanged. Never clone private
+    // preset payload or infer undocumented DSP offsets.
+    QByteArray initialImage(DeviceSlotImageLength, char(0x51));
+    initialImage[0x0000] = char(25);
+    initialImage[0x0003] = char(25);
+    initialImage[0x000A] = char(25);
+    initialImage[0x0015] = char(25);
+    const std::array<int, 6> masterAndInit{{15, 25, 25, 15, 25, 25}};
+    const QByteArray nativeStaged = withStartupVolumeOverrides(
+        initialImage, masterAndInit, 0x09u);
+    if (nativeStaged.size() != DeviceSlotImageLength
+        || static_cast<quint8>(nativeStaged[0]) != 15
+        || static_cast<quint8>(nativeStaged[3]) != 15)
+        return fail(QStringLiteral("Native staged Store Music Master/Init 25->15 mismatch"));
+    for (int i = 0; i < DeviceSlotImageLength; ++i) {
+        if (i != 0 && i != 3 && nativeStaged[i] != initialImage[i])
+            return fail(QStringLiteral("Staged Store modified unrelated device bytes"));
+    }
+    const auto firstNativeChunk = storeChunk(0, nativeStaged.left(DeviceSlotWriteChunk));
+    if (firstNativeChunk.size() != 1 + 1 + 1 + 2 + 2 + DeviceSlotWriteChunk + 4 + 1
+        || static_cast<quint8>(firstNativeChunk.at(5)) != 60
+        || firstNativeChunk.at(7) != char(15)
+        || firstNativeChunk.at(10) != char(15))
+        return fail(QStringLiteral("Native 0x42 staged Store image offset mismatch"));
+    if (!withStartupVolumeOverrides(initialImage.left(10), masterAndInit, 0x09u).isEmpty()
+        || !withStartupVolumeOverrides(initialImage, masterAndInit, 0x80u).isEmpty()) 
+        return fail(QStringLiteral("Invalid staged Store must fail closed"));
 
     if (!storeBegin(QByteArray(DeviceSlotImageLength - 1, char(0))).isEmpty())
         return fail(QStringLiteral("short slot image must be rejected"));

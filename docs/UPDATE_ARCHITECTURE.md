@@ -22,6 +22,44 @@ validation errors and never overwrite valid cache data.
 These changes are in source only until a separately qualified future patch
 release. Existing public v1.1.2 installer bytes remain unchanged.
 
+## Native KTV Music 25→15 Save capture parity — 2026-10-11
+
+**Source of truth:** user-supplied two USBPcap PCAPNG files, comparing a
+successful Native KTV Music Master+Init 25→15+Save/power-cycle to the failed
+SonKuPik flow. Captures are kept OUT of the repository; they contain actual
+device/preset contents. Only the proven protocol bytes/offsets are pinned by
+native self-tests.
+
+- Both connect with `AA 01 00 1C E3` / `AA 01 00 3F C0` and read a
+  939-byte active image starting `19 19 19 19 54 ...`.
+- Native KTV writes `CMD 02` with final payload byte `00`
+  (e.g. `AA 0D 00 02 0F 0F 54 02 09 09 09 08 08 07 15 00 36`),
+  receiving `RSP FD`. SonKuPik sent the same command except tail `02`
+  from unrelated `activeMemory[7]` (Music HP Type), so its checksum differs.
+- Native KTV's `CMD 42` Store image changes ONLY Music Master offset
+  `0x0000` and Music Init `0x0003` from `19` (25) to `0F` (15);
+  the remaining compared bytes are original device image. Eleven chunk
+  ACKs `BD` and final commit ACK `BC` confirm successful Store.
+- After SonKuPik live `CMD 02` ACKs, another complete `CMD 40`
+  readback of 939 bytes is **byte-for-byte identical** to its initial
+  939-byte image (both Music Master/Init remain 25). It is a saved-slot
+  shadow, **not** an authoritative reflection of pending LIVE edits.
+  Old Save preflight wrongly required these bytes to equal LIVE intent,
+  rejected Save and forced disconnect BEFORE any `CMD 41/42/43` was sent.
+- Fix: send native `CMD 02` tail `00`; wait for existing LIVE dispatch
+  barrier; freeze opt-in user volume intent BEFORE `CMD 40`, then build
+  one validated 656-byte store image from fresh device image with only
+  six captured offsets eligible for narrow override. Master Music/Mic/FX
+  are staged during normal LIVE Save; INIT Music/Mic/FX are staged only
+  when SYNC MASTER is ON. Pre-Store readback does **not** hydrate the editor,
+  because that would revert the visible user edits to stale 25.
+  Unrelated 0x0290 bytes are preserved exactly. The original Store chain
+  and its ACK checks are unchanged; no extra flash writes are introduced.
+
+Capture parity is **not** proof of real-device acceptance. Field testing
+must confirm Save ACK, reconnect, power-cycle Master=15 and INIT=15,
+opposite toggle state and Music Max clamp, and no unintended DSP changes.
+
 ## SYNC MASTER / INIT (user opt-in; firmware behaviour unchanged)
 
 K500 firmware restores runtime Music/Mic/FX master levels from MUSIC INIT,

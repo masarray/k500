@@ -659,9 +659,15 @@ def check_ui_contracts() -> None:
     require("src/StudioEngine.cpp", "SYNC_MASTER_INIT_LAZY_V1",
             "m_masterInitDebounce.setInterval(160)", "k500/syncMasterInit",
             "mirrorMasterToInit(0)", "mirrorMasterToInit(1)", "mirrorMasterToInit(2)")
+    require("src/k500/K500Protocol.cpp",
+            "NATIVE_MUSIC_CMD02_TAIL_20261011_V1",
+            "NATIVE_KTV_20261011_MUSIC_25_TO_15_WIRE_GOLDEN_V1")
+    require("src/k500/K500PresetProtocol.cpp",
+            "NATIVE_KTV_20261011_MUSIC_STORE_GOLDEN_V1",
+            "withStartupVolumeOverrides", "Staged Store modified unrelated device bytes")
     require("src/k500/K500PresetManager.cpp", "SAVE_LIVE_DRAIN_BARRIER_V1",
-            "savePreflightRequested()", "m_saveInitExpected",
-            "Preset tidak ditulis")
+            "savePreflightRequested()", "NATIVE_KTV_20261011_STORE_SHADOW_PARITY_V1",
+            "withStartupVolumeOverrides(")
     require("qml/components/RackFaderPanel.qml", "SYNC_MASTER_INIT_SWITCH_V1",
             "SYNC MASTER", "initRecentlySynced")
     require("qml/components/SystemWorkspaceImpl.qml", "syncEngine:root.engine")

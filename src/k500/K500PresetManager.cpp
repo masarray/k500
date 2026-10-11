@@ -166,7 +166,7 @@ void K500PresetManager::finishOperation(const QString &kind, int slotOneBased)
 {
     clearTimeout();
     m_saveLiveDrainTimer.stop();
-    m_verifySaveInit = false;
+    m_saveVolumeMask = 0;
     m_step = Step::Idle;
     m_readbackPurpose = ReadbackPurpose::None;
     m_operation = Operation::None;
@@ -188,7 +188,7 @@ void K500PresetManager::failOperation(const QString &kind, const QString &messag
 {
     clearTimeout();
     m_saveLiveDrainTimer.stop();
-    m_verifySaveInit = false;
+    m_saveVolumeMask = 0;
     const Operation failedOperation = m_operation;
     m_step = Step::Idle;
     m_readbackPurpose = ReadbackPurpose::None;
@@ -510,19 +510,28 @@ void K500PresetManager::pollSaveLiveDrain()
         return;
     }
 
-    // Capture the actual desired INITs only after all lazy edits have drained.
-    m_verifySaveInit = m_syncSource && m_syncSource->syncMasterInit()
-        && m_syncSource->masterInitLiveAllowed();
-    if (m_verifySaveInit) {
-        m_saveInitExpected = {qRound(m_syncSource->musicInitVol()),
+    // NATIVE_KTV_20261011_STORE_SHADOW_PARITY_V1
+    // C0/FD acknowledge a LIVE CMD 02, but a new 0x40 readback still
+    // returns the old *slot shadow* (25/25). Native KTV instead uses a
+    // staged 0x0290 image with Music Top + Init 15/15. Capture intent while
+    // still LIVE and before device readback can hydrate stale slot values.
+    m_saveVolumeMask = 0;
+    if (m_syncSource && m_syncSource->masterInitLiveAllowed()) {
+        m_saveVolumeLevels = {qRound(m_syncSource->masterMusic()),
+                              qRound(m_syncSource->masterMic()),
+                              qRound(m_syncSource->masterFx()),
+                              qRound(m_syncSource->musicInitVol()),
                               qRound(m_syncSource->micInitVol()),
                               qRound(m_syncSource->effectInitLevel())};
+        // Native Store always preserves explicit LIVE Master levels; INIT
+        // overrides are opt-in and only occur with SYNC MASTER enabled.
+        m_saveVolumeMask = m_syncSource->syncMasterInit() ? 0x3Fu : 0x07u;
     }
 
     m_operation = Operation::None;
     QString error;
     if (!beginOperation(Operation::Save, &error)) {
-        m_verifySaveInit = false;
+        m_saveVolumeMask = 0;
         emit operationFailed(QStringLiteral("Save"), error);
         return;
     }
@@ -838,23 +847,34 @@ void K500PresetManager::finishReadback()
         return;
     }
 
-    // Save must never commit stale INIT values from a still-in-flight or
-    // rejected write. These are ACTIVE-MEMORY offsets for file 0x000B,
-    // 0x0012 and 0x001D; do not reinterpret them as slot-file offsets.
-    if (m_readbackPurpose == ReadbackPurpose::SavePrepare && m_verifySaveInit) {
-        const std::array<int, 3> offsets{3, 10, 21};
-        for (int i = 0; i < 3; ++i) {
-            const int actual = static_cast<quint8>(m_readbackMemory.at(offsets[i]));
-            if (actual != m_saveInitExpected[i]) {
+    // NATIVE_KTV_20261011_STORE_SHADOW_PARITY_V1 — do not assume that
+    // 0x40 returns LIVE CMD 02 edits before Store. Real traces prove K500
+    // readback stays 25/25 although each 0x02 was ACKed FD; Native KTV
+    // stages 15/15 at image offsets 0x0000 and 0x0003 and stores it.
+    //
+    // Keep the authenticated 939-byte device image as the immutable base;
+    // patch ONLY explicit live Master/Init scalars. No unrelated DSP,
+    // EQ, or mode-name bytes may be changed. No fabricated .k500 file.
+    if (m_readbackPurpose == ReadbackPurpose::SavePrepare) {
+        m_storeImage = m_readbackMemory.left(K500PresetProtocol::DeviceSlotImageLength);
+        if (m_saveVolumeMask) {
+            QString error;
+            m_storeImage = K500PresetProtocol::withStartupVolumeOverrides(
+                m_storeImage, m_saveVolumeLevels, m_saveVolumeMask, &error);
+            if (m_storeImage.isEmpty()) {
                 failOperation(QStringLiteral("Save"),
-                    QStringLiteral("SYNC MASTER belum terverifikasi di K500 (INIT %1: %2, diharapkan %3). "
-                                   "Preset tidak ditulis. Sambungkan kembali lalu coba Save.")
-                        .arg(i + 1).arg(actual).arg(m_saveInitExpected[i]));
+                    QStringLiteral("Store volume staging invalid: %1").arg(error));
                 return;
             }
         }
+        m_storeChain = {};
+        beginStoreSlot(false);  // unchanged native 0x41 -> 0x42 -> 0x43
+        return;
     }
 
+    // 0x40 here is not authoritative LIVE state for Save; do not hydrate
+    // the editor from stale pre-Store bytes (which would overwrite Master 15).
+    // Other readback purposes keep their existing authoritative fanout.
     emit activeMemoryReady(m_readbackMemory);
 
     if (m_readbackPurpose == ReadbackPurpose::Recall) {
@@ -905,16 +925,7 @@ void K500PresetManager::finishReadback()
         return;
     }
 
-    if (m_readbackPurpose == ReadbackPurpose::SavePrepare) {
-        // P2_SAVE_FROM_DEVICE_TRUTH_V1
-        // The slot image is exactly the first 0x0290 bytes of freshly-read
-        // active memory. No .k500 serializer is needed and no stale editor
-        // defaults can contaminate permanent storage.
-        m_storeImage = m_readbackMemory.left(K500PresetProtocol::DeviceSlotImageLength);
-        m_storeChain = {};
-        beginStoreSlot(false);
-        return;
-    }
+
 }
 
 void K500PresetManager::beginStoreSlot(bool waitForBeginAck)
