@@ -23,8 +23,10 @@
 #ifndef SmartInstaller
   #define SmartInstaller 0
 #endif
-#if SmartInstaller && PerUser
-  #error SmartInstaller and PerUser outputs are mutually exclusive
+#if SmartInstaller
+  #if PerUser
+    #error SmartInstaller and PerUser outputs are mutually exclusive
+  #endif
 #endif
 
 #if AppDir == ""
