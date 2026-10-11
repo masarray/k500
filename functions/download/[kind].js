@@ -5,9 +5,23 @@ const ARTIFACTS = {
   windows: {
     filename: 'SonKuPik-K500-Windows-Setup.exe',
     versioned: (tag) => `SonKuPik-K500-${tag}-Windows-Setup.exe`,
+    smartVersioned: (tag) => `SonKuPik-K500-${tag}-Windows-Smart-Installer.exe`,
     contentType: 'application/vnd.microsoft.portable-executable'
   }
 };
+
+// PUBLIC_SMART_INSTALLER_VERSION_GATE_V1
+// Native public Smart Setup first arrives in a qualifying v1.1.3 stable release.
+// Never treat the v1.1.3-rc.1 prerelease as the public download authority.
+function stableInstallerAsset(tag, descriptor) {
+  const parts = tag.slice(1).split('.').map(Number);
+  if (parts.length !== 3 || !parts.every(Number.isSafeInteger)) {
+    throw new Error('Unsafe stable version for download selection');
+  }
+  const [major, minor, patch] = parts;
+  const nativeSmart = major > 1 || (major === 1 && (minor > 1 || (minor === 1 && patch >= 3)));
+  return nativeSmart ? descriptor.smartVersioned(tag) : descriptor.versioned(tag);
+}
 
 async function resolveLatestTag() {
   const response = await fetch(LATEST_RELEASE_URL, {
@@ -27,7 +41,7 @@ async function resolveLatestTag() {
   if (!match) throw new Error('Unable to parse latest release tag');
 
   const tag = decodeURIComponent(match[1]);
-  if (!/^v?\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(tag)) {
+  if (!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(tag)) {
     throw new Error('Unexpected release tag format');
   }
   return tag;
@@ -83,7 +97,7 @@ export async function onRequest(context) {
 
   try {
     const tag = await resolveLatestTag();
-    const assetName = descriptor.versioned(tag);
+    const assetName = stableInstallerAsset(tag, descriptor);
     const assetUrl = `https://github.com/${REPO}/releases/download/${encodeURIComponent(tag)}/${assetName}`;
     const upstream = await fetchArtifact(request, assetUrl);
 

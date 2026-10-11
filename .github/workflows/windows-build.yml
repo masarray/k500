@@ -42,6 +42,10 @@ jobs:
       - name: Repository contracts
         run: python tools/ci/contracts.py
 
+      - name: Stable Windows download routing regression (offline)
+        # Pure Node fetch mock, no GitHub token, packages, Qt or extra workflow.
+        run: node tools/ci/test_download_route.js
+
       - name: Preset lab syntax
         run: python -m py_compile tools/k500_preset_lab.py
 
