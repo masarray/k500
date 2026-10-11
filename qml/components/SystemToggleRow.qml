@@ -115,10 +115,11 @@ Rectangle {
         }
 
         Rectangle {
-            Layout.preferredWidth: 42
-            Layout.preferredHeight: 22
+            // COMPACT_TOGGLE_VISUAL_V1 — retain full-row interaction.
+            Layout.preferredWidth: 34
+            Layout.preferredHeight: 18
             Layout.alignment: Qt.AlignVCenter
-            radius: 11
+            radius: 9
             color: root.pending ? "#30270E"
                                 : root.checked ? "#153A40"
                                 : "#070C10"
@@ -128,9 +129,9 @@ Rectangle {
                                        : root.available ? "#46545E" : "#303A42"
 
             Rectangle {
-                width: 16
-                height: 16
-                radius: 8
+                width: 12
+                height: 12
+                radius: 6
                 y: 3
                 x: root.checked ? parent.width - width - 3 : 3
                 color: root.pending ? Theme.amber

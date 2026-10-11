@@ -38,6 +38,8 @@ const ctx = {
     selectedSourceIndexes: [],
     targetIndex: -1,
     maxSlots: 10,
+    editingLocked: false,
+    stagedRevision: 0,
     sourcePresets: Array.from({length: 20}, (_, i) => ({
         valid: true,
         path: "official-" + String(i + 1),
@@ -51,6 +53,12 @@ const ctx = {
         get count() { return this.entries.length; },
         get(i) { return this.entries[i]; },
         append(entry) { this.entries.push({...entry}); },
+        insert(index, entry) { this.entries.splice(index, 0, {...entry}); },
+        remove(index) { this.entries.splice(index, 1); },
+        move(from, to, count) {
+            assert.equal(count, 1);
+            this.entries.splice(to, 0, ...this.entries.splice(from, count));
+        },
         clear() { this.entries.length = 0; }
     }
 };

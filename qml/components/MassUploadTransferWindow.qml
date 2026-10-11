@@ -56,6 +56,25 @@ Window {
     property var selectedSourceIndexes: []
     property int targetIndex: -1
     readonly property int maxSlots: 10
+    // MASS_TRANSFER_TRUE_MOVE_DND_V1 — targetModel is the ONLY editable plan.
+    // Source is a stable-identity catalogue projection, excluding staged paths.
+    // Drag gestures never touch files/USB; only Upload freezes ordered paths.
+    property int stagedRevision: 0
+    property string dragKind: ""          // "source" or "target"
+    property int dragIndex: -1
+    property real dragStartX: 0
+    property real dragStartY: 0
+    property real dragX: 0
+    property real dragY: 0
+    property bool dragActive: false
+    property bool dragConsumedClick: false
+    property int dragInsertIndex: -1
+    property string dragZone: ""
+    property string dragLabel: ""
+    property var dragSourcePaths: []
+    readonly property bool editingLocked: root.transferInFlight
+                                          || (root.presetManager && root.presetManager.busy)
+    readonly property var catalogPresets: root.fileBridge ? root.fileBridge.combinedPresets : []
     // MASS_UPLOAD_ACK_PROGRESS_OVERLAY_V1 — modal visual feedback follows
     // native ACK/verified readback, never a timer-driven fictional percentage.
     property bool transferInFlight: false
@@ -102,7 +121,13 @@ Window {
     }
     // Unified source replaces the old folderPresets-only Mass Upload source.
     // folderPresets remains part of combinedPresets together with SONKUPIK official presets.
-    readonly property var sourcePresets: root.fileBridge ? root.fileBridge.combinedPresets : []
+    readonly property var sourcePresets: {
+        var revision = root.stagedRevision  // explicit invalidation for ListModel mutations
+        var all = root.catalogPresets || []
+        return all.filter(function(entry) {
+            return !root.targetContains(String(entry.path || ""))
+        })
+    }
 
     ListModel { id: targetModel }
 
@@ -163,6 +188,8 @@ Window {
         clearSourceSelection()
         targetIndex = -1
         targetModel.clear()
+        stagedRevision++
+        cancelTransferGesture()
         if (fileBridge) {
             fileBridge.refreshPresetFolder()
             fileBridge.syncOfficialPresets()
@@ -182,20 +209,25 @@ Window {
         return false
     }
 
-    function addEntry(entry) {
-        if (!entry || !Boolean(entry.valid) || targetModel.count >= maxSlots)
-            return
+    function addEntry(entry, atIndex) {
+        if (editingLocked || !entry || !Boolean(entry.valid) || targetModel.count >= maxSlots)
+            return false
         var path = String(entry.path || "")
         if (path.length === 0 || targetContains(path))
-            return
-        targetModel.append({
+            return false
+        var next = {
             fileName: String(entry.fileName || "preset.k500"),
             displayName: String(entry.displayName || entry.presetName || entry.fileName || "K500 PRESET"),
             presetName: String(entry.presetName || ""),
             originLabel: String(entry.originLabel || (entry.source === "folder" ? "LOCAL" : "SONKUPIK")),
             path: path
-        })
-        targetIndex = targetModel.count - 1
+        }
+        var at = atIndex === undefined ? targetModel.count
+                                       : Math.max(0, Math.min(targetModel.count, atIndex))
+        targetModel.insert(at, next)
+        targetIndex = at
+        stagedRevision++
+        return true
     }
 
     function addSelected() {
@@ -216,20 +248,141 @@ Window {
             addEntry(source[i])
     }
 
+    function returnEntry(index) {
+        if (editingLocked || index < 0 || index >= targetModel.count)
+            return false
+        targetModel.remove(index)
+        targetIndex = targetModel.count === 0 ? -1 : Math.min(index, targetModel.count - 1)
+        stagedRevision++
+        return true
+    }
+
     function removeSelected() {
-        if (targetIndex < 0 || targetIndex >= targetModel.count)
-            return
-        targetModel.remove(targetIndex)
-        targetIndex = targetModel.count === 0 ? -1 : Math.min(targetIndex, targetModel.count - 1)
+        return returnEntry(targetIndex)
     }
 
     function clearTarget() {
+        if (editingLocked)
+            return
         targetModel.clear()
         targetIndex = -1
+        stagedRevision++
+    }
+
+    function moveTarget(from, insertAt) {
+        if (editingLocked || from < 0 || from >= targetModel.count)
+            return false
+        var at = Math.max(0, Math.min(targetModel.count, insertAt))
+        var to = at > from ? at - 1 : at
+        if (to !== from)
+            targetModel.move(from, to, 1)
+        targetIndex = to
+        return true
+    }
+
+    // Coordinates are mapped to Window.contentItem; no DropArea duplicates,
+    // no shadow stage model and no QML Drag/MouseArea competing grabs.
+    function targetInsertionAt(px, py) {
+        var pos = slotCanvas.mapFromItem(root.contentItem, px, py)
+        if (pos.x < 0 || pos.x > slotCanvas.width || pos.y < 0 || pos.y > slotCanvas.height)
+            return -1
+        var rowPitch = slotCanvas.slotRowHeight + 3
+        return Math.max(0, Math.min(targetModel.count,
+               Math.floor((pos.y - 6 + slotCanvas.slotRowHeight / 2) / rowPitch)))
+    }
+    function overSourceAt(px, py) {
+        var pos = sourceList.mapFromItem(root.contentItem, px, py)
+        return pos.x >= 0 && pos.x <= sourceList.width
+               && pos.y >= 0 && pos.y <= sourceList.height
+    }
+    function beginTransferGesture(kind, index, px, py) {
+        if (editingLocked)
+            return
+        dragKind = kind
+        dragIndex = index
+        dragStartX = px
+        dragStartY = py
+        dragX = px
+        dragY = py
+        dragActive = false
+        dragConsumedClick = false
+        dragZone = ""
+        dragInsertIndex = -1
+        dragSourcePaths = []
+        if (kind === "source") {
+            var data = sourcePresets
+            if (index < 0 || index >= data.length)
+                return
+            // Drag selected Ctrl/Shift group in chronological order; otherwise
+            // drag exactly the item under the pointer.
+            var order = isSourceSelected(index) ? selectedSourceIndexes.slice() : [index]
+            dragSourcePaths = order.filter(function(i) {
+                return i >= 0 && i < data.length && Boolean(data[i].valid)
+            }).map(function(i) { return String(data[i].path || "") })
+            dragLabel = String(data[index].displayName || data[index].fileName || "PRESET")
+        } else if (kind === "target" && index >= 0 && index < targetModel.count) {
+            dragLabel = String(targetModel.get(index).displayName)
+        }
+    }
+    function updateTransferGesture(px, py) {
+        if (!dragKind || editingLocked)
+            return
+        dragX = px
+        dragY = py
+        if (!dragActive && Math.abs(px - dragStartX) + Math.abs(py - dragStartY) > 11)
+            dragActive = true
+        if (!dragActive)
+            return
+        dragInsertIndex = targetInsertionAt(px, py)
+        dragZone = dragInsertIndex >= 0 ? "target"
+                 : overSourceAt(px, py) ? "source" : ""
+    }
+    function finishTransferGesture(px, py) {
+        if (!dragKind)
+            return
+        updateTransferGesture(px, py)
+        var wasDragging = dragActive
+        var kind = dragKind
+        var from = dragIndex
+        var dropAt = dragInsertIndex
+        var paths = dragSourcePaths.slice()
+        var zone = dragZone
+        dragKind = ""
+        dragActive = false
+        dragZone = ""
+        dragInsertIndex = -1
+        dragConsumedClick = wasDragging
+        if (!wasDragging || editingLocked)
+            return
+        if (kind === "target") {
+            if (zone === "source") returnEntry(from)
+            else if (zone === "target") moveTarget(from, dropAt)
+        } else if (kind === "source" && zone === "target") {
+            // Resolve by path at drop time. A Sync/Folder refresh may have
+            // changed catalogue row positions during the gesture.
+            var catalog = catalogPresets || []
+            var inserted = 0
+            for (var i = 0; i < paths.length && targetModel.count < maxSlots; ++i) {
+                var path = paths[i]
+                for (var j = 0; j < catalog.length; ++j) {
+                    if (String(catalog[j].path || "") === path) {
+                        if (addEntry(catalog[j], dropAt + inserted))
+                            inserted++
+                        break
+                    }
+                }
+            }
+        }
+    }
+    function cancelTransferGesture() {
+        dragKind = ""
+        dragActive = false
+        dragZone = ""
+        dragInsertIndex = -1
     }
 
     function uploadTransfer() {
-        if (!fileBridge || !presetManager || targetModel.count === 0)
+        if (!fileBridge || !presetManager || targetModel.count === 0 || dragActive)
             return
         if (!presetManager.usbStoreAvailable) {
             root.connectNotice = "K500 belum terhubung lewat USB. Tutup jendela ini, lalu tekan Connect di bagian atas aplikasi."
@@ -296,7 +449,7 @@ Window {
                     font.weight: Font.DemiBold
                     ToolTip.visible: workflowHelp.containsMouse
                     ToolTip.delay: 450
-                    ToolTip.text: "Ctrl+click selects presets in your chosen order. Shift+click selects a range."
+                    ToolTip.text: "Drag presets between panels; drag within Device Slots to reorder. Ctrl/Shift selects multiple presets."
                     MouseArea {
                         id: workflowHelp
                         anchors.fill: parent
@@ -339,7 +492,7 @@ Window {
                                 anchors.right: parent.right
                                 anchors.rightMargin: 12
                                 anchors.verticalCenter: parent.verticalCenter
-                                text: String(root.sourcePresets.length) + " PRESETS" + (root.selectedSourceIndexes.length ? "  ·  " + root.selectedSourceIndexes.length + " SELECTED" : "")
+                                text: String(root.sourcePresets.length) + " AVAILABLE" + (root.selectedSourceIndexes.length ? "  ·  " + root.selectedSourceIndexes.length + " SELECTED" : "")
                                 color: Theme.accent
                                 font.family: Theme.monoFamily
                                 font.pixelSize: 9
@@ -406,6 +559,11 @@ Window {
                                     spacing: 3
                                     clip: true
                                     model: root.sourcePresets
+                                    interactive: !root.dragActive
+                                    displaced: Transition {
+                                        NumberAnimation { properties: "x,y"; duration: 145
+                                                          easing.type: Easing.OutCubic }
+                                    }
 
                                     delegate: Rectangle {
                                         required property int index
@@ -415,6 +573,9 @@ Window {
                                         radius: 6
                                         readonly property bool validPreset: Boolean(modelData.valid)
                                         readonly property bool selected: root.isSourceSelected(index)
+                                        opacity: root.dragActive && root.dragKind === "source"
+                                                 && root.dragSourcePaths.indexOf(String(modelData.path || "")) >= 0 ? 0.45 : 1
+                                        Behavior on opacity { NumberAnimation { duration: 115 } }
                                         readonly property string origin: String(modelData.originLabel || (modelData.source === "folder" ? "LOCAL" : "SONKUPIK"))
                                         // MASS_UPLOAD_CANONICAL_BADGE_V1 — stable preset source identity.
                                         // Not a row index and never a destination K500 hardware slot.
@@ -473,10 +634,33 @@ Window {
                                             id: sourceMouse
                                             anchors.fill: parent
                                             hoverEnabled: true
-                                            cursorShape: validPreset ? Qt.PointingHandCursor : Qt.ArrowCursor
-                                            enabled: validPreset
-                                            onClicked: function(mouse) { root.selectSource(index, mouse.modifiers) }
-                                            onDoubleClicked: { root.selectSource(index, Qt.NoModifier); root.addSelected() }
+                                            preventStealing: true
+                                            cursorShape: validPreset ? Qt.OpenHandCursor : Qt.ArrowCursor
+                                            enabled: validPreset && !root.editingLocked
+                                            onPressed: function(mouse) {
+                                                var p = mapToItem(root.contentItem, mouse.x, mouse.y)
+                                                root.beginTransferGesture("source", index, p.x, p.y)
+                                            }
+                                            onPositionChanged: function(mouse) {
+                                                if (!pressed) return
+                                                var p = mapToItem(root.contentItem, mouse.x, mouse.y)
+                                                root.updateTransferGesture(p.x, p.y)
+                                            }
+                                            onReleased: function(mouse) {
+                                                var p = mapToItem(root.contentItem, mouse.x, mouse.y)
+                                                root.finishTransferGesture(p.x, p.y)
+                                            }
+                                            onCanceled: root.cancelTransferGesture()
+                                            onClicked: function(mouse) {
+                                                if (!root.dragConsumedClick)
+                                                    root.selectSource(index, mouse.modifiers)
+                                            }
+                                            onDoubleClicked: {
+                                                if (!root.dragConsumedClick) {
+                                                    root.selectSource(index, Qt.NoModifier)
+                                                    root.addSelected()
+                                                }
+                                            }
                                         }
                                     }
 
@@ -485,7 +669,9 @@ Window {
                                         visible: sourceList.count === 0
                                         width: parent.width - 30
                                         horizontalAlignment: Text.AlignHCenter
-                                        text: "No presets. Choose Folder or Sync."
+                                        text: root.catalogPresets.length > 0
+                                          ? "All available presets are in Device Slots."
+                                          : "No presets. Choose Folder or Sync."
                                         color: Theme.textDim
                                         font.family: Theme.monoFamily
                                         font.pixelSize: 9
@@ -569,6 +755,24 @@ Window {
                             // clipping the last hardware slot.
                             readonly property real slotRowHeight: Math.min(38, Math.max(24,
                                 (height - 12 - (root.maxSlots - 1) * 3) / root.maxSlots))
+                            // MASS_TRANSFER_INSERTION_GUIDE_V1 — precise slot insertion,
+                            // not a second list, and no animation on the hardware plan.
+                            Rectangle {
+                                z: 6
+                                visible: root.dragActive && root.dragZone === "target"
+                                         && root.dragInsertIndex >= 0
+                                         && (!root.editingLocked)
+                                anchors.left: parent.left
+                                anchors.right: parent.right
+                                anchors.leftMargin: 9
+                                anchors.rightMargin: 9
+                                height: 3
+                                radius: 2
+                                y: 5 + Math.min(root.maxSlots, root.dragInsertIndex)
+                                   * (slotCanvas.slotRowHeight + 3)
+                                color: Theme.accent
+                                opacity: .95
+                            }
 
                             Column {
                                 id: emptySlotPlan
@@ -622,6 +826,14 @@ Window {
                                 spacing: 3
                                 clip: true
                                 model: targetModel
+                                interactive: !root.dragActive
+                                displaced: Transition {
+                                    NumberAnimation { properties: "x,y"; duration: 150
+                                                      easing.type: Easing.OutCubic }
+                                }
+                                add: Transition {
+                                    NumberAnimation { property: "opacity"; from: 0; to: 1; duration: 125 }
+                                }
 
                                 delegate: Rectangle {
                                     required property int index
@@ -633,6 +845,9 @@ Window {
                                     height: slotCanvas.slotRowHeight
                                     radius: 6
                                     readonly property bool selected: index === root.targetIndex
+                                    opacity: root.dragActive && root.dragKind === "target"
+                                             && root.dragIndex === index ? 0.35 : 1
+                                    Behavior on opacity { NumberAnimation { duration: 115 } }
                                     color: selected ? "#15252A" : targetMouse.containsMouse ? "#12181D" : "#0D1115"
                                     border.width: 1
                                     border.color: selected ? Theme.accentSoft : "#252D34"
@@ -664,6 +879,11 @@ Window {
                                             }
                                         }
                                         Text {
+                                            text: "⋮⋮"
+                                            font.pixelSize: 13
+                                            color: Theme.textDim
+                                        }
+                                        Text {
                                             Layout.fillWidth: true
                                             text: displayName
                                             color: Theme.text
@@ -678,9 +898,33 @@ Window {
                                         id: targetMouse
                                         anchors.fill: parent
                                         hoverEnabled: true
-                                        cursorShape: Qt.PointingHandCursor
-                                        onClicked: root.targetIndex = index
-                                        onDoubleClicked: { root.targetIndex = index; root.removeSelected() }
+                                        preventStealing: true
+                                        cursorShape: Qt.OpenHandCursor
+                                        enabled: !root.editingLocked
+                                        onPressed: function(mouse) {
+                                            var p = mapToItem(root.contentItem, mouse.x, mouse.y)
+                                            root.beginTransferGesture("target", index, p.x, p.y)
+                                        }
+                                        onPositionChanged: function(mouse) {
+                                            if (!pressed) return
+                                            var p = mapToItem(root.contentItem, mouse.x, mouse.y)
+                                            root.updateTransferGesture(p.x, p.y)
+                                        }
+                                        onReleased: function(mouse) {
+                                            var p = mapToItem(root.contentItem, mouse.x, mouse.y)
+                                            root.finishTransferGesture(p.x, p.y)
+                                        }
+                                        onCanceled: root.cancelTransferGesture()
+                                        onClicked: {
+                                            if (!root.dragConsumedClick)
+                                                root.targetIndex = index
+                                        }
+                                        onDoubleClicked: {
+                                            if (!root.dragConsumedClick) {
+                                                root.targetIndex = index
+                                                root.removeSelected()
+                                            }
+                                        }
                                     }
                                 }
 
@@ -713,6 +957,44 @@ Window {
                              && !!root.presetManager
                              && !root.presetManager.busy
                     onClicked: root.uploadTransfer()
+                }
+            }
+        }
+
+        // MASS_TRANSFER_FLOATING_PRESET_V1 — visual ghost tracks the pointer;
+        // no clone is ever inserted into the plan until the drop is accepted.
+        Rectangle {
+            z: 70
+            visible: root.dragActive
+            x: Math.max(10, Math.min(parent.width - width - 10, root.dragX - width / 2))
+            y: Math.max(8, Math.min(parent.height - height - 8, root.dragY - height / 2))
+            width: 252
+            height: 42
+            radius: 8
+            color: "#1B3038"
+            border.width: 1
+            border.color: root.dragZone === "target" || root.dragZone === "source"
+                          ? Theme.accent : "#607782"
+            opacity: .97
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 8
+                spacing: 8
+                Text { text: "⋮⋮"; color: Theme.accent; font.pixelSize: 13 }
+                Text {
+                    Layout.fillWidth: true
+                    text: root.dragLabel
+                    elide: Text.ElideRight
+                    color: Theme.text
+                    font.family: Theme.monoFamily
+                    font.pixelSize: 11
+                    font.weight: Font.DemiBold
+                }
+                Text {
+                    text: root.dragKind === "source" && root.dragSourcePaths.length > 1
+                          ? "+" + String(root.dragSourcePaths.length) : ""
+                    color: Theme.accent
+                    font.pixelSize: 10
                 }
             }
         }
