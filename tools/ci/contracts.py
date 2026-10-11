@@ -669,11 +669,14 @@ def check_ui_contracts() -> None:
             "exclusive Store must suppress heartbeat/player")
     require("src/k500/K500DeviceManager.cpp",
             "presetTransactionActive()", "TxOwner::Live",
-            "presetSavePreflightPending()", "TxOwner::Preset")
-    require("src/k500/K500WinIo.cpp",
-            "PRESET_WORKER_DRAIN_BARRIER_V1",
-            "emitDrainedWhenIdle()", "requestWriteDrain(quint64 token)",
-            "hidWritePending", "writesDrained(token)")
+            "presetSavePreflightPending()")
+    require("src/k500/K500PresetManager.cpp",
+            "K500DeviceManager::TxOwner::Preset")
+    require("src/k500/K500WinIo.h", "PRESET_WORKER_DRAIN_BARRIER_V1",
+            "requestWriteDrain(quint64 token)", "writesDrained(quint64 token)")
+    require("src/k500/K500WinIo.cpp", "emitDrainedWhenIdle()",
+            "requestWriteDrain(quint64 token)", "hidWritePending",
+            "writesDrained(token)")
     require("src/k500/K500PresetManager.cpp",
             "PRESET_WORKER_DRAIN_BARRIER_V1",
             "requestWriteDrain(m_saveDrainBarrierId)",
