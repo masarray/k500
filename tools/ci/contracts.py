@@ -528,8 +528,8 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        'helpText:"Startup volume · Device-only setting"',
-        '"Saved with preset · Disable front-panel adjustment"',
+        'helpText:"When ON, Recall sets Music, Mic and FX volumes',
+        '"Disables the K500 front-panel trim knob · saved with this preset."',
         "\"Rename: 1–8 ASCII characters. BLE name is read-only.\"",
     )
     require(
@@ -1382,10 +1382,10 @@ def check_public_surface_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        'title:"Use Init Volume"',
-        'helpText:"Startup volume · Device-only setting"',
-        'title:"VR / Trim Pot Off"',
-        '"Saved with preset · Disable front-panel adjustment"',
+        'title:"Use Startup Volume on Recall"',
+        'helpText:"When ON, Recall sets Music, Mic and FX volumes',
+        'title:"Disable Front-Panel Trim Knob"',
+        '"Disables the K500 front-panel trim knob · saved with this preset."',
         'onToggleRequested:root.requestUseInitVolumeToggle()',
         'onToggleRequested:root.requestAdjMannerVrToggle()',
         "SYSTEM_CALM_TOGGLE_COPY_V1",
