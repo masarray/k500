@@ -479,6 +479,13 @@ def check_ui_contracts() -> None:
     # SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1 — no duplicate middle headings;
     # four channels share fixed 160px geometry independently of online state.
     system_qml = read("qml/components/SystemWorkspaceImpl.qml")
+    # SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1: two equally spaced faders in each card.
+    if system_qml.count("width:parent ? parent.width / 2 : 96") != 2:
+        FAILURES.append("Recording and Mic Trigger must each have two equally wide centered fader slots")
+    if system_qml.count("Item { Layout.fillHeight:true; Layout.minimumHeight:0 }") != 4:
+        FAILURES.append("Fader label, track and value must remain vertically centered")
+    if system_qml.count("titlePixelSize:11") != 2:
+        FAILURES.append("Plain-language K500 toggle titles must retain legible type")
     if system_qml.count('text:"RECORDING"') != 1 or system_qml.count('text:"MIC TRIGGER"') != 1:
         FAILURES.append("System must have exactly one header per fader pair")
     if system_qml.count("Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160") != 2:
@@ -521,8 +528,8 @@ def check_ui_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        'helpText:"Startup volume · Device-only setting"',
-        '"Saved with preset · Disable front-panel adjustment"',
+        'helpText:"When ON, Recall sets Music, Mic and FX volumes',
+        '"Disables the K500 front-panel trim knob · saved with this preset."',
         "\"Rename: 1–8 ASCII characters. BLE name is read-only.\"",
     )
     require(
@@ -1375,10 +1382,10 @@ def check_public_surface_contracts() -> None:
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
-        'title:"Use Init Volume"',
-        'helpText:"Startup volume · Device-only setting"',
-        'title:"VR / Trim Pot Off"',
-        '"Saved with preset · Disable front-panel adjustment"',
+        'title:"Use Startup Volume on Recall"',
+        'helpText:"When ON, Recall sets Music, Mic and FX volumes',
+        'title:"Disable Front-Panel Trim Knob"',
+        '"Disables the K500 front-panel trim knob · saved with this preset."',
         'onToggleRequested:root.requestUseInitVolumeToggle()',
         'onToggleRequested:root.requestAdjMannerVrToggle()',
         "SYSTEM_CALM_TOGGLE_COPY_V1",
@@ -1663,7 +1670,7 @@ def check_public_surface_contracts() -> None:
         "qml/components/SystemToggleRow.qml",
         "FINAL_MICRO_TEXT_READABILITY_V5",
         "implicitHeight: 50",
-        "font.pixelSize: Theme.rackReadoutSize",
+        "font.pixelSize: root.titlePixelSize",
         "font.pixelSize: Theme.rackCaptionSize",
         "root.toggleRequested(!root.checked)",
         "root.blockedClicked()",

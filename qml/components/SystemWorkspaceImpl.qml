@@ -980,8 +980,11 @@ Item {
                         SystemToggleRow {
                             Layout.fillWidth:true
                             Layout.preferredHeight:48
-                            title:"Use Init Volume"
-                            helpText:"Startup volume · Device-only setting"
+                            // SYSTEM_PLAIN_LANGUAGE_TOGGLES_V1
+                            title:"Use Startup Volume on Recall"
+                            helpText:"When ON, Recall sets Music, Mic and FX volumes to the preset's Startup (Init) levels."
+                            titlePixelSize:11
+                            labelIndent:18
                             iconName:"settings-2"
                             checked:root.deviceConnected
                                     ? (!!root.presetManager && root.presetManager.useInitVolume)
@@ -1238,10 +1241,12 @@ Item {
                                 anchors.rightMargin:10
                                 anchors.verticalCenter:parent.verticalCenter
                                 height:50
-                                title:"VR / Trim Pot Off"
+                                title:"Disable Front-Panel Trim Knob"
                                 helpText:!root.deviceConnected && root.offlineEditMode
-                                         ? "Saved with preset · Disable front-panel adjustment"
-                                         : "Disable front-panel adjustment"
+                                         ? "Disables the K500 front-panel trim knob · saved with this preset."
+                                         : "When ON, the K500 front-panel trim knob is disabled."
+                                titlePixelSize:11
+                                labelIndent:14
                                 iconName:"sliders-horizontal"
                                 checked:root.deviceConnected
                                         ? (!!root.presetManager && root.presetManager.adjMannerVrOff)
@@ -1316,10 +1321,12 @@ Item {
                         Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
                         Rectangle {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
-                            ColumnLayout {
-                                anchors.fill:parent;anchors.margins:8;spacing:5
-                                RowLayout {
-                                    Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
+                            // SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1 — two equal
+                            // positions independent of the labels' widths.
+                            Item {
+                                anchors.fill:parent;anchors.margins:8
+                                Row {
+                                    anchors.fill:parent;spacing:0
                                     Repeater {
                                         model: root.recordingChannels.length
                                         delegate:ColumnLayout {
@@ -1362,7 +1369,10 @@ Item {
                                                     }
                                                 }
                                             }
-                                            Layout.fillWidth:true;Layout.alignment:Qt.AlignVCenter;spacing:3
+                                            width:parent ? parent.width / 2 : 96
+                                            height:parent ? parent.height : 240
+                                            spacing:3
+                                            Item { Layout.fillHeight:true; Layout.minimumHeight:0 }
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:recFader
@@ -1389,6 +1399,7 @@ Item {
                                                 }
                                             }
                                             Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:recFader.highlighted?recFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Text{anchors.centerIn:parent;text:recChannel.localValue;color:recChannel.channelEditable?Theme.amber:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
+                                            Item { Layout.fillHeight:true; Layout.minimumHeight:0 }
                                         }
                                     }
                                 }
@@ -1396,10 +1407,12 @@ Item {
                         }
                         Rectangle {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
-                            ColumnLayout {
-                                anchors.fill:parent;anchors.margins:8;spacing:5
-                                RowLayout {
-                                    Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
+                            // SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1 — two equal
+                            // positions independent of the labels' widths.
+                            Item {
+                                anchors.fill:parent;anchors.margins:8
+                                Row {
+                                    anchors.fill:parent;spacing:0
                                     Repeater {
                                         model: root.micTriggerChannels.length
                                         delegate:ColumnLayout {
@@ -1449,7 +1462,10 @@ Item {
                                                     }
                                                 }
                                             }
-                                            Layout.fillWidth:true;Layout.alignment:Qt.AlignVCenter;spacing:3
+                                            width:parent ? parent.width / 2 : 96
+                                            height:parent ? parent.height : 240
+                                            spacing:3
+                                            Item { Layout.fillHeight:true; Layout.minimumHeight:0 }
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:triggerFader
@@ -1473,6 +1489,7 @@ Item {
                                                 }
                                             }
                                             Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:52;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:triggerFader.highlighted?triggerFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Row{anchors.centerIn:parent;spacing:3;Text{text:triggerChannel.localValue;color:triggerChannel.channelEditable?Theme.amber:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}Text{text:modelData.unit;color:triggerFader.highlighted?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:7;anchors.baseline:parent.children[0].baseline;Behavior on color{ColorAnimation{duration:75}}}}}
+                                            Item { Layout.fillHeight:true; Layout.minimumHeight:0 }
                                         }
                                     }
                                 }
