@@ -936,7 +936,7 @@ Item {
                 // Never render enabled controls for an operation we cannot perform.
                 StudioPanel {
                     Layout.fillWidth:true
-                    Layout.preferredHeight:184
+                    Layout.preferredHeight:190
                     accentTop:false
                     ColumnLayout {
                         anchors.fill:parent
@@ -952,8 +952,8 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth:true
                             Layout.fillHeight:true
-                            Layout.margins:12
-                            spacing:7
+                            Layout.margins:10
+                            spacing:5
                             RowLayout {
                                 Layout.fillWidth:true
                                 Text{text:"BT NAME";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
@@ -1052,7 +1052,7 @@ Item {
 
                 StudioPanel {
                     Layout.fillWidth:true
-                    Layout.preferredHeight:134
+                    Layout.preferredHeight:138
                     accentTop:false
                     ColumnLayout {
                         anchors.fill:parent
@@ -1067,8 +1067,8 @@ Item {
                         ColumnLayout {
                             Layout.fillWidth:true
                             Layout.fillHeight:true
-                            Layout.margins:12
-                            spacing:8
+                            Layout.margins:10
+                            spacing:6
                             RowLayout {
                                 Layout.fillWidth:true
                                 spacing:8
