@@ -1495,8 +1495,10 @@ def check_public_surface_contracts() -> None:
         "root.activeDeviceSlot",
         'text:active?"ACTIVE":""',
         "onClicked:root.presetManager.renameActiveMode(root.normalizedModeNameDraft())",
-        "onClicked:root.presetManager.recallMode(root.selectedDeviceSlot+1)",
-        "root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)",
+        'root.beginSingleOperation("Recall", slot)',
+        "root.presetManager.recallMode(slot)",
+        'root.beginSingleOperation("Save", slot)',
+        "root.presetManager.saveCurrentToSlot(slot)",
         "onClicked:root.presetManager.setBtName(root.normalizedBtNameDraft())",
         "onClicked:root.presetManager.resetBtName()",
     )
