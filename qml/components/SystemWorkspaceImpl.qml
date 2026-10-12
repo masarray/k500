@@ -22,6 +22,7 @@ Item {
     // DeviceManager boundary. It never exposes Controller/WinIo to QML.
     readonly property var fileBridge: root.deviceManager ? root.deviceManager.presetFileBridge : null
 
+    // SYSTEM_READABLE_DENSITY_V3: visual only; no device authority changes.
     // SYSTEM_TOGGLE_DUAL_AUTHORITY_V2
     // OFFLINE and ONLINE are intentionally isolated authorities:
     // - OFFLINE edits only the local editor / working preset.
@@ -506,7 +507,7 @@ Item {
                     Item {
                         Layout.fillWidth: true
                         Layout.preferredHeight: 35
-                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC PRESET LIBRARY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking }
+                        Text { anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"PC PRESET LIBRARY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.systemSectionTitleSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking }
                         Rectangle { anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft }
                     }
 
@@ -559,11 +560,11 @@ Item {
                                       : "Choose a folder containing .k500 files"
                                 color: root.fileBridge && String(root.fileBridge.presetFolder || "").length > 0 ? Theme.textSoft : Theme.textDim
                                 font.family: Theme.monoFamily
-                                font.pixelSize: 8
+                                font.pixelSize: Theme.systemCaptionSize
                                 elide: Text.ElideMiddle
                             }
-                            SoftButton { Layout.preferredWidth: 62; text: "Folder"; compact: true; enabled: !!root.fileBridge; onClicked: presetFolderDialog.open() }
-                            SoftButton { Layout.preferredWidth: 58; text: "Refresh"; compact: true; enabled: !!root.fileBridge; onClicked: root.fileBridge.refreshPresetFolder() }
+                            SoftButton { Layout.preferredWidth: 62; text: "Folder"; compact: true; labelPixelSize: 11; dimWhenDisabled: true; enabled: !!root.fileBridge; onClicked: presetFolderDialog.open() }
+                            SoftButton { Layout.preferredWidth: 58; text: "Refresh"; compact: true; labelPixelSize: 11; dimWhenDisabled: true; enabled: !!root.fileBridge; onClicked: root.fileBridge.refreshPresetFolder() }
                         }
 
                         Rectangle {
@@ -664,7 +665,7 @@ Item {
                                 anchors.leftMargin: 8
                                 anchors.rightMargin: 8
                                 spacing: 7
-                                Text { text: "PC"; color: Theme.amber; font.family: Theme.monoFamily; font.pixelSize: 8; font.weight: Font.Bold }
+                                Text { text: "PC"; color: Theme.amber; font.family: Theme.monoFamily; font.pixelSize: Theme.systemCaptionSize; font.weight: Font.DemiBold }
                                 Text {
                                     Layout.fillWidth: true
                                     text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET STAGED"
@@ -680,7 +681,7 @@ Item {
                                           : ""
                                     color: root.fileBridge && root.fileBridge.dirty ? Theme.amber : Theme.accent
                                     font.family: Theme.monoFamily
-                                    font.pixelSize: 7
+                                    font.pixelSize: Theme.systemStatusSize
                                     font.weight: Font.Bold
                                 }
                             }
@@ -695,19 +696,19 @@ Item {
                                      ? String(root.fileBridge.lastError) : "")
                             color: root.pcSaveNotice.length > 0 || root.fileBridge && String(root.fileBridge.lastError || "").length > 0 ? Theme.amber : Theme.textDim
                             font.family: Theme.monoFamily
-                            font.pixelSize: 8
+                            font.pixelSize: Theme.systemStatusSize
                             elide: Text.ElideRight
                         }
 
                         RowLayout {
                             Layout.fillWidth: true
                             spacing: 6
-                            SoftButton { Layout.fillWidth: true; text: "Open file"; compact: true; enabled: !!root.fileBridge; onClicked: openPresetDialog.open() }
-                            SoftButton { Layout.fillWidth: true; text: "Save PC As"; compact: true; enabled: !!root.fileBridge; onClicked: root.requestSaveAs() }
+                            SoftButton { Layout.fillWidth: true; text: "Open file"; compact: true; labelPixelSize: 11; dimWhenDisabled: true; enabled: !!root.fileBridge; onClicked: openPresetDialog.open() }
+                            SoftButton { Layout.fillWidth: true; text: "Save PC As"; compact: true; labelPixelSize: 11; dimWhenDisabled: true; enabled: !!root.fileBridge; onClicked: root.requestSaveAs() }
                             SoftButton {
                                 Layout.fillWidth: true
                                 text: root.offlineFileMode ? (root.offlineEditMode ? "Preview again" : "Preview") : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
-                                compact: true
+                                compact: true; labelPixelSize: 11; dimWhenDisabled: true
                                 enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady
                                 onClicked: root.previewOrUploadLoadedPreset()
                             }
@@ -716,7 +717,7 @@ Item {
                                 // FINAL_MASS_UPLOAD_LABEL_V1_1_2 — explicit action;
                                 // this opens staging, it does not initiate a device write.
                                 text: root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Mass Upload"
-                                compact: true
+                                compact: true; labelPixelSize: 11; dimWhenDisabled: true
                                 // OFFLINE_MASS_PREP_V1 — preparation is local-only and
                                 // remains available without hardware. Final send is gated
                                 // inside MassUploadTransferWindow.
@@ -741,10 +742,12 @@ Item {
                     Item {
                         Layout.fillWidth:true
                         Layout.preferredHeight:35
-                        Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
+                        Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"DEVICE PRESET SLOTS";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.systemSectionTitleSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
                         // SYSTEM_OFFLINE_TRUTH_V7 — retained slot names are not verified
                         // live data after disconnect; C0 alone owns ACTIVE identity.
-                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:root.deviceConnected?"":"OFFLINE";color:root.deviceConnected?Theme.textSoft:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
+                        Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text: !root.deviceConnected ? "CONNECT TO EDIT" : root.presetManager && root.presetManager.busy ? "DEVICE BUSY"
+                              : root.presetManager && !root.presetManager.usbStoreAvailable ? "USB REQUIRED" : ""
+                         color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemStatusSize;font.weight:Font.Medium}
                         Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                     }
 
@@ -864,7 +867,7 @@ Item {
                             SoftButton {
                                 Layout.preferredWidth:64
                                 text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Rename"
-                                compact:true
+                                compact:true; labelPixelSize: 11; dimWhenDisabled: true
                                 enabled:root.deviceModeRenameReady
                                 onClicked:root.presetManager.renameActiveMode(root.normalizedModeNameDraft())
                             }
@@ -888,9 +891,9 @@ Item {
                                     && !!root.presetManager
                                     && root.presetManager.useInitBusy
                             statusText:root.systemControlHintTarget === "init" ? root.systemControlHint
-                                       : root.deviceConnected
-                                         && !root.presetManager.useInitVolumeKnown ? "SYNCING…" : ""
-                            statusColor:Theme.amber
+                                       : !root.deviceConnected ? "LOCAL ONLY"
+                                       : !root.presetManager.useInitVolumeKnown ? "SYNCING…" : ""
+                            statusColor:root.deviceConnected ? Theme.amber : Theme.blue
                             onToggleRequested:root.requestUseInitVolumeToggle()
                             onBlockedClicked:root.blockedOnlineToggleHint("init")
                         }
@@ -899,7 +902,7 @@ Item {
                             Layout.fillWidth:true
                             spacing:8
                             SoftButton{
-                                Layout.fillWidth:true;text:root.presetManager&&root.presetManager.recallBusy?"Recalling…":"Recall";compact:true
+                                Layout.fillWidth:true;text:root.presetManager&&root.presetManager.recallBusy?"Recalling…":"Recall";compact:true; labelPixelSize: 11; dimWhenDisabled: true
                                 enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
                                 onClicked: {
                                     var slot = root.selectedDeviceSlot + 1
@@ -908,7 +911,7 @@ Item {
                                 }
                             }
                             SoftButton{
-                                Layout.fillWidth:true;text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Save";compact:true
+                                Layout.fillWidth:true;text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Save";compact:true; labelPixelSize: 11; dimWhenDisabled: true
                                 enabled:root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
                                 onClicked:{
                                     var slot = root.selectedDeviceSlot + 1
@@ -933,7 +936,7 @@ Item {
                 // Never render enabled controls for an operation we cannot perform.
                 StudioPanel {
                     Layout.fillWidth:true
-                    Layout.preferredHeight:196
+                    Layout.preferredHeight:184
                     accentTop:false
                     ColumnLayout {
                         anchors.fill:parent
@@ -941,7 +944,9 @@ Item {
                         Item {
                             Layout.fillWidth:true
                             Layout.preferredHeight:35
-                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT / BLE IDENTITY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
+                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"BT / BLE IDENTITY";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.systemSectionTitleSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
+                            Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter
+                                 text:root.deviceConnected?"":"OFFLINE";color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemStatusSize}
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
                         ColumnLayout {
@@ -982,7 +987,7 @@ Item {
                                         selectByMouse:true
                                         color:readOnly?Theme.textDim:Theme.amber
                                         font.family:Theme.monoFamily
-                                        font.pixelSize:10
+                                        font.pixelSize:Theme.systemListTitleSize
                                         font.weight:Font.Bold
                                         onTextEdited:root.btNameDraft=text
                                     }
@@ -1001,7 +1006,7 @@ Item {
                                 SoftButton{
                                     Layout.preferredWidth:58
                                     text:"Rename"
-                                    compact:true
+                                    compact:true; labelPixelSize: 11; dimWhenDisabled: true
                                     enabled:root.btNameWriteReady
                                     onClicked:root.presetManager.setBtName(root.normalizedBtNameDraft())
                                     // BT write limit differs from full hardware
@@ -1014,7 +1019,7 @@ Item {
                                 SoftButton{
                                     Layout.preferredWidth:48
                                     text:"Reset"
-                                    compact:true
+                                    compact:true; labelPixelSize: 11; dimWhenDisabled: true
                                     enabled:root.deviceConnected&&root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
                                     onClicked:root.presetManager.resetBtName()
                                 }
@@ -1031,8 +1036,14 @@ Item {
                                     anchors.left:parent.left;anchors.leftMargin:9;anchors.verticalCenter:parent.verticalCenter
                                     text:root.deviceConnected ? String(root.systemValue("bleName","NOT READ")) : "CONNECT K500 TO READ"
                                     color:root.deviceConnected ? Theme.amber : Theme.textDim
-                                    font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold
+                                    font.family:Theme.monoFamily;font.pixelSize:Theme.systemListTitleSize;font.weight:Font.DemiBold
                                 }
+                            }
+                            Text {
+                                Layout.fillWidth:true
+                                text:root.deviceConnected ? "BT name: 1–8 ASCII · BLE read-only" : "Connect K500 to manage BT identity"
+                                color:Theme.textSoft; font.family:Theme.fontFamily; font.pixelSize:Theme.systemStatusSize
+                                elide:Text.ElideRight
                             }
                             Item{Layout.fillHeight:true}
                         }
@@ -1041,7 +1052,7 @@ Item {
 
                 StudioPanel {
                     Layout.fillWidth:true
-                    Layout.preferredHeight:176
+                    Layout.preferredHeight:134
                     accentTop:false
                     ColumnLayout {
                         anchors.fill:parent
@@ -1049,7 +1060,7 @@ Item {
                         Item {
                             Layout.fillWidth:true
                             Layout.preferredHeight:35
-                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
+                            Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"LOCK / ADMIN";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.systemSectionTitleSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}
                             Text{anchors.right:parent.right;anchors.rightMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"READ ONLY";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:Font.Medium}
                             Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                         }
@@ -1090,6 +1101,12 @@ Item {
                                     }
                                 }
                             }
+                            Text {
+                                Layout.fillWidth:true
+                                text:"Firmware lock & admin controls are read-only"
+                                color:Theme.textSoft; font.family:Theme.fontFamily; font.pixelSize:Theme.systemStatusSize
+                                elide:Text.ElideRight
+                            }
                             Item{Layout.fillHeight:true}
                         }
                     }
@@ -1116,7 +1133,7 @@ Item {
                                 text:"MANUAL ADJUSTMENT"
                                 color:Theme.text
                                 font.family:Theme.monoFamily
-                                font.pixelSize:Theme.rackHeaderSize
+                                font.pixelSize:Theme.systemSectionTitleSize
                                 font.weight:Font.DemiBold
                                 font.letterSpacing:Theme.rackHeaderTracking
                             }
@@ -1133,6 +1150,7 @@ Item {
                                 anchors.leftMargin:10
                                 anchors.rightMargin:10
                                 anchors.verticalCenter:parent.verticalCenter
+                                id: vrTrimToggle
                                 height:50
                                 title:"VR / Trim Pot Off"
                                 helpText:!root.deviceConnected && root.offlineEditMode
@@ -1148,11 +1166,26 @@ Item {
                                         && !!root.presetManager
                                         && root.presetManager.adjMannerBusy
                                 statusText:root.systemControlHintTarget === "vr" ? root.systemControlHint
-                                           : root.deviceConnected
-                                             && !root.presetManager.adjMannerVrOffKnown ? "SYNCING…" : ""
-                                statusColor:Theme.amber
+                                           : !root.deviceConnected ? "LOCAL ONLY"
+                                           : !root.presetManager.adjMannerVrOffKnown ? "SYNCING…" : ""
+                                statusColor:root.deviceConnected ? Theme.amber : Theme.blue
                                 onToggleRequested:root.requestAdjMannerVrToggle()
                                 onBlockedClicked:root.blockedOnlineToggleHint("vr")
+                            }
+                            Text {
+                                anchors.top:vrTrimToggle.bottom
+                                anchors.topMargin:9
+                                anchors.horizontalCenter:parent.horizontalCenter
+                                width:parent.width-24
+                                visible:parent.height >= 118
+                                horizontalAlignment:Text.AlignHCenter
+                                text:root.deviceConnected
+                                     ? (root.deviceReady ? "K500 connected · Device setting" : "K500 connected · Please wait")
+                                     : (root.offlineEditMode ? "LOCAL PREVIEW · Device unchanged" : "LOCAL ONLY · Device unchanged")
+                                color:Theme.textSoft
+                                font.family:Theme.fontFamily
+                                font.pixelSize:Theme.systemStatusSize
+                                elide:Text.ElideRight
                             }
                         }
                     }
@@ -1186,7 +1219,7 @@ Item {
                 ColumnLayout {
                     anchors.fill:parent
                     spacing:0
-                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.systemSectionTitleSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
                     RowLayout {
                         Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
                         Rectangle {
