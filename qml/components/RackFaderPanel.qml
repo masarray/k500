@@ -191,12 +191,17 @@ StudioPanel {
             // SYNC_MASTER_INIT_SWITCH_V1 — compact toggle in the existing
             // 35px header, with no overlays or duplicate hardware authority.
             Row {
+                // COMPACT_TOGGLE_VISUAL_V1 / SYNC_MASTER_OPTICAL_FACE_V2
+                // Optical size follows the label's real painted line height;
+                // the independent 38x30 hit region never overlaps the text.
                 visible: root.title === "Startup Limits" && !!root.syncEngine
                 anchors.right: parent.right
                 anchors.rightMargin: 12
                 anchors.verticalCenter: parent.verticalCenter
-                spacing: 7
+                height: 30
+                spacing: 5
                 Text {
+                    id: syncMasterLabel
                     text: "SYNC MASTER"
                     color: root.syncEngine && root.syncEngine.syncMasterInit
                            ? Theme.accent : Theme.textDim
@@ -205,30 +210,38 @@ StudioPanel {
                     font.weight: Font.DemiBold
                     anchors.verticalCenter: parent.verticalCenter
                 }
-                Rectangle {
-                    // COMPACT_TOGGLE_VISUAL_V1: smaller face, generous hit area.
-                    width: 32
-                    height: 17
-                    radius: 9
-                    color: root.syncEngine && root.syncEngine.syncMasterInit ? "#153A40" : "#070C10"
-                    border.width: 1
-                    border.color: root.syncEngine && root.syncEngine.syncMasterInit
-                                  ? Theme.accent : "#46545E"
+                Item {
+                    id: syncMasterHit
+                    width: 38
+                    height: 30
+                    readonly property int trackHeight: Math.max(11, Math.round(syncMasterLabel.contentHeight))
+                    readonly property int trackWidth: Math.round(trackHeight * 2.25)
                     Rectangle {
-                        width: 11
-                        height: 11
-                        radius: 6
-                        y: 3
-                        x: root.syncEngine && root.syncEngine.syncMasterInit
-                           ? parent.width - width - 3 : 3
-                        color: root.syncEngine && root.syncEngine.syncMasterInit
-                               ? Theme.accent : "#93A1AA"
-                        Behavior on x { NumberAnimation { duration: 105 } }
+                        id: syncMasterTrack
+                        anchors.centerIn: parent
+                        width: syncMasterHit.trackWidth
+                        height: syncMasterHit.trackHeight
+                        radius: height / 2
+                        color: root.syncEngine && root.syncEngine.syncMasterInit ? "#153A40" : "#070C10"
+                        border.width: 1
+                        border.color: root.syncEngine && root.syncEngine.syncMasterInit
+                                      ? Theme.accent : "#46545E"
+                        Behavior on border.color { ColorAnimation { duration: 110 } }
+                        Rectangle {
+                            id: syncMasterKnob
+                            width: parent.height - 4
+                            height: width
+                            radius: width / 2
+                            anchors.verticalCenter: parent.verticalCenter
+                            x: root.syncEngine && root.syncEngine.syncMasterInit
+                               ? parent.width - width - 2 : 2
+                            color: root.syncEngine && root.syncEngine.syncMasterInit
+                                   ? Theme.accent : "#93A1AA"
+                            Behavior on x { NumberAnimation { duration: 125; easing.type: Easing.OutCubic } }
+                        }
                     }
                     MouseArea {
-                        width: 44
-                        height: 31
-                        anchors.centerIn: parent
+                        anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
                         hoverEnabled: true
                         ToolTip.visible: containsMouse

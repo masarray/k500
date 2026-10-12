@@ -322,6 +322,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/RackFilterPanel.qml
         qml/components/SystemWorkspace.qml
         qml/components/SystemWorkspaceImpl.qml
+        qml/components/OperationFeedback.qml
         qml/components/MassUploadTransferWindow.qml
         qml/components/SectionWorkspace.qml
     SOURCES
