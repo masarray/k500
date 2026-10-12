@@ -447,7 +447,38 @@ def check_ui_contracts() -> None:
         "root.recordingChannels.length",
         "root.micTriggerChannels.length",
         "SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1",
+        "OFFLINE_SYSTEM_PRESET_EDIT_V1",
+        "SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1",
+        "root.offlineStarterAvailable",
+        "root.startOfflineWorkingPreset()",
+        "root.fileBridge.loadBuiltInPreset(i)",
+        "root.fileBridge.previewLoadedPreset()",
+        "root.offlineSystemEdits = ({})",
+        "function onPersistenceRejected(path, reason)",
+        "root.updateOfflineSystemEdit(String(modelData.path), v, false)",
+        "root.engine.editDevicePath(String(modelData.path), v)",
+        "root.offlineEditMode",
+        "syncMasterLockEnabled:root.deviceConnected",
     )
+    # SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1 — no duplicate middle headings;
+    # four channels share fixed 160px geometry independently of online state.
+    system_qml = read("qml/components/SystemWorkspaceImpl.qml")
+    if system_qml.count('text:"RECORDING"') != 1 or system_qml.count('text:"MIC TRIGGER"') != 1:
+        FAILURES.append("System must have exactly one header per fader pair")
+    if system_qml.count("Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160") != 2:
+        FAILURES.append("Recording and Mic Trigger must use equal fixed fader heights")
+    if 'text:"RECORDING / MIC TRIGGER"' in system_qml:
+        FAILURES.append("Combined Recording / Mic Trigger heading must not duplicate pair headings")
+    require("qml/components/RackFaderPanel.qml",
+            "property bool syncMasterLockEnabled: true",
+            "&& root.syncMasterLockEnabled")
+    # Both Record volumes have captured scalar file offsets; Mic Trigger
+    # readback seed and preset bytes are unproven. Do NOT fabricate edits.
+    require("src/k500/K500PresetEditMapper.cpp",
+            'QStringLiteral("system.uDiskRecordVol")',
+            'QStringLiteral("system.usbRecordVol")')
+    forbid("src/k500/K500PresetEditMapper.cpp",
+           'path == QStringLiteral("system.danceMicThresholdDb")')
     require(
         "qml/components/SystemWorkspaceImpl.qml",
         "SYSTEM_TOGGLE_DUAL_AUTHORITY_V2",

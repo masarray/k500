@@ -198,6 +198,34 @@ Item {
     readonly property bool offlineEditMode: root.offlineFileMode
                                              && !!root.fileBridge
                                              && root.fileBridge.editPersistenceEnabled
+    // OFFLINE_SYSTEM_PRESET_EDIT_V1 — only validated Preview creates a working
+    // document. Local gesture values never masquerade as hardware readback.
+    property var offlineSystemEdits: ({})
+    function updateOfflineSystemEdit(path, value, discard) {
+        var copy = {}
+        for (var key in root.offlineSystemEdits)
+            if (key !== path) copy[key] = root.offlineSystemEdits[key]
+        if (!discard) copy[path] = value
+        root.offlineSystemEdits = copy
+    }
+    readonly property bool offlineStarterAvailable: {
+        if (!root.offlineFileMode || !root.fileBridge) return false
+        var bank = root.fileBridge.builtInPresets
+        for (var i = 0; bank && i < bank.length; i++)
+            if (bank[i] && bank[i].valid) return true
+        return false
+    }
+    function startOfflineWorkingPreset() {
+        if (!root.offlineFileMode || !root.fileBridge) return false
+        root.bindFileBridgeEngine()
+        var bank = root.fileBridge.builtInPresets
+        for (var i = 0; bank && i < bank.length; i++) {
+            if (!bank[i] || !bank[i].valid) continue
+            if (!root.fileBridge.loadBuiltInPreset(i)) return false
+            return root.fileBridge.previewLoadedPreset()
+        }
+        return false
+    }
     // P4_PC_PRESET_UPLOAD_UI_V1 — permanent write remains fail-closed unless
     // the staged PC document is valid and P2 confirms USB store availability.
     readonly property bool pcUploadReady: root.stagedPresetReady
@@ -243,8 +271,13 @@ Item {
         }
     }
     function previewOrUploadLoadedPreset() {
-        if (!root.stagedPresetReady)
+        if (!root.stagedPresetReady) {
+            if (root.offlineFileMode && root.startOfflineWorkingPreset()) {
+                root.pcSaveNotice = "Offline preset siap diedit · Save PC As menyimpan salinan."
+                pcSaveNoticeTimer.restart()
+            }
             return
+        }
         if (root.offlineFileMode) {
             // OFFLINE_PREVIEW_V1 — explicit Preview hydrates visual/editor state
             // and the bridge then enables its whitelisted offline edit session.
@@ -363,6 +396,9 @@ Item {
         {label:"HOLD TIME",key:"danceMicHoldSec",fallback:6,from:1,to:30,unit:"s",path:"system.danceMicHoldSec"}
     ]
     function stableSystemValue(spec) {
+        var path = String(spec.path || "")
+        if (root.offlineEditMode && root.offlineSystemEdits[path] !== undefined)
+            return Number(root.offlineSystemEdits[path])
         return Number(root.systemValue(String(spec.key || ""), Number(spec.fallback || 0)))
     }
 
@@ -388,8 +424,14 @@ Item {
         target: root.fileBridge
         enabled: !!root.fileBridge
         function onEditTrackingChanged() {
+            root.offlineSystemEdits = ({})
             if (!root.deviceConnected && root.fileBridge.editPersistenceEnabled)
                 root.seedOfflineAdjMannerFromPreview()
+        }
+        function onPersistenceRejected(path, reason) {
+            root.updateOfflineSystemEdit(String(path || ""), 0, true)
+            root.pcSaveNotice = String(reason || "Perubahan tidak tersimpan ke preset.")
+            pcSaveNoticeTimer.restart()
         }
     }
 
@@ -706,9 +748,18 @@ Item {
                             SoftButton { Layout.fillWidth: true; text: "Save PC As"; compact: true; enabled: !!root.fileBridge; onClicked: root.requestSaveAs() }
                             SoftButton {
                                 Layout.fillWidth: true
-                                text: root.offlineFileMode ? (root.offlineEditMode ? "Preview again" : "Preview") : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
+                                text: root.offlineFileMode
+                                      ? (!root.stagedPresetReady ? "Start editing"
+                                         : root.offlineEditMode ? "Preview again" : "Preview")
+                                      : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
                                 compact: true
-                                enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady
+                                enabled: root.offlineFileMode ? (root.stagedPresetReady || root.offlineStarterAvailable) : root.pcUploadReady
+                                HoverHandler { id: previewHelp }
+                                ToolTip.visible: previewHelp.hovered
+                                ToolTip.delay: 500
+                                ToolTip.text: !root.stagedPresetReady
+                                              ? "Mulai dari preset resmi tervalidasi. Save PC As menyimpan salinan."
+                                              : "Preview preset yang dipilih sebelum mengedit offline."
                                 onClicked: root.previewOrUploadLoadedPreset()
                             }
                             SoftButton {
@@ -1175,7 +1226,8 @@ Item {
                 syncEngine:root.engine
                 channels:root.startupLimitChannels
                 valueResolver:root.startupLimitValue
-                interactionEnabled:root.deviceConnected && root.engine.deviceStateReady
+                interactionEnabled:(root.deviceConnected && root.engine.deviceStateReady) || root.offlineEditMode
+                syncMasterLockEnabled:root.deviceConnected
             }
 
             StudioPanel {
@@ -1186,14 +1238,31 @@ Item {
                 ColumnLayout {
                     anchors.fill:parent
                     spacing:0
-                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                    // SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1 — exactly one label for each pair.
+                    Item {
+                        Layout.fillWidth:true;Layout.preferredHeight:35
+                        RowLayout {
+                            anchors.fill:parent
+                            anchors.leftMargin:10;anchors.rightMargin:10;spacing:10
+                            Text {
+                                Layout.fillWidth:true;text:"RECORDING";horizontalAlignment:Text.AlignHCenter
+                                color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize
+                                font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking
+                            }
+                            Text {
+                                Layout.fillWidth:true;text:"MIC TRIGGER";horizontalAlignment:Text.AlignHCenter
+                                color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize
+                                font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking
+                            }
+                        }
+                        Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
+                    }
                     RowLayout {
                         Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
                         Rectangle {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             ColumnLayout {
                                 anchors.fill:parent;anchors.margins:8;spacing:5
-                                Text{text:"RECORDING";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
@@ -1206,7 +1275,8 @@ Item {
                                             // SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1 — preserve the
                                             // active gesture, but never lose a newer device snapshot.
                                             property bool deferredModelSync: false
-                                            readonly property bool channelEditable: root.deviceConnected && root.engine.deviceStateReady
+                                            readonly property bool channelEditable: (root.deviceConnected && root.engine.deviceStateReady)
+                                                                                   || root.offlineEditMode
                                             onModelDataChanged: {
                                                 if (recFader && recFader.dragging) {
                                                     deferredModelSync = true
@@ -1226,11 +1296,23 @@ Item {
                                                     }
                                                 }
                                             }
-                                            Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
+                                            Connections {
+                                                target:root
+                                                function onOfflineSystemEditsChanged() {
+                                                    if (recFader.dragging) {
+                                                        recChannel.deferredModelSync = true
+                                                    } else {
+                                                        recChannel.localValue = root.stableSystemValue(recChannel.modelData)
+                                                        recChannel.deferredModelSync = false
+                                                    }
+                                                }
+                                            }
+                                            Layout.fillWidth:true;Layout.alignment:Qt.AlignVCenter;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:recFader
-                                                Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
+                                                Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160
+                                                Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:recChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
                                                 value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
@@ -1242,8 +1324,11 @@ Item {
                                                 }
                                                 onValueEdited:function(v){
                                                     recChannel.localValue=v
-                                                    if(recChannel.channelEditable&&String(modelData.path||"").length>0)
-                                                        root.engine.editDevicePath(String(modelData.path),v)
+                                                    if (recChannel.channelEditable && String(modelData.path || "").length > 0) {
+                                                        if (root.offlineEditMode)
+                                                            root.updateOfflineSystemEdit(String(modelData.path), v, false)
+                                                        root.engine.editDevicePath(String(modelData.path), v)
+                                                    }
                                                 }
                                             }
                                             Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:recFader.highlighted?recFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Text{anchors.centerIn:parent;text:recChannel.localValue;color:recChannel.channelEditable?Theme.amber:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
@@ -1256,7 +1341,6 @@ Item {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             ColumnLayout {
                                 anchors.fill:parent;anchors.margins:8;spacing:5
-                                Text{text:"MIC TRIGGER";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
@@ -1267,9 +1351,15 @@ Item {
                                             readonly property var modelData: root.micTriggerChannels[index]
                                             property real localValue: root.stableSystemValue(modelData)
                                             property bool deferredModelSync: false
+                                            // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1
+                                            // Paired readback seed and file offsets remain unverified.
                                             readonly property bool channelEditable:root.deviceConnected
                                                                  && root.engine.deviceStateReady
                                                                  && Boolean(root.systemValue("danceMicTriggerKnown",false))
+                                            HoverHandler { id: triggerBlockedHelp }
+                                            ToolTip.visible: triggerBlockedHelp.hovered && !triggerChannel.channelEditable
+                                            ToolTip.delay: 650
+                                            ToolTip.text: "Mic Trigger belum memiliki mapping preset/readback yang terverifikasi."
                                             onModelDataChanged: {
                                                 if (triggerFader && triggerFader.dragging) {
                                                     deferredModelSync = true
@@ -1289,11 +1379,12 @@ Item {
                                                     }
                                                 }
                                             }
-                                            Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
+                                            Layout.fillWidth:true;Layout.alignment:Qt.AlignVCenter;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:triggerFader
-                                                Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
+                                                Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160
+                                                Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:triggerChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
                                                 value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)

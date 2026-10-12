@@ -14,6 +14,8 @@ StudioPanel {
     // Presentation only: canonical sync and its preference live in StudioEngine.
     property var syncEngine: null
     property bool interactionEnabled: true
+    // Hardware SYNC MASTER locks LIVE INIT; explicit offline Preview is independent.
+    property bool syncMasterLockEnabled: true
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
@@ -837,6 +839,7 @@ StudioPanel {
                                                                 && (modelData.editable === undefined
                                                                     || Boolean(modelData.editable))
                                                                 && !(root.title === "Startup Limits"
+                                                                     && root.syncMasterLockEnabled
                                                                      && root.syncEngine && root.syncEngine.syncMasterInit
                                                                      && ["MUSIC INIT", "MIC INIT", "EFFECT INIT"].indexOf(
                                                                          String(modelData.label || "")) >= 0)
