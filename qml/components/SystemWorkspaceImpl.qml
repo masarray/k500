@@ -1238,14 +1238,31 @@ Item {
                 ColumnLayout {
                     anchors.fill:parent
                     spacing:0
-                    Item{Layout.fillWidth:true;Layout.preferredHeight:35;Text{anchors.left:parent.left;anchors.leftMargin:12;anchors.verticalCenter:parent.verticalCenter;text:"RECORDING / MIC TRIGGER";color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize;font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking}Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}}
+                    // SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1 — exactly one label for each pair.
+                    Item {
+                        Layout.fillWidth:true;Layout.preferredHeight:35
+                        RowLayout {
+                            anchors.fill:parent
+                            anchors.leftMargin:10;anchors.rightMargin:10;spacing:10
+                            Text {
+                                Layout.fillWidth:true;text:"RECORDING";horizontalAlignment:Text.AlignHCenter
+                                color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize
+                                font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking
+                            }
+                            Text {
+                                Layout.fillWidth:true;text:"MIC TRIGGER";horizontalAlignment:Text.AlignHCenter
+                                color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:Theme.rackHeaderSize
+                                font.weight:Font.DemiBold;font.letterSpacing:Theme.rackHeaderTracking
+                            }
+                        }
+                        Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
+                    }
                     RowLayout {
                         Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
                         Rectangle {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             ColumnLayout {
                                 anchors.fill:parent;anchors.margins:8;spacing:5
-                                Text{text:"RECORDING";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
@@ -1279,11 +1296,23 @@ Item {
                                                     }
                                                 }
                                             }
-                                            Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
+                                            Connections {
+                                                target:root
+                                                function onOfflineSystemEditsChanged() {
+                                                    if (recFader.dragging) {
+                                                        recChannel.deferredModelSync = true
+                                                    } else {
+                                                        recChannel.localValue = root.stableSystemValue(recChannel.modelData)
+                                                        recChannel.deferredModelSync = false
+                                                    }
+                                                }
+                                            }
+                                            Layout.fillWidth:true;Layout.alignment:Qt.AlignVCenter;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:recFader
-                                                Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
+                                                Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160
+                                                Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:recChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
                                                 value:recChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
@@ -1312,7 +1341,6 @@ Item {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             ColumnLayout {
                                 anchors.fill:parent;anchors.margins:8;spacing:5
-                                Text{text:"MIC TRIGGER";color:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.letterSpacing:1.1}
                                 RowLayout {
                                     Layout.fillWidth:true;Layout.fillHeight:true;spacing:7
                                     Repeater {
@@ -1323,9 +1351,15 @@ Item {
                                             readonly property var modelData: root.micTriggerChannels[index]
                                             property real localValue: root.stableSystemValue(modelData)
                                             property bool deferredModelSync: false
+                                            // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1
+                                            // Paired readback seed and file offsets remain unverified.
                                             readonly property bool channelEditable:root.deviceConnected
                                                                  && root.engine.deviceStateReady
                                                                  && Boolean(root.systemValue("danceMicTriggerKnown",false))
+                                            HoverHandler { id: triggerBlockedHelp }
+                                            ToolTip.visible: triggerBlockedHelp.hovered && !triggerChannel.channelEditable
+                                            ToolTip.delay: 650
+                                            ToolTip.text: "Mic Trigger belum memiliki mapping preset/readback yang terverifikasi."
                                             onModelDataChanged: {
                                                 if (triggerFader && triggerFader.dragging) {
                                                     deferredModelSync = true
@@ -1345,11 +1379,12 @@ Item {
                                                     }
                                                 }
                                             }
-                                            Layout.fillWidth:true;Layout.fillHeight:true;spacing:3
+                                            Layout.fillWidth:true;Layout.alignment:Qt.AlignVCenter;spacing:3
                                             Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:triggerFader
-                                                Layout.fillHeight:true;Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
+                                                Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160
+                                                Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:triggerChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
                                                 value:triggerChannel.localValue;from:modelData.from;to:modelData.to;step:1;defaultValue:root.stableSystemValue(modelData)
