@@ -1490,7 +1490,7 @@ def check_public_surface_contracts() -> None:
             '!root.deviceConnected ? "LOCAL ONLY"',
             '"LOCAL PREVIEW · Device unchanged"',
             "dimWhenDisabled: true", "labelPixelSize: 11",
-            "Layout.preferredHeight:184", "Layout.preferredHeight:134",
+            "Layout.preferredHeight:190", "Layout.preferredHeight:138",
             "root.presetManager.useInitVolumeKnown",
             "root.presetManager.adjMannerVrOffKnown")
     require("qml/components/SoftButton.qml",
