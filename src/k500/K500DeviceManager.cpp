@@ -17,7 +17,7 @@ namespace {
 constexpr quint16 K500UsbVendorId = 0x10C4;
 constexpr quint16 K500UsbProductId = 0x0321;
 constexpr int HeartbeatIntervalMs = 3200;
-constexpr int PlayerStatusIntervalMs = 400;
+constexpr int PlayerStatusIntervalMs = 1000;
 constexpr int ProbeTimeoutMs = 1350;
 constexpr int HandshakeTimeoutMs = 2200;
 constexpr int ReadbackTimeoutMs = 2600;
@@ -843,12 +843,19 @@ void K500DeviceManager::heartbeatTick()
         return;
     }
 
+    // STATUS_POLL_IDLE_TRAFFIC_V2: the active E3 player poll already supplies
+    // continuous link replies. Keep this timer's 12-second watchdog CHECK,
+    // but do not emit a redundant 0x1C packet while polling is running.
+    // If the player timer is stopped / LIVE is disabled, this heartbeat remains.
+    if (m_liveEnabled && m_playerStatusTimer.isActive())
+        return;
+
     writeFrame(K500Protocol::heartbeat(), QStringLiteral("Heartbeat 0x1C"));
 }
 
 void K500DeviceManager::playerStatusTick()
 {
-    // PRESET_EXCLUSIVE_RX_TX_BARRIER_V1: 400-ms player polling must never
+    // PRESET_EXCLUSIVE_RX_TX_BARRIER_V1: player polling must never
     // interleave E3 with Store 0x41/0x42/0x43, Recall 0x40, or 939-byte BF
     // verification. A first upload may otherwise finish all Store ACKs (99%)
     // but lose its final C0/BF verification while RX/TX is shared.
@@ -856,10 +863,11 @@ void K500DeviceManager::playerStatusTick()
         || presetTransactionActive())
         return;
 
-    // Device-authoritative UI: do not predict play/pause locally. A 400 ms E3
-    // cadence keeps the TopBar responsive to playback changes made by the K500,
-    // remote source, or manufacturer control surface without touching preset
-    // memory or live parameter scheduling.
+    // Device-authoritative UI: do not predict play/pause locally. A 1,000 ms
+    // E3 cadence balances TopBar updates against idle USB traffic. Explicit
+    // player actions still request their prompt 180 ms refresh; external
+    // playback changes can take up to roughly one cadence to become visible.
+    // No preset-memory reads or LIVE scheduler traffic is added.
     writeFrame(K500Protocol::heartbeat(), QStringLiteral("Player status poll"));
 }
 

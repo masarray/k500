@@ -21,8 +21,6 @@ Rectangle {
     // Optional per-surface typography override. Zero preserves the global
     // compact control baseline, so existing buttons remain pixel-identical.
     property int labelPixelSize: 0
-    // SYSTEM_DISABLED_ACTION_AFFORDANCE_V1 — opt-in; default mixer unchanged.
-    property bool dimWhenDisabled: false
     signal clicked()
 
     // MIXER_SOURCE_RAISED_ACTIVE_V5
@@ -51,8 +49,6 @@ Rectangle {
                                              : root.toolbar ? 1.90 : 1.95
 
     activeFocusOnTab: true
-    opacity: root.dimWhenDisabled && !root.enabled ? 0.47 : 1.0
-    Behavior on opacity { NumberAnimation { duration: 95 } }
     clip: false
     implicitWidth: root.transport ? 29 : root.compact ? 52 : 70
     implicitHeight: root.transport ? 28 : root.compact ? 26 : 30
