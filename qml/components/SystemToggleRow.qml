@@ -81,7 +81,7 @@ Rectangle {
                 text: root.title
                 color: Theme.text
                 font.family: Theme.fontFamily
-                font.pixelSize: Theme.rackReadoutSize
+                font.pixelSize: Theme.systemListTitleSize
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
@@ -97,7 +97,7 @@ Rectangle {
                     text: root.detail
                     color: Theme.textDim
                     font.family: Theme.fontFamily
-                    font.pixelSize: Theme.rackCaptionSize
+                    font.pixelSize: Theme.systemStatusSize
                     elide: Text.ElideRight
                 }
 
@@ -107,7 +107,7 @@ Rectangle {
                     text: root.pending ? "APPLYING…" : root.statusText
                     color: root.pending ? Theme.amber : root.statusColor
                     font.family: Theme.monoFamily
-                    font.pixelSize: Theme.rackCaptionSize
+                    font.pixelSize: Theme.systemStatusSize
                     font.weight: Font.DemiBold
                     elide: Text.ElideRight
                 }

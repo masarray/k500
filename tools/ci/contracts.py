@@ -1464,9 +1464,11 @@ def check_public_surface_contracts() -> None:
     require(
         "qml/theme/Theme.qml",
         "SYSTEM_DASHBOARD_OPTICAL_V2B",
-        "systemListTitleSize: 10",
-        "systemCaptionSize: 9",
-        "systemStatusSize: 9",
+        "SYSTEM_READABLE_DENSITY_V3",
+        "systemListTitleSize: 11",
+        "systemCaptionSize: 10",
+        "systemStatusSize: 10",
+        "systemSectionTitleSize: 11",
     )
     require(
         "qml/components/SystemWorkspaceImpl.qml",
@@ -1478,6 +1480,31 @@ def check_public_surface_contracts() -> None:
         "property bool deferredModelSync: false",
         "root.engine.editDevicePath(String(modelData.path),v)",
     )
+
+    # SYSTEM_READABLE_DENSITY_V3 — visual-only, no device-state change.
+    # Verify both offline local authority and online native-state bindings.
+    require("qml/components/SystemWorkspaceImpl.qml",
+            "SYSTEM_READABLE_DENSITY_V3", "SYSTEM_MANUAL_ADJUSTMENT_CARD_V2",
+            'text: !root.deviceConnected ? "CONNECT TO EDIT"',
+            '"USB REQUIRED" : ""',
+            '!root.deviceConnected ? "LOCAL ONLY"',
+            '"LOCAL PREVIEW · Device unchanged"',
+            "dimWhenDisabled: true", "labelPixelSize: 11",
+            "Layout.preferredHeight:190", "Layout.preferredHeight:138",
+            "root.presetManager.useInitVolumeKnown",
+            "root.presetManager.adjMannerVrOffKnown")
+    require("qml/components/SoftButton.qml",
+            "SYSTEM_DISABLED_ACTION_AFFORDANCE_V1",
+            "property bool dimWhenDisabled: false",
+            "root.dimWhenDisabled && !root.enabled ? 0.47 : 1.0")
+    require("qml/components/SystemToggleRow.qml",
+            "font.pixelSize: Theme.systemListTitleSize",
+            "font.pixelSize: Theme.systemStatusSize")
+    # Prevent System density adjustments spilling over to the rack/nav.
+    require("qml/theme/Theme.qml",
+            "readonly property int rackHeaderSize: 10",
+            "readonly property int rackCaptionSize: 9",
+            "readonly property int navTitleSize: 12")
 
     # SYSTEM_OFFLINE_SINGLE_SURFACE_V7 — offline editor MUST be hidden
     # rather than merely read-only, to prevent overdraw with status captions.
@@ -1580,8 +1607,8 @@ def check_public_surface_contracts() -> None:
         "qml/components/SystemToggleRow.qml",
         "FINAL_MICRO_TEXT_READABILITY_V5",
         "implicitHeight: 50",
-        "font.pixelSize: Theme.rackReadoutSize",
-        "font.pixelSize: Theme.rackCaptionSize",
+        "font.pixelSize: Theme.systemListTitleSize",
+        "font.pixelSize: Theme.systemStatusSize",
         "root.toggleRequested(!root.checked)",
         "root.blockedClicked()",
     )
