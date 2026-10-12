@@ -198,6 +198,34 @@ Item {
     readonly property bool offlineEditMode: root.offlineFileMode
                                              && !!root.fileBridge
                                              && root.fileBridge.editPersistenceEnabled
+    // OFFLINE_SYSTEM_PRESET_EDIT_V1 — only validated Preview creates a working
+    // document. Local gesture values never masquerade as hardware readback.
+    property var offlineSystemEdits: ({})
+    function updateOfflineSystemEdit(path, value, discard) {
+        var copy = {}
+        for (var key in root.offlineSystemEdits)
+            if (key !== path) copy[key] = root.offlineSystemEdits[key]
+        if (!discard) copy[path] = value
+        root.offlineSystemEdits = copy
+    }
+    readonly property bool offlineStarterAvailable: {
+        if (!root.offlineFileMode || !root.fileBridge) return false
+        var bank = root.fileBridge.builtInPresets
+        for (var i = 0; bank && i < bank.length; i++)
+            if (bank[i] && bank[i].valid) return true
+        return false
+    }
+    function startOfflineWorkingPreset() {
+        if (!root.offlineFileMode || !root.fileBridge) return false
+        root.bindFileBridgeEngine()
+        var bank = root.fileBridge.builtInPresets
+        for (var i = 0; bank && i < bank.length; i++) {
+            if (!bank[i] || !bank[i].valid) continue
+            if (!root.fileBridge.loadBuiltInPreset(i)) return false
+            return root.fileBridge.previewLoadedPreset()
+        }
+        return false
+    }
     // P4_PC_PRESET_UPLOAD_UI_V1 — permanent write remains fail-closed unless
     // the staged PC document is valid and P2 confirms USB store availability.
     readonly property bool pcUploadReady: root.stagedPresetReady
@@ -243,8 +271,13 @@ Item {
         }
     }
     function previewOrUploadLoadedPreset() {
-        if (!root.stagedPresetReady)
+        if (!root.stagedPresetReady) {
+            if (root.offlineFileMode && root.startOfflineWorkingPreset()) {
+                root.pcSaveNotice = "Offline preset siap diedit · Save PC As menyimpan salinan."
+                pcSaveNoticeTimer.restart()
+            }
             return
+        }
         if (root.offlineFileMode) {
             // OFFLINE_PREVIEW_V1 — explicit Preview hydrates visual/editor state
             // and the bridge then enables its whitelisted offline edit session.
@@ -363,6 +396,9 @@ Item {
         {label:"HOLD TIME",key:"danceMicHoldSec",fallback:6,from:1,to:30,unit:"s",path:"system.danceMicHoldSec"}
     ]
     function stableSystemValue(spec) {
+        var path = String(spec.path || "")
+        if (root.offlineEditMode && root.offlineSystemEdits[path] !== undefined)
+            return Number(root.offlineSystemEdits[path])
         return Number(root.systemValue(String(spec.key || ""), Number(spec.fallback || 0)))
     }
 
@@ -388,8 +424,14 @@ Item {
         target: root.fileBridge
         enabled: !!root.fileBridge
         function onEditTrackingChanged() {
+            root.offlineSystemEdits = ({})
             if (!root.deviceConnected && root.fileBridge.editPersistenceEnabled)
                 root.seedOfflineAdjMannerFromPreview()
+        }
+        function onPersistenceRejected(path, reason) {
+            root.updateOfflineSystemEdit(String(path || ""), 0, true)
+            root.pcSaveNotice = String(reason || "Perubahan tidak tersimpan ke preset.")
+            pcSaveNoticeTimer.restart()
         }
     }
 
@@ -706,9 +748,18 @@ Item {
                             SoftButton { Layout.fillWidth: true; text: "Save PC As"; compact: true; enabled: !!root.fileBridge; onClicked: root.requestSaveAs() }
                             SoftButton {
                                 Layout.fillWidth: true
-                                text: root.offlineFileMode ? (root.offlineEditMode ? "Preview again" : "Preview") : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
+                                text: root.offlineFileMode
+                                      ? (!root.stagedPresetReady ? "Start editing"
+                                         : root.offlineEditMode ? "Preview again" : "Preview")
+                                      : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
                                 compact: true
-                                enabled: root.offlineFileMode ? root.stagedPresetReady : root.pcUploadReady
+                                enabled: root.offlineFileMode ? (root.stagedPresetReady || root.offlineStarterAvailable) : root.pcUploadReady
+                                HoverHandler { id: previewHelp }
+                                ToolTip.visible: previewHelp.hovered
+                                ToolTip.delay: 500
+                                ToolTip.text: !root.stagedPresetReady
+                                              ? "Mulai dari preset resmi tervalidasi. Save PC As menyimpan salinan."
+                                              : "Preview preset yang dipilih sebelum mengedit offline."
                                 onClicked: root.previewOrUploadLoadedPreset()
                             }
                             SoftButton {
@@ -1175,7 +1226,8 @@ Item {
                 syncEngine:root.engine
                 channels:root.startupLimitChannels
                 valueResolver:root.startupLimitValue
-                interactionEnabled:root.deviceConnected && root.engine.deviceStateReady
+                interactionEnabled:(root.deviceConnected && root.engine.deviceStateReady) || root.offlineEditMode
+                syncMasterLockEnabled:root.deviceConnected
             }
 
             StudioPanel {
@@ -1206,7 +1258,8 @@ Item {
                                             // SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1 — preserve the
                                             // active gesture, but never lose a newer device snapshot.
                                             property bool deferredModelSync: false
-                                            readonly property bool channelEditable: root.deviceConnected && root.engine.deviceStateReady
+                                            readonly property bool channelEditable: (root.deviceConnected && root.engine.deviceStateReady)
+                                                                                   || root.offlineEditMode
                                             onModelDataChanged: {
                                                 if (recFader && recFader.dragging) {
                                                     deferredModelSync = true
@@ -1242,8 +1295,11 @@ Item {
                                                 }
                                                 onValueEdited:function(v){
                                                     recChannel.localValue=v
-                                                    if(recChannel.channelEditable&&String(modelData.path||"").length>0)
-                                                        root.engine.editDevicePath(String(modelData.path),v)
+                                                    if (recChannel.channelEditable && String(modelData.path || "").length > 0) {
+                                                        if (root.offlineEditMode)
+                                                            root.updateOfflineSystemEdit(String(modelData.path), v, false)
+                                                        root.engine.editDevicePath(String(modelData.path), v)
+                                                    }
                                                 }
                                             }
                                             Rectangle{Layout.alignment:Qt.AlignHCenter;Layout.preferredWidth:48;Layout.preferredHeight:23;radius:8;color:"#080C10";border.width:1;border.color:recFader.highlighted?recFader.accentColor:"#050708";Behavior on border.color{ColorAnimation{duration:75}}Text{anchors.centerIn:parent;text:recChannel.localValue;color:recChannel.channelEditable?Theme.amber:Theme.textDim;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.Bold}}
