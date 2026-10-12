@@ -656,6 +656,23 @@ def check_ui_contracts() -> None:
         except subprocess.TimeoutExpired:
             FAILURES.append("Mass Upload transfer/move regression timed out")
 
+    # One additional Node VM contract on the real coordinator methods:
+    # Recall verification, slot correlation, local double-click guard and
+    # presence of one window-level overlay. No new workflow or Windows job.
+    if node is not None:
+        try:
+            feedback_test = subprocess.run(
+                [node, str(ROOT / "tools/ci/test_operation_feedback.js")],
+                text=True, capture_output=True, timeout=12, check=False,
+            )
+            if feedback_test.returncode:
+                FAILURES.append("K500 operation feedback regression failed: "
+                                + (feedback_test.stderr or feedback_test.stdout)[-2200:])
+            else:
+                PASSES.append(feedback_test.stdout.strip())
+        except subprocess.TimeoutExpired:
+            FAILURES.append("K500 operation feedback regression timed out")
+
     require(
         "qml/components/MassUploadTransferWindow.qml",
         "MASS_TRANSFER_TRUE_MOVE_DND_V1",
@@ -668,14 +685,24 @@ def check_ui_contracts() -> None:
     require(
         "qml/components/SystemWorkspaceImpl.qml",
         "SINGLE_STORE_FEEDBACK_V1", "SINGLE_STORE_STATUS_TOAST_V1",
-        'root.beginSingleOperation("Save")',
-        'root.beginSingleOperation("Upload")',
+        "OPERATION_FEEDBACK_SINGLE_AUTHORITY_V2",
+        'root.beginSingleOperation("Save", slot)',
+        'root.beginSingleOperation("Upload", slot)',
+        'root.beginSingleOperation("Recall", slot)',
         "function onOperationCompleted(kind, slot)",
         "function onOperationFailed(kind, message)",
-        'root.presetManager.progress',
+        'root.presetManager.progress', "OperationFeedback {",
     )
+    require("qml/components/OperationFeedback.qml",
+            "WINDOW_CENTERED_OPERATION_FEEDBACK_V1",
+            "parent: Overlay.overlay", 'visible: phase !== ""',
+            "Popup.NoAutoClose", "stage", "message", "RotationAnimator")
+    require("CMakeLists.txt", "qml/components/OperationFeedback.qml")
+    forbid("qml/components/SystemWorkspaceImpl.qml",
+           "anchors.bottom: parent.bottom\n        anchors.bottomMargin: 16")
     require("qml/components/RackFaderPanel.qml", "COMPACT_TOGGLE_VISUAL_V1",
-            "SYNC MASTER", "width: 32", "height: 17")
+            "SYNC_MASTER_OPTICAL_FACE_V2", "syncMasterLabel.contentHeight",
+            "anchors.centerIn: parent", "width: 38", "height: 30")
     require("qml/components/SystemToggleRow.qml", "COMPACT_TOGGLE_VISUAL_V1",
             "Layout.preferredWidth: 34", "Layout.preferredHeight: 18")
 

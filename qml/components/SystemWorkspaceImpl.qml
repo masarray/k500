@@ -39,27 +39,42 @@ Item {
     property string systemControlHint: ""
     // SAVE_AS_EXPLICIT_SOURCE_GATE_V1 — live device readback is not a complete
     // 1144-byte .k500 document; never silently export fabricated file data.
-    // SINGLE_STORE_FEEDBACK_V1 — UI-only ACK/verification status for Save/Upload.
+    // SINGLE_STORE_FEEDBACK_V1 / OPERATION_FEEDBACK_SINGLE_AUTHORITY_V2
+    // Presentation only: K500PresetManager remains the sole transaction owner.
+    // Never infer success from a timer, percent, or the local button click.
     property string singleOpKind: ""
+    property int singleOpSlot: 0
     property string singleOpState: ""   // busy, success, error
     property string singleOpMessage: ""
     Timer {
         id: singleOpDismiss
-        interval: root.singleOpState === "error" ? 6500 : 3300
+        interval: root.singleOpState === "error" ? 7000 : 3200
         repeat: false
         onTriggered: root.singleOpState = ""
     }
-    function beginSingleOperation(kind) {
+    function beginSingleOperation(kind, slot) {
+        // Guard locally as well as in the native preset coordinator: a second
+        // click must not replace the feedback owner or submit another Store.
+        if (root.singleOpState === "busy" || !root.deviceConnected
+                || !root.presetManager || root.presetManager.busy
+                || slot < 1 || slot > 10)
+            return false
         singleOpDismiss.stop()
-        singleOpKind = kind
-        singleOpMessage = ""
-        singleOpState = "busy"
+        root.singleOpKind = kind
+        root.singleOpSlot = slot
+        root.singleOpMessage = ""
+        root.singleOpState = "busy"
+        return true
     }
-    function finishSingleOperation(kind, success, description) {
-        if (kind !== singleOpKind || singleOpState !== "busy")
+    function finishSingleOperation(kind, success, description, slot) {
+        if (kind !== root.singleOpKind || root.singleOpState !== "busy")
             return
-        singleOpState = success ? "success" : "error"
-        singleOpMessage = String(description || "")
+        // Success carries the actual engine-confirmed slot; reject an
+        // out-of-order completion for a different selection.
+        if (success && Number(slot) !== root.singleOpSlot)
+            return
+        root.singleOpState = success ? "success" : "error"
+        root.singleOpMessage = String(description || "")
         singleOpDismiss.restart()
     }
     property string pcSaveNotice: ""
@@ -240,9 +255,10 @@ Item {
             return
         // Backend performs exact 0x0290 validation again before Store, then
         // recalls the same slot and full-readbacks the K500 before UI changes.
-        root.beginSingleOperation("Upload")
-        root.presetManager.uploadSlotImage(root.selectedDeviceSlot + 1,
-                                           root.fileBridge.deviceSlotImage())
+        var slot = root.selectedDeviceSlot + 1
+        if (!root.beginSingleOperation("Upload", slot))
+            return
+        root.presetManager.uploadSlotImage(slot, root.fileBridge.deviceSlotImage())
     }
     function loadPcLibraryEntry(index) {
         if (!root.fileBridge)
@@ -381,13 +397,18 @@ Item {
         target: root.presetManager
         enabled: !!root.presetManager
         function onOperationCompleted(kind, slot) {
-            if (kind === "Save" || kind === "Upload")
+            // Recall is completed by native code only after the required
+            // full active-memory readback, not just the recall handshake.
+            if (kind === "Save" || kind === "Upload" || kind === "Recall")
                 root.finishSingleOperation(kind, true,
-                    "Slot " + slot + " berhasil disimpan dan dikonfirmasi K500.")
+                    kind === "Recall"
+                        ? "Slot " + String(slot).padStart(2, "0") + " aktif; pembacaan ulang K500 terverifikasi."
+                        : "Slot " + String(slot).padStart(2, "0") + " disimpan dan dikonfirmasi K500.",
+                    slot)
         }
         function onOperationFailed(kind, message) {
-            if (kind === "Save" || kind === "Upload")
-                root.finishSingleOperation(kind, false, message)
+            if (kind === "Save" || kind === "Upload" || kind === "Recall")
+                root.finishSingleOperation(kind, false, message, 0)
         }
         function onActiveSlotChanged() {
             if (root.activeDeviceSlot >= 0)
@@ -880,14 +901,19 @@ Item {
                             SoftButton{
                                 Layout.fillWidth:true;text:root.presetManager&&root.presetManager.recallBusy?"Recalling…":"Recall";compact:true
                                 enabled:root.deviceConnected&&root.presetManager&&!root.presetManager.busy
-                                onClicked:root.presetManager.recallMode(root.selectedDeviceSlot+1)
+                                onClicked: {
+                                    var slot = root.selectedDeviceSlot + 1
+                                    if (root.beginSingleOperation("Recall", slot))
+                                        root.presetManager.recallMode(slot)
+                                }
                             }
                             SoftButton{
                                 Layout.fillWidth:true;text:root.presetManager&&root.presetManager.storeBusy?"Saving…":"Save";compact:true
                                 enabled:root.presetManager&&root.presetManager.usbStoreAvailable&&!root.presetManager.busy
                                 onClicked:{
-                                    root.beginSingleOperation("Save")
-                                    root.presetManager.saveCurrentToSlot(root.selectedDeviceSlot+1)
+                                    var slot = root.selectedDeviceSlot + 1
+                                    if (root.beginSingleOperation("Save", slot))
+                                        root.presetManager.saveCurrentToSlot(slot)
                                 }
                             }
                         }
@@ -1302,85 +1328,16 @@ Item {
         }
     }
 
-    // SINGLE_STORE_STATUS_TOAST_V1 — compact, non-modal, no fake %.
-    // Mass Upload retains its separate ACK-driven full-screen progress.
-    Rectangle {
-        id: singleOpToast
-        z: 80
-        anchors.horizontalCenter: parent.horizontalCenter
-        anchors.bottom: parent.bottom
-        anchors.bottomMargin: 16
-        width: Math.min(parent.width - 32, 450)
-        height: 86
-        radius: 10
-        visible: root.singleOpState !== ""
-        color: "#19252C"
-        border.width: 1
-        border.color: root.singleOpState === "error" ? "#D87078"
-                      : root.singleOpState === "success" ? "#55D4B5" : "#408FA2"
-        ColumnLayout {
-            anchors.fill: parent
-            anchors.margins: 12
-            spacing: 6
-            RowLayout {
-                Layout.fillWidth: true
-                spacing: 9
-                Text {
-                    text: root.singleOpState === "busy" ? "◌" :
-                          root.singleOpState === "success" ? "✓" : "!"
-                    color: root.singleOpState === "error" ? "#FF9DA3"
-                           : root.singleOpState === "success" ? "#6AE5C4" : Theme.accent
-                    font.pixelSize: 18; font.weight: Font.Bold
-                    RotationAnimator on rotation {
-                        from: 0; to: 360; duration: 900
-                        loops: Animation.Infinite
-                        running: root.singleOpState === "busy"
-                    }
-                }
-                Text {
-                    Layout.fillWidth: true
-                    text: (root.singleOpKind === "Save" ? "SAVING PRESET" : "UPLOADING PRESET")
-                        + (root.singleOpState === "success" ? "  ·  COMPLETE"
-                          : root.singleOpState === "error" ? "  ·  INTERRUPTED" : "")
-                    color: Theme.text
-                    font.family: Theme.monoFamily
-                    font.pixelSize: 12; font.weight: Font.Bold
-                }
-                Text {
-                    text: root.singleOpState === "busy" ? "WAIT"
-                          : root.singleOpState === "success" ? "VERIFIED" : "CHECK DEVICE"
-                    color: root.singleOpState === "error" ? "#FF9DA3" : Theme.textSoft
-                    font.family: Theme.monoFamily; font.pixelSize: 9
-                }
-            }
-            Text {
-                Layout.fillWidth: true
-                text: root.singleOpState === "busy" && root.presetManager
-                      ? String(root.presetManager.progress || "Menunggu perangkat K500…")
-                      : root.singleOpMessage
-                color: root.singleOpState === "error" ? "#FFB3B8" : Theme.textSoft
-                font.family: Theme.fontFamily; font.pixelSize: 11
-                elide: Text.ElideRight
-            }
-            Rectangle {
-                id: opTrack
-                Layout.fillWidth: true
-                Layout.preferredHeight: 4
-                radius: 2; clip: true; color: "#091115"
-                Rectangle {
-                    height: parent.height; radius: 2
-                    width: root.singleOpState === "busy" ? 78 : parent.width
-                    color: root.singleOpState === "error" ? "#D87078"
-                          : root.singleOpState === "success" ? "#55D4B5" : Theme.accent
-                    SequentialAnimation on x {
-                        running: root.singleOpState === "busy"
-                        loops: Animation.Infinite
-                        NumberAnimation { from: -78; to: opTrack.width; duration: 1100
-                                          easing.type: Easing.InOutSine }
-                    }
-                }
-            }
-        }
+    // SINGLE_STORE_STATUS_TOAST_V1 — one reusable non-modal window overlay for
+    // Save, Upload and Recall. Mass Upload keeps its own separate progress.
+    // Overlay.overlay belongs to ApplicationWindow, NOT the System panel.
+    OperationFeedback {
+        kind: root.singleOpKind
+        phase: root.singleOpState
+        slot: root.singleOpSlot
+        stage: root.singleOpState === "busy" && root.presetManager
+               && root.presetManager.busy ? String(root.presetManager.progress || "") : ""
+        message: root.singleOpMessage
     }
 
 }
