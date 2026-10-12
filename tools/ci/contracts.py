@@ -479,6 +479,13 @@ def check_ui_contracts() -> None:
     # SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1 — no duplicate middle headings;
     # four channels share fixed 160px geometry independently of online state.
     system_qml = read("qml/components/SystemWorkspaceImpl.qml")
+    # SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1: two equally spaced faders in each card.
+    if system_qml.count("width:parent ? parent.width / 2 : 96") != 2:
+        FAILURES.append("Recording and Mic Trigger must each have two equally wide centered fader slots")
+    if system_qml.count("Item { Layout.fillHeight:true; Layout.minimumHeight:0 }") != 4:
+        FAILURES.append("Fader label, track and value must remain vertically centered")
+    if system_qml.count("titlePixelSize:11") != 2:
+        FAILURES.append("Plain-language K500 toggle titles must retain legible type")
     if system_qml.count('text:"RECORDING"') != 1 or system_qml.count('text:"MIC TRIGGER"') != 1:
         FAILURES.append("System must have exactly one header per fader pair")
     if system_qml.count("Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160") != 2:
