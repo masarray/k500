@@ -16,6 +16,10 @@ StudioPanel {
     property bool interactionEnabled: true
     // Hardware SYNC MASTER locks LIVE INIT; explicit offline Preview is independent.
     property bool syncMasterLockEnabled: true
+    // Optional Startup Limits editing, routed through its offline draft.
+    // Other rack panels still use their existing engine dispatch.
+    property var systemEditHandler: null
+    property var offlineDraftValues: ({})
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
@@ -135,8 +139,13 @@ StudioPanel {
     }
     function dispatchLive(label, value) {
         var path = livePathFor(label)
+        if (!path.length) return
+        if (root.title === "Startup Limits" && typeof root.systemEditHandler === "function") {
+            root.systemEditHandler(path, value)
+            return
+        }
         var engine = studioEngine()
-        if (!path.length || !engine) return
+        if (!engine) return
         if (path === "system.musicInitVol") {
             engine.musicInitVol = value
             return
@@ -833,6 +842,18 @@ StudioPanel {
                             } else {
                                 localValue = root.resolvedChannelValue(modelData)
                                 deferredModelSync = false
+                            }
+                        }
+                        Connections {
+                            target: root
+                            function onOfflineDraftValuesChanged() {
+                                // Preserve pointer ownership during a continuous
+                                // drag, then reconcile on release.
+                                if (rackFader.dragging) channel.deferredModelSync = true
+                                else {
+                                    channel.localValue = root.resolvedChannelValue(channel.modelData)
+                                    channel.deferredModelSync = false
+                                }
                             }
                         }
                         readonly property bool channelEditable: root.interactionEnabled
