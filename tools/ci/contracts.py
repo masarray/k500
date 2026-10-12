@@ -447,7 +447,7 @@ def check_ui_contracts() -> None:
         "root.recordingChannels.length",
         "root.micTriggerChannels.length",
         "SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1",
-        "OFFLINE_SYSTEM_PRESET_EDIT_V1",
+        "OFFLINE_SYSTEM_DRAFT_IMMEDIATE_V2",
         "SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1",
         "root.offlineStarterAvailable",
         "root.startOfflineWorkingPreset()",
@@ -460,6 +460,22 @@ def check_ui_contracts() -> None:
         "root.offlineEditMode",
         "syncMasterLockEnabled:root.deviceConnected",
     )
+    # OFFLINE_SYSTEM_DRAFT_IMMEDIATE_V2 — faders are not gated on Preview.
+    require("qml/components/SystemWorkspaceImpl.qml",
+            "OFFLINE_SYSTEM_DRAFT_IMMEDIATE_V2",
+            "interactionEnabled:!root.deviceConnected",
+            "systemEditHandler:root.editStartup",
+            "function prepareOfflineSave()",
+            "root.prepareOfflineSave() && root.fileBridge.saveFile(selectedFile)",
+            "function unmappedMicDraft(draft)",
+            "root.updateOfflineSystemEdit(String(modelData.path), v, false)")
+    require("qml/components/RackFaderPanel.qml",
+            "property var systemEditHandler: null",
+            "property var offlineDraftValues: ({})",
+            "function onOfflineDraftValuesChanged()")
+    forbid("qml/components/SystemWorkspaceImpl.qml",
+           '"NO PRESET STAGED"', 'text: loadedPreset ? "STAGED"',
+           "interactionEnabled:(root.deviceConnected && root.engine.deviceStateReady) || root.offlineEditMode")
     # SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1 — no duplicate middle headings;
     # four channels share fixed 160px geometry independently of online state.
     system_qml = read("qml/components/SystemWorkspaceImpl.qml")
@@ -723,6 +739,22 @@ def check_ui_contracts() -> None:
                 PASSES.append(feedback_test.stdout.strip())
         except subprocess.TimeoutExpired:
             FAILURES.append("K500 operation feedback regression timed out")
+
+    # No new workflow: deterministic JS VM exercises the actual QML draft
+    # functions and asserts hardware isolation, serialization and fail-closed.
+    if node is not None:
+        try:
+            draft_test = subprocess.run(
+                [node, str(ROOT / "tools/ci/test_system_offline_draft.js")],
+                text=True, capture_output=True, timeout=12, check=False,
+            )
+            if draft_test.returncode:
+                FAILURES.append("System offline draft regression failed: "
+                                + (draft_test.stderr or draft_test.stdout)[-2200:])
+            else:
+                PASSES.append(draft_test.stdout.strip())
+        except subprocess.TimeoutExpired:
+            FAILURES.append("System offline draft regression timed out")
 
     require(
         "qml/components/MassUploadTransferWindow.qml",
@@ -999,7 +1031,7 @@ def check_ui_contracts() -> None:
         "SYSTEM_QUIET_STATUS_V9",
         "root.pcSaveNotice.length > 0 ? root.pcSaveNotice",
         "String(root.fileBridge.lastError)",
-        'text: loadedPreset ? "STAGED" : validPreset ? "" : "INVALID"',
+        'text: !validPreset ? "INVALID" : loadedPreset && root.fileBridge.dirty ? "EDITED" : ""',
         "root.loadPcLibraryEntry(index)",
         'text:"READ ONLY"',
         'ToolTip.text: "Rename: 1–8 ASCII characters. BLE name is read-only."',
@@ -1062,7 +1094,7 @@ def check_ui_contracts() -> None:
         "root.requestSaveAs()",
         "root.fileBridge.saveFile(selectedFile)",
         "root.pcSaveNotice",
-        "Select a preset from the PC bank/local folder",
+        "function prepareOfflineSave()",
     )
     # Mic EQ LINK is an immediate, reversible editor invariant. Readback
     # is authoritative, but it NEVER silently re-transmits mic.eqLink.

@@ -86,9 +86,16 @@ Item {
     function requestSaveAs() {
         if (!root.fileBridge)
             return
-        if (!root.fileBridge.loaded) {
-            root.pcSaveNotice = "Select a preset from the PC bank/local folder or Open file before Save As. Device LIVE readback is not a complete .k500 file."
-            pcSaveNoticeTimer.restart()
+        if (root.deviceConnected && !root.fileBridge.loaded) {
+            root.pcNotice("Pilih preset PC untuk Save PC As; LIVE readback bukan file .k500 lengkap.")
+            return
+        }
+        if (!root.deviceConnected && !root.fileBridge.loaded && !root.offlineStarterAvailable) {
+            root.pcNotice("Tidak ada preset terverifikasi sebagai dasar file .k500.")
+            return
+        }
+        if (!root.deviceConnected && root.unmappedMicDraft(root.offlineSystemEdits)) {
+            root.pcNotice("Mic Trigger belum bisa disimpan; klik Preview untuk membuang nilai sementaranya.")
             return
         }
         root.pcSaveNotice = ""
@@ -198,8 +205,9 @@ Item {
     readonly property bool offlineEditMode: root.offlineFileMode
                                              && !!root.fileBridge
                                              && root.fileBridge.editPersistenceEnabled
-    // OFFLINE_SYSTEM_PRESET_EDIT_V1 — only validated Preview creates a working
-    // document. Local gesture values never masquerade as hardware readback.
+    // OFFLINE_SYSTEM_DRAFT_IMMEDIATE_V2 — independent local fader draft is
+    // always available. Preview or device connection replaces this draft;
+    // only supported mappings are eligible for an actual PC file export.
     property var offlineSystemEdits: ({})
     function updateOfflineSystemEdit(path, value, discard) {
         var copy = {}
@@ -207,6 +215,80 @@ Item {
             if (key !== path) copy[key] = root.offlineSystemEdits[key]
         if (!discard) copy[path] = value
         root.offlineSystemEdits = copy
+    }
+    function pcNotice(message) {
+        root.pcSaveNotice = String(message || "")
+        pcSaveNoticeTimer.restart()
+    }
+    function startupPath(label) {
+        var key = String(label || "").toUpperCase()
+        if (key === "MUSIC INIT") return "system.musicInitVol"
+        if (key === "MUSIC MAX") return "system.musicMaxVol"
+        if (key === "MIC INIT") return "system.micInitVol"
+        if (key === "MIC MAX") return "system.micMaxVol"
+        if (key === "EFFECT INIT") return "system.effectInitLevel"
+        return ""
+    }
+    function setEngineStartup(path, value) {
+        if (!root.engine) return
+        if (path === "system.musicInitVol") root.engine.musicInitVol = value
+        else if (path === "system.musicMaxVol") root.engine.musicMaxVol = value
+        else if (path === "system.micInitVol") root.engine.micInitVol = value
+        else if (path === "system.micMaxVol") root.engine.micMaxVol = value
+        else if (path === "system.effectInitLevel") root.engine.effectInitLevel = value
+    }
+    function editStartup(path, value) {
+        if (!path) return
+        if (!root.deviceConnected) {
+            root.updateOfflineSystemEdit(path, value, false)
+            if (!root.offlineEditMode) return
+        }
+        root.setEngineStartup(path, value)
+    }
+    function unmappedMicDraft(draft) {
+        return draft["system.danceMicThresholdDb"] !== undefined
+            || draft["system.danceMicHoldSec"] !== undefined
+    }
+    function prepareOfflineSave() {
+        if (!root.fileBridge) return false
+        if (root.deviceConnected) return root.fileBridge.loaded
+        var draft = root.offlineSystemEdits
+        if (root.unmappedMicDraft(draft)) {
+            root.pcNotice("Mic Trigger belum dapat disimpan ke .k500; Preview mengembalikan nilainya.")
+            return false
+        }
+        if (!root.stagedPresetReady && !root.startOfflineWorkingPreset()) {
+            root.pcNotice(root.fileBridge.lastError || "Tidak ada preset .k500 valid untuk penyimpanan.")
+            return false
+        }
+        var paths = Object.keys(draft)
+        if (paths.length === 0) return true
+        if (!root.offlineEditMode && !root.fileBridge.previewLoadedPreset()) {
+            root.pcNotice(root.fileBridge.lastError || "Gagal menyiapkan working preset.")
+            return false
+        }
+        for (var i = 0; i < paths.length; ++i) {
+            var path = paths[i]
+            var value = Number(draft[path])
+            if (path === "system.musicInitVol" || path === "system.musicMaxVol"
+                    || path === "system.micInitVol" || path === "system.micMaxVol"
+                    || path === "system.effectInitLevel") {
+                root.setEngineStartup(path, value)
+            } else if (path === "system.uDiskRecordVol" || path === "system.usbRecordVol") {
+                root.engine.editDevicePath(path, value)
+            } else {
+                root.pcNotice("Mapping preset belum tersedia: " + path)
+                return false
+            }
+            if (String(root.fileBridge.lastError || "").length > 0) {
+                root.pcNotice(root.fileBridge.lastError)
+                return false
+            }
+        }
+        // RECORDING has a verified file mapper, but no dedicated in-engine
+        // scalar setters; retain its reflected values until next Preview.
+        root.offlineSystemEdits = draft
+        return true
     }
     readonly property bool offlineStarterAvailable: {
         if (!root.offlineFileMode || !root.fileBridge) return false
@@ -279,9 +361,9 @@ Item {
             return
         }
         if (root.offlineFileMode) {
-            // OFFLINE_PREVIEW_V1 — explicit Preview hydrates visual/editor state
-            // and the bridge then enables its whitelisted offline edit session.
-            root.fileBridge.previewLoadedPreset()
+            // An explicit Preview replaces the draft with preset values.
+            if (root.fileBridge.previewLoadedPreset())
+                root.offlineSystemEdits = ({})
             return
         }
         if (!root.pcUploadReady)
@@ -375,6 +457,9 @@ Item {
     ]
     function startupLimitValue(label, fallback) {
         if (!root.engine) return fallback
+        var path = root.startupPath(label)
+        if (!root.deviceConnected && root.offlineSystemEdits[path] !== undefined)
+            return Number(root.offlineSystemEdits[path])
         var key = String(label || "").toUpperCase()
         if (key === "MUSIC INIT") return Number(root.engine.musicInitVol)
         if (key === "MUSIC MAX") return Number(root.engine.musicMaxVol)
@@ -397,7 +482,7 @@ Item {
     ]
     function stableSystemValue(spec) {
         var path = String(spec.path || "")
-        if (root.offlineEditMode && root.offlineSystemEdits[path] !== undefined)
+        if (!root.deviceConnected && root.offlineSystemEdits[path] !== undefined)
             return Number(root.offlineSystemEdits[path])
         return Number(root.systemValue(String(spec.key || ""), Number(spec.fallback || 0)))
     }
@@ -424,9 +509,11 @@ Item {
         target: root.fileBridge
         enabled: !!root.fileBridge
         function onEditTrackingChanged() {
-            root.offlineSystemEdits = ({})
-            if (!root.deviceConnected && root.fileBridge.editPersistenceEnabled)
-                root.seedOfflineAdjMannerFromPreview()
+            // Merely staging a PC file does not replace the offline draft.
+            if (root.fileBridge.editPersistenceEnabled) {
+                root.offlineSystemEdits = ({})
+                if (!root.deviceConnected) root.seedOfflineAdjMannerFromPreview()
+            }
         }
         function onPersistenceRejected(path, reason) {
             root.updateOfflineSystemEdit(String(path || ""), 0, true)
@@ -465,6 +552,7 @@ Item {
             // offline working shadow before LIVE editing starts. On disconnect,
             // do not touch that shadow: it is the intentional visual/editor handoff.
             if (root.deviceConnected) {
+                root.offlineSystemEdits = ({})
                 root.mirrorAcceptedDeviceTogglesToOffline()
                 if (root.fileBridge)
                     root.fileBridge.editTracking = false
@@ -509,7 +597,7 @@ Item {
         nameFilters: ["K500 preset (*.k500)"]
         onAccepted: {
             if (root.fileBridge) {
-                if (root.fileBridge.saveFile(selectedFile)) {
+                if (root.prepareOfflineSave() && root.fileBridge.saveFile(selectedFile)) {
                     root.pcSaveNotice = "Saved: " + String(root.fileBridge.sourceName)
                     pcSaveNoticeTimer.restart()
                 } else {
@@ -666,8 +754,8 @@ Item {
                                             elide: Text.ElideRight
                                         }
                                         Text {
-                                            text: loadedPreset ? "STAGED" : validPreset ? "" : "INVALID"
-                                            color: loadedPreset ? Theme.accent : validPreset ? Theme.textSoft : Theme.amber
+                                            text: !validPreset ? "INVALID" : loadedPreset && root.fileBridge.dirty ? "EDITED" : ""
+                                            color: !validPreset ? Theme.amber : Theme.accent
                                             font.family: Theme.monoFamily
                                             font.pixelSize: Theme.systemListTitleSize
                                             font.weight: Font.DemiBold
@@ -694,40 +782,6 @@ Item {
                             }
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 34
-                            radius: 7
-                            color: "#0B0F13"
-                            border.width: 1
-                            border.color: root.fileBridge && root.fileBridge.loaded ? Theme.accentSoft : Theme.borderSoft
-                            RowLayout {
-                                anchors.fill: parent
-                                anchors.leftMargin: 8
-                                anchors.rightMargin: 8
-                                spacing: 7
-                                Text { text: "PC"; color: Theme.amber; font.family: Theme.monoFamily; font.pixelSize: 8; font.weight: Font.Bold }
-                                Text {
-                                    Layout.fillWidth: true
-                                    text: root.fileBridge && root.fileBridge.loaded ? String(root.fileBridge.presetName) : "NO PRESET STAGED"
-                                    color: root.fileBridge && root.fileBridge.loaded ? Theme.text : Theme.textDim
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: Theme.systemListTitleSize
-                                    font.weight: Font.DemiBold
-                                    elide: Text.ElideRight
-                                }
-                                Text {
-                                    text: root.fileBridge && root.fileBridge.checksumOk
-                                          ? (root.fileBridge.dirty ? "EDITED" : (root.offlineEditMode ? "PREVIEW" : "STAGED"))
-                                          : ""
-                                    color: root.fileBridge && root.fileBridge.dirty ? Theme.amber : Theme.accent
-                                    font.family: Theme.monoFamily
-                                    font.pixelSize: 7
-                                    font.weight: Font.Bold
-                                }
-                            }
-                        }
-
                         Text {
                             Layout.fillWidth: true
                             // SYSTEM_QUIET_STATUS_V9 — always show an error or
@@ -749,8 +803,7 @@ Item {
                             SoftButton {
                                 Layout.fillWidth: true
                                 text: root.offlineFileMode
-                                      ? (!root.stagedPresetReady ? "Start editing"
-                                         : root.offlineEditMode ? "Preview again" : "Preview")
+                                      ? "Preview"
                                       : (root.presetManager && root.presetManager.storeBusy ? "Uploading…" : "Upload")
                                 compact: true
                                 enabled: root.offlineFileMode ? (root.stagedPresetReady || root.offlineStarterAvailable) : root.pcUploadReady
@@ -1226,8 +1279,10 @@ Item {
                 syncEngine:root.engine
                 channels:root.startupLimitChannels
                 valueResolver:root.startupLimitValue
-                interactionEnabled:(root.deviceConnected && root.engine.deviceStateReady) || root.offlineEditMode
+                interactionEnabled:!root.deviceConnected || (root.engine && root.engine.deviceStateReady)
                 syncMasterLockEnabled:root.deviceConnected
+                offlineDraftValues:root.offlineSystemEdits
+                systemEditHandler:root.editStartup
             }
 
             StudioPanel {
@@ -1275,8 +1330,8 @@ Item {
                                             // SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1 — preserve the
                                             // active gesture, but never lose a newer device snapshot.
                                             property bool deferredModelSync: false
-                                            readonly property bool channelEditable: (root.deviceConnected && root.engine.deviceStateReady)
-                                                                                   || root.offlineEditMode
+                                            readonly property bool channelEditable: !root.deviceConnected
+                                                                                   || (root.engine && root.engine.deviceStateReady)
                                             onModelDataChanged: {
                                                 if (recFader && recFader.dragging) {
                                                     deferredModelSync = true
@@ -1325,8 +1380,10 @@ Item {
                                                 onValueEdited:function(v){
                                                     recChannel.localValue=v
                                                     if (recChannel.channelEditable && String(modelData.path || "").length > 0) {
-                                                        if (root.offlineEditMode)
+                                                        if (!root.deviceConnected) {
                                                             root.updateOfflineSystemEdit(String(modelData.path), v, false)
+                                                            if (!root.offlineEditMode) return
+                                                        }
                                                         root.engine.editDevicePath(String(modelData.path), v)
                                                     }
                                                 }
@@ -1353,13 +1410,16 @@ Item {
                                             property bool deferredModelSync: false
                                             // DANCE_MIC_READBACK_REOPENED_BY_ADJ_MANNER_20261004_V1
                                             // Paired readback seed and file offsets remain unverified.
-                                            readonly property bool channelEditable:root.deviceConnected
-                                                                 && root.engine.deviceStateReady
-                                                                 && Boolean(root.systemValue("danceMicTriggerKnown",false))
+                                            readonly property bool channelEditable:!root.deviceConnected
+                                                                 || (root.engine && root.engine.deviceStateReady
+                                                                     && Boolean(root.systemValue("danceMicTriggerKnown",false)))
                                             HoverHandler { id: triggerBlockedHelp }
-                                            ToolTip.visible: triggerBlockedHelp.hovered && !triggerChannel.channelEditable
+                                            ToolTip.visible: triggerBlockedHelp.hovered
+                                                               && (!root.deviceConnected || !triggerChannel.channelEditable)
                                             ToolTip.delay: 650
-                                            ToolTip.text: "Mic Trigger belum memiliki mapping preset/readback yang terverifikasi."
+                                            ToolTip.text: !root.deviceConnected
+                                                          ? "Mic Trigger sementara: belum dapat disimpan ke file .k500."
+                                                          : "Mic Trigger belum memiliki mapping preset/readback yang terverifikasi."
                                             onModelDataChanged: {
                                                 if (triggerFader && triggerFader.dragging) {
                                                     deferredModelSync = true
@@ -1374,6 +1434,16 @@ Item {
                                                     if (triggerFader.dragging) {
                                                         triggerChannel.deferredModelSync = true
                                                     } else {
+                                                        triggerChannel.localValue = root.stableSystemValue(triggerChannel.modelData)
+                                                        triggerChannel.deferredModelSync = false
+                                                    }
+                                                }
+                                            }
+                                            Connections {
+                                                target: root
+                                                function onOfflineSystemEditsChanged() {
+                                                    if (triggerFader.dragging) triggerChannel.deferredModelSync = true
+                                                    else {
                                                         triggerChannel.localValue = root.stableSystemValue(triggerChannel.modelData)
                                                         triggerChannel.deferredModelSync = false
                                                     }
@@ -1396,7 +1466,9 @@ Item {
                                                 }
                                                 onValueEdited:function(v){
                                                     triggerChannel.localValue=v
-                                                    if(triggerChannel.channelEditable)
+                                                    if (!root.deviceConnected)
+                                                        root.updateOfflineSystemEdit(String(modelData.path), v, false)
+                                                    else if (triggerChannel.channelEditable)
                                                         root.engine.editDevicePath(String(modelData.path),v)
                                                 }
                                             }
