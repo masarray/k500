@@ -14,6 +14,9 @@ Rectangle {
     property string helpText: ""
     property string statusText: ""
     property string iconName: ""
+    // Optional for longer, clearer K500 device labels. Default rows unchanged.
+    property int labelIndent: 0
+    property int titlePixelSize: Theme.rackReadoutSize
     property bool checked: false
     property bool available: false
     property bool pending: false
@@ -47,7 +50,7 @@ Rectangle {
 
     RowLayout {
         anchors.fill: parent
-        anchors.leftMargin: 9
+        anchors.leftMargin: 9 + root.labelIndent
         anchors.rightMargin: 9
         spacing: 8
 
@@ -81,7 +84,7 @@ Rectangle {
                 text: root.title
                 color: Theme.text
                 font.family: Theme.fontFamily
-                font.pixelSize: Theme.rackReadoutSize
+                font.pixelSize: root.titlePixelSize
                 font.weight: Font.DemiBold
                 elide: Text.ElideRight
             }
