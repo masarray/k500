@@ -447,7 +447,7 @@ def check_ui_contracts() -> None:
         "root.recordingChannels.length",
         "root.micTriggerChannels.length",
         "SYSTEM_DEFERRED_AUTHORITATIVE_SYNC_V1",
-        "OFFLINE_SYSTEM_PRESET_EDIT_V1",
+        "OFFLINE_SYSTEM_DRAFT_IMMEDIATE_V2",
         "SYSTEM_DUAL_HEADER_FADER_ALIGNMENT_V1",
         "root.offlineStarterAvailable",
         "root.startOfflineWorkingPreset()",
@@ -1031,7 +1031,7 @@ def check_ui_contracts() -> None:
         "SYSTEM_QUIET_STATUS_V9",
         "root.pcSaveNotice.length > 0 ? root.pcSaveNotice",
         "String(root.fileBridge.lastError)",
-        'text: loadedPreset ? "STAGED" : validPreset ? "" : "INVALID"',
+        'text: !validPreset ? "INVALID" : loadedPreset && root.fileBridge.dirty ? "EDITED" : ""',
         "root.loadPcLibraryEntry(index)",
         'text:"READ ONLY"',
         'ToolTip.text: "Rename: 1–8 ASCII characters. BLE name is read-only."',
@@ -1094,7 +1094,7 @@ def check_ui_contracts() -> None:
         "root.requestSaveAs()",
         "root.fileBridge.saveFile(selectedFile)",
         "root.pcSaveNotice",
-        "Select a preset from the PC bank/local folder",
+        "function prepareOfflineSave()",
     )
     # Mic EQ LINK is an immediate, reversible editor invariant. Readback
     # is authoritative, but it NEVER silently re-transmits mic.eqLink.
