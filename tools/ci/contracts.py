@@ -1607,8 +1607,8 @@ def check_public_surface_contracts() -> None:
         "qml/components/SystemToggleRow.qml",
         "FINAL_MICRO_TEXT_READABILITY_V5",
         "implicitHeight: 50",
-        "font.pixelSize: Theme.rackReadoutSize",
-        "font.pixelSize: Theme.rackCaptionSize",
+        "font.pixelSize: Theme.systemListTitleSize",
+        "font.pixelSize: Theme.systemStatusSize",
         "root.toggleRequested(!root.checked)",
         "root.blockedClicked()",
     )
