@@ -1887,7 +1887,10 @@ def check_release_contracts() -> None:
         smart_smoke = promotion.split(smart_boundary, 1)[1].split(metadata_boundary, 1)[0]
         if "ACCEPTED_SMART_SCOPE_REINSTALL_V2" not in smart_smoke:
             FAILURES.append("Stable promotion native Smart scope-aware regression marker missing")
+        # Count Smart SETUP calls only. The accepted uninstaller uses the
+        # same silent flags and must not be mistaken for a third reinstall.
         if smart_smoke.count(
+            "Start-Process -FilePath $setup -ArgumentList "
             "@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru"
         ) != 2:
             FAILURES.append("Stable promotion must install and reinstall Smart with the same exact native arguments")
