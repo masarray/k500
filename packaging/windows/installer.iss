@@ -426,7 +426,7 @@ begin
     SmartMigrationDetail.WordWrap := True;
     SmartMigrationDetail.Caption :=
       'K500 kept the previous installation instead of risking your presets.' +
-      #13#10#13#10 +
+      '' + #13#10#13#10 +
       'Please close this window and contact SonKuPik support if the problem continues.';
     WizardForm.AdjustLabelHeight(SmartMigrationDetail);
     Exit;
