@@ -48,9 +48,13 @@ Item {
     property string singleOpMessage: ""
     Timer {
         id: singleOpDismiss
-        interval: root.singleOpState === "error" ? 7000 : 3200
+        // COMPACT_VERIFIED_OPERATION_TOAST_V2 — confirmed success leaves promptly;
+        // errors remain legible. Never time out an in-flight device transaction.
+        interval: root.singleOpState === "error" ? 4500 : 1250
         repeat: false
-        onTriggered: root.singleOpState = ""
+        onTriggered: {
+            if (root.singleOpState !== "busy") root.singleOpState = ""
+        }
     }
     function beginSingleOperation(kind, slot) {
         // Guard locally as well as in the native preset coordinator: a second
