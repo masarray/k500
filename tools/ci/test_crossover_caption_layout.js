@@ -29,7 +29,7 @@ for (const c of captions) {
     assert.doesNotMatch(c, /BYPASS|Text\.Outline|font\.pixelSize:10/);
     assert.match(c, /font\.family:Theme\.fontFamily/);
     assert.match(c, /font\.pixelSize:11/);
-    assert.match(c, /renderType:Text\.QtRendering/);
+    assert.doesNotMatch(c, /renderType:Text\.QtRendering/, "use application-level native AA");
 }
 assert.match(captions[0], /text:"HP "\+root\.fmtF\(root\.bands\.hpfHz\)\+" Hz"/);
 assert.match(captions[1], /text:"LP "\+root\.fmtF\(root\.bands\.lpfHz\)\+" Hz"/);
