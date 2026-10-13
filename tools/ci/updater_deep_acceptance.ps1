@@ -384,6 +384,104 @@ if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
 & reg.exe DELETE $machineReg /f /reg:64 *> $null
 if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
 
+# SMART_ORPHAN_RECOVERY_V3 — the exact real-world blocker: previous
+# LocalAppData K500 folder survives, while HKCU uninstall record is missing.
+# The helper must rescue it automatically and continue with verified install.
+Write-Host "==> Orphaned K500 LocalAppData folder: automatic safe recovery"
+& reg.exe QUERY $userReg /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Orphan test requires no HKCU installation registration" }
+if (Test-Path $defaultDir) { throw "Orphan test requires empty install destination" }
+$recoveryRoot = Join-Path $env:LOCALAPPDATA 'MasArray\SonKuPik K500\Installer Recovery'
+$beforeRecovered = @()
+if (Test-Path $recoveryRoot) {
+    $beforeRecovered = @(Get-ChildItem $recoveryRoot -Directory | ForEach-Object FullName)
+}
+New-Item -ItemType Directory -Force -Path (Join-Path $defaultDir 'user-custom-settings') | Out-Null
+$orphanFile = Join-Path $defaultDir 'user-custom-settings\original.txt'
+[IO.File]::WriteAllText($orphanFile,'ORPHAN-USER-DATA-PRESERVE')
+Copy-Item $appFixture (Join-Path $defaultDir 'SonKuPik-K500.exe')
+New-Item -ItemType Directory -Force -Path $machineDir | Out-Null
+Copy-Item $appFixture (Join-Path $machineDir 'SonKuPik-K500.exe')
+Copy-Item $fakeMachineUninstaller (Join-Path $machineDir 'unins000.exe')
+& reg.exe ADD $machineReg /v 'Inno Setup: App Path' /t REG_SZ /d $machineDir /f /reg:64 | Out-Null
+& reg.exe ADD $machineReg /v DisplayVersion /t REG_SZ /d $Version /f /reg:64 | Out-Null
+$parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
+$orphanArgs = @(
+    '--parent-pid',"$($parent.Id)",
+    '--setup',('"' + $migrationSetupPath + '"'),
+    '--app',('"' + (Join-Path $machineDir 'SonKuPik-K500.exe') + '"'),
+    '--target-app',('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+    '--version',$Version,'--previous-version',$Version,
+    '--log',('"' + $migrationLog + '"'),
+    '--sha256',$migrationHash,
+    '--scope','user','--mode','migrate',
+    '--backup',('"' + $migrationBackup + '"')
+)
+$orphan = Start-BoundedProcess -FilePath $helperPath -ArgumentList $orphanArgs -Label 'migrate with orphan LocalAppData folder'
+if ($orphan.ExitCode -ne 0) { throw "Orphan recovery migration failed: $($orphan.ExitCode)" }
+Stop-RelaunchedK500
+if (-not (Test-Path (Join-Path $defaultDir 'SonKuPik-K500.exe'))) { throw "Recovered install did not start" }
+if (Test-Path $orphanFile) { throw "Unknown orphan data was left inside the new app folder" }
+$newRecovered = @(Get-ChildItem $recoveryRoot -Directory | Where-Object { $_.FullName -notin $beforeRecovered })
+if ($newRecovered.Count -ne 1) { throw "Expected exactly one safe orphan recovery archive; got $($newRecovered.Count)" }
+if ((Get-Content (Join-Path $newRecovered[0].FullName 'user-custom-settings\original.txt') -Raw) -ne 'ORPHAN-USER-DATA-PRESERVE') {
+    throw "Orphan recovery lost unknown user files"
+}
+& reg.exe QUERY $machineReg /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Orphan migration left machine registration behind" }
+& reg.exe QUERY $userReg /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) { throw "Orphan migration lost healthy user registration" }
+$clean = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+) -Wait -PassThru
+if ($clean.ExitCode -ne 0) { throw "Orphan success test cleanup uninstaller failed" }
+if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
+# Only remove the fixture-specific recovered archive after verifying its
+# exact user-data marker, never other recovery items on the runner.
+Remove-Item $newRecovered[0].FullName -Recurse -Force
+
+Write-Host "==> Failed orphan repair restores unregistered folder, not deletes it"
+New-Item -ItemType Directory -Force -Path (Join-Path $defaultDir 'custom') | Out-Null
+$originalOrphan = Join-Path $defaultDir 'custom\original.ini'
+[IO.File]::WriteAllText($originalOrphan,'KEEP-ORPHAN-ON-FAIL')
+Copy-Item $appFixture (Join-Path $defaultDir 'SonKuPik-K500.exe')
+New-Item -ItemType Directory -Force -Path $machineDir | Out-Null
+Copy-Item $appFixture (Join-Path $machineDir 'SonKuPik-K500.exe')
+Copy-Item $fakeMachineUninstaller (Join-Path $machineDir 'unins000.exe')
+& reg.exe ADD $machineReg /v 'Inno Setup: App Path' /t REG_SZ /d $machineDir /f /reg:64 | Out-Null
+& reg.exe ADD $machineReg /v DisplayVersion /t REG_SZ /d $Version /f /reg:64 | Out-Null
+$brokenHash = (Get-FileHash $fakeInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+$env:SONKUPIK_P3_FAKE_INSTALL_MODE = 'nonzero'
+try {
+    $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
+    $orphanFailedArgs = @(
+        '--parent-pid',"$($parent.Id)",
+        '--setup',('"' + $fakeInstaller + '"'),
+        '--app',('"' + (Join-Path $machineDir 'SonKuPik-K500.exe') + '"'),
+        '--target-app',('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+        '--version',$Version,'--previous-version',$Version,
+        '--log',('"' + $migrationLog + '"'),
+        '--sha256',$brokenHash,
+        '--scope','user','--mode','migrate',
+        '--backup',('"' + $migrationBackup + '"')
+    )
+    $failOrphan = Start-BoundedProcess -FilePath $helperPath -ArgumentList $orphanFailedArgs -Label 'orphan migration rollback after nested installer failure'
+    if ($failOrphan.ExitCode -eq 0) { throw "Broken nested setup unexpectedly accepted orphan" }
+} finally {
+    Remove-Item Env:\SONKUPIK_P3_FAKE_INSTALL_MODE -ErrorAction SilentlyContinue
+}
+Stop-RelaunchedK500
+if ((Get-Content $originalOrphan -Raw) -ne 'KEEP-ORPHAN-ON-FAIL') {
+    throw "Failed migration did not restore the original orphan folder"
+}
+& reg.exe QUERY $userReg /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Rollback unexpectedly created HKCU app registration" }
+& reg.exe QUERY $machineReg /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) { throw "Rollback lost the machine install registration" }
+& reg.exe DELETE $machineReg /f /reg:64 *> $null
+if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
+if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
+
 Write-Host "==> Stale-registration repair is narrow and fail-closed"
 $stalePath = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-RC-STALE-MISSING'
 if (Test-Path $stalePath) { Remove-Item $stalePath -Recurse -Force }
