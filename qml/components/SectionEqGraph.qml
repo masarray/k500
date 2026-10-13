@@ -64,8 +64,11 @@ StudioPanel {
     // Bypass is a filter type, never a magic edge frequency. The HP/LP anchor
     // remains exactly where the user placed it while the response contribution
     // becomes flat. This mirrors the native K500 app semantics.
-    readonly property bool hpfBypassed: String(root.bands.hpType).trim().toUpperCase() === "BYPASS"
-    readonly property bool lpfBypassed: String(root.bands.lpType).trim().toUpperCase() === "BYPASS"
+    // FX_FIXED_FREQUENCY_ONLY_V1: native Reverb/Echo have always-on cutoffs.
+    // Their only editable crossover fields are HPF Hz and LPF Hz.
+    readonly property bool fxFrequencyOnly: root.sectionLabel === "Reverb" || root.sectionLabel === "Echo"
+    readonly property bool hpfBypassed: !root.fxFrequencyOnly && String(root.bands.hpType).trim().toUpperCase() === "BYPASS"
+    readonly property bool lpfBypassed: !root.fxFrequencyOnly && String(root.bands.lpType).trim().toUpperCase() === "BYPASS"
     // PEQ_BYPASS_QUIET_CAPTIONS_V3: frequency stays visible; state is color.
     readonly property color hpGuideColor: root.hpfBypassed ? Theme.textDim : Theme.amber
     readonly property color lpGuideColor: root.lpfBypassed ? Theme.textDim : Theme.amber
@@ -172,8 +175,8 @@ StudioPanel {
     }
     function crossDb(f){
         var d=0,h=Number(bands.hpfHz)||20,l=Number(bands.lpfHz)||20000
-        if(!root.hpfBypassed)d+=crossOne("hpf",bands.hpType,h,f)
-        if(!root.lpfBypassed)d+=crossOne("lpf",bands.lpType,l,f)
+        if(!root.hpfBypassed)d+=crossOne("hpf",root.fxFrequencyOnly?"HP Butter 12":bands.hpType,h,f)
+        if(!root.lpfBypassed)d+=crossOne("lpf",root.fxFrequencyOnly?"LP Butter 12":bands.lpType,l,f)
         return d
     }
     function totalDb(f){
@@ -202,6 +205,7 @@ StudioPanel {
         return which === "hpf" ? String(bands.hpType).trim() : String(bands.lpType).trim()
     }
     function setCrossoverType(which,value){
+        if(root.fxFrequencyOnly)return // Native FX CMD 0x0B/0x0D has no type bytes.
         var normalized=String(value).trim()
         if(which==="hpf"){
             if(typeof bands.setHpType === "function")bands.setHpType(normalized)
@@ -213,6 +217,7 @@ StudioPanel {
         curve.requestPaint()
     }
     function resetCrossover(which){
+        if(root.fxFrequencyOnly)return // Do not invent FX reset semantics.
         if(which==="hpf"){
             bands.setHpfHz(20)
         } else {
@@ -879,8 +884,9 @@ StudioPanel {
                     mode:root.selectedTarget
                     frequency:root.inspectorFrequency
                     filterType:root.crossoverDisplayType(root.selectedTarget)
+                    frequencyOnly:root.fxFrequencyOnly
                     accentColor:Theme.amber
-                    width:Math.min(340,graph.width-32);height:120
+                    width:Math.min(root.fxFrequencyOnly?242:340,graph.width-32);height:120
                     x:root.clamp(root.xFor(root.inspectorFrequency)-width/2,15,graph.width-width-15)
                     readonly property bool stickyTop:root.inspectorShouldTop(root.inspectorFrequency)
                     readonly property real edgeGap:Math.max(18,12*root.nodeScale)
@@ -891,7 +897,7 @@ StudioPanel {
                         if(root.selectedTarget==="hpf")root.bands.setHpfHz(v)
                         else root.bands.setLpfHz(v)
                     }
-                    onTypeEdited:function(v){root.setCrossoverType(root.selectedTarget,v)}
+                    onTypeEdited:function(v){if(!root.fxFrequencyOnly)root.setCrossoverType(root.selectedTarget,v)}
                     onResetRequested:root.resetCrossover(root.selectedTarget)
                 }
 

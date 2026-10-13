@@ -8,6 +8,7 @@ Item {
     property real frequency: 20
     property string filterType: mode === "hpf" ? "HP Butter 12" : "LP Butter 12"
     property color accentColor: Theme.amber
+    property bool frequencyOnly: false // Reverb/Echo native HP/LP frequency, no Type/Bypass.
 
     signal frequencyEdited(real value)
     signal typeEdited(string value)
@@ -19,7 +20,7 @@ Item {
     implicitHeight: 120
 
     readonly property bool highPass: root.mode === "hpf"
-    readonly property bool bypassed: String(root.filterType).trim().toUpperCase() === "BYPASS"
+    readonly property bool bypassed: !root.frequencyOnly && String(root.filterType).trim().toUpperCase() === "BYPASS"
     readonly property var typeOptions: highPass
         ? ["Bypass","HP Butter 12","HP Butter 18","HP Butter 24","HP LR 24","HP Bessel 12","HP Bessel 18","HP Bessel 24"]
         : ["Bypass","LP Butter 12","LP Butter 18","LP Butter 24","LP LR 24","LP Bessel 12","LP Bessel 18","LP Bessel 24"]
@@ -88,7 +89,8 @@ Item {
             Item { Layout.fillWidth: true }
 
             SoftButton {
-                Layout.preferredWidth: 74
+                visible: !root.frequencyOnly
+                Layout.preferredWidth: visible ? 74 : 0
                 Layout.preferredHeight: 23
                 text: "RESET EDGE"
                 compact: true
@@ -102,12 +104,12 @@ Item {
             spacing: 8
 
             ValueField {
-                Layout.preferredWidth: 98
+                Layout.preferredWidth: root.frequencyOnly ? 160 : 98
                 title: "FREQ"
                 value: root.frequency
                 from: 20
                 to: 20000
-                step: 5
+                step: root.frequencyOnly ? 1 : 5
                 defaultValue: root.frequency
                 decimals: 0
                 unit: "Hz"
@@ -116,6 +118,7 @@ Item {
             }
 
             ColumnLayout {
+                visible: !root.frequencyOnly
                 Layout.fillWidth: true
                 spacing: 2
                 Text {

@@ -182,8 +182,13 @@ public:
 
         const double safeHpf = qBound(model->hpfMinHz(), hpfHz, model->hpfMaxHz());
         const double safeLpf = qBound(model->lpfMinHz(), lpfHz, model->lpfMaxHz());
-        const QString resolvedHpType = hpType.trimmed().isEmpty() ? model->hpType() : hpType.trimmed();
-        const QString resolvedLpType = lpType.trimmed().isEmpty() ? model->lpType() : lpType.trimmed();
+        // FX_FIXED_FREQUENCY_ONLY_V1: offline metadata must never invent an
+        // unsupported Reverb/Echo HP/LP Bypass or filter-type control.
+        const bool fixedFx = section == QStringLiteral("reverb") || section == QStringLiteral("echo");
+        const QString resolvedHpType = fixedFx ? QStringLiteral("HP Butter 12")
+            : (hpType.trimmed().isEmpty() ? model->hpType() : hpType.trimmed());
+        const QString resolvedLpType = fixedFx ? QStringLiteral("LP Butter 12")
+            : (lpType.trimmed().isEmpty() ? model->lpType() : lpType.trimmed());
         model->syncCrossover(safeHpf, safeLpf, resolvedHpType, resolvedLpType);
 
         if (section == QStringLiteral("music")) {

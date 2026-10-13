@@ -11,6 +11,10 @@ const layoutSource = fs.readFileSync(path.join(root, "qml/components/CrossoverCa
 const qml = fs.readFileSync(path.join(root, "qml/components/SectionEqGraph.qml"), "utf8");
 const crossoverInspector = fs.readFileSync(path.join(root, "qml/components/CrossoverInspector.qml"), "utf8");
 const bandInspector = fs.readFileSync(path.join(root, "qml/components/BandInspector.qml"), "utf8");
+const studioCpp = fs.readFileSync(path.join(root, "src/StudioEngine.cpp"), "utf8");
+const studioHdr = fs.readFileSync(path.join(root, "src/StudioEngine.h"), "utf8");
+const nativeSelfTest = fs.readFileSync(path.join(root, "src/main.cpp"), "utf8");
+const lowerPanel = fs.readFileSync(path.join(root, "qml/components/SectionWorkspace.qml"), "utf8");
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(layoutSource.replace(/^\.pragma library\s*/m, ""), ctx);
@@ -111,4 +115,26 @@ assert.match(qml, /Item \{Layout.fillWidth:true\}/);
 assert.doesNotMatch(qml, /parent.width-34|parent.width-54/);
 assert.equal((qml.match(/graph.width-32\);height:120/g)||[]).length,2,
     "both inspectors must have the updated hit-safe height");
-console.log("PASS PEQ visual safe insets: caption plot bounds, inspectors, band chips, collision and DPI");
+// FX_FIXED_FREQUENCY_ONLY_V1 — do not regress to a synthetic BYPASS state.
+// Manufacturer's captured Reverb CMD0B / Echo CMD0D store only cutoff Hz.
+assert.match(qml, /readonly property bool fxFrequencyOnly: root.sectionLabel === "Reverb" \|\| root.sectionLabel === "Echo"/);
+assert.match(qml, /readonly property bool hpfBypassed: !root.fxFrequencyOnly/);
+assert.match(qml, /readonly property bool lpfBypassed: !root.fxFrequencyOnly/);
+assert.match(qml, /if\(root.fxFrequencyOnly\)return \/\/ Native FX CMD/);
+assert.match(qml, /frequencyOnly:root.fxFrequencyOnly/);
+assert.match(qml, /onTypeEdited:function\(v\)\{if\(!root.fxFrequencyOnly\)/);
+assert.match(crossoverInspector, /property bool frequencyOnly: false/);
+assert.match(crossoverInspector, /visible: !root.frequencyOnly/g);
+assert.match(crossoverInspector, /readonly property bool bypassed: !root.frequencyOnly/);
+assert.equal((lowerPanel.match(/showTypes: false/g) || []).length, 2);
+for (const fx of ["reverb", "echo"]) {
+    const name = fx === "reverb" ? "m_reverbEqBands" : "m_echoEqBands";
+    assert.ok(studioCpp.includes(name + '.configure(5,'), fx + " configured");
+    const offset = studioCpp.indexOf(name + '.configure(5,');
+    assert.match(studioCpp.slice(offset, offset+240),
+        /QStringLiteral\("HP Butter 12"\), QStringLiteral\("LP Butter 12"\)/);
+}
+assert.match(studioCpp, /FX_FIXED_FREQUENCY_ONLY_V1/);
+assert.match(studioHdr, /const bool fixedFx = section == QStringLiteral\("reverb"\)/);
+assert.match(nativeSelfTest, /studioEngine.reverbEqBands\(\)->setHpType\(QStringLiteral\("Bypass"\)\)/);
+console.log("PASS PEQ fixed FX cutoff invariant: Reverb/Echo always active, frequency only, no type write");
