@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import "CrossoverCaptionLayout.js" as CaptionPlacement
+import "FxPeqVisualResponse.js" as FxVisual
 
 StudioPanel {
     id: root
@@ -67,6 +68,7 @@ StudioPanel {
     // FX_FIXED_FREQUENCY_ONLY_V1: native Reverb/Echo have always-on cutoffs.
     // Their only editable crossover fields are HPF Hz and LPF Hz.
     readonly property bool fxFrequencyOnly: root.sectionLabel === "Reverb" || root.sectionLabel === "Echo"
+    readonly property int fxResponseMode: root.sectionLabel === "Reverb" ? 1 : (root.sectionLabel === "Echo" ? 2 : 0)
     readonly property bool hpfBypassed: !root.fxFrequencyOnly && String(root.bands.hpType).trim().toUpperCase() === "BYPASS"
     readonly property bool lpfBypassed: !root.fxFrequencyOnly && String(root.bands.lpType).trim().toUpperCase() === "BYPASS"
     // PEQ_BYPASS_QUIET_CAPTIONS_V3: frequency stays visible; state is color.
@@ -174,6 +176,8 @@ StudioPanel {
         return 20*Math.log(Math.max(m,1e-12))/Math.LN10
     }
     function crossDb(f){
+        if(root.fxFrequencyOnly)
+            return FxVisual.cutoffDb(root.fxResponseMode,root.bands.hpfHz,root.bands.lpfHz,f)
         var d=0,h=Number(bands.hpfHz)||20,l=Number(bands.lpfHz)||20000
         if(!root.hpfBypassed)d+=crossOne("hpf",root.fxFrequencyOnly?"HP Butter 12":bands.hpType,h,f)
         if(!root.lpfBypassed)d+=crossOne("lpf",root.fxFrequencyOnly?"LP Butter 12":bands.lpType,l,f)
@@ -317,11 +321,17 @@ StudioPanel {
         // decision one turn so a normal user setBand() can mark the same serial
         // as user-owned before this callback runs. Pure hydration then primes A/B
         // together from device truth, while live edits only refresh the active side.
+        // PEQ_SELECTED_INSPECTOR_HYDRATION_V1 — syncBand readback emits
+        // dataChanged (not bandChanged). The floating editor must not retain
+        // constructor defaults while the graph/chips show device values.
         function onDataChanged(){
-            if(root.compareApplying||root.eqBypassActive)return
+            if(root.compareApplying)return
             var serial=++root.modelDataSerial
             Qt.callLater(function(){
-                if(root.compareApplying||root.eqBypassActive)return
+                if(root.compareApplying)return
+                if(root.selectedTarget==="band")
+                    root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
+                if(root.eqBypassActive)return
                 if(root.lastUserBandSerial<serial){
                     root.primeCompareFromCurrent()
                     root.compareUsed=false
@@ -335,6 +345,10 @@ StudioPanel {
             }
             if(root.selectedTarget==="band")root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
             else curve.requestPaint()
+        }
+        function onModelReset(){
+            if(!root.compareApplying&&root.selectedTarget==="band")
+                root.selectBand(Math.min(root.selectedIndex,root.bands.count-1))
         }
         function onCrossoverChanged(){curve.requestPaint()}
     }
@@ -633,6 +647,7 @@ StudioPanel {
                     id:curve
                     anchors.fill:parent
                     bandModel:root.bands
+                    fxResponseMode:root.fxResponseMode
                     selectedIndex:root.selectedIndex
                     selectedTarget:root.selectedTarget
                     leftPad:root.leftPad

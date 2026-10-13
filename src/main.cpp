@@ -21,6 +21,7 @@
 #include "AppUpdateManager.h"
 #include "DonationPromptController.h"
 #include "StudioEngine.h"
+#include "FxPeqVisualResponse.h"
 #include "k500/K500Controller.h"
 #include "k500/K500DeviceManager.h"
 #include "k500/K500PresetManager.h"
@@ -314,6 +315,19 @@ int main(int argc, char *argv[])
 
     const bool engineSelfTest = app.arguments().contains(QStringLiteral("--engine-self-test"));
     if (engineSelfTest) {
+        // FX_PEQ_NATIVE_SCREENSHOT_PARITY_V1 — prevent analog-ratio
+        // visual regression near the Nyquist high-frequency boundary.
+        // At Reverb LPF=13.2 kHz the native chart rolls down sharply
+        // by 19 kHz, while Echo LPF=4.1 kHz follows a gentler shape.
+        const double reverbTail = FxPeqVisualResponse::cutoffDb(1, 250, 13200, 19000);
+        const double echoTail = FxPeqVisualResponse::cutoffDb(2, 600, 4100, 9000);
+        const double reverbMid = FxPeqVisualResponse::cutoffDb(1, 250, 13200, 2500);
+        if (!(reverbTail < -29.0 && reverbTail > -35.0
+              && echoTail < -14.0 && echoTail > -17.0
+              && reverbMid > -0.5 && reverbMid < 0.0
+              && FxPeqVisualResponse::cutoffDb(0, 250, 13200, 19000) == 0.0))
+            return 2;
+
         // OFFLINE_CROSSOVER_ENGINE_TEST_V1 — type-capable pages cold-start
         // Bypass. Reverb/Echo frequency-only HP/LP must already be active.
         // No QML priming, stateEdited, or device command may cause this.
