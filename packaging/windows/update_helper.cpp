@@ -1035,8 +1035,11 @@ int retireOldMachineInstallation(const std::wstring &sourceDir,
         return 78;
     }
 
-    // Deferred Inno uninstaller self-deletion may take a short while.
-    for (int attempt = 0; attempt < 80 && pathExists(source.wstring()); ++attempt)
+    // The Inno uninstaller can schedule its own EXE for deferred removal.
+    // Wait only while that self-cleanup is visibly pending, rather than
+    // delaying every migration merely because unrelated residuals exist.
+    for (int attempt = 0; attempt < 40
+         && pathExists((source / UninstallerName).wstring()); ++attempt)
         Sleep(100);
     if (!pathExists(source.wstring())) {
         appendLog(log, L"Legacy Program Files folder removed by its official uninstaller.");
