@@ -723,7 +723,6 @@ StudioPanel {
                     font.family:Theme.fontFamily
                     font.pixelSize:11
                     font.weight:Font.Medium
-                    renderType:Text.QtRendering
                 }
                 Text {
                     id:lpfCaption
@@ -737,7 +736,6 @@ StudioPanel {
                     font.family:Theme.fontFamily
                     font.pixelSize:11
                     font.weight:Font.Medium
-                    renderType:Text.QtRendering
                 }
 
                 Repeater {
