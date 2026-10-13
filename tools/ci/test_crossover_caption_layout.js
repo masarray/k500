@@ -21,6 +21,25 @@ assert.match(qml, /obstacle:root\.selectedTarget/);
 assert.match(qml, /id:hpfCaption/);
 assert.match(qml, /id:lpfCaption/);
 assert.match(qml, /elide:Text\.ElideRight/);
+// PEQ_BYPASS_QUIET_CAPTIONS_V3 — no tiny outlined shouty text. Device
+// state is represented by native grey/amber on captions, guides and nodes.
+const captions = qml.match(/Text \{\n\s+id:(?:hpf|lpf)Caption[\s\S]*?\n\s+\}/g) || [];
+assert.equal(captions.length, 2, "exactly two crossover captions");
+for (const c of captions) {
+    assert.doesNotMatch(c, /BYPASS|Text\.Outline|font\.pixelSize:10/);
+    assert.match(c, /font\.family:Theme\.fontFamily/);
+    assert.match(c, /font\.pixelSize:11/);
+    assert.match(c, /renderType:Text\.QtRendering/);
+}
+assert.match(captions[0], /text:"HP "\+root\.fmtF\(root\.bands\.hpfHz\)\+" Hz"/);
+assert.match(captions[1], /text:"LP "\+root\.fmtF\(root\.bands\.lpfHz\)\+" Hz"/);
+assert.match(qml, /readonly property color hpGuideColor: root\.hpfBypassed \? Theme\.textDim : Theme\.amber/);
+assert.match(qml, /readonly property color lpGuideColor: root\.lpfBypassed \? Theme\.textDim : Theme\.amber/);
+for (const color of ["hpGuideColor", "lpGuideColor"]) {
+    assert.ok(qml.split("color:root." + color).length >= 4,
+        color + " used across line, node and caption");
+}
+
 
 const rect = (p, w, h) => ({x:p.x,y:p.y,w,h});
 const collide = (a,b,g=0) => a.x < b.x+b.w+g && a.x+a.w+g > b.x
