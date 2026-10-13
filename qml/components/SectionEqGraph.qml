@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "CrossoverCaptionLayout.js" as CaptionPlacement
 
 StudioPanel {
     id: root
@@ -560,6 +561,23 @@ StudioPanel {
                 border.color:"#010203"
                 clip:true
 
+                // PEQ_CAPTION_SPATIAL_LAYOUT_V2: use measured caption rectangles,
+                // graph viewport and currently visible inspector to avoid overlap.
+                // Geometry only: crossover anchor frequency and hit targets stay put.
+                readonly property var captionPositions: CaptionPlacement.place({
+                    width:graph.width, height:graph.height,
+                    left:root.leftPad, right:graph.width-root.rightPad,
+                    top:root.topPad, bottom:root.plotBottom,
+                    hpX:root.xFor(root.bands.hpfHz), lpX:root.xFor(root.bands.lpfHz),
+                    hpW:hpfCaption.width, lpW:lpfCaption.width,
+                    hpH:hpfCaption.implicitHeight, lpH:lpfCaption.implicitHeight,
+                    obstacle:root.selectedTarget==="band"
+                        ? {x:bandInspector.x, y:bandInspector.y,
+                           w:bandInspector.width, h:bandInspector.height}
+                        : {x:crossoverInspector.x, y:crossoverInspector.y,
+                           w:crossoverInspector.width, h:crossoverInspector.height}
+                })
+
                 // PEQ_INTERACTION_PARITY_V1
                 // Keep the Qt graph aligned with the web/FabFilter-style workflow:
                 // wheel = selected-band Q, Shift = fine, Ctrl/Cmd + vertical drag = Q,
@@ -623,7 +641,6 @@ StudioPanel {
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
                     Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.hpfBypassed?.11:.28}}
-                    Text{x:parent.width/2+12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.hpfBypassed?"HP BYPASS · "+root.fmtF(root.bands.hpfHz)+" Hz":root.fmtF(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
                     Item {
                         id:hpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -659,7 +676,6 @@ StudioPanel {
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
                     Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.lpfBypassed?.11:.28}}
-                    Text{anchors.right:parent.horizontalCenter;anchors.rightMargin:12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.lpfBypassed?"LP BYPASS · "+root.fmtF(root.bands.lpfHz)+" Hz":root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
                     Item {
                         id:lpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -687,6 +703,44 @@ StudioPanel {
                         }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("lpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}}}
+                }
+
+                // Text is a GRAPH sibling rather than a child of the 28px
+                // hit guide: position is in viewport coordinates, never clipped
+                // by an offscreen anchor or coupled to the drag MouseArea.
+                Text {
+                    id:hpfCaption
+                    z:5
+                    x:graph.captionPositions.hp.x
+                    y:graph.captionPositions.hp.y
+                    width:Math.min(implicitWidth,Math.max(60,graph.width-root.leftPad-root.rightPad-10))
+                    text:root.hpfBypassed
+                         ? "HP BYPASS · "+root.fmtF(root.bands.hpfHz)+" Hz"
+                         : "HP · "+root.fmtF(root.bands.hpfHz)+" Hz"
+                    elide:Text.ElideRight
+                    color:Theme.amber
+                    font.family:Theme.monoFamily
+                    font.pixelSize:10
+                    font.weight:Font.DemiBold
+                    style:Text.Outline
+                    styleColor:"#B0000000"
+                }
+                Text {
+                    id:lpfCaption
+                    z:5
+                    x:graph.captionPositions.lp.x
+                    y:graph.captionPositions.lp.y
+                    width:Math.min(implicitWidth,Math.max(60,graph.width-root.leftPad-root.rightPad-10))
+                    text:root.lpfBypassed
+                         ? "LP BYPASS · "+root.fmtF(root.bands.lpfHz)+" Hz"
+                         : "LP · "+root.fmtF(root.bands.lpfHz)+" Hz"
+                    elide:Text.ElideRight
+                    color:Theme.amber
+                    font.family:Theme.monoFamily
+                    font.pixelSize:10
+                    font.weight:Font.DemiBold
+                    style:Text.Outline
+                    styleColor:"#B0000000"
                 }
 
                 Repeater {
@@ -807,6 +861,7 @@ StudioPanel {
                 }
 
                 BandInspector {
+                    id:bandInspector
                     visible:root.selectedTarget==="band"
                     bandModel:root.bands;bandIndex:root.selectedIndex;frequency:root.selectedFreq;gain:root.selectedGain;q:root.selectedQ
                     accentColor:root.colorFor(root.selectedIndex)
@@ -824,6 +879,7 @@ StudioPanel {
                 }
 
                 CrossoverInspector {
+                    id:crossoverInspector
                     visible:root.selectedTarget!=="band"
                     mode:root.selectedTarget
                     frequency:root.inspectorFrequency
