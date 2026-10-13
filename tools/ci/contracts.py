@@ -1860,8 +1860,9 @@ def check_release_contracts() -> None:
     )
     require(
         "packaging/windows/update_helper.cpp",
-        "SMART_EXISTING_USER_TARGET_SNAPSHOT_V2",
-        "validExistingUserTarget(targetDir, hadUserInstall, &backupError)",
+        "SMART_ORPHAN_RECOVERY_V3",
+        "inspectUserTarget(targetDir, userKind, hadUserRegistry, &backupError)",
+        "stageOrphanUserFolder(targetDir, orphanRecovery, &backupError)",
         'snapshotUninstallRegistry(L"user", priorUserBackup, &backupError)',
         'restoreTree(backupFilesPath(priorUserBackup), targetDir, &restoreError)',
         "const auto restoreUserTarget",
@@ -1873,6 +1874,30 @@ def check_release_contracts() -> None:
         "Smart dual-scope migration reuses registered user install",
         "Failed dual-scope migration restores the PRE-EXISTING user install",
         "Dual-target rollback lost user-owned data",
+        "Orphaned K500 LocalAppData folder: automatic safe recovery",
+        "migrate with orphan LocalAppData folder",
+        "Failed orphan repair restores unregistered folder, not deletes it",
+        "Failed migration did not restore the original orphan folder",
+    )
+    require(
+        "packaging/windows/installer.iss",
+        "SMART_ORPHAN_AUTORECOVERY_V3",
+        "Result := True;  // A clean per-user destination.",
+        "Another K500 location needs review.",
+    )
+    require(
+        "packaging/windows/update_helper.cpp",
+        "safeCanonicalUserTarget",
+        "treeHasLinks",
+        "UserTargetKind::Orphan",
+        "fs::rename(fs::path(target), candidate, ec)",
+        "const bool hasOrphan = userKind == UserTargetKind::Orphan",
+        "restoreUninstallRegistry(L\"user\", priorUserBackup, &restoreError)",
+        "removeStaleRegistration(",
+    )
+    forbid("packaging/windows/installer.iss",
+           "We found an older K500 folder that Windows cannot verify.",
+           "Please contact SonKuPik support.",
     )
     forbid("packaging/windows/installer.iss",
            "Start verified migration now?",
