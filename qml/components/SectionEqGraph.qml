@@ -665,7 +665,7 @@ StudioPanel {
                         Rectangle {
                             anchors.centerIn:parent
                             width:(hpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
-                            color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
+                            color:"#070B0E";border.width:1;border.color:root.hpGuideColor;antialiasing:true
                             Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:hpfGuide.selected?.32:.18;antialiasing:true}
                             Text{anchors.centerIn:parent;text:"HP";color:root.hpfBypassed?Theme.textDim:(hpfGuide.selected?Theme.text:Theme.amber);font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
@@ -700,7 +700,7 @@ StudioPanel {
                         Rectangle {
                             anchors.centerIn:parent
                             width:(lpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
-                            color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
+                            color:"#070B0E";border.width:1;border.color:root.lpGuideColor;antialiasing:true
                             Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:lpfGuide.selected?.32:.18;antialiasing:true}
                             Text{anchors.centerIn:parent;text:"LP";color:root.lpfBypassed?Theme.textDim:(lpfGuide.selected?Theme.text:Theme.amber);font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
