@@ -590,11 +590,17 @@ begin
       'No changes were made. Details: ' + ProbeError;
     Log('NATIVE_SMART_INSTALLER_V1: blocked indeterminate inventory: ' + ProbeError);
   end
-  else if not SmartRegisteredDestinationSafe(ProbeError) then
+  else if not SmartMigrationHelperAuthorized then
   begin
-    Result := 'Smart Installer cannot safely reuse this installation location. ' +
-      'No changes were made. Details: ' + ProbeError;
-    Log('NATIVE_SMART_INSTALLER_V1: blocked unsafe destination: ' + ProbeError);
+    // The hash-verified helper has ALREADY snapshotted or quarantined the
+    // canonical old target. Do not reject a stale HKCU uninstall entry a
+    // second time after its files were safely rehomed.
+    if not SmartRegisteredDestinationSafe(ProbeError) then
+    begin
+      Result := 'K500 could not safely verify the chosen installation. ' +
+        'Your existing data was kept.';
+      Log('NATIVE_SMART_INSTALLER_V1: blocked unsafe destination: ' + ProbeError);
+    end;
   end;
 end;
 
