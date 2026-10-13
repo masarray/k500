@@ -11,6 +11,7 @@ const layoutSource = fs.readFileSync(path.join(root, "qml/components/CrossoverCa
 const qml = fs.readFileSync(path.join(root, "qml/components/SectionEqGraph.qml"), "utf8");
 const crossoverInspector = fs.readFileSync(path.join(root, "qml/components/CrossoverInspector.qml"), "utf8");
 const bandInspector = fs.readFileSync(path.join(root, "qml/components/BandInspector.qml"), "utf8");
+const fxVisualSource = fs.readFileSync(path.join(root, "qml/components/FxPeqVisualResponse.js"), "utf8");
 const studioCpp = fs.readFileSync(path.join(root, "src/StudioEngine.cpp"), "utf8");
 const studioHdr = fs.readFileSync(path.join(root, "src/StudioEngine.h"), "utf8");
 const nativeSelfTest = fs.readFileSync(path.join(root, "src/main.cpp"), "utf8");
@@ -137,4 +138,21 @@ for (const fx of ["reverb", "echo"]) {
 assert.match(studioCpp, /FX_FIXED_FREQUENCY_ONLY_V1/);
 assert.match(studioHdr, /const bool fixedFx = section == QStringLiteral\("reverb"\)/);
 assert.match(nativeSelfTest, /studioEngine.reverbEqBands\(\)->setHpType\(QStringLiteral\("Bypass"\)\)/);
-console.log("PASS PEQ fixed FX cutoff invariant: Reverb/Echo always active, frequency only, no type write");
+// FX_PEQ_NATIVE_SCREENSHOT_PARITY_V1: compare with screenshot-derived
+// reference anchors, not a false claim about the physical DSP coefficients.
+const fxCtx = {};
+vm.createContext(fxCtx);
+vm.runInContext(fxVisualSource.replace(/^\.pragma library\s*/m, ""), fxCtx);
+assert.equal(typeof fxCtx.cutoffDb, "function");
+const near = (actual, desired, tolerance, desc) =>
+    assert.ok(Math.abs(actual - desired) <= tolerance,
+        desc + " expected " + desired + " got " + actual);
+near(fxCtx.cutoffDb(1,250,13200,19000), -32.06, 0.20, "Reverb high-frequency rolloff");
+near(fxCtx.cutoffDb(2,600,4100,9000), -15.55, 0.20, "Echo digital LPF tail");
+near(fxCtx.cutoffDb(1,250,13200,2500), 0, 0.2, "Reverb passband");
+assert.equal(fxCtx.cutoffDb(0,250,13200,19000),0,"other sections unchanged");
+assert.match(qml, /fxResponseMode:root.fxResponseMode/);
+assert.match(qml, /return FxVisual.cutoffDb\(root.fxResponseMode/);
+assert.match(qml, /PEQ_SELECTED_INSPECTOR_HYDRATION_V1/);
+assert.match(qml, /if\(root.selectedTarget==="band"\)\s+root.selectBand/);
+console.log("PASS FX PEQ native screenshot parity: digital-frequency cutoffs and inspector readback");

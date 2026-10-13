@@ -22,6 +22,7 @@ class EqCurveItem : public QQuickItem
     Q_PROPERTY(qreal plotBottom READ plotBottom WRITE setPlotBottom NOTIFY geometryParametersChanged)
     Q_PROPERTY(QColor accentColor READ accentColor WRITE setAccentColor NOTIFY colorsChanged)
     Q_PROPERTY(QColor amberColor READ amberColor WRITE setAmberColor NOTIFY colorsChanged)
+    Q_PROPERTY(int fxResponseMode READ fxResponseMode WRITE setFxResponseMode NOTIFY fxResponseModeChanged)
 
 public:
     explicit EqCurveItem(QQuickItem *parent = nullptr);
@@ -36,8 +37,10 @@ public:
     qreal plotBottom() const { return m_plotBottom; }
     QColor accentColor() const { return m_accentColor; }
     QColor amberColor() const { return m_amberColor; }
+    int fxResponseMode() const { return m_fxResponseMode; }
 
     void setBandModel(EqBandModel *model);
+    void setFxResponseMode(int mode);
     void setSelectedIndex(int value);
     void setSelectedTarget(const QString &value);
     void setLeftPad(qreal value);
@@ -55,6 +58,7 @@ signals:
     void selectedTargetChanged();
     void geometryParametersChanged();
     void colorsChanged();
+    void fxResponseModeChanged();
 
 protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
@@ -101,6 +105,7 @@ private:
     QVector<float> m_crossoverResponse;
     QVector<float> m_totalResponse;
 
+    int m_fxResponseMode = 0; // 0 generic; 1 Reverb; 2 Echo — visual curve only.
     int m_selectedIndex = 0;
     QString m_selectedTarget = QStringLiteral("band");
     qreal m_leftPad = 56.0;

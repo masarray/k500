@@ -1,4 +1,5 @@
 #include "EqCurveItem.h"
+#include "FxPeqVisualResponse.h"
 
 #include <QAbstractItemModel>
 #include <QSGGeometryNode>
@@ -209,6 +210,17 @@ void EqCurveItem::setBandModel(EqBandModel *model)
     connectModel();
     rebuildAllResponses();
     emit bandModelChanged();
+    update();
+}
+
+void EqCurveItem::setFxResponseMode(int mode)
+{
+    const int next = std::clamp(mode, 0, 2);
+    if (m_fxResponseMode == next)
+        return;
+    m_fxResponseMode = next;
+    rebuildCrossoverResponse();
+    emit fxResponseModeChanged();
     update();
 }
 
@@ -434,6 +446,9 @@ float EqCurveItem::calculateCrossoverDb(double frequency) const
 {
     if (!m_bandModel)
         return 0.0f;
+    if (m_fxResponseMode != 0)
+        return static_cast<float>(FxPeqVisualResponse::cutoffDb(
+            m_fxResponseMode, m_bandModel->hpfHz(), m_bandModel->lpfHz(), frequency));
     double db = 0.0;
     const double hpf = m_bandModel->hpfHz();
     const double lpf = m_bandModel->lpfHz();

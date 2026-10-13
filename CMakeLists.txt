@@ -46,6 +46,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/DonationPromptController.h
     src/StudioEngine.cpp
     src/StudioEngine.h
+    src/FxPeqVisualResponse.h
     src/DevicePerformanceMonitor.cpp
     src/DevicePerformanceMonitor.h
     src/RuntimeMetrics.cpp
@@ -303,6 +304,7 @@ qt_add_qml_module(sonkupik_studio_native
         qml/components/EqGraph.qml
         qml/components/SectionEqGraph.qml
         qml/components/CrossoverCaptionLayout.js
+        qml/components/FxPeqVisualResponse.js
         qml/components/SectionEqGraphHost.qml
         qml/components/LocalEqModel.qml
         qml/components/CompressorGraph.qml
