@@ -977,6 +977,123 @@ bool stageOrphanUserFolder(const std::wstring &target,
     return true;
 }
 
+
+// RC4_FIELD_ERROR36_MACHINE_RETIRE_V5
+// The elevation boundary owns BOTH the official machine uninstaller and
+// retirement of its leftover directory. This requires one UAC, not two.
+// Preserve unidentified residual bytes; do not recursively delete Program Files.
+int retireOldMachineInstallation(const std::wstring &sourceDir,
+                                 const std::wstring &log)
+{
+    const fs::path source = fs::path(sourceDir).lexically_normal();
+    bool canonical = false;
+#ifdef SONKUPIK_UPDATE_HELPER_CI
+    if (testMode()) {
+        canonical = source.filename() == L"SonKuPik-K500-RC-MACHINE";
+    } else
+#endif
+    {
+        std::vector<wchar_t> programFiles(32768);
+        const DWORD length = GetEnvironmentVariableW(
+            L"ProgramFiles", programFiles.data(), static_cast<DWORD>(programFiles.size()));
+        canonical = length > 0 && length < programFiles.size()
+            && samePath(source.wstring(),
+                (fs::path(programFiles.data()) / L"SonKuPik K500").lexically_normal().wstring());
+    }
+    if (!canonical) {
+        appendLog(log, L"Machine retirement refused: noncanonical application directory.");
+        return 70;
+    }
+
+    std::wstring registered;
+    if (!readRegisteredPath(HKEY_LOCAL_MACHINE, registered)
+        || !samePath(fs::path(registered).lexically_normal().wstring(), source.wstring())
+        || !pathExists((source / AppExeName).wstring())
+        || !pathExists((source / UninstallerName).wstring())) {
+        appendLog(log, L"Machine retirement refused: installed application/uninstaller "
+                       L"and exact HKLM path must agree.");
+        return 71;
+    }
+
+    // Run the legacy Inno uninstaller as an elevated *child* of this helper.
+    // The helper owns the rest of cleanup even if unins000.exe self-deletes.
+    DWORD uninstallExit = ~0UL;
+    const DWORD launch = runAndWait((source / UninstallerName).wstring(),
+        L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
+        InstallTimeoutMs, uninstallExit);
+    if (launch == ERROR_TIMEOUT) {
+        appendLog(log, L"Old uninstall is still running; retirement stopped.");
+        return 76;
+    }
+    if (launch != ERROR_SUCCESS || uninstallExit != 0) {
+        appendLog(log, L"Old uninstall failed (Win32=" + std::to_wstring(launch)
+            + L", exit=" + std::to_wstring(uninstallExit) + L").");
+        return 77;
+    }
+    if (pathExists((source / AppExeName).wstring()) || !oldMachineRegistrationAbsent()) {
+        appendLog(log, L"Old uninstall did not remove application EXE and/or HKLM registration.");
+        return 78;
+    }
+
+    // Deferred Inno uninstaller self-deletion may take a short while.
+    for (int attempt = 0; attempt < 80 && pathExists(source.wstring()); ++attempt)
+        Sleep(100);
+    if (!pathExists(source.wstring())) {
+        appendLog(log, L"Legacy Program Files folder removed by its official uninstaller.");
+        return 0;
+    }
+
+    // Any unexpected files remain recoverable; verify no junction or symlink
+    // can redirect a move outside this exact app folder.
+    std::wstring error;
+    if (treeHasLinks(source.wstring(), &error)) {
+        appendLog(log, L"Legacy residue retained for safety: " + error);
+        return 79; // Healthy user app remains authoritative, not full failure.
+    }
+
+    fs::path recoveryRoot;
+#ifdef SONKUPIK_UPDATE_HELPER_CI
+    if (testMode()) {
+        recoveryRoot = source.parent_path() / L"SonKuPik-K500-RC-Machine-Recovery";
+    } else
+#endif
+    {
+        std::vector<wchar_t> programData(32768);
+        const DWORD length = GetEnvironmentVariableW(
+            L"ProgramData", programData.data(), static_cast<DWORD>(programData.size()));
+        if (length == 0 || length >= programData.size()) {
+            appendLog(log, L"ProgramData location unavailable; legacy residue retained.");
+            return 79;
+        }
+        recoveryRoot = fs::path(programData.data())
+            / L"SonKuPik K500" / L"Installer Recovery";
+    }
+    std::error_code ec;
+    fs::create_directories(recoveryRoot, ec);
+    if (ec) {
+        appendLog(log, L"Could not create protected residue recovery directory: "
+                        + std::to_wstring(ec.value()));
+        return 79;
+    }
+    const fs::path archive = recoveryRoot /
+        (L"retired-programfiles-" + std::to_wstring(GetCurrentProcessId())
+         + L"-" + std::to_wstring(GetTickCount64()));
+    if (fs::exists(archive, ec) || ec) {
+        appendLog(log, L"Legacy recovery destination unexpectedly exists.");
+        return 79;
+    }
+    fs::rename(source, archive, ec);
+    if (ec) {
+        appendLog(log, L"Old Program Files residue could not be moved yet (Windows "
+                       + std::to_wstring(ec.value()) + L"). New K500 is installed. "
+                       L"No unknown files were deleted.");
+        return 79;
+    }
+    appendLog(log, L"Legacy Program Files residual folder safely archived: "
+        + archive.wstring());
+    return 0;
+}
+
 int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 {
     const std::wstring sourceDir = parentDirectory(request.app);
@@ -1150,10 +1267,16 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             L"before removing the existing installation.");
     }
 
+    // RC4_FIELD_ERROR36_MACHINE_RETIRE_V5: one elevation for the owned
+    // uninstaller AND safe archival of its leftovers. No extra UAC prompt.
     DWORD uninstallExit = ~0UL;
-    const DWORD uninstallError = runElevatedAndWait(oldUninstaller,
-        L"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART",
-        InstallTimeoutMs, uninstallExit);
+    const std::wstring retireHelper = currentExecutable();
+    const DWORD uninstallError = retireHelper.empty()
+        ? ERROR_FILE_NOT_FOUND
+        : runElevatedAndWait(retireHelper,
+            L"--retire-machine " + quote(sourceDir)
+            + L" --log " + quote(request.log),
+            InstallTimeoutMs + 15000, uninstallExit);
 
     if (uninstallError == ERROR_CANCELLED) {
         // UAC was declined before the old uninstaller started. The machine
@@ -1169,16 +1292,18 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
                 : L" User rollback needs review: see retained recovery snapshot."));
     }
 
-    if (uninstallError == ERROR_TIMEOUT) {
-        // Never race a possibly-running elevated uninstaller. Keep the healthy
-        // per-user copy and recovery snapshot untouched for deterministic repair.
+    if (uninstallError == ERROR_TIMEOUT || uninstallExit == 76) {
+        // Never race a possibly-running elevated uninstaller.
         return fail(request, 34,
-            L"The old Program Files uninstaller exceeded the safety timeout. It may "
-            L"still be running, so SonKuPik did not restore or delete either installation. "
-            L"Recovery snapshot was kept at:\n" + request.backup);
+            L"The old Program Files uninstaller exceeded the safety timeout. "
+            L"The verified per-user installation and recovery snapshot were kept at:\n"
+            + request.backup);
     }
 
-    if (uninstallError != ERROR_SUCCESS || uninstallExit != 0
+    const bool residuePending = uninstallError == ERROR_SUCCESS && uninstallExit == 79
+        && !pathExists(request.app) && oldMachineRegistrationAbsent();
+    if (uninstallError != ERROR_SUCCESS
+        || (uninstallExit != 0 && !residuePending)
         || pathExists(request.app) || !oldMachineRegistrationAbsent()) {
         const bool cleaned = restoreUserTarget();
         std::wstring restoreError;
@@ -1199,34 +1324,18 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             + L"\nRecovery snapshot was kept at:\n" + request.backup);
     }
 
-    // A successful old uninstaller should also remove its own Program Files
-    // directory and legacy shortcuts. Do not recurse/delete an unrecognized
-    // residual folder: it may contain someone else's data. Wait a bounded
-    // interval for Inno's deferred self-deletion before deciding.
-    wchar_t programFiles[MAX_PATH]{};
-    const DWORD programFilesLength = GetEnvironmentVariableW(
-        L"ProgramFiles", programFiles, MAX_PATH);
-    // Only the canonical protected Program Files layout is eligible for
-    // the strict no-residue public promise. Existing deep-acceptance tests
-    // intentionally stage temporary machine fixtures elsewhere.
-    const bool canonicalProgramFiles =
-        programFilesLength > 0 && programFilesLength < MAX_PATH &&
-        samePath(sourceDir, (fs::path(programFiles) / L"SonKuPik K500").wstring());
-    bool oldDirectoryGone = !pathExists(sourceDir);
-    for (int attempt = 0; canonicalProgramFiles && !oldDirectoryGone && attempt < 30; ++attempt) {
-        Sleep(100);
-        oldDirectoryGone = !pathExists(sourceDir);
-    }
-    if (canonicalProgramFiles && !oldDirectoryGone) {
-        // New user app is already healthy, old EXE and HKLM registration are
-        // gone. Preserve recovery snapshot and log, clearly report that the
-        // exact folder-clean requirement is NOT yet met.
-        startApplication(request.targetApp);
-        return fail(request, 36,
-            L"The verified LocalAppData app is installed, but the old Program Files "
-            L"folder still contains residual files. It was NOT deleted blindly. "
-            L"Inspect the old folder, installer log and recovery snapshot before "
-            L"claiming a clean migration. Recovery snapshot: " + request.backup);
+    // The machine EXE and HKLM registration are absent, and the new user app
+    // already passed its version/startup check. A *residual folder* is not
+    // proof of failed migration. The elevated retirement helper has made a
+    // best-effort atomic archive without deleting unknown bytes. On a locked
+    // directory it logs deferred cleanup, but does not show a false "failed"
+    // wizard or roll back a healthy installation.
+    if (residuePending || pathExists(sourceDir)) {
+        logLine(request, L"Machine EXE/HKLM retired, user app verified; "
+                         L"legacy directory cleanup pending. This is not an "
+                         L"application installation failure.");
+    } else {
+        logLine(request, L"Legacy Program Files directory retired completely.");
     }
 
     if (hasOrphan && !orphanRecovery.empty()) {
@@ -1310,6 +1419,16 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         if (locked != INVALID_HANDLE_VALUE)
             CloseHandle(locked);
         return ok ? 0 : 41;
+    }
+
+    // Privileged operation limited to this exact K500 machine registration.
+    // It cannot accept an arbitrary directory for deletion or uninstallation.
+    if (argc == 5 && std::wstring(argv[1]) == L"--retire-machine"
+        && std::wstring(argv[3]) == L"--log") {
+        const std::wstring sourceDir = argv[2];
+        const std::wstring log = argv[4];
+        LocalFree(argv);
+        return retireOldMachineInstallation(sourceDir, log);
     }
 
     if (argc == 7 && std::wstring(argv[1]) == L"--remove-stale-registration"
