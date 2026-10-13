@@ -200,14 +200,17 @@ jobs:
           $version = '${{ steps.accept.outputs.version }}'
           $setup = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Setup.exe").Path
           $dir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-promoted-machine'
-          if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }
-          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          # ACCEPTED_MACHINE_SCOPE_PROMOTION_SMOKE_V2 — the MACHINE backend
+          # requires explicit fixture /DIR, unlike public Smart's default-path test.
+          # Do not delete an existing test directory: unexpected data fail closed.
+          if (Test-Path $dir) { throw 'Machine smoke destination already exists; refusing deletion' }
+          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$dir")) -Wait -PassThru
           if ($install.ExitCode -ne 0) { throw "Promoted machine installer failed: $($install.ExitCode)" }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
-          if (-not (Test-Path $app)) { throw 'Promoted public Smart defaulted outside LocalAppData' }
+          if (-not (Test-Path $app)) { throw 'Promoted Machine installer did not install into the requested isolated fixture directory' }
           $machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
           & reg.exe QUERY $machineKey /reg:64 *> $null
-          if ($LASTEXITCODE -eq 0) { throw 'Promoted public Smart unexpectedly registered all-users' }
+          if ($LASTEXITCODE -ne 0) { throw 'Promoted Machine installer failed to register its HKLM uninstall entry' }
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=machine')) {
             $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "Promoted machine $arg failed: $($p.ExitCode)" }
