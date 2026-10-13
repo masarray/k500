@@ -958,8 +958,8 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     }
 
     if (launchError != ERROR_SUCCESS || installerExit != 0) {
-        cleanupPerUserMigration(request);
-        discardBackup();
+        const bool recovered = restoreUserTarget();
+        if (recovered) discardBackup();
         if (startApplication(request.app))
             logLine(request, L"Migration failed before machine uninstall; original app reopened.");
         return fail(request, 31,
@@ -968,19 +968,19 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     }
 
     if (!healthCheck(request.targetApp, request.version)) {
-        cleanupPerUserMigration(request);
-        discardBackup();
+        const bool recovered = restoreUserTarget();
+        if (recovered) discardBackup();
         if (startApplication(request.app))
             logLine(request, L"Migration target health check failed; original app reopened.");
         return fail(request, 32,
             L"The per-user installation failed its startup/version check. "
-            L"It was removed and the existing Program Files installation was kept.");
+            L"The previous machine copy was kept; user rollback is recorded in the log.");
     }
 
     const std::wstring oldUninstaller = sourceDir + L"\\" + UninstallerName;
     if (!pathExists(oldUninstaller)) {
-        cleanupPerUserMigration(request);
-        discardBackup();
+        const bool recovered = restoreUserTarget();
+        if (recovered) discardBackup();
         startApplication(request.app);
         return fail(request, 33,
             L"The Program Files uninstaller is missing. Migration was rolled back "
@@ -995,15 +995,15 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     if (uninstallError == ERROR_CANCELLED) {
         // UAC was declined before the old uninstaller started. The machine
         // installation is still authoritative, so remove only the new user copy.
-        const bool cleaned = cleanupPerUserMigration(request);
-        discardBackup();
+        const bool cleaned = restoreUserTarget();
+        if (cleaned) discardBackup();
         startApplication(request.app);
         return fail(request, 34,
             L"Administrator permission to remove the old Program Files installation "
             L"was cancelled. The old application was kept and reopened."
             + std::wstring(cleaned
-                ? L" The temporary per-user installation was removed."
-                : L" The temporary per-user cleanup failed; inspect the update log."));
+                ? L" The previous user installation was restored when present."
+                : L" User rollback needs review: see retained recovery snapshot."));
     }
 
     if (uninstallError == ERROR_TIMEOUT) {
@@ -1017,18 +1017,18 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 
     if (uninstallError != ERROR_SUCCESS || uninstallExit != 0
         || pathExists(request.app) || !oldMachineRegistrationAbsent()) {
-        const bool cleaned = cleanupPerUserMigration(request);
+        const bool cleaned = restoreUserTarget();
         std::wstring restoreError;
         const bool restored = restoreMachineMigrationSource(request, &restoreError);
         if (restored) {
-            discardBackup();
+            if (cleaned) discardBackup();
             startApplication(request.app);
             return fail(request, 34,
                 L"Windows could not complete removal of the old Program Files installation. "
                 L"The machine installation and uninstall registration were restored and reopened."
                 + std::wstring(cleaned
-                    ? L" The temporary per-user installation was removed."
-                    : L" The temporary per-user cleanup also failed; inspect the update log."));
+                    ? L" The previous user installation was restored when present."
+                    : L" User rollback needs review: see retained recovery snapshot."));
         }
         return fail(request, 34,
             L"Windows could not complete removal of the old Program Files installation. "
