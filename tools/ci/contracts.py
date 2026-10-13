@@ -1798,6 +1798,31 @@ def check_release_contracts() -> None:
         "Public stable SonKuPik K500 v1.1.3.",
     )
 
+    # ACCEPTED_MACHINE_SCOPE_PROMOTION_SMOKE_V2 — explicit Machine /DIR
+    # and positive HKLM registration are mandatory. Previously this block
+    # was copied from Smart's per-user smoke and guaranteed a false failure.
+    promotion = read(".github/workflows/windows-updater-promote.yml")
+    if ("      - name: Validate exact accepted machine installer bytes" not in promotion
+            or "      - name: Validate exact accepted per-user installer bytes" not in promotion):
+        FAILURES.append("Stable promotion machine smoke test boundaries missing")
+    else:
+        machine_smoke = promotion.split(
+            "      - name: Validate exact accepted machine installer bytes", 1
+        )[1].split("      - name: Validate exact accepted per-user installer bytes", 1)[0]
+        for expected in (
+            "ACCEPTED_MACHINE_SCOPE_PROMOTION_SMOKE_V2",
+            '("/DIR=$dir")',
+            'if ($LASTEXITCODE -ne 0) { throw \'Promoted Machine installer failed to register its HKLM uninstall entry\' }',
+            "--update-scope-check=machine",
+            "if (Test-Path $dir) { throw 'Machine smoke destination already exists; refusing deletion' }",
+        ):
+            if expected not in machine_smoke:
+                FAILURES.append(f"Stable promotion machine smoke lost required contract: {expected}")
+        if "Public Smart unexpectedly registered all-users" in machine_smoke:
+            FAILURES.append("Machine smoke incorrectly rejects its required HKLM registration")
+        if "if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }" in machine_smoke:
+            FAILURES.append("Machine smoke must not recursively delete pre-existing destination")
+
     require(
         "packaging/windows/installer.iss",
         "SMART_INSTALL_LAYOUT_V2",
