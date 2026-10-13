@@ -1915,12 +1915,24 @@ def check_release_contracts() -> None:
 
     require(
         "packaging/windows/update_helper.cpp",
-        "SMART_POST_MIGRATION_PROGRAMFILES_CLEAN_V1",
+        "RC4_FIELD_ERROR36_MACHINE_RETIRE_V5",
+        "retireOldMachineInstallation",
+        "L\"--retire-machine \"",
+        "Legacy Program Files residual folder safely archived",
+        "const bool residuePending",
         "oldMachineRegistrationAbsent()",
-        "canonicalProgramFiles",
-        "oldDirectoryGone",
-        "return fail(request, 36,",
+        "if (residuePending || pathExists(sourceDir))",
+        "return 79;",
     )
+    require(
+        "tools/ci/updater_deep_acceptance.ps1",
+        "RC4_FIELD_ERROR36_MACHINE_RETIRE_V5",
+        "old-plugin-user-note.txt",
+        "Legacy Program Files residual folder safely archived",
+        "Machine residual archive lost an unknown user file",
+        "Verified migrated app incorrectly failed with ERROR 36",
+    )
+    forbid("packaging/windows/update_helper.cpp", "return fail(request, 36,")
     require(
         "tools/ci/updater_deep_acceptance.ps1",
         "[string]$SmartSetup",
