@@ -664,6 +664,28 @@ def check_ui_contracts() -> None:
         'onClicked:root.setEqBypass(!root.eqBypassActive)',
     )
 
+    # PEQ_CAPTION_SPATIAL_LAYOUT_V2 — real viewport and inspector geometry.
+    require("qml/components/SectionEqGraph.qml",
+            "PEQ_CAPTION_SPATIAL_LAYOUT_V2",
+            'import "CrossoverCaptionLayout.js" as CaptionPlacement',
+            "id:hpfCaption", "id:lpfCaption", "captionPositions: CaptionPlacement.place(")
+    require("qml/components/CrossoverCaptionLayout.js",
+            "PEQ_CAPTION_SPATIAL_LAYOUT_V2", "function intersects(", "function place(")
+    if node := shutil.which("node"):
+        try:
+            peq_test = subprocess.run(
+                [node, str(ROOT / "tools/ci/test_crossover_caption_layout.js")],
+                text=True, capture_output=True, timeout=12, check=False)
+            if peq_test.returncode:
+                FAILURES.append("PEQ caption geometry regression failed: "
+                                + (peq_test.stderr or peq_test.stdout)[-1500:])
+            else:
+                PASSES.append(peq_test.stdout.strip())
+        except subprocess.TimeoutExpired:
+            FAILURES.append("PEQ caption geometry regression timed out")
+    else:
+        FAILURES.append("PEQ caption geometry test requires Node.js")
+
     # MASS_UPLOAD_EXTENDED_SELECTION_V1: modifiers work before staging; device
     # upload cardinality and descending 10->1 hardware order remain unchanged.
     require(
