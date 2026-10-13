@@ -68,6 +68,16 @@ assert.match(popup, /y: parent \? Math\.round\(\(parent\.height - height\) \/ 2\
 assert.match(popup, /visible: phase !== ""/);
 assert.match(popup, /Popup\.NoAutoClose/);
 assert.doesNotMatch(popup, /saveCurrentToSlot|uploadSlotImage|recallMode|Timer\s*\{/);
+// COMPACT_VERIFIED_OPERATION_TOAST_V2: the display is not the operation
+// authority; success disappears quickly but errors are readable.
+assert.match(impl, /interval: root.singleOpState === "error" \? 4500 : 850/);
+assert.match(impl, /if \(root.singleOpState !== "busy"\) root.singleOpState = ""/);
+assert.match(popup, /COMPACT_VERIFIED_OPERATION_TOAST_V2/);
+assert.match(popup, /height: phase === "error" \? 86 : 64/);
+assert.match(popup, /width: Math.min\(354,/);
+assert.match(popup, /text: feedback.headline/);
+assert.match(popup, /text: feedback.message \|\| "Periksa koneksi K500\."/);
+assert.doesNotMatch(popup, /K500 CONFIRMED|PLEASE WAIT|IN PROGRESS|progressTrack/);
 assert.match(rack, /SYNC_MASTER_OPTICAL_FACE_V2/);
 assert.match(rack, /trackHeight: Math\.max\(11, Math\.round\(syncMasterLabel\.contentHeight\)\)/);
 assert.match(rack, /width: 38\s*height: 30/);

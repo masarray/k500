@@ -14,8 +14,10 @@ Item {
     signal qEdited(real value)
     signal resetRequested()
 
-    implicitWidth: 320
-    implicitHeight: 86
+    // INSPECTOR_OPTICAL_PADDING_V3 — structured header and controls have
+    // 16px horizontal / 14px vertical inner space without growing the graph.
+    implicitWidth: 340
+    implicitHeight: 120
 
     // FINAL_INSPECTOR_SCOPE_COPY_V1
     // The page toolbar already owns EQ RESET (all PEQ bands). Keep the floating
@@ -31,10 +33,10 @@ Item {
 
     // VISUAL_INSPECTOR_SURFACE_V1 — purely presentational: no pointer
     // interception, model replacement, shadow layers, or device writes.
-    // The floating inspector keeps its proven 320 x 86 interaction geometry.
+    // Keep the floating inspector non-modal; only its visual content grows.
     Rectangle {
         anchors.fill: parent
-        anchors.margins: -4
+        anchors.margins: 0
         radius: 9
         color: "#10171D"
         border.width: 1
@@ -44,7 +46,7 @@ Item {
 
     Rectangle {
         anchors.left: parent.left
-        anchors.leftMargin: -4
+        anchors.leftMargin: 6
         anchors.verticalCenter: parent.verticalCenter
         width: 3
         height: 27
@@ -55,15 +57,19 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 5
+        anchors.leftMargin: 16
+        anchors.rightMargin: 16
+        anchors.topMargin: 14
+        anchors.bottomMargin: 14
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 31
+            Layout.preferredHeight: 34
             spacing: 8
 
             ColumnLayout {
-                spacing: -1
+                spacing: 3
                 Text {
                     text: "BAND " + (root.bandIndex + 1)
                     color: Theme.textDim
@@ -102,7 +108,7 @@ Item {
             spacing: 7
 
             ColumnLayout {
-                Layout.preferredWidth: 66
+                Layout.preferredWidth: 64
                 spacing: 2
                 Text { text: "TYPE"; color: Theme.textDim; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.65 }
                 StudioComboBox {
@@ -117,7 +123,7 @@ Item {
             }
 
             ValueField {
-                Layout.preferredWidth: 92
+                Layout.preferredWidth: 90
                 title: "FREQ"
                 value: root.frequency
                 from: 20; to: 20000; step: 5; defaultValue: root.frequency

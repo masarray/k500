@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import "CrossoverCaptionLayout.js" as CaptionPlacement
 
 StudioPanel {
     id: root
@@ -65,6 +66,9 @@ StudioPanel {
     // becomes flat. This mirrors the native K500 app semantics.
     readonly property bool hpfBypassed: String(root.bands.hpType).trim().toUpperCase() === "BYPASS"
     readonly property bool lpfBypassed: String(root.bands.lpType).trim().toUpperCase() === "BYPASS"
+    // PEQ_BYPASS_QUIET_CAPTIONS_V3: frequency stays visible; state is color.
+    readonly property color hpGuideColor: root.hpfBypassed ? Theme.textDim : Theme.amber
+    readonly property color lpGuideColor: root.lpfBypassed ? Theme.textDim : Theme.amber
 
     readonly property real virtualScaleX: graph.width > 0 ? graph.width / 1040.0 : 1.0
     readonly property real virtualScaleY: graph.height > 0 ? graph.height / 354.0 : 1.0
@@ -560,6 +564,23 @@ StudioPanel {
                 border.color:"#010203"
                 clip:true
 
+                // PEQ_CAPTION_SPATIAL_LAYOUT_V2: use measured caption rectangles,
+                // graph viewport and currently visible inspector to avoid overlap.
+                // Geometry only: crossover anchor frequency and hit targets stay put.
+                readonly property var captionPositions: CaptionPlacement.place({
+                    width:graph.width, height:graph.height,
+                    left:root.leftPad, right:graph.width-root.rightPad,
+                    top:root.topPad, bottom:root.plotBottom,
+                    hpX:root.xFor(root.bands.hpfHz), lpX:root.xFor(root.bands.lpfHz),
+                    hpW:hpfCaption.width, lpW:lpfCaption.width,
+                    hpH:hpfCaption.implicitHeight, lpH:lpfCaption.implicitHeight,
+                    obstacle:root.selectedTarget==="band"
+                        ? {x:bandInspector.x, y:bandInspector.y,
+                           w:bandInspector.width, h:bandInspector.height}
+                        : {x:crossoverInspector.x, y:crossoverInspector.y,
+                           w:crossoverInspector.width, h:crossoverInspector.height}
+                })
+
                 // PEQ_INTERACTION_PARITY_V1
                 // Keep the Qt graph aligned with the web/FabFilter-style workflow:
                 // wheel = selected-band Q, Shift = fine, Ctrl/Cmd + vertical drag = Q,
@@ -622,8 +643,7 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="hpf"
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.hpfBypassed?.11:.28}}
-                    Text{x:parent.width/2+12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.hpfBypassed?"HP BYPASS · "+root.fmtF(root.bands.hpfHz)+" Hz":root.fmtF(root.bands.hpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:root.hpGuideColor;opacity:root.hpfBypassed?.32:.28}}
                     Item {
                         id:hpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -632,22 +652,22 @@ StudioPanel {
                         Rectangle {
                             anchors.centerIn:parent
                             width:(hpfGuide.selected?28:22)*root.nodeScale;height:width;radius:width/2
-                            color:Theme.amber;opacity:hpfGuide.selected?.12:.045;antialiasing:true
+                            color:root.hpGuideColor;opacity:hpfGuide.selected?.12:.045;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
                             width:(hpfGuide.selected?23:19)*root.nodeScale;height:width;radius:width/2
                             color:"transparent";border.width:hpfGuide.selected?1.6:1.1
-                            border.color:Theme.amber;opacity:hpfGuide.selected?.92:.72;antialiasing:true
+                            border.color:root.hpGuideColor;opacity:hpfGuide.selected?.92:.72;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
                             width:(hpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
-                            color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
+                            color:"#070B0E";border.width:1;border.color:root.hpGuideColor;antialiasing:true
                             Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:hpfGuide.selected?.32:.18;antialiasing:true}
-                            Text{anchors.centerIn:parent;text:"HP";color:hpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
+                            Text{anchors.centerIn:parent;text:"HP";color:root.hpfBypassed?Theme.textDim:(hpfGuide.selected?Theme.text:Theme.amber);font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("hpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}}}
@@ -658,8 +678,7 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="lpf"
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.lpfBypassed?.11:.28}}
-                    Text{anchors.right:parent.horizontalCenter;anchors.rightMargin:12*root.virtualScaleX;y:6*root.virtualScaleY;text:root.lpfBypassed?"LP BYPASS · "+root.fmtF(root.bands.lpfHz)+" Hz":root.fmtF(root.bands.lpfHz)+" Hz";color:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.Bold}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:root.lpGuideColor;opacity:root.lpfBypassed?.32:.28}}
                     Item {
                         id:lpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -668,25 +687,55 @@ StudioPanel {
                         Rectangle {
                             anchors.centerIn:parent
                             width:(lpfGuide.selected?28:22)*root.nodeScale;height:width;radius:width/2
-                            color:Theme.amber;opacity:lpfGuide.selected?.12:.045;antialiasing:true
+                            color:root.lpGuideColor;opacity:lpfGuide.selected?.12:.045;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
                             width:(lpfGuide.selected?23:19)*root.nodeScale;height:width;radius:width/2
                             color:"transparent";border.width:lpfGuide.selected?1.6:1.1
-                            border.color:Theme.amber;opacity:lpfGuide.selected?.92:.72;antialiasing:true
+                            border.color:root.lpGuideColor;opacity:lpfGuide.selected?.92:.72;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
                             width:(lpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
-                            color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
+                            color:"#070B0E";border.width:1;border.color:root.lpGuideColor;antialiasing:true
                             Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:lpfGuide.selected?.32:.18;antialiasing:true}
-                            Text{anchors.centerIn:parent;text:"LP";color:lpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
+                            Text{anchors.centerIn:parent;text:"LP";color:root.lpfBypassed?Theme.textDim:(lpfGuide.selected?Theme.text:Theme.amber);font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("lpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}}}
+                }
+
+                // Text is a GRAPH sibling rather than a child of the 28px
+                // hit guide: position is in viewport coordinates, never clipped
+                // by an offscreen anchor or coupled to the drag MouseArea.
+                Text {
+                    id:hpfCaption
+                    z:5
+                    x:graph.captionPositions.hp.x
+                    y:graph.captionPositions.hp.y
+                    width:Math.min(implicitWidth,Math.max(60,graph.width-root.leftPad-root.rightPad-10))
+                    text:"HP "+root.fmtF(root.bands.hpfHz)+" Hz"
+                    elide:Text.ElideRight
+                    color:root.hpGuideColor
+                    font.family:Theme.fontFamily
+                    font.pixelSize:11
+                    font.weight:Font.Medium
+                }
+                Text {
+                    id:lpfCaption
+                    z:5
+                    x:graph.captionPositions.lp.x
+                    y:graph.captionPositions.lp.y
+                    width:Math.min(implicitWidth,Math.max(60,graph.width-root.leftPad-root.rightPad-10))
+                    text:"LP "+root.fmtF(root.bands.lpfHz)+" Hz"
+                    elide:Text.ElideRight
+                    color:root.lpGuideColor
+                    font.family:Theme.fontFamily
+                    font.pixelSize:11
+                    font.weight:Font.Medium
                 }
 
                 Repeater {
@@ -807,13 +856,14 @@ StudioPanel {
                 }
 
                 BandInspector {
+                    id:bandInspector
                     visible:root.selectedTarget==="band"
                     bandModel:root.bands;bandIndex:root.selectedIndex;frequency:root.selectedFreq;gain:root.selectedGain;q:root.selectedQ
                     accentColor:root.colorFor(root.selectedIndex)
-                    width:Math.min(320,graph.width-30);height:86
+                    width:Math.min(340,graph.width-32);height:120
                     x:root.clamp(root.xFor(root.selectedFreq)-width/2,15,graph.width-width-15)
                     readonly property bool stickyTop:root.inspectorShouldTop(root.selectedFreq)
-                    readonly property real edgeGap:12*root.nodeScale
+                    readonly property real edgeGap:Math.max(18,12*root.nodeScale)
                     y:stickyTop?root.topPad+edgeGap:root.plotBottom-height-edgeGap
                     Behavior on x{SmoothedAnimation{velocity:1800}}
                     Behavior on y{SmoothedAnimation{velocity:1400}}
@@ -824,15 +874,16 @@ StudioPanel {
                 }
 
                 CrossoverInspector {
+                    id:crossoverInspector
                     visible:root.selectedTarget!=="band"
                     mode:root.selectedTarget
                     frequency:root.inspectorFrequency
                     filterType:root.crossoverDisplayType(root.selectedTarget)
                     accentColor:Theme.amber
-                    width:Math.min(320,graph.width-30);height:86
+                    width:Math.min(340,graph.width-32);height:120
                     x:root.clamp(root.xFor(root.inspectorFrequency)-width/2,15,graph.width-width-15)
                     readonly property bool stickyTop:root.inspectorShouldTop(root.inspectorFrequency)
-                    readonly property real edgeGap:12*root.nodeScale
+                    readonly property real edgeGap:Math.max(18,12*root.nodeScale)
                     y:stickyTop?root.topPad+edgeGap:root.plotBottom-height-edgeGap
                     Behavior on x{SmoothedAnimation{velocity:1800}}
                     Behavior on y{SmoothedAnimation{velocity:1400}}
@@ -887,8 +938,9 @@ StudioPanel {
             }
         }
 
+        // BAND_CHIP_SAFE_INSETS_V2 — give both readout rows real clearance.
         RowLayout {
-            Layout.fillWidth:true;Layout.preferredHeight:55;Layout.leftMargin:12;Layout.rightMargin:12;Layout.bottomMargin:12;spacing:6
+            Layout.fillWidth:true;Layout.preferredHeight:62;Layout.leftMargin:12;Layout.rightMargin:12;Layout.bottomMargin:12;spacing:6
             Repeater {
                 model:root.bands
                 delegate:Rectangle {
@@ -900,23 +952,66 @@ StudioPanel {
                     required property string typeName
                     readonly property bool selected:root.selectedTarget==="band"&&index===root.selectedIndex
                     readonly property color bandColor:root.colorFor(index)
-                    Layout.fillWidth:true;Layout.preferredHeight:43;radius:10
+                    Layout.fillWidth:true;Layout.preferredHeight:50;radius:10
                     // VISUAL_BAND_CHIP_HIERARCHY_V1 — neutral values, hue reserved
                     // for band identity; selected band remains cyan-highlighted.
                     gradient:Gradient{GradientStop{position:0;color:bandPill.selected?"#162A2F":"#11181E"}GradientStop{position:1;color:bandPill.selected?"#0D1B20":"#0B1014"}}
                     border.width:1;border.color:bandPill.selected?Theme.accentSoft:"#28343C"
+                    // BAND_CHIP_OPTICAL_LAYOUT_V3 — accent and typography
+                    // never touch the frame; no width-arithmetic spacers.
                     Rectangle {
                         anchors.left:parent.left
-                        anchors.leftMargin:1
+                        anchors.leftMargin:7
                         anchors.verticalCenter:parent.verticalCenter
-                        width:3;height:22;radius:1.5
+                        width:3;height:24;radius:1.5
                         color:bandPill.bandColor
                         opacity:bandPill.selected?0.9:0.55
                     }
-                    Column {
-                        anchors.fill:parent;anchors.margins:6;spacing:1
-                        Row{width:parent.width;Text{text:"B"+(index+1);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-34);height:1}Text{text:root.typeShort(typeName);color:bandPill.selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}}
-                        Row{width:parent.width;Text{text:root.fmtF(freq);color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-54);height:1}Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:10}}
+                    RowLayout {
+                        anchors.fill:parent
+                        anchors.leftMargin:18
+                        anchors.rightMargin:12
+                        anchors.topMargin:7
+                        anchors.bottomMargin:7
+                        spacing:3
+                        ColumnLayout {
+                            Layout.alignment:Qt.AlignVCenter
+                            spacing:3
+                            Text {
+                                text:"B"+(index+1)
+                                color:bandPill.bandColor
+                                font.family:Theme.monoFamily
+                                font.pixelSize:9
+                                font.weight:Font.DemiBold
+                            }
+                            Text {
+                                text:root.fmtF(freq)
+                                color:Theme.text
+                                font.family:Theme.monoFamily
+                                font.pixelSize:10
+                                font.weight:Font.DemiBold
+                            }
+                        }
+                        Item {Layout.fillWidth:true}
+                        ColumnLayout {
+                            Layout.alignment:Qt.AlignVCenter|Qt.AlignRight
+                            spacing:3
+                            Text {
+                                Layout.alignment:Qt.AlignRight
+                                text:root.typeShort(typeName)
+                                color:bandPill.selected?Theme.accent:Theme.textSoft
+                                font.family:Theme.monoFamily
+                                font.pixelSize:9
+                                font.weight:Font.DemiBold
+                            }
+                            Text {
+                                Layout.alignment:Qt.AlignRight
+                                text:(gain>0?"+":"")+gain.toFixed(1)
+                                color:Theme.textSoft
+                                font.family:Theme.monoFamily
+                                font.pixelSize:10
+                            }
+                        }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectBand(index)}
                 }

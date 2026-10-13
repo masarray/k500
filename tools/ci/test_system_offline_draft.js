@@ -72,4 +72,24 @@ assert.match(impl,/if \(root\.fileBridge\.previewLoadedPreset\(\)\)[\s\S]*?offli
 assert.match(impl,/if \(root\.deviceConnected\) \{\s*root\.offlineSystemEdits = \(\{\}\)/);
 assert.doesNotMatch(impl,/NO PRESET STAGED|text: loadedPreset \? "STAGED"/);
 assert.match(rack,/root\.systemEditHandler\(path, value\)/);
+// SAVE_PC_AS_SMART_FOLDER_V1 — run actual QML click handler. The native
+// bridge owns path selection; cancel/failure must never open a generic folder.
+const dialog = { currentFolder:"file:///old/Documents", opens:0,
+    open() {this.opens++;} };
+const defaultFolder = "file:///C:/Users/Test/Documents/SonKuPikK500/Presets";
+bridge.prepareSaveDirectory = () => defaultFolder;
+ctx.savePresetDialog = dialog;
+ctx.updateOfflineSystemEdit("system.danceMicHoldSec", 0, true);
+vm.runInContext(extract("requestSaveAs"), ctx);
+ctx.requestSaveAs();
+assert.equal(dialog.opens, 1);
+assert.equal(dialog.currentFolder, defaultFolder, "opens in approved preset folder");
+bridge.prepareSaveDirectory = () => "";
+bridge.lastError = "folder unavailable";
+ctx.requestSaveAs();
+assert.equal(dialog.opens, 1, "invalid destination never invokes SaveFile picker");
+assert.match(ctx.pcSaveNotice, /folder unavailable/);
+assert.match(impl, /savePresetDialog\.currentFolder = folder/);
+assert.match(impl, /savePresetDialog\.open\(\)/);
+
 console.log("PASS offline System: free draft, hardware isolation, verified Save source, mapping replay, Mic Trigger fail-closed, Preview/device reset, one preset surface");

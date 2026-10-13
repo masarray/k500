@@ -48,9 +48,13 @@ Item {
     property string singleOpMessage: ""
     Timer {
         id: singleOpDismiss
-        interval: root.singleOpState === "error" ? 7000 : 3200
+        // COMPACT_VERIFIED_OPERATION_TOAST_V2 — confirmed success leaves promptly;
+        // errors remain legible. Never time out an in-flight device transaction.
+        interval: root.singleOpState === "error" ? 4500 : 850
         repeat: false
-        onTriggered: root.singleOpState = ""
+        onTriggered: {
+            if (root.singleOpState !== "busy") root.singleOpState = ""
+        }
     }
     function beginSingleOperation(kind, slot) {
         // Guard locally as well as in the native preset coordinator: a second
@@ -98,7 +102,16 @@ Item {
             root.pcNotice("Mic Trigger belum bisa disimpan; klik Preview untuk membuang nilai sementaranya.")
             return
         }
+        // SAVE_PC_AS_SMART_FOLDER_V1 — never reopen at generic Documents.
+        // The bridge validates the last successful export path, or creates
+        // only the canonical SonKuPik K500 preset directory on this click.
+        var folder = root.fileBridge.prepareSaveDirectory()
+        if (!folder || String(folder).length === 0) {
+            root.pcNotice(String(root.fileBridge.lastError || "Folder preset tidak tersedia."))
+            return
+        }
         root.pcSaveNotice = ""
+        savePresetDialog.currentFolder = folder
         savePresetDialog.open()
     }
 

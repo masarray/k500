@@ -79,6 +79,9 @@ public:
 
     Q_INVOKABLE bool loadFile(const QUrl &url);
     Q_INVOKABLE bool saveFile(const QUrl &url);
+    // SAVE_PC_AS_SMART_FOLDER_V1: open into the last successful export folder,
+    // falling back to Documents/SonKuPikK500/Presets without altering library.
+    Q_INVOKABLE QUrl prepareSaveDirectory();
     Q_INVOKABLE void clear();
     Q_INVOKABLE QByteArray deviceSlotImage() const;
 

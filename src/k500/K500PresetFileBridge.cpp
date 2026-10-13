@@ -571,6 +571,32 @@ bool K500PresetFileBridge::setOfflineAdjMannerVrOff(bool enabled)
     return persisted;
 }
 
+// SAVE_PC_AS_SMART_FOLDER_V1 — distinct from pcPresetLibrary/folder so a
+// user's imported Local library never changes merely by opening Save PC As.
+// Creating the default folder happens only after the user requests Save As.
+QUrl K500PresetFileBridge::prepareSaveDirectory()
+{
+    const QString lastUsed = QSettings().value(
+        QStringLiteral("pcPresetExport/lastFolder")).toString();
+    if (!lastUsed.isEmpty()) {
+        const QFileInfo previous(QDir::cleanPath(lastUsed));
+        if (previous.isDir() && previous.isReadable() && previous.isWritable())
+            return QUrl::fromLocalFile(previous.absoluteFilePath());
+    }
+
+    QString documents = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation);
+    if (documents.isEmpty())
+        documents = QDir::homePath();
+    const QString target = QDir(documents).filePath(
+        QStringLiteral("SonKuPikK500/Presets"));
+    if (!QDir(target).exists() && !QDir().mkpath(target)) {
+        setError(QStringLiteral("Tidak dapat menyiapkan folder preset SonKuPik K500: %1")
+                     .arg(target));
+        return {};
+    }
+    return QUrl::fromLocalFile(QDir(target).absolutePath());
+}
+
 bool K500PresetFileBridge::saveFile(const QUrl &url)
 {
     setError({});
@@ -600,6 +626,10 @@ bool K500PresetFileBridge::saveFile(const QUrl &url)
         return false;
     }
 
+    // Only a successfully committed .k500 export becomes the next folder.
+    // Failed or cancelled dialogs must not replace the last-known-good path.
+    QSettings().setValue(QStringLiteral("pcPresetExport/lastFolder"),
+                         QFileInfo(path).absolutePath());
     m_savedBytes = m_sourceBytes;
     m_sourcePath = path;
     m_sourceName = QFileInfo(path).fileName();
