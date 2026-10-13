@@ -825,6 +825,54 @@ bool oldMachineRegistrationAbsent()
     return result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND;
 }
 
+// SMART_EXISTING_USER_TARGET_SNAPSHOT_V2 — don't confuse a registered HKCU
+// installation with unknown data. Verify canonical ownership and take a
+// separate restorable snapshot before a migration changes ANY existing files.
+bool validExistingUserTarget(const std::wstring &dir,
+                             bool &present, std::wstring *error)
+{
+    present = false;
+    HKEY key = nullptr;
+    const LONG rc = RegOpenKeyExW(HKEY_CURRENT_USER, UninstallKey,
+                                  0, KEY_READ, &key);
+    if (rc == ERROR_FILE_NOT_FOUND || rc == ERROR_PATH_NOT_FOUND) {
+        if (pathExists(dir)) {
+            if (error) *error = L"Unknown LocalAppData folder was preserved.";
+            return false;
+        }
+        return true;
+    }
+    if (rc != ERROR_SUCCESS) {
+        if (error) *error = L"Could not inspect existing K500 registration.";
+        return false;
+    }
+    RegCloseKey(key);
+    std::wstring registered;
+    if (!readRegisteredPath(HKEY_CURRENT_USER, registered)
+        || !samePath(registered, dir)
+        || !pathExists(dir + L"\\" + AppExeName)
+        || !pathExists(dir + L"\\" + UninstallerName)) {
+        if (error) *error = L"Existing K500 registration or files are incomplete.";
+        return false;
+    }
+    // copyTree intentionally skips symlinks; refuse trees with links/junctions
+    // because their external contents cannot be safely restored.
+    std::error_code ec;
+    for (fs::recursive_directory_iterator it(dir, ec), end;
+         it != end && !ec; it.increment(ec)) {
+        if (it->is_symlink(ec) || ec) {
+            if (error) *error = L"Existing K500 folder has linked files.";
+            return false;
+        }
+    }
+    if (ec) {
+        if (error) *error = L"Existing K500 folder cannot be safely inspected.";
+        return false;
+    }
+    present = true;
+    return true;
+}
+
 int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 {
     const std::wstring sourceDir = parentDirectory(request.app);
@@ -834,10 +882,16 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
         return fail(request, 30, L"Migration source/target installation paths are invalid.");
     }
 
-    // Snapshot the machine installation AND its uninstall registration before
-    // any migration work. The old installation remains authoritative until the
-    // per-user target has passed health check and old uninstall begins.
     std::wstring backupError;
+    bool hadUserInstall = false;
+    if (!validExistingUserTarget(targetDir, hadUserInstall, &backupError)) {
+        CloseHandle(lockedSetup);
+        return fail(request, 30, L"Setup protected your existing K500. " + backupError);
+    }
+
+    // Snapshot BOTH original scopes when the user target is already valid.
+    // Machine version stays available until new user version passes health.
+
     {
         std::error_code cleanup;
         fs::remove_all(fs::path(request.backup), cleanup);
@@ -851,10 +905,37 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             L"Could not create the machine migration recovery snapshot: " + backupError);
     }
     logLine(request, L"Machine migration recovery snapshot created at " + request.backup);
+    const std::wstring priorUserBackup =
+        (fs::path(request.backup) / L"prior-user").wstring();
+    if (hadUserInstall &&
+        (!copyTree(targetDir, backupFilesPath(priorUserBackup), &backupError)
+         || !snapshotUninstallRegistry(L"user", priorUserBackup, &backupError))) {
+        CloseHandle(lockedSetup);
+        // Both real installations remain untouched if the second snapshot fails.
+        std::error_code ec;
+        fs::remove_all(request.backup, ec);
+        return fail(request, 30,
+            L"Unable to back up the existing K500 user installation: " + backupError);
+    }
+    if (hadUserInstall)
+        logLine(request, L"Canonical HKCU target snapshotted before upgrade.");
 
     const auto discardBackup = [&request] {
         std::error_code ec;
         fs::remove_all(fs::path(request.backup), ec);
+    };
+
+    const auto restoreUserTarget = [&]() -> bool {
+        if (!hadUserInstall)
+            return cleanupPerUserMigration(request);
+        std::wstring restoreError;
+        const bool restored =
+            restoreTree(backupFilesPath(priorUserBackup), targetDir, &restoreError)
+            && restoreUninstallRegistry(L"user", priorUserBackup, &restoreError);
+        if (!restored)
+            logLine(request, L"User-target rollback needs recovery: " +
+                restoreError + L" at " + priorUserBackup);
+        return restored;
     };
 
     const std::wstring args =
