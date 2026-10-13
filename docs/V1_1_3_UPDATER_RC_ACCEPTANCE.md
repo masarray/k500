@@ -4,11 +4,50 @@
 > may mark accepted before Windows and physical K500 owner testing.
 
 UPDATER_V1_1_3_ACCEPTANCE=pending
-UPDATER_V1_1_3_ACCEPTED_TAG=pending
-UPDATER_V1_1_3_ACCEPTED_COMMIT=pending
-UPDATER_V1_1_3_MACHINE_SHA256=pending
-UPDATER_V1_1_3_USER_SHA256=pending
-UPDATER_V1_1_3_SMART_SHA256=pending
+UPDATER_V1_1_3_ACCEPTED_TAG=v1.1.3-rc.6
+UPDATER_V1_1_3_ACCEPTED_COMMIT=2cfd0060d5c4d192d35347ce1ae34b250d98d7ff
+UPDATER_V1_1_3_MACHINE_SHA256=282b0d5111879786c8db6c21e3542e81d43ec6cc475d130d12356950c494cde6
+UPDATER_V1_1_3_USER_SHA256=6f9af6dcf5b8fcf4540ee417f322873dd2ecdd33cd9c7686f21a44b71ed9cc14
+UPDATER_V1_1_3_SMART_SHA256=760531e9ce9bf741db5d39f589c599101e2b950b2bad04c81e12e52191cea680
+
+## RC.6 provenance staged — field acceptance still pending
+
+This **draft PR** records the verifiable, immutable release metadata but is **not**
+a signed-off promotion gate. `UPDATER_V1_1_3_ACCEPTANCE=pending` deliberately
+remains unchanged. Do not merge this draft while any physical field QA remains
+unrecorded. The owner has approved proceeding towards public release, but no
+documented result yet ties a completed **RC.6 Smart Installer** upgrade and
+live device verification to the same candidate bytes.
+
+- Prerelease: [v1.1.3-rc.6](https://github.com/masarray/k500/releases/tag/v1.1.3-rc.6),
+  immutable source `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`.
+- [Exact-main CI #38384812228](https://github.com/masarray/k500/actions/runs/38384812228):
+  successful Fast Contracts, native Windows build/regression and installer smoke.
+- [RC qualification #38389976497](https://github.com/masarray/k500/actions/runs/38389976497):
+  successful actual-app Machine/PerUser/Smart installation, health checks,
+  deep updater migration/rollback, checksum generation and prerelease publishing.
+- Published three installer SHA-256 hashes are staged in the tokens above, in
+  the stable-promotion workflow's accepted scope ordering. Release manifest and
+  `SHA256SUMS.txt` are uploaded with the unchanged RC.6 package.
+- Owner has previously tested physical USB Connect/Recall/Save/Mass Upload in a
+  native source preview, and signed off the last Reverb/Echo GUI; those tests
+  are **not** independent evidence of RC.6 installation or state retention.
+
+### Remaining evidence required before merge
+
+Record the owner's actual installation of
+`SonKuPik-K500-v1.1.3-rc.6-Windows-Smart-Installer.exe`: prior installed
+version and Windows machine/per-user scope, successful install/migration,
+LocalAppData destination and UAC behavior, preservation of LOCAL presets and
+settings, plus physical USB/HID Connect/Readback, Recall and non-destructive
+Store/Mass Upload test outcomes. A concise written owner attestation is
+acceptable when it identifies the RC.6 installer and results. State explicitly
+when a risky migration case was not tested; do not claim it passed.
+
+Only after that verification, update the remaining `ACCEPTANCE` token to
+`accepted`, record the owner acceptance in the PR and merge the **reviewed**
+acceptance-only change. Stable promotion must reuse these three exact RC.6
+installer hashes without rebuilding the application.
 
 ## Revoked public Smart candidate — v1.1.3-rc.1
 
