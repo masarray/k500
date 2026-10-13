@@ -142,7 +142,7 @@ assert.match(nativeSelfTest, /studioEngine.reverbEqBands\(\)->setHpType\(QString
 // reference anchors, not a false claim about the physical DSP coefficients.
 const fxCtx = {};
 vm.createContext(fxCtx);
-vm.runInContext(fxVisualSource.replace(/^\\.pragma library\\s*/m, ""), fxCtx);
+vm.runInContext(fxVisualSource.replace(/^\.pragma library\s*/m, ""), fxCtx);
 assert.equal(typeof fxCtx.cutoffDb, "function");
 const near = (actual, desired, tolerance, desc) =>
     assert.ok(Math.abs(actual - desired) <= tolerance,
