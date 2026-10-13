@@ -66,6 +66,9 @@ StudioPanel {
     // becomes flat. This mirrors the native K500 app semantics.
     readonly property bool hpfBypassed: String(root.bands.hpType).trim().toUpperCase() === "BYPASS"
     readonly property bool lpfBypassed: String(root.bands.lpType).trim().toUpperCase() === "BYPASS"
+    // PEQ_BYPASS_QUIET_CAPTIONS_V3: frequency stays visible; state is color.
+    readonly property color hpGuideColor: root.hpfBypassed ? Theme.textDim : Theme.amber
+    readonly property color lpGuideColor: root.lpfBypassed ? Theme.textDim : Theme.amber
 
     readonly property real virtualScaleX: graph.width > 0 ? graph.width / 1040.0 : 1.0
     readonly property real virtualScaleY: graph.height > 0 ? graph.height / 354.0 : 1.0
@@ -640,7 +643,7 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="hpf"
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.hpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.hpfBypassed?.11:.28}}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:root.hpGuideColor;opacity:root.hpfBypassed?.32:.28}}
                     Item {
                         id:hpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -649,14 +652,14 @@ StudioPanel {
                         Rectangle {
                             anchors.centerIn:parent
                             width:(hpfGuide.selected?28:22)*root.nodeScale;height:width;radius:width/2
-                            color:Theme.amber;opacity:hpfGuide.selected?.12:.045;antialiasing:true
+                            color:root.hpGuideColor;opacity:hpfGuide.selected?.12:.045;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
                             width:(hpfGuide.selected?23:19)*root.nodeScale;height:width;radius:width/2
                             color:"transparent";border.width:hpfGuide.selected?1.6:1.1
-                            border.color:Theme.amber;opacity:hpfGuide.selected?.92:.72;antialiasing:true
+                            border.color:root.hpGuideColor;opacity:hpfGuide.selected?.92:.72;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
@@ -664,7 +667,7 @@ StudioPanel {
                             width:(hpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
                             color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
                             Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:hpfGuide.selected?.32:.18;antialiasing:true}
-                            Text{anchors.centerIn:parent;text:"HP";color:hpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
+                            Text{anchors.centerIn:parent;text:"HP";color:root.hpfBypassed?Theme.textDim:(hpfGuide.selected?Theme.text:Theme.amber);font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("hpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setHpfHz(root.freqForX(p.x))}}}
@@ -675,7 +678,7 @@ StudioPanel {
                     readonly property bool selected:root.selectedTarget==="lpf"
                     width:28*root.virtualScaleX;height:root.plotBottom-root.topPad
                     x:root.xFor(root.bands.lpfHz)-width/2;y:root.topPad
-                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:Theme.amber;opacity:root.lpfBypassed?.11:.28}}
+                    Repeater{model:Math.max(1,Math.floor(parent.height/9));delegate:Rectangle{required property int index;width:1;height:4;x:parent.width/2;y:index*9;color:root.lpGuideColor;opacity:root.lpfBypassed?.32:.28}}
                     Item {
                         id:lpfNode
                         anchors.horizontalCenter:parent.horizontalCenter
@@ -684,14 +687,14 @@ StudioPanel {
                         Rectangle {
                             anchors.centerIn:parent
                             width:(lpfGuide.selected?28:22)*root.nodeScale;height:width;radius:width/2
-                            color:Theme.amber;opacity:lpfGuide.selected?.12:.045;antialiasing:true
+                            color:root.lpGuideColor;opacity:lpfGuide.selected?.12:.045;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
                             anchors.centerIn:parent
                             width:(lpfGuide.selected?23:19)*root.nodeScale;height:width;radius:width/2
                             color:"transparent";border.width:lpfGuide.selected?1.6:1.1
-                            border.color:Theme.amber;opacity:lpfGuide.selected?.92:.72;antialiasing:true
+                            border.color:root.lpGuideColor;opacity:lpfGuide.selected?.92:.72;antialiasing:true
                             Behavior on width{NumberAnimation{duration:75}}
                         }
                         Rectangle {
@@ -699,7 +702,7 @@ StudioPanel {
                             width:(lpfGuide.selected?17:15)*root.nodeScale;height:width;radius:width/2
                             color:"#070B0E";border.width:1;border.color:"#5FFFBE00";antialiasing:true
                             Rectangle{width:4*root.nodeScale;height:2*root.nodeScale;radius:height/2;x:3*root.nodeScale;y:2.5*root.nodeScale;color:"#FFFFFF";opacity:lpfGuide.selected?.32:.18;antialiasing:true}
-                            Text{anchors.centerIn:parent;text:"LP";color:lpfGuide.selected?Theme.text:Theme.amber;font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
+                            Text{anchors.centerIn:parent;text:"LP";color:root.lpfBypassed?Theme.textDim:(lpfGuide.selected?Theme.text:Theme.amber);font.family:Theme.monoFamily;font.pixelSize:7;font.weight:Font.Bold;font.letterSpacing:-.2}
                         }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.SizeHorCursor;onPressed:root.selectCrossover("lpf");onPositionChanged:function(e){if(pressed){var p=mapToItem(graph,e.x,e.y);root.bands.setLpfHz(root.freqForX(p.x))}}}
@@ -714,16 +717,13 @@ StudioPanel {
                     x:graph.captionPositions.hp.x
                     y:graph.captionPositions.hp.y
                     width:Math.min(implicitWidth,Math.max(60,graph.width-root.leftPad-root.rightPad-10))
-                    text:root.hpfBypassed
-                         ? "HP BYPASS · "+root.fmtF(root.bands.hpfHz)+" Hz"
-                         : "HP · "+root.fmtF(root.bands.hpfHz)+" Hz"
+                    text:"HP "+root.fmtF(root.bands.hpfHz)+" Hz"
                     elide:Text.ElideRight
-                    color:Theme.amber
-                    font.family:Theme.monoFamily
-                    font.pixelSize:10
-                    font.weight:Font.DemiBold
-                    style:Text.Outline
-                    styleColor:"#B0000000"
+                    color:root.hpGuideColor
+                    font.family:Theme.fontFamily
+                    font.pixelSize:11
+                    font.weight:Font.Medium
+                    renderType:Text.QtRendering
                 }
                 Text {
                     id:lpfCaption
@@ -731,16 +731,13 @@ StudioPanel {
                     x:graph.captionPositions.lp.x
                     y:graph.captionPositions.lp.y
                     width:Math.min(implicitWidth,Math.max(60,graph.width-root.leftPad-root.rightPad-10))
-                    text:root.lpfBypassed
-                         ? "LP BYPASS · "+root.fmtF(root.bands.lpfHz)+" Hz"
-                         : "LP · "+root.fmtF(root.bands.lpfHz)+" Hz"
+                    text:"LP "+root.fmtF(root.bands.lpfHz)+" Hz"
                     elide:Text.ElideRight
-                    color:Theme.amber
-                    font.family:Theme.monoFamily
-                    font.pixelSize:10
-                    font.weight:Font.DemiBold
-                    style:Text.Outline
-                    styleColor:"#B0000000"
+                    color:root.lpGuideColor
+                    font.family:Theme.fontFamily
+                    font.pixelSize:11
+                    font.weight:Font.Medium
+                    renderType:Text.QtRendering
                 }
 
                 Repeater {
