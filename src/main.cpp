@@ -314,9 +314,9 @@ int main(int argc, char *argv[])
 
     const bool engineSelfTest = app.arguments().contains(QStringLiteral("--engine-self-test"));
     if (engineSelfTest) {
-        // OFFLINE_CROSSOVER_ENGINE_TEST_V1 — cold start must be Bypass for
-        // every persistent PEQ model without any QML priming or device writes.
-        // Hardware readback and file Preview are allowed to replace it later.
+        // OFFLINE_CROSSOVER_ENGINE_TEST_V1 — type-capable pages cold-start
+        // Bypass. Reverb/Echo frequency-only HP/LP must already be active.
+        // No QML priming, stateEdited, or device command may cause this.
         const bool offlineCrossoverDefaults =
             studioEngine.hpType() == QStringLiteral("Bypass")
             && studioEngine.lpType() == QStringLiteral("Bypass");
@@ -324,14 +324,25 @@ int main(int argc, char *argv[])
             return 2;
         for (EqBandModel *eqModel : {
                  studioEngine.musicEqBands(), studioEngine.micAEqBands(),
-                 studioEngine.micBEqBands(), studioEngine.reverbEqBands(),
-                 studioEngine.echoEqBands(), studioEngine.mainEqBands(),
+                 studioEngine.micBEqBands(), studioEngine.mainEqBands(),
                  studioEngine.surroundEqBands(), studioEngine.centerEqBands(),
                  studioEngine.subEqBands()}) {
             if (eqModel->hpType() != QStringLiteral("Bypass")
                 || eqModel->lpType() != QStringLiteral("Bypass"))
                 return 2;
         }
+        for (EqBandModel *fxModel : {studioEngine.reverbEqBands(), studioEngine.echoEqBands()}) {
+            if (fxModel->hpType() != QStringLiteral("HP Butter 12")
+                || fxModel->lpType() != QStringLiteral("LP Butter 12"))
+                return 2;
+        }
+        // Even a synthetic unsupported type setter may not persist or emit
+        // an FX type-write request on the real native K500 command path.
+        studioEngine.reverbEqBands()->setHpType(QStringLiteral("Bypass"));
+        studioEngine.echoEqBands()->setLpType(QStringLiteral("Bypass"));
+        if (studioEngine.reverbEqBands()->hpType() != QStringLiteral("HP Butter 12")
+            || studioEngine.echoEqBands()->lpType() != QStringLiteral("LP Butter 12"))
+            return 2;
         studioEngine.setBass(3.5);
         studioEngine.setHpfHz(95.0);
         studioEngine.setLpType(QStringLiteral("LP LR 24"));

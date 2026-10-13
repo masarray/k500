@@ -340,9 +340,12 @@ StudioEngine::StudioEngine(QObject *parent)
     m_masterInitDebounce.setInterval(160);
     connect(&m_masterInitDebounce, &QTimer::timeout, this,
             &StudioEngine::flushPendingMasterInitWrites);
-    // OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1 — construct all nine EQ models
-    // with HP/LP Type Bypass *before* connecting edit signals. There is no
-    // startup setter, delayed QML replay, stateEdited or hardware write.
+    // OFFLINE_CROSSOVER_SINGLE_AUTHORITY_V1 — seven type-capable models
+    // start Bypass before edit signals. Reverb/Echo are frequency-only fixed
+    // HP/LP filters: they NEVER have a native Type/Bypass field. Represent
+    // their always-active curve using the existing Butter 12 display model,
+    // without claiming its unmeasured physical slope as exact.
+    // No startup setter, delayed QML replay or native write is generated.
     // Preview metadata and real-device readback use syncCrossover() later;
     // disconnect preserves the working values instead of re-priming them.
     m_musicEqBands.configure(7, {80, 160, 315, 630, 1300, 2500, 8000},
@@ -352,11 +355,11 @@ StudioEngine::StudioEngine(QObject *parent)
     m_micBEqBands.configure(10, {80, 125, 250, 500, 1000, 2000, 4000, 6300, 10000, 12500},
                             20, 20000, QStringLiteral("Bypass"), QStringLiteral("Bypass"));
     m_reverbEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                              217, 12000, QStringLiteral("Bypass"), QStringLiteral("Bypass"),
+                              217, 12000, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"),
                               K500Protocol::NativeRange::FxHpfMinHz, K500Protocol::NativeRange::FxHpfMaxHz,
                               K500Protocol::NativeRange::FxLpfMinHz, K500Protocol::NativeRange::FxLpfMaxHz);
     m_echoEqBands.configure(5, {125, 250, 1000, 2500, 8000},
-                            700, 4400, QStringLiteral("Bypass"), QStringLiteral("Bypass"),
+                            700, 4400, QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"),
                             K500Protocol::NativeRange::FxHpfMinHz, K500Protocol::NativeRange::FxHpfMaxHz,
                             K500Protocol::NativeRange::FxLpfMinHz, K500Protocol::NativeRange::FxLpfMaxHz);
     m_mainEqBands.configure(7, {80, 160, 315, 630, 1250, 2500, 8000},
@@ -449,6 +452,14 @@ void StudioEngine::connectEqModel(EqBandModel *model, const QString &key)
     });
     connect(model, &EqBandModel::crossoverEditRequested, this,
             [this, model, key](const QString &field, const QVariant &value) {
+        // FX_FIXED_FREQUENCY_ONLY_V1: synthetic type changes cannot be
+        // forwarded to K500. The native FX blocks encode only cutoff Hz.
+        if ((key == QStringLiteral("reverb") || key == QStringLiteral("echo"))
+            && (field == QStringLiteral("hpType") || field == QStringLiteral("lpType"))) {
+            model->syncCrossover(model->hpfHz(), model->lpfHz(),
+                                 QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12"));
+            return;
+        }
         if (key == QStringLiteral("music")) {
             if (field == QStringLiteral("hpfHz")) {
                 m_hpfHz = model->hpfHz();
@@ -620,6 +631,9 @@ void StudioEngine::hydrateMemory(const QByteArray &memory, bool hardwareReadback
         } else if (key == QStringLiteral("sub")) {
             hpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubHpType), true);
             lpType = K500Protocol::crossoverFilterLabel(byteAt(memory, K500Protocol::ReadbackOffset::SubLpType), false);
+        } else if (key == QStringLiteral("reverb") || key == QStringLiteral("echo")) {
+            // No native FX Type bytes exist: keep the active visualization
+            // defaults, never restore a synthetic Bypass from old snapshots.
         } else if (model) {
             hpType = model->hpType();
             lpType = model->lpType();

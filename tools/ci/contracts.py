@@ -948,10 +948,12 @@ def check_ui_contracts() -> None:
     constructor = read("src/StudioEngine.cpp").split(
         "StudioEngine::StudioEngine(QObject *parent)", 1
     )[-1].split("    connectEqModel(", 1)[0]
-    if constructor.count('QStringLiteral("Bypass"), QStringLiteral("Bypass")') != 9:
-        FAILURES.append("StudioEngine: expected exactly 9 no-edit Bypass model initializations")
+    if constructor.count('QStringLiteral("Bypass"), QStringLiteral("Bypass")') != 7:
+        FAILURES.append("StudioEngine: expected 7 type-capable Bypass model initializations")
+    elif constructor.count('QStringLiteral("HP Butter 12"), QStringLiteral("LP Butter 12")') != 2:
+        FAILURES.append("StudioEngine: expected two always-active FX frequency-only models")
     else:
-        PASSES.append("offline HP/LP authority: 9 constructor-only Bypass models")
+        PASSES.append("offline HP/LP authority: 7 Bypass-capable + 2 fixed FX models")
     require(
         "src/StudioEngine.h",
         'QString m_hpType = QStringLiteral("Bypass")',
