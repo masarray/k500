@@ -392,6 +392,7 @@ var
   SmartMigrationDetail: TNewStaticText;
   SmartMigrationError: TNewStaticText;
   SmartMigrationStarted: Boolean;
+  SmartMigrationResultView: Boolean;
 
 function InitializeSetup(): Boolean;
 begin
@@ -401,6 +402,35 @@ end;
 procedure InitializeWizard();
 begin
   SmartMigrationStarted := False;
+  SmartMigrationResultView := ExpandConstant('{param:MIGRATIONRESULT|0}') = '1';
+  if SmartMigrationResultView then
+  begin
+    // The verified helper may need to return an unsuccessful outcome AFTER
+    // the first wizard has exited. Reopen THIS Inno UI, not a Win32 MsgBox.
+    SmartMigrationPage := CreateCustomPage(wpWelcome,
+      'K500 was not updated', 'Your existing application and presets are protected.');
+    SmartMigrationInfo := TNewStaticText.Create(SmartMigrationPage);
+    SmartMigrationInfo.Parent := SmartMigrationPage.Surface;
+    SmartMigrationInfo.Left := ScaleX(12);
+    SmartMigrationInfo.Top := ScaleY(25);
+    SmartMigrationInfo.Width := SmartMigrationPage.SurfaceWidth - ScaleX(24);
+    SmartMigrationInfo.WordWrap := True;
+    SmartMigrationInfo.Font.Style := [fsBold];
+    SmartMigrationInfo.Caption := 'We could not complete the update safely.';
+    WizardForm.AdjustLabelHeight(SmartMigrationInfo);
+    SmartMigrationDetail := TNewStaticText.Create(SmartMigrationPage);
+    SmartMigrationDetail.Parent := SmartMigrationPage.Surface;
+    SmartMigrationDetail.Left := SmartMigrationInfo.Left;
+    SmartMigrationDetail.Top := SmartMigrationInfo.Top + SmartMigrationInfo.Height + ScaleY(20);
+    SmartMigrationDetail.Width := SmartMigrationInfo.Width;
+    SmartMigrationDetail.WordWrap := True;
+    SmartMigrationDetail.Caption :=
+      'K500 kept the previous installation instead of risking your presets.' +
+      #13#10#13#10 +
+      'Please close this window and contact SonKuPik support if the problem continues.';
+    WizardForm.AdjustLabelHeight(SmartMigrationDetail);
+    Exit;
+  end;
   if SmartMigrationHelperAuthorized or WizardSilent or
      not SmartMachineRegistrationPresent then Exit;
 
@@ -449,6 +479,12 @@ begin
   Result := True;
   if not Assigned(SmartMigrationPage) or CurPageID <> SmartMigrationPage.ID then Exit;
   Result := False;
+  if SmartMigrationResultView then
+  begin
+    SmartMigrationStarted := True;
+    WizardForm.Close;
+    Exit;
+  end;
   Reason := '';
   if not SmartUserDestinationReusable(Reason) or
      not BeginSmartMigration(Reason) then
