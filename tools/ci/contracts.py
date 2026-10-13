@@ -1884,6 +1884,8 @@ def check_release_contracts() -> None:
         "SMART_ORPHAN_AUTORECOVERY_V3",
         "Result := True;  // A clean per-user destination.",
         "Another K500 location needs review.",
+        "else if not SmartMigrationHelperAuthorized then",
+        "if not SmartRegisteredDestinationSafe(ProbeError) then",
     )
     require(
         "packaging/windows/update_helper.cpp",
