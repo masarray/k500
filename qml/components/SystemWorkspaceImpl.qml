@@ -102,7 +102,16 @@ Item {
             root.pcNotice("Mic Trigger belum bisa disimpan; klik Preview untuk membuang nilai sementaranya.")
             return
         }
+        // SAVE_PC_AS_SMART_FOLDER_V1 — never reopen at generic Documents.
+        // The bridge validates the last successful export path, or creates
+        // only the canonical SonKuPik K500 preset directory on this click.
+        var folder = root.fileBridge.prepareSaveDirectory()
+        if (!folder || String(folder).length === 0) {
+            root.pcNotice(String(root.fileBridge.lastError || "Folder preset tidak tersedia."))
+            return
+        }
         root.pcSaveNotice = ""
+        savePresetDialog.currentFolder = folder
         savePresetDialog.open()
     }
 
