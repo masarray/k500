@@ -686,6 +686,31 @@ def check_ui_contracts() -> None:
     else:
         FAILURES.append("PEQ caption geometry test requires Node.js")
 
+    # SAVE_PC_AS_SMART_FOLDER_V1 — exporting must not silently default
+    # to generic Documents or change PC library selection. Record only after
+    # QSaveFile commit, and never let an invalid folder open the picker.
+    require(
+        "src/k500/K500PresetFileBridge.h",
+        "Q_INVOKABLE QUrl prepareSaveDirectory()",
+    )
+    require(
+        "src/k500/K500PresetFileBridge.cpp",
+        "SAVE_PC_AS_SMART_FOLDER_V1",
+        'QStringLiteral("pcPresetExport/lastFolder")',
+        'QStringLiteral("SonKuPikK500/Presets")',
+        "QStandardPaths::DocumentsLocation",
+        "QDir().mkpath(target)",
+        "QUrl::fromLocalFile",
+        "file.commit()",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SAVE_PC_AS_SMART_FOLDER_V1",
+        "root.fileBridge.prepareSaveDirectory()",
+        "savePresetDialog.currentFolder = folder",
+        "savePresetDialog.open()",
+    )
+
     # MASS_UPLOAD_EXTENDED_SELECTION_V1: modifiers work before staging; device
     # upload cardinality and descending 10->1 hardware order remain unchanged.
     require(
