@@ -179,12 +179,34 @@ void logLine(const Request &request, const std::wstring &message)
     appendLog(request.log, message);
 }
 
+// SMART_NATIVE_MIGRATION_RESULT_WIZARD_V2: migration failures return to
+// the authenticated Inno window. Never expose raw helper/registry errors in
+// Win32 message boxes to ordinary installer users.
+bool verifySetup(const Request &request, HANDLE &lockedFile);
+
 int fail(const Request &request, int code, const std::wstring &message)
 {
     logLine(request, L"ERROR " + std::to_wstring(code) + L": " + message);
     if (!testMode()) {
-        MessageBoxW(nullptr, (message + L"\n\nUpdate log:\n" + request.log).c_str(),
-                    L"SonKuPik K500 update", MB_OK | MB_ICONERROR);
+        if (request.mode == L"migrate") {
+            HANDLE validated = INVALID_HANDLE_VALUE;
+            if (verifySetup(request, validated)) {
+                CloseHandle(validated);
+                const HINSTANCE launched = ShellExecuteW(nullptr, L"open",
+                    request.setup.c_str(), L"/MIGRATIONRESULT=1",
+                    nullptr, SW_SHOWNORMAL);
+                if (reinterpret_cast<INT_PTR>(launched) <= 32)
+                    logLine(request, L"Failed to show the recovery page in Inno Setup.");
+            } else {
+                // Executing an unverified installer to show an error would
+                // violate the immutable SHA-256 boundary. Preserve the log.
+                logLine(request, L"Recovery UI skipped: setup could not be authenticated.");
+            }
+        } else {
+            MessageBoxW(nullptr,
+                (message + L"\n\nUpdate log:\n" + request.log).c_str(),
+                L"SonKuPik K500 update", MB_OK | MB_ICONERROR);
+        }
     }
     return code;
 }
