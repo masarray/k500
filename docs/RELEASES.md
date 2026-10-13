@@ -8,9 +8,9 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.1.2**.
+Current public stable: **v1.1.3**.
 
-The v1.1.2 RC gate is accepted. Both installers were promoted byte-identically from immutable `v1.1.2-rc.2` following release-owner Windows and physical K500 USB acceptance. GitHub `releases/latest` points to v1.1.2; the landing routes resolve the stable tag dynamically.
+Owner-accepted `v1.1.3-rc.6` was promoted byte-identically from application commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) verified all three installer SHA-256 digests and successfully published `v1.1.3` as the GitHub Latest Release. No installer bytes were rebuilt. The site routes resolve this latest non-prerelease release dynamically; v1.1.2 remains a historical stable.
 
 Stable **v1.1.1** was promoted byte-identically from accepted **v1.1.1-rc.1** at exact source commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Stable **v1.1.0** remains historical and was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`.
 
@@ -36,27 +36,20 @@ MAJOR.MINOR.PATCH
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
 
-## v1.1.3 RC — preparing, not public stable
+## v1.1.3 stable record — 2026-10-13
 
-- Application source version: `1.1.3`; **latest public stable stays v1.1.2**.
-- Manual `Windows Updater Release Candidate` now packages **three** installer
-  variants from one exact main commit and validates the native Smart Installer
-  using real deployed Qt application bytes.
-- Existing Machine/Per-User asset names remain unchanged for updater compatibility;
-  the **public Smart Installer must install exclusively to LocalAppData**.
-- **RC.1 revoked for public Smart install scope regression**; RC.2+ must prove
-  default no-admin LocalAppData, no CLI overrides. Existing RC.1 remains immutable.
-- Interactive public Smart Setup detects a registered canonical Program Files
-  copy and offers a **user-approved, rollback-capable migration** via the
-  existing verified updater helper. A single Windows elevation is still
-  required to remove protected old files; future current-user updates are
-  unelevated. Residual old Program Files files/registration must fail QA,
-  not be deleted blindly.
-- Separate pending gate: `docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md`.
-- Required manual work: `docs/V1_1_3_SMART_INSTALLER_FIELD_QA.md`.
-- Stable promotion is blocked until recorded three-package SHA-256 acceptance,
-  real Windows upgrade/failure matrix and physical USB/HID K500 owner acceptance.
-- No change to old v1.1.2 published EXEs, tag, or accepted SHA-256 digests.
+- Stable tag: [`v1.1.3`](https://github.com/masarray/k500/releases/tag/v1.1.3) (**Latest Release**, non-prerelease).
+- Accepted immutable candidate: [`v1.1.3-rc.6`](https://github.com/masarray/k500/releases/tag/v1.1.3-rc.6).
+- Exact application source SHA: `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`.
+- Owner acceptance and immutable fingerprints: [v1.1.3 RC Acceptance](V1_1_3_UPDATER_RC_ACCEPTANCE.md).
+- Machine Setup SHA-256: `282b0d5111879786c8db6c21e3542e81d43ec6cc475d130d12356950c494cde6`.
+- Per-user Setup SHA-256: `6f9af6dcf5b8fcf4540ee417f322873dd2ecdd33cd9c7686f21a44b71ed9cc14`.
+- Public Smart Installer SHA-256: `760531e9ce9bf741db5d39f589c599101e2b950b2bad04c81e12e52191cea680`.
+- [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) completed successfully after the promotion-specific Smart no-override reinstall correction. All three stable packages match the RC.6 hashes and sizes exactly; no rebuild, no retagging of historical releases.
+- Normal public Smart installation targets `%LOCALAPPDATA%\Programs\SonKuPik K500` without UAC. Migration from a registered machine-wide copy requires an explicit guided handoff and an authorized UAC for protected old files.
+- Reverb/Echo HPF/LPF are native always-on frequency-only filters; their PEQ visualization is screenshot-calibrated, not a measured claim about DSP coefficients. Other type-capable sections preserve existing Type/Bypass handling.
+- Bluetooth SPP is experimental. Public hardware-qualified transport is **USB HID on Windows x64**.
+- Prior RC.1 scope error and the resolved first stable-promotion workflow failure are preserved in CI history and the [release gate](https://github.com/masarray/k500/issues/202); they do not change these accepted final package bytes.
 
 ## v1.1.2 stable record
 
@@ -99,6 +92,7 @@ For v1.1+, the stable release publishes:
 ```text
 SonKuPik-K500-v<version>-Windows-Setup.exe
 SonKuPik-K500-v<version>-Windows-Setup-PerUser.exe
+SonKuPik-K500-v<version>-Windows-Smart-Installer.exe
 SHA256SUMS.txt
 release-manifest.json
 ```
@@ -149,9 +143,9 @@ CI can verify software behavior; hardware-facing support claims still require re
 For v1.1+, the release model changes from **build-and-publish** to **accept-and-promote**:
 
 - `v1.1.x-rc.N` is an immutable GitHub prerelease built from one exact `main` commit;
-- desktop acceptance records the RC tag, full source commit, and SHA-256 of the machine and per-user Setup packages in a release-specific acceptance record (for candidate v1.1.2: `V1_1_2_UPDATER_RC_ACCEPTANCE.md`);
+- desktop acceptance records the RC tag, full source commit and SHA-256 of every installer (Machine, PerUser and Smart for v1.1.3) in the release-specific acceptance record;
 - public v1.0.3 is never pointed at prereleases; an installed v1.1 candidate uses the explicit process-local `--update-candidate=<tag>` QA channel;
-- stable v1.1.x promotion downloads the accepted machine/per-user prerelease assets, verifies tag→commit→manifest→hash provenance, revalidates both installers, and republishes the **same binary bytes** under stable filenames with a two-artifact stable v3 manifest;
+- stable v1.1.x promotion downloads the accepted prerelease installer assets, verifies tag→commit→manifest→hash provenance, revalidates the published installer variants, and republishes the **same binary bytes** under stable filenames (three installers and a release v3 manifest for v1.1.3);
 - rebuilding the application after RC acceptance is not a valid v1.1 promotion path.
 
 Candidate source and a green CI matrix do not by themselves authorize a public stable release.

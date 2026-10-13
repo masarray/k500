@@ -2,6 +2,15 @@
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.
 
+## v1.1.3 — 2026-10-13
+
+- **Public stable release** from owner-accepted immutable `v1.1.3-rc.6` at application source `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) passed and set GitHub Latest to v1.1.3; Machine, PerUser and Smart installer SHA-256 values are byte-identical to the accepted RC.6.
+- Ships the native scope-aware Smart Installer with ordinary per-user LocalAppData installation, explicit guided legacy machine migration, verified update handoff and fail-closed safety. Machine/PerUser packages remain for updater compatibility.
+- Finalizes Reverb/Echo native frequency-only always-active HPF/LPF handling and screenshot-reference PEQ visual curves without fabricating Type/Bypass or changing the captured device command formats.
+- Improves responsive PEQ inspector/chip spacing, HP/LP caption collision avoidance, prompt Save/Recall success feedback, Save PC As folder defaults, and safe user preset workflows.
+- Preserves the accepted USB HID operation surface and device data authority; Bluetooth SPP remains experimental. See [accepted release provenance](docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md).
+- Public landing and repository documentation updated after promotion; the download route continues to resolve GitHub Latest dynamically rather than pinning a prerelease URL.
+
 ## v1.1.2 — 2026-10-10
 
 - Add ten offline-bundled UAUDIO companions 11–20 generated from the exact official 01–10 preset bytes; only music source, 16-character hardware name and checksum may change.

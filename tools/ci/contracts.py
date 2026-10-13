@@ -2192,9 +2192,9 @@ def check_release_contracts() -> None:
     )
     require(
         "README.md",
-        "**v1.1.2** is the current public stable",
-        "promoted byte-identically from accepted `v1.1.2-rc.2`",
-        "landing API",
+        "**v1.1.3** is the current public stable",
+        "promoted byte-identically from owner-accepted `v1.1.3-rc.6`",
+        "landing route",
     )
     forbid(
         "README.md",
@@ -2203,7 +2203,8 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/RELEASES.md",
-        "Current public stable: **v1.1.2**",
+        "Current public stable: **v1.1.3**",
+        "## v1.1.3 stable record",
         "## v1.1.2 stable record",
         "## v1.1.1 stable record",
         "122689e86e5624e7ce251108b9551f98216b62fcab976ea1d912c400c0d83b03",
@@ -2216,6 +2217,7 @@ def check_release_contracts() -> None:
     )
     require(
         "CHANGELOG.md",
+        "## v1.1.3 — 2026-10-13",
         "## v1.1.2 — 2026-10-10",
         "Released v1.1.2 stable from accepted `v1.1.2-rc.2`",
         "## v1.1.1 — 2026-10-08",
@@ -2235,24 +2237,24 @@ def check_release_contracts() -> None:
     )
     require(
         "site/index.html",
-        "Download SonKuPik K500 v1.1.2",
+        "Download SonKuPik K500 v1.1.3",
         'data-release-template="Download SonKuPik K500 {tag}"',
         'data-release-template="Download {tag}"',
     )
     require(
         "site/features/index.html",
-        "Download v1.1.2",
+        "Download v1.1.3",
         'data-release-template="Download {tag}"',
     )
     require(
         "site/download/index.html",
-        "Download Smart Installer v1.1.2",
+        "Download Smart Installer v1.1.3",
         'data-release-template="Download Smart Installer {tag}"',
         'data-release-template="Smart Installer {tag}"',
     )
     require(
         "AGENTS.md",
-        "Public stable line: **v1.1.2**",
+        "Public stable line: **v1.1.3**",
     )
     forbid(
         "AGENTS.md",
@@ -2260,8 +2262,8 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/README.md",
-        "| Public stable | `v1.1.2`",
-        "| Stable source line | `v1.1.2`, promoted byte-identically from accepted `v1.1.2-rc.2`",
+        "| Public stable | `v1.1.3`",
+        "| Stable source line | `v1.1.3`, promoted byte-identically from accepted `v1.1.3-rc.6`",
         "V1_1_1_UPDATER_RC_ACCEPTANCE.md",
         "landing buttons show the resolved stable tag",
     )
