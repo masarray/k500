@@ -251,20 +251,25 @@ begin
   end;
   if not HasRegistration then
   begin
-    Reason := 'We found an older K500 folder that Windows cannot verify. Your files were not changed. Please contact SonKuPik support.';
+    // SMART_ORPHAN_AUTORECOVERY_V3: the exact LocalAppData K500 folder may
+    // survive a prior installer even when the uninstall record is absent.
+    // Never delete it here. The verified helper stages its ENTIRE contents
+    // to protected recovery before installing the fresh application.
+    Result := True;
     Exit;
   end;
   Registered := '';
-  if not RegQueryStringValue(HKCU64, Key, 'Inno Setup: App Path', Registered) or
-     (CompareText(AddBackslash(Registered), AddBackslash(UserDir)) <> 0) or
-     not FileExists(AddBackslash(UserDir) + '{#AppExeName}') or
-     not FileExists(AddBackslash(UserDir) + 'unins000.exe') then
+  if not RegQueryStringValue(HKCU64, Key, 'Inno Setup: App Path', Registered) then
+    RegQueryStringValue(HKCU32, Key, 'Inno Setup: App Path', Registered);
+  if (CompareText(AddBackslash(Registered), AddBackslash(UserDir)) <> 0) then
   begin
-    Reason := 'Windows could not verify the existing K500 installation. Your files were kept. Please contact SonKuPik support.';
+    // A registration pointing outside the canonical K500 folder is not ours
+    // to overwrite or uninstall. Fail closed with a concise inline message.
+    Reason := 'Another K500 location needs review. Your files have not changed.';
     Exit;
   end;
-  // Target is a real, registered canonical per-user installation; helper
-  // independently rechecks this and snapshots it before replacing anything.
+  // A partial but canonically registered install is recoverable too; its
+  // uninstall record and folder are snapshotted by the helper.
   Result := True;
 end;
 
@@ -427,7 +432,7 @@ begin
     SmartMigrationDetail.Caption :=
       'K500 kept the previous installation instead of risking your presets.' +
       '' + #13#10#13#10 +
-      'Please close this window and contact SonKuPik support if the problem continues.';
+      'Your previous files were kept. You can try the update again later.';
     WizardForm.AdjustLabelHeight(SmartMigrationDetail);
     Exit;
   end;
