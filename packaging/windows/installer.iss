@@ -63,8 +63,8 @@ AppUpdatesURL={#AppURL}/releases
 ; NATIVE_SMART_INSTALLER_V1 / PUBLIC_LOCALAPPDATA_ONLY_SMART_V1
 ; Public Smart Installer always targets %LOCALAPPDATA%\Programs\SonKuPik K500.
 ; No ALLUSERS choice, privilege override, or prior machine-scope inheritance.
-; An existing machine registration is rejected safely before file changes;
-; explicit app-owned machine-to-user migration remains a separate action.
+ ; Existing verified machine and per-user installs can be reconciled by the
+; app-owned transactional migration helper. Unidentified data stays untouched.
 DefaultDirName={userpf}\{#AppName}
 DefaultGroupName={#AppName}
 PrivilegesRequired=lowest
@@ -228,6 +228,46 @@ begin
   Result := RegKeyExists(HKLM64, Key) or RegKeyExists(HKLM32, Key);
 end;
 
+// SMART_NATIVE_MIGRATION_WIZARD_V2 — a previously installed, registered
+// per-user copy is a normal upgrade target, not "unknown user data". Only a
+// canonical matching HKCU registration with intact EXE/uninstaller is trusted.
+// Unregistered or incomplete directories are never overwritten or deleted.
+function SmartUserDestinationReusable(var Reason: String): Boolean;
+var
+  Key: String;
+  UserDir: String;
+  Registered: String;
+  HasRegistration: Boolean;
+begin
+  Result := False;
+  Reason := '';
+  Key := 'Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1';
+  UserDir := AddBackslash(ExpandConstant('{userpf}')) + '{#AppName}';
+  HasRegistration := RegKeyExists(HKCU64, Key) or RegKeyExists(HKCU32, Key);
+  if not HasRegistration and not DirExists(UserDir) then
+  begin
+    Result := True;  // A clean per-user destination.
+    Exit;
+  end;
+  if not HasRegistration then
+  begin
+    Reason := 'We found an older K500 folder that Windows cannot verify. Your files were not changed. Please contact SonKuPik support.';
+    Exit;
+  end;
+  Registered := '';
+  if not RegQueryStringValue(HKCU64, Key, 'Inno Setup: App Path', Registered) or
+     (CompareText(AddBackslash(Registered), AddBackslash(UserDir)) <> 0) or
+     not FileExists(AddBackslash(UserDir) + '{#AppExeName}') or
+     not FileExists(AddBackslash(UserDir) + 'unins000.exe') then
+  begin
+    Reason := 'Windows could not verify the existing K500 installation. Your files were kept. Please contact SonKuPik support.';
+    Exit;
+  end;
+  // Target is a real, registered canonical per-user installation; helper
+  // independently rechecks this and snapshots it before replacing anything.
+  Result := True;
+end;
+
 // SMART_VERIFIED_MACHINE_TO_USER_HANDOFF_V1
 // This entrypoint never uninstalls or deletes Program Files itself. It only
 // stages the exact bundled updater helper under the current user's temp dir.
@@ -298,12 +338,9 @@ begin
   end;
 
   TargetDir := AddBackslash(ExpandConstant('{userpf}')) + '{#AppName}';
-  if RegKeyExists(HKCU64, Key) or RegKeyExists(HKCU32, Key) or
-     DirExists(TargetDir) then
-  begin
-    Reason := 'A per-user copy or directory already exists. Refusing to replace unknown user data.';
-    Exit;
-  end;
+  // Do not refuse a legitimate canonical per-user installation: preserve
+  // it transactionally and upgrade the same target. Unknown data still blocks.
+  if not SmartUserDestinationReusable(Reason) then Exit;
 
   SetupPath := ExpandConstant('{srcexe}');
   SetupHash := Lowercase(GetSHA256OfFile(SetupPath));
@@ -347,35 +384,137 @@ begin
               IntToStr(ExitCode) + ').';
 end;
 
+// SMART_NATIVE_MIGRATION_WIZARD_V2 — the normal Inno Setup window is the
+// only setup UI. No pre-wizard Yes/No/error message boxes.
+var
+  SmartMigrationPage: TWizardPage;
+  SmartMigrationInfo: TNewStaticText;
+  SmartMigrationDetail: TNewStaticText;
+  SmartMigrationError: TNewStaticText;
+  SmartMigrationStarted: Boolean;
+  SmartMigrationResultView: Boolean;
+
 function InitializeSetup(): Boolean;
+begin
+  Result := True;
+end;
+
+procedure InitializeWizard();
+begin
+  SmartMigrationStarted := False;
+  SmartMigrationResultView := ExpandConstant('{param:MIGRATIONRESULT|0}') = '1';
+  if SmartMigrationResultView then
+  begin
+    // The verified helper may need to return an unsuccessful outcome AFTER
+    // the first wizard has exited. Reopen THIS Inno UI, not a Win32 MsgBox.
+    SmartMigrationPage := CreateCustomPage(wpWelcome,
+      'K500 was not updated', 'Your existing application and presets are protected.');
+    SmartMigrationInfo := TNewStaticText.Create(SmartMigrationPage);
+    SmartMigrationInfo.Parent := SmartMigrationPage.Surface;
+    SmartMigrationInfo.Left := ScaleX(12);
+    SmartMigrationInfo.Top := ScaleY(25);
+    SmartMigrationInfo.Width := SmartMigrationPage.SurfaceWidth - ScaleX(24);
+    SmartMigrationInfo.WordWrap := True;
+    SmartMigrationInfo.Font.Style := [fsBold];
+    SmartMigrationInfo.Caption := 'We could not complete the update safely.';
+    WizardForm.AdjustLabelHeight(SmartMigrationInfo);
+    SmartMigrationDetail := TNewStaticText.Create(SmartMigrationPage);
+    SmartMigrationDetail.Parent := SmartMigrationPage.Surface;
+    SmartMigrationDetail.Left := SmartMigrationInfo.Left;
+    SmartMigrationDetail.Top := SmartMigrationInfo.Top + SmartMigrationInfo.Height + ScaleY(20);
+    SmartMigrationDetail.Width := SmartMigrationInfo.Width;
+    SmartMigrationDetail.WordWrap := True;
+    SmartMigrationDetail.Caption :=
+      'K500 kept the previous installation instead of risking your presets.' +
+      '' + #13#10#13#10 +
+      'Please close this window and contact SonKuPik support if the problem continues.';
+    WizardForm.AdjustLabelHeight(SmartMigrationDetail);
+    Exit;
+  end;
+  if SmartMigrationHelperAuthorized or WizardSilent or
+     not SmartMachineRegistrationPresent then Exit;
+
+  SmartMigrationPage := CreateCustomPage(wpSelectTasks,
+    'Updating SonKuPik K500',
+    'Your presets and settings will be kept.');
+
+  SmartMigrationInfo := TNewStaticText.Create(SmartMigrationPage);
+  SmartMigrationInfo.Parent := SmartMigrationPage.Surface;
+  SmartMigrationInfo.Left := ScaleX(12);
+  SmartMigrationInfo.Top := ScaleY(22);
+  SmartMigrationInfo.Width := SmartMigrationPage.SurfaceWidth - ScaleX(24);
+  SmartMigrationInfo.WordWrap := True;
+  SmartMigrationInfo.Caption :=
+    'K500 is already on this PC. Setup will update it in your Windows account ' +
+    'so future updates are simpler.';
+  SmartMigrationInfo.Font.Style := [fsBold];
+  WizardForm.AdjustLabelHeight(SmartMigrationInfo);
+
+  SmartMigrationDetail := TNewStaticText.Create(SmartMigrationPage);
+  SmartMigrationDetail.Parent := SmartMigrationPage.Surface;
+  SmartMigrationDetail.Left := SmartMigrationInfo.Left;
+  SmartMigrationDetail.Top := SmartMigrationInfo.Top + SmartMigrationInfo.Height + ScaleY(18);
+  SmartMigrationDetail.Width := SmartMigrationInfo.Width;
+  SmartMigrationDetail.WordWrap := True;
+  SmartMigrationDetail.Caption :=
+    'Your existing presets stay in place.' + #13#10#13#10 +
+    'Windows may ask for permission once to remove the old version.' + #13#10#13#10 +
+    'Click Next. K500 will open automatically when the update is ready.';
+  WizardForm.AdjustLabelHeight(SmartMigrationDetail);
+
+  SmartMigrationError := TNewStaticText.Create(SmartMigrationPage);
+  SmartMigrationError.Parent := SmartMigrationPage.Surface;
+  SmartMigrationError.Left := SmartMigrationInfo.Left;
+  SmartMigrationError.Top := SmartMigrationDetail.Top + SmartMigrationDetail.Height + ScaleY(14);
+  SmartMigrationError.Width := SmartMigrationInfo.Width;
+  SmartMigrationError.WordWrap := True;
+  SmartMigrationError.Font.Color := clRed;
+  SmartMigrationError.Visible := False;
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
 var
   Reason: String;
 begin
   Result := True;
-  if SmartMigrationHelperAuthorized or not SmartMachineRegistrationPresent or
-     WizardSilent then
-    Exit;
-
-  if MsgBox('SonKuPik K500 is already installed in Program Files.' + #13#10#13#10 +
-            'Move it to LocalAppData for future updates without administrator notices?' +
-            '' + #13#10 + 'Your existing app and presets remain until the new app passes health checks.' +
-            '' + #13#10#13#10 +
-            'Windows will request administrator permission ONCE to remove the old Program Files installation.' +
-            '' + #13#10 + 'Canceling that request will preserve the original installation.' +
-            '' + #13#10#13#10 + 'Start verified migration now?',
-            mbConfirmation, MB_YESNO) = IDYES then
-  begin
-    if BeginSmartMigration(Reason) then
-      MsgBox('Verified migration started. This setup window will close.' + #13#10 +
-             'The updater will verify the LocalAppData installation first, then request ' +
-             'Windows permission to remove the old Program Files installation.' +
-             '' + #13#10 + 'Do not restart the installer during migration.', mbInformation, MB_OK)
-    else
-      MsgBox(Reason, mbError, MB_OK);
-  end;
-  // Never install a parallel HKCU copy while the HKLM machine copy exists.
+  if (not Assigned(SmartMigrationPage)) or (CurPageID <> SmartMigrationPage.ID) then Exit;
   Result := False;
+  if SmartMigrationResultView then
+  begin
+    SmartMigrationStarted := True;
+    WizardForm.Close;
+    Exit;
+  end;
+  Reason := '';
+  // Do not rely on PascalScript boolean short-circuit behavior: if the
+  // local directory is unverified, migration must NEVER be launched.
+  if not SmartUserDestinationReusable(Reason) then
+  begin
+    SmartMigrationError.Caption := Reason;
+    WizardForm.AdjustLabelHeight(SmartMigrationError);
+    SmartMigrationError.Visible := True;
+    Exit;
+  end;
+  if not BeginSmartMigration(Reason) then
+  begin
+    // The exact diagnostic is recorded in Setup's log, not a noisy modal.
+    SmartMigrationError.Caption := Reason;
+    WizardForm.AdjustLabelHeight(SmartMigrationError);
+    SmartMigrationError.Visible := True;
+    Exit;
+  end;
+  SmartMigrationStarted := True;
+  // The signed/hashed helper must wait until Setup releases its installer
+  // handle before installing, verifying and cleaning the old machine copy.
+  // Closing this handoff window never reports a false "installed" status.
+  WizardForm.Close;
 end;
+
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  if SmartMigrationStarted then Confirm := False;
+end;
+
 
 function SmartRegisteredDestinationSafe(var Reason: String): Boolean;
 var

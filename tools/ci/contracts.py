@@ -1851,10 +1851,41 @@ def check_release_contracts() -> None:
         "GetSHA256OfFile(SetupPath)",
         "IsAdminInstallMode",
         "DefaultDirName={userpf}",
-        "Start verified migration now?",
-        "Nothing changed.",
+        "SMART_NATIVE_MIGRATION_WIZARD_V2",
+        "SmartUserDestinationReusable",
+        "CreateCustomPage(wpSelectTasks",
+        "SmartMigrationError.Visible := True",
+        "SmartMigrationResultView",
         "SW_SHOWNORMAL, ewNoWait",
     )
+    require(
+        "packaging/windows/update_helper.cpp",
+        "SMART_EXISTING_USER_TARGET_SNAPSHOT_V2",
+        "validExistingUserTarget(targetDir, hadUserInstall, &backupError)",
+        'snapshotUninstallRegistry(L"user", priorUserBackup, &backupError)',
+        'restoreTree(backupFilesPath(priorUserBackup), targetDir, &restoreError)',
+        "const auto restoreUserTarget",
+        "SMART_NATIVE_MIGRATION_RESULT_WIZARD_V2",
+        'L"/MIGRATIONRESULT=1"',
+    )
+    require(
+        "tools/ci/updater_deep_acceptance.ps1",
+        "Smart dual-scope migration reuses registered user install",
+        "Failed dual-scope migration restores the PRE-EXISTING user install",
+        "Dual-target rollback lost user-owned data",
+    )
+    forbid("packaging/windows/installer.iss",
+           "Start verified migration now?",
+           "A per-user copy or directory already exists. Refusing to replace unknown user data.")
+    # No Smart Installer-specific modal dialog or before-wizard consent.
+    smart_source = read("packaging/windows/installer.iss")
+    smart_implementation = smart_source.split("#if SmartInstaller", 1)[-1].split("#elif PerUser", 1)[0]
+    # The first #if SmartInstaller covers top-level setup directives, so
+    # restrict to the actual SMART native migration implementation.
+    migration_impl = smart_source.split("// SMART_NATIVE_MIGRATION_WIZARD_V2", 1)[-1].split("#elif PerUser", 1)[0]
+    if "MsgBox(" in migration_impl:
+        FAILURES.append("Smart Installer migration must use native Inno pages, not MsgBox")
+
     require(
         "packaging/windows/update_helper.cpp",
         "SMART_POST_MIGRATION_PROGRAMFILES_CLEAN_V1",

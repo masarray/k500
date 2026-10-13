@@ -179,12 +179,34 @@ void logLine(const Request &request, const std::wstring &message)
     appendLog(request.log, message);
 }
 
+// SMART_NATIVE_MIGRATION_RESULT_WIZARD_V2: migration failures return to
+// the authenticated Inno window. Never expose raw helper/registry errors in
+// Win32 message boxes to ordinary installer users.
+bool verifySetup(const Request &request, HANDLE &lockedFile);
+
 int fail(const Request &request, int code, const std::wstring &message)
 {
     logLine(request, L"ERROR " + std::to_wstring(code) + L": " + message);
     if (!testMode()) {
-        MessageBoxW(nullptr, (message + L"\n\nUpdate log:\n" + request.log).c_str(),
-                    L"SonKuPik K500 update", MB_OK | MB_ICONERROR);
+        if (request.mode == L"migrate") {
+            HANDLE validated = INVALID_HANDLE_VALUE;
+            if (verifySetup(request, validated)) {
+                CloseHandle(validated);
+                const HINSTANCE launched = ShellExecuteW(nullptr, L"open",
+                    request.setup.c_str(), L"/MIGRATIONRESULT=1",
+                    nullptr, SW_SHOWNORMAL);
+                if (reinterpret_cast<INT_PTR>(launched) <= 32)
+                    logLine(request, L"Failed to show the recovery page in Inno Setup.");
+            } else {
+                // Executing an unverified installer to show an error would
+                // violate the immutable SHA-256 boundary. Preserve the log.
+                logLine(request, L"Recovery UI skipped: setup could not be authenticated.");
+            }
+        } else {
+            MessageBoxW(nullptr,
+                (message + L"\n\nUpdate log:\n" + request.log).c_str(),
+                L"SonKuPik K500 update", MB_OK | MB_ICONERROR);
+        }
     }
     return code;
 }
@@ -825,6 +847,54 @@ bool oldMachineRegistrationAbsent()
     return result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND;
 }
 
+// SMART_EXISTING_USER_TARGET_SNAPSHOT_V2 — don't confuse a registered HKCU
+// installation with unknown data. Verify canonical ownership and take a
+// separate restorable snapshot before a migration changes ANY existing files.
+bool validExistingUserTarget(const std::wstring &dir,
+                             bool &present, std::wstring *error)
+{
+    present = false;
+    HKEY key = nullptr;
+    const LONG rc = RegOpenKeyExW(HKEY_CURRENT_USER, UninstallKey,
+                                  0, KEY_READ, &key);
+    if (rc == ERROR_FILE_NOT_FOUND || rc == ERROR_PATH_NOT_FOUND) {
+        if (pathExists(dir)) {
+            if (error) *error = L"Unknown LocalAppData folder was preserved.";
+            return false;
+        }
+        return true;
+    }
+    if (rc != ERROR_SUCCESS) {
+        if (error) *error = L"Could not inspect existing K500 registration.";
+        return false;
+    }
+    RegCloseKey(key);
+    std::wstring registered;
+    if (!readRegisteredPath(HKEY_CURRENT_USER, registered)
+        || !samePath(registered, dir)
+        || !pathExists(dir + L"\\" + AppExeName)
+        || !pathExists(dir + L"\\" + UninstallerName)) {
+        if (error) *error = L"Existing K500 registration or files are incomplete.";
+        return false;
+    }
+    // copyTree intentionally skips symlinks; refuse trees with links/junctions
+    // because their external contents cannot be safely restored.
+    std::error_code ec;
+    for (fs::recursive_directory_iterator it(dir, ec), end;
+         it != end && !ec; it.increment(ec)) {
+        if (it->is_symlink(ec) || ec) {
+            if (error) *error = L"Existing K500 folder has linked files.";
+            return false;
+        }
+    }
+    if (ec) {
+        if (error) *error = L"Existing K500 folder cannot be safely inspected.";
+        return false;
+    }
+    present = true;
+    return true;
+}
+
 int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 {
     const std::wstring sourceDir = parentDirectory(request.app);
@@ -834,10 +904,16 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
         return fail(request, 30, L"Migration source/target installation paths are invalid.");
     }
 
-    // Snapshot the machine installation AND its uninstall registration before
-    // any migration work. The old installation remains authoritative until the
-    // per-user target has passed health check and old uninstall begins.
     std::wstring backupError;
+    bool hadUserInstall = false;
+    if (!validExistingUserTarget(targetDir, hadUserInstall, &backupError)) {
+        CloseHandle(lockedSetup);
+        return fail(request, 30, L"Setup protected your existing K500. " + backupError);
+    }
+
+    // Snapshot BOTH original scopes when the user target is already valid.
+    // Machine version stays available until new user version passes health.
+
     {
         std::error_code cleanup;
         fs::remove_all(fs::path(request.backup), cleanup);
@@ -851,10 +927,37 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             L"Could not create the machine migration recovery snapshot: " + backupError);
     }
     logLine(request, L"Machine migration recovery snapshot created at " + request.backup);
+    const std::wstring priorUserBackup =
+        (fs::path(request.backup) / L"prior-user").wstring();
+    if (hadUserInstall &&
+        (!copyTree(targetDir, backupFilesPath(priorUserBackup), &backupError)
+         || !snapshotUninstallRegistry(L"user", priorUserBackup, &backupError))) {
+        CloseHandle(lockedSetup);
+        // Both real installations remain untouched if the second snapshot fails.
+        std::error_code ec;
+        fs::remove_all(request.backup, ec);
+        return fail(request, 30,
+            L"Unable to back up the existing K500 user installation: " + backupError);
+    }
+    if (hadUserInstall)
+        logLine(request, L"Canonical HKCU target snapshotted before upgrade.");
 
     const auto discardBackup = [&request] {
         std::error_code ec;
         fs::remove_all(fs::path(request.backup), ec);
+    };
+
+    const auto restoreUserTarget = [&]() -> bool {
+        if (!hadUserInstall)
+            return cleanupPerUserMigration(request);
+        std::wstring restoreError;
+        const bool restored =
+            restoreTree(backupFilesPath(priorUserBackup), targetDir, &restoreError)
+            && restoreUninstallRegistry(L"user", priorUserBackup, &restoreError);
+        if (!restored)
+            logLine(request, L"User-target rollback needs recovery: " +
+                restoreError + L" at " + priorUserBackup);
+        return restored;
     };
 
     const std::wstring args =
@@ -877,8 +980,8 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     }
 
     if (launchError != ERROR_SUCCESS || installerExit != 0) {
-        cleanupPerUserMigration(request);
-        discardBackup();
+        const bool recovered = restoreUserTarget();
+        if (recovered) discardBackup();
         if (startApplication(request.app))
             logLine(request, L"Migration failed before machine uninstall; original app reopened.");
         return fail(request, 31,
@@ -887,19 +990,19 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     }
 
     if (!healthCheck(request.targetApp, request.version)) {
-        cleanupPerUserMigration(request);
-        discardBackup();
+        const bool recovered = restoreUserTarget();
+        if (recovered) discardBackup();
         if (startApplication(request.app))
             logLine(request, L"Migration target health check failed; original app reopened.");
         return fail(request, 32,
             L"The per-user installation failed its startup/version check. "
-            L"It was removed and the existing Program Files installation was kept.");
+            L"The previous machine copy was kept; user rollback is recorded in the log.");
     }
 
     const std::wstring oldUninstaller = sourceDir + L"\\" + UninstallerName;
     if (!pathExists(oldUninstaller)) {
-        cleanupPerUserMigration(request);
-        discardBackup();
+        const bool recovered = restoreUserTarget();
+        if (recovered) discardBackup();
         startApplication(request.app);
         return fail(request, 33,
             L"The Program Files uninstaller is missing. Migration was rolled back "
@@ -914,15 +1017,15 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     if (uninstallError == ERROR_CANCELLED) {
         // UAC was declined before the old uninstaller started. The machine
         // installation is still authoritative, so remove only the new user copy.
-        const bool cleaned = cleanupPerUserMigration(request);
-        discardBackup();
+        const bool cleaned = restoreUserTarget();
+        if (cleaned) discardBackup();
         startApplication(request.app);
         return fail(request, 34,
             L"Administrator permission to remove the old Program Files installation "
             L"was cancelled. The old application was kept and reopened."
             + std::wstring(cleaned
-                ? L" The temporary per-user installation was removed."
-                : L" The temporary per-user cleanup failed; inspect the update log."));
+                ? L" The previous user installation was restored when present."
+                : L" User rollback needs review: see retained recovery snapshot."));
     }
 
     if (uninstallError == ERROR_TIMEOUT) {
@@ -936,18 +1039,18 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 
     if (uninstallError != ERROR_SUCCESS || uninstallExit != 0
         || pathExists(request.app) || !oldMachineRegistrationAbsent()) {
-        const bool cleaned = cleanupPerUserMigration(request);
+        const bool cleaned = restoreUserTarget();
         std::wstring restoreError;
         const bool restored = restoreMachineMigrationSource(request, &restoreError);
         if (restored) {
-            discardBackup();
+            if (cleaned) discardBackup();
             startApplication(request.app);
             return fail(request, 34,
                 L"Windows could not complete removal of the old Program Files installation. "
                 L"The machine installation and uninstall registration were restored and reopened."
                 + std::wstring(cleaned
-                    ? L" The temporary per-user installation was removed."
-                    : L" The temporary per-user cleanup also failed; inspect the update log."));
+                    ? L" The previous user installation was restored when present."
+                    : L" User rollback needs review: see retained recovery snapshot."));
         }
         return fail(request, 34,
             L"Windows could not complete removal of the old Program Files installation. "

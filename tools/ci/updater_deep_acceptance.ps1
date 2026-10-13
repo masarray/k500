@@ -283,6 +283,107 @@ if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
 Remove-Item $presetMarker,$cacheMarker -Force -ErrorAction SilentlyContinue
 & reg.exe DELETE 'HKCU\Software\MasArray\SonKuPik K500' /v RCDeepPersistence /f /reg:64 *> $null
 
+# SMART_EXISTING_USER_TARGET_SNAPSHOT_V2 — cover the real owner failure:
+# a registered Machine copy PLUS an already valid LocalAppData/HKCU copy.
+# This is a *real installer* regression, not a purely source-text assertion.
+Write-Host "==> Smart dual-scope migration reuses registered user install"
+$seedUser = Start-BoundedProcess -FilePath $migrationSetupPath -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+) -Label 'seed existing canonical user setup'
+if ($seedUser.ExitCode -ne 0) { throw "Could not seed valid existing user installation" }
+$userSentinel = Join-Path $defaultDir 'ci-existing-user-data.txt'
+[IO.File]::WriteAllText($userSentinel, 'PRESERVE-EXISTING-USER')
+$oldUserHash = (Get-FileHash (Join-Path $defaultDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash
+New-Item -ItemType Directory -Force -Path $machineDir | Out-Null
+Copy-Item $appFixture (Join-Path $machineDir 'SonKuPik-K500.exe')
+Copy-Item $fakeMachineUninstaller (Join-Path $machineDir 'unins000.exe')
+& reg.exe ADD $machineReg /v 'Inno Setup: App Path' /t REG_SZ /d $machineDir /f /reg:64 | Out-Null
+& reg.exe ADD $machineReg /v DisplayVersion /t REG_SZ /d $Version /f /reg:64 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "Could not seed registered machine and user fixture" }
+$parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
+$dualArgs = @(
+    '--parent-pid', "$($parent.Id)",
+    '--setup', ('"' + $migrationSetupPath + '"'),
+    '--app', ('"' + (Join-Path $machineDir 'SonKuPik-K500.exe') + '"'),
+    '--target-app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+    '--version', $Version, '--previous-version', $Version,
+    '--log', ('"' + $migrationLog + '"'),
+    '--sha256', $migrationHash,
+    '--scope', 'user', '--mode', 'migrate',
+    '--backup', ('"' + $migrationBackup + '"')
+)
+$dualResult = Start-BoundedProcess -FilePath $helperPath -ArgumentList $dualArgs -Label 'two valid K500 registrations migration'
+if ($dualResult.ExitCode -ne 0) { throw "Verified dual-scope migration failed: $($dualResult.ExitCode)" }
+Stop-RelaunchedK500
+if ((Get-Content $userSentinel -Raw) -ne 'PRESERVE-EXISTING-USER') { throw "Migration deleted unknown valid user files" }
+if (-not (Test-Path (Join-Path $defaultDir 'SonKuPik-K500.exe'))) { throw "Migration lost existing user app" }
+& reg.exe QUERY $machineReg /reg:64 *> $null
+if ($LASTEXITCODE -eq 0) { throw "Migration left registered machine app" }
+& reg.exe QUERY $userReg /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) { throw "Migration lost registered user app" }
+if (Test-Path $migrationBackup) { throw "Successful dual migration left recovery files" }
+$dualCleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+) -Wait -PassThru
+if ($dualCleanup.ExitCode -ne 0) { throw "Dual-migration test uninstall failed" }
+if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
+if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
+
+Write-Host "==> Failed dual-scope migration restores the PRE-EXISTING user install"
+$seedAgain = Start-BoundedProcess -FilePath $migrationSetupPath -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+) -Label 'reseed existing user for rollback test'
+if ($seedAgain.ExitCode -ne 0) { throw "Could not reseed user for dual rollback" }
+[IO.File]::WriteAllText($userSentinel, 'RESTORE-USER-ON-FAILURE')
+$previousExeHash = (Get-FileHash (Join-Path $defaultDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash
+New-Item -ItemType Directory -Force -Path $machineDir | Out-Null
+Copy-Item $appFixture (Join-Path $machineDir 'SonKuPik-K500.exe')
+Copy-Item $fakeMachineUninstaller (Join-Path $machineDir 'unins000.exe')
+& reg.exe ADD $machineReg /v 'Inno Setup: App Path' /t REG_SZ /d $machineDir /f /reg:64 | Out-Null
+& reg.exe ADD $machineReg /v DisplayVersion /t REG_SZ /d $Version /f /reg:64 | Out-Null
+$failedHash = (Get-FileHash $fakeInstaller -Algorithm SHA256).Hash.ToLowerInvariant()
+$env:SONKUPIK_P3_FAKE_INSTALL_MODE = 'nonzero'
+try {
+    $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @('-NoProfile','-Command','Start-Sleep -Seconds 1') -PassThru
+    $brokenArgs = @(
+        '--parent-pid', "$($parent.Id)",
+        '--setup', ('"' + $fakeInstaller + '"'),
+        '--app', ('"' + (Join-Path $machineDir 'SonKuPik-K500.exe') + '"'),
+        '--target-app', ('"' + (Join-Path $defaultDir 'SonKuPik-K500.exe') + '"'),
+        '--version', $Version, '--previous-version', $Version,
+        '--log', ('"' + $migrationLog + '"'),
+        '--sha256', $failedHash,
+        '--scope', 'user', '--mode', 'migrate',
+        '--backup', ('"' + $migrationBackup + '"')
+    )
+    $broken = Start-BoundedProcess -FilePath $helperPath -ArgumentList $brokenArgs -Label 'dual-scope target rollback after corrupted install'
+    if ($broken.ExitCode -eq 0) { throw "Fake corrupted installer unexpectedly succeeded" }
+} finally {
+    Remove-Item Env:\SONKUPIK_P3_FAKE_INSTALL_MODE -ErrorAction SilentlyContinue
+}
+Stop-RelaunchedK500
+if ((Get-FileHash (Join-Path $defaultDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $previousExeHash) {
+    throw "Dual-target rollback failed to restore original per-user binary"
+}
+if ((Get-Content $userSentinel -Raw) -ne 'RESTORE-USER-ON-FAILURE') {
+    throw "Dual-target rollback lost user-owned data"
+}
+& reg.exe QUERY $userReg /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) { throw "Dual-target rollback lost HKCU registration" }
+& reg.exe QUERY $machineReg /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) { throw "Dual-target rollback changed HKLM registration" }
+if (-not (Test-Path (Join-Path $machineDir 'SonKuPik-K500.exe'))) {
+    throw "Dual-target rollback removed original machine app"
+}
+if (Test-Path $migrationBackup) { throw "Successful dual-target rollback leaked recovery snapshot" }
+$finalCleanup = Start-Process -FilePath (Join-Path $defaultDir 'unins000.exe') -ArgumentList @(
+    '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
+) -Wait -PassThru
+if ($finalCleanup.ExitCode -ne 0) { throw "User rollback fixture uninstall failed" }
+if (Test-Path $defaultDir) { Remove-Item $defaultDir -Recurse -Force }
+& reg.exe DELETE $machineReg /f /reg:64 *> $null
+if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
+
 Write-Host "==> Stale-registration repair is narrow and fail-closed"
 $stalePath = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-RC-STALE-MISSING'
 if (Test-Path $stalePath) { Remove-Item $stalePath -Recurse -Force }
