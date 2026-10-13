@@ -9,6 +9,8 @@ const vm = require("node:vm");
 const root = path.join(__dirname, "../..");
 const layoutSource = fs.readFileSync(path.join(root, "qml/components/CrossoverCaptionLayout.js"), "utf8");
 const qml = fs.readFileSync(path.join(root, "qml/components/SectionEqGraph.qml"), "utf8");
+const crossoverInspector = fs.readFileSync(path.join(root, "qml/components/CrossoverInspector.qml"), "utf8");
+const bandInspector = fs.readFileSync(path.join(root, "qml/components/BandInspector.qml"), "utf8");
 const ctx = {};
 vm.createContext(ctx);
 vm.runInContext(layoutSource.replace(/^\.pragma library\s*/m, ""), ctx);
@@ -57,6 +59,11 @@ function verify(name, options) {
         assert.ok(box.y >= 0 && box.y+box.h <= o.height, name + " vertical bounds");
     }
     assert.ok(!collide(a,b,6), name + " captions must not collide");
+    for (const box of [a,b]) {
+        assert.ok(box.y >= 12, name + " must clear top graph border");
+        assert.ok(box.x >= o.left + 12, name + " must clear left plot border");
+        assert.ok(box.x + box.w <= o.right - 12, name + " must clear right plot border");
+    }
     if (o.obstacle) {
         assert.ok(!collide(a,o.obstacle,3), name + " HP must avoid inspector");
         assert.ok(!collide(b,o.obstacle,3), name + " LP must avoid inspector");
@@ -70,13 +77,27 @@ verify("same-low-frequency", {hpX:58,lpX:58});
 verify("both rightmost", {hpX:1184,lpX:1184});
 verify("normal wide split", {hpX:58,lpX:1192});
 verify("hovering active band inspector", {hpX:392,lpX:505,
-    obstacle:{x:355,y:34,w:320,h:86}});
+    obstacle:{x:355,y:42,w:320,h:112}});
 verify("coincident with active crossover inspector", {hpX:505,lpX:505,
-    obstacle:{x:345,y:38,w:320,h:86}});
+    obstacle:{x:345,y:42,w:320,h:112}});
 verify("125-percent compact graph", {width:850,height:290,left:42,right:831,
     top:19,bottom:258,hpX:120,lpX:173,hpW:112,lpW:117,
     obstacle:{x:60,y:175,w:300,h:78}});
 verify("150-percent constrained graph", {width:660,height:247,left:37,right:644,
     top:17,bottom:220,hpX:110,lpX:145,hpW:115,lpW:118,
     obstacle:{x:47,y:150,w:300,h:78}});
-console.log("PASS PEQ spatial captions: measured overlap, viewport, coincidence, inspector, zoom/resize");
+// Current screenshot pain points: the 86px inspectors filled the entire
+// floating card, and B1–B7 labels were 6px from their chip border.
+for (const inspector of [crossoverInspector, bandInspector]) {
+    assert.match(inspector, /INSPECTOR_CONTENT_SAFE_AREA_V2/);
+    assert.match(inspector, /implicitHeight: 112/);
+    assert.match(inspector, /anchors.margins: 11/);
+    assert.doesNotMatch(inspector, /anchors.margins: -4/);
+}
+assert.match(qml, /BAND_CHIP_SAFE_INSETS_V2/);
+assert.match(qml, /Layout.preferredHeight:62/);
+assert.match(qml, /Layout.preferredHeight:50;radius:10/);
+assert.match(qml, /anchors.fill:parent;anchors.margins:8;spacing:3/);
+assert.equal((qml.match(/graph.width-32\);height:112/g)||[]).length,2,
+    "both floating inspectors must have spacious hit-safe height");
+console.log("PASS PEQ visual safe insets: caption plot bounds, inspectors, band chips, collision and DPI");

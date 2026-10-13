@@ -8,19 +8,21 @@ function intersects(a, b, gap) {
 }
 
 function place(o) {
-    var edge = 5
-    var minX = Math.max(edge, o.left + 5)
-    var maxRight = Math.max(minX + 1, Math.min(o.width - edge, o.right - 3))
+    // VISUAL_SAFE_INSET_V4 — captions stay inside the plot's optical safe
+    // area, away from rounded panel borders and nearby axis/grid labels.
+    var edge = 12
+    var minX = Math.max(edge, o.left + 12)
+    var maxRight = Math.max(minX + 1, Math.min(o.width - edge, o.right - 12))
     var maxH = Math.max(o.hpH, o.lpH)
-    var baseline = Math.max(4, o.top + 5)
+    var baseline = Math.max(edge, o.top + 10)
     // First try the graph's familiar guide row. Other lanes are selected only
     // when measured captions or the currently visible inspector obstruct it.
     var lanes = [
         {y: baseline, cost: 0},
-        {y: 4, cost: 11},
-        {y: 4 + maxH + 4, cost: 14},
-        {y: baseline + maxH + 5, cost: 32},
-        {y: Math.max(4, o.bottom - maxH - 6), cost: 72}
+        {y: edge, cost: 11},
+        {y: edge + maxH + 7, cost: 14},
+        {y: baseline + maxH + 7, cost: 32},
+        {y: Math.max(edge, o.bottom - maxH - 12), cost: 72}
     ]
     function candidates(anchor, width, height, preferred) {
         var out = []
@@ -32,7 +34,7 @@ function place(o) {
             x = Math.max(edge, Math.min(Math.max(edge, o.width - width - edge), x))
             for (var i = 0; i < lanes.length; ++i) {
                 var row = lanes[i]
-                if (row.y < 2 || row.y + height > o.height - 3)
+                if (row.y < edge || row.y + height > o.height - edge)
                     continue
                 var rect = {x:x, y:row.y, w:width, h:height}
                 var obstacle = o.obstacle
@@ -65,9 +67,9 @@ function place(o) {
 
     // Tiny window fallback: preserve both labels, separated vertically.
     // Normal Windows minimum sizes always use the collision-free search above.
-    var y1 = 3, y2 = Math.min(o.height - o.lpH - 3, y1 + o.hpH + 7)
+    var y1 = edge, y2 = Math.min(o.height - o.lpH - edge, y1 + o.hpH + 7)
     return {
-        hp:{x:Math.max(edge, Math.min(o.width-o.hpW-edge, o.hpX+10)),y:y1},
-        lp:{x:Math.max(edge, Math.min(o.width-o.lpW-edge, o.lpX+10)),y:y2}
+        hp:{x:Math.max(minX, Math.min(maxRight-o.hpW, o.hpX+10)),y:y1},
+        lp:{x:Math.max(minX, Math.min(maxRight-o.lpW, o.lpX+10)),y:y2}
     }
 }

@@ -50,7 +50,7 @@ Item {
         id: singleOpDismiss
         // COMPACT_VERIFIED_OPERATION_TOAST_V2 — confirmed success leaves promptly;
         // errors remain legible. Never time out an in-flight device transaction.
-        interval: root.singleOpState === "error" ? 4500 : 1250
+        interval: root.singleOpState === "error" ? 4500 : 850
         repeat: false
         onTriggered: {
             if (root.singleOpState !== "busy") root.singleOpState = ""

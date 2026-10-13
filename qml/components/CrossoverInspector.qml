@@ -14,7 +14,8 @@ Item {
     signal resetRequested()
 
     implicitWidth: 320
-    implicitHeight: 86
+    // INSPECTOR_CONTENT_SAFE_AREA_V2: fit actual controls with 11px breathing room.
+    implicitHeight: 112
 
     readonly property bool highPass: root.mode === "hpf"
     readonly property bool bypassed: String(root.filterType).trim().toUpperCase() === "BYPASS"
@@ -29,10 +30,10 @@ Item {
 
     // VISUAL_INSPECTOR_SURFACE_V1 — purely presentational: no pointer
     // interception, model replacement, shadow layers, or device writes.
-    // The floating inspector keeps its proven 320 x 86 interaction geometry.
+    // Keep the floating inspector non-modal; only its visual content grows.
     Rectangle {
         anchors.fill: parent
-        anchors.margins: -4
+        anchors.margins: 0
         radius: 9
         color: "#10171D"
         border.width: 1
@@ -42,18 +43,19 @@ Item {
 
     Rectangle {
         anchors.left: parent.left
-        anchors.leftMargin: -4
+        anchors.leftMargin: 0
         anchors.verticalCenter: parent.verticalCenter
         width: 3
         height: 27
         radius: 1.5
-        color: root.accentColor
+        color: root.bypassed ? Theme.textDim : root.accentColor
         opacity: 0.85
     }
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 5
+        anchors.margins: 11
+        spacing: 7
 
         RowLayout {
             Layout.fillWidth: true
@@ -71,10 +73,8 @@ Item {
                     font.letterSpacing: 0.75
                 }
                 Text {
-                    text: root.bypassed
-                          ? (root.highPass ? "High Pass · Bypassed" : "Low Pass · Bypassed")
-                          : (root.highPass ? "High Pass Filter" : "Low Pass Filter")
-                    color: root.bypassed ? Theme.amber : Theme.text
+                    text: root.highPass ? "High Pass Filter" : "Low Pass Filter"
+                    color: root.bypassed ? Theme.textSoft : Theme.text
                     font.family: Theme.fontFamily
                     font.pixelSize: 13
                     font.weight: Font.DemiBold

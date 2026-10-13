@@ -15,7 +15,8 @@ Item {
     signal resetRequested()
 
     implicitWidth: 320
-    implicitHeight: 86
+    // INSPECTOR_CONTENT_SAFE_AREA_V2: fit actual controls with 11px breathing room.
+    implicitHeight: 112
 
     // FINAL_INSPECTOR_SCOPE_COPY_V1
     // The page toolbar already owns EQ RESET (all PEQ bands). Keep the floating
@@ -31,10 +32,10 @@ Item {
 
     // VISUAL_INSPECTOR_SURFACE_V1 — purely presentational: no pointer
     // interception, model replacement, shadow layers, or device writes.
-    // The floating inspector keeps its proven 320 x 86 interaction geometry.
+    // Keep the floating inspector non-modal; only its visual content grows.
     Rectangle {
         anchors.fill: parent
-        anchors.margins: -4
+        anchors.margins: 0
         radius: 9
         color: "#10171D"
         border.width: 1
@@ -44,7 +45,7 @@ Item {
 
     Rectangle {
         anchors.left: parent.left
-        anchors.leftMargin: -4
+        anchors.leftMargin: 0
         anchors.verticalCenter: parent.verticalCenter
         width: 3
         height: 27
@@ -55,7 +56,8 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        spacing: 5
+        anchors.margins: 11
+        spacing: 7
 
         RowLayout {
             Layout.fillWidth: true
@@ -102,7 +104,7 @@ Item {
             spacing: 7
 
             ColumnLayout {
-                Layout.preferredWidth: 66
+                Layout.preferredWidth: 64
                 spacing: 2
                 Text { text: "TYPE"; color: Theme.textDim; font.family: Theme.monoFamily; font.pixelSize: 9; font.letterSpacing: 0.65 }
                 StudioComboBox {
@@ -117,7 +119,7 @@ Item {
             }
 
             ValueField {
-                Layout.preferredWidth: 92
+                Layout.preferredWidth: 90
                 title: "FREQ"
                 value: root.frequency
                 from: 20; to: 20000; step: 5; defaultValue: root.frequency

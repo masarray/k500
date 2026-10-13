@@ -70,7 +70,7 @@ assert.match(popup, /Popup\.NoAutoClose/);
 assert.doesNotMatch(popup, /saveCurrentToSlot|uploadSlotImage|recallMode|Timer\s*\{/);
 // COMPACT_VERIFIED_OPERATION_TOAST_V2: the display is not the operation
 // authority; success disappears quickly but errors are readable.
-assert.match(impl, /interval: root.singleOpState === "error" \? 4500 : 1250/);
+assert.match(impl, /interval: root.singleOpState === "error" \? 4500 : 850/);
 assert.match(impl, /if \(root.singleOpState !== "busy"\) root.singleOpState = ""/);
 assert.match(popup, /COMPACT_VERIFIED_OPERATION_TOAST_V2/);
 assert.match(popup, /height: phase === "error" \? 86 : 64/);
