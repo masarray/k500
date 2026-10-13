@@ -847,51 +847,133 @@ bool oldMachineRegistrationAbsent()
     return result == ERROR_FILE_NOT_FOUND || result == ERROR_PATH_NOT_FOUND;
 }
 
-// SMART_EXISTING_USER_TARGET_SNAPSHOT_V2 — don't confuse a registered HKCU
-// installation with unknown data. Verify canonical ownership and take a
-// separate restorable snapshot before a migration changes ANY existing files.
-bool validExistingUserTarget(const std::wstring &dir,
-                             bool &present, std::wstring *error)
+// SMART_ORPHAN_RECOVERY_V3 — installation remnants at the exact K500
+// LocalAppData destination are *recoverable*, not proof of foreign ownership.
+// No unknown files are deleted: orphan contents are atomically moved to a
+// durable recovery directory, not sent to the recycle bin or overwritten.
+enum class UserTargetKind { Clean, Registered, Orphan };
+
+std::wstring currentUserLocalAppData()
 {
-    present = false;
-    HKEY key = nullptr;
-    const LONG rc = RegOpenKeyExW(HKEY_CURRENT_USER, UninstallKey,
-                                  0, KEY_READ, &key);
-    if (rc == ERROR_FILE_NOT_FOUND || rc == ERROR_PATH_NOT_FOUND) {
-        if (pathExists(dir)) {
-            if (error) *error = L"Unknown LocalAppData folder was preserved.";
-            return false;
-        }
+    std::vector<wchar_t> buffer(32768);
+    const DWORD size = GetEnvironmentVariableW(
+        L"LOCALAPPDATA", buffer.data(), static_cast<DWORD>(buffer.size()));
+    return size > 0 && size < buffer.size()
+        ? std::wstring(buffer.data(), size) : std::wstring();
+}
+
+bool safeCanonicalUserTarget(const std::wstring &dir, std::wstring *error)
+{
+    const std::wstring local = currentUserLocalAppData();
+    if (local.empty()
+        || !samePath(fs::path(dir).lexically_normal().wstring(),
+            (fs::path(local) / L"Programs" / L"SonKuPik K500").lexically_normal().wstring())) {
+        if (error) *error = L"The destination is not the official LocalAppData K500 path.";
+        return false;
+    }
+    return true;
+}
+
+bool treeHasLinks(const std::wstring &dir, std::wstring *error)
+{
+    std::error_code ec;
+    const fs::path root(dir);
+    if (fs::is_symlink(fs::symlink_status(root, ec)) || ec) {
+        if (error) *error = L"The K500 directory is a Windows link.";
         return true;
     }
-    if (rc != ERROR_SUCCESS) {
-        if (error) *error = L"Could not inspect existing K500 registration.";
-        return false;
-    }
-    RegCloseKey(key);
-    std::wstring registered;
-    if (!readRegisteredPath(HKEY_CURRENT_USER, registered)
-        || !samePath(registered, dir)
-        || !pathExists(dir + L"\\" + AppExeName)
-        || !pathExists(dir + L"\\" + UninstallerName)) {
-        if (error) *error = L"Existing K500 registration or files are incomplete.";
-        return false;
-    }
-    // copyTree intentionally skips symlinks; refuse trees with links/junctions
-    // because their external contents cannot be safely restored.
-    std::error_code ec;
-    for (fs::recursive_directory_iterator it(dir, ec), end;
+    ec.clear();
+    for (fs::recursive_directory_iterator it(root, ec), end;
          it != end && !ec; it.increment(ec)) {
         if (it->is_symlink(ec) || ec) {
-            if (error) *error = L"Existing K500 folder has linked files.";
-            return false;
+            if (error) *error = L"An installation file uses a Windows link.";
+            return true;
         }
     }
     if (ec) {
-        if (error) *error = L"Existing K500 folder cannot be safely inspected.";
+        if (error) *error = L"Some files in the old installation could not be inspected.";
+        return true;
+    }
+    return false;
+}
+
+bool inspectUserTarget(const std::wstring &dir, UserTargetKind &kind,
+                       bool &hadRegistration, std::wstring *error)
+{
+    kind = UserTargetKind::Clean;
+    hadRegistration = false;
+    if (!safeCanonicalUserTarget(dir, error)) return false;
+
+    HKEY key = nullptr;
+    const LONG rc = RegOpenKeyExW(
+        HKEY_CURRENT_USER, UninstallKey, 0, KEY_READ, &key);
+    if (rc == ERROR_SUCCESS) {
+        hadRegistration = true;
+        RegCloseKey(key);
+    } else if (rc != ERROR_FILE_NOT_FOUND && rc != ERROR_PATH_NOT_FOUND) {
+        if (error) *error = L"Windows could not inspect the K500 registration.";
         return false;
     }
-    present = true;
+
+    if (hadRegistration) {
+        std::wstring registered;
+        if (!readRegisteredPath(HKEY_CURRENT_USER, registered)
+            || !samePath(fs::path(registered).lexically_normal().wstring(),
+                         fs::path(dir).lexically_normal().wstring())) {
+            if (error) *error = L"Existing registration points to another installation.";
+            return false;
+        }
+    }
+
+    if (!pathExists(dir)) {
+        kind = hadRegistration ? UserTargetKind::Orphan : UserTargetKind::Clean;
+        return true;
+    }
+    std::error_code ec;
+    if (!fs::is_directory(fs::path(dir), ec) || ec || treeHasLinks(dir, error)) {
+        if (error && error->empty()) *error = L"Could not safely inspect the K500 folder.";
+        return false;
+    }
+    const bool complete = hadRegistration
+        && pathExists(dir + L"\\" + AppExeName)
+        && pathExists(dir + L"\\" + UninstallerName);
+    kind = complete ? UserTargetKind::Registered : UserTargetKind::Orphan;
+    return true;
+}
+
+// Rehome an orphan to stable user-owned recovery, outside Programs.
+// The exact canonical K500 folder is freed for a new verified install.
+// Keeping all bytes is deliberate: legacy user files may be mixed with Qt.
+bool stageOrphanUserFolder(const std::wstring &target,
+                           std::wstring &recovery, std::wstring *error)
+{
+    if (!pathExists(target)) return true;
+    const std::wstring local = currentUserLocalAppData();
+    if (local.empty()) {
+        if (error) *error = L"Windows user data location could not be found.";
+        return false;
+    }
+    const fs::path recoveryRoot = fs::path(local)
+        / L"MasArray" / L"SonKuPik K500" / L"Installer Recovery";
+    std::error_code ec;
+    fs::create_directories(recoveryRoot, ec);
+    if (ec) {
+        if (error) *error = L"Unable to prepare a secure K500 recovery folder.";
+        return false;
+    }
+    const fs::path candidate = recoveryRoot /
+        (L"K500-before-update-" + std::to_wstring(GetCurrentProcessId())
+         + L"-" + std::to_wstring(GetTickCount64()));
+    if (fs::exists(candidate, ec) || ec) {
+        if (error) *error = L"A recovery snapshot name already exists.";
+        return false;
+    }
+    fs::rename(fs::path(target), candidate, ec);
+    if (ec) {
+        if (error) *error = L"Could not safely move the old K500 folder into recovery.";
+        return false;
+    }
+    recovery = candidate.wstring();
     return true;
 }
 
@@ -905,14 +987,18 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     }
 
     std::wstring backupError;
-    bool hadUserInstall = false;
-    if (!validExistingUserTarget(targetDir, hadUserInstall, &backupError)) {
+    UserTargetKind userKind = UserTargetKind::Clean;
+    bool hadUserRegistry = false;
+    if (!inspectUserTarget(targetDir, userKind, hadUserRegistry, &backupError)) {
         CloseHandle(lockedSetup);
-        return fail(request, 30, L"Setup protected your existing K500. " + backupError);
+        return fail(request, 30, L"Setup protected existing files. " + backupError);
     }
+    const bool hadUserInstall = userKind == UserTargetKind::Registered;
+    const bool hasOrphan = userKind == UserTargetKind::Orphan;
+    const bool hadOrphanFolder = hasOrphan && pathExists(targetDir);
+    std::wstring orphanRecovery;
 
-    // Snapshot BOTH original scopes when the user target is already valid.
-    // Machine version stays available until new user version passes health.
+    // Snapshot BOTH original scopes when necessary. Nothing has been moved.
 
     {
         std::error_code cleanup;
@@ -939,6 +1025,23 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
         return fail(request, 30,
             L"Unable to back up the existing K500 user installation: " + backupError);
     }
+    // An incomplete but canonically registered copy has registry state worth
+    // protecting even if its executable is missing. The original orphan folder
+    // will be moved atomically only AFTER that snapshot is durable.
+    if (hasOrphan && hadUserRegistry) {
+        std::error_code ec;
+        fs::create_directories(fs::path(priorUserBackup), ec);
+        if (ec || !snapshotUninstallRegistry(L"user", priorUserBackup, &backupError)) {
+            CloseHandle(lockedSetup);
+            return fail(request, 30, L"Could not protect the previous K500 registration.");
+        }
+    }
+    if (hasOrphan && !stageOrphanUserFolder(targetDir, orphanRecovery, &backupError)) {
+        CloseHandle(lockedSetup);
+        return fail(request, 30, L"Could not safely prepare the old K500 files. " + backupError);
+    }
+    if (hasOrphan) logLine(request,
+        L"Partial K500 user installation moved to protected recovery: " + orphanRecovery);
     if (hadUserInstall)
         logLine(request, L"Canonical HKCU target snapshotted before upgrade.");
 
@@ -948,6 +1051,44 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     };
 
     const auto restoreUserTarget = [&]() -> bool {
+        if (hasOrphan) {
+            std::error_code ec;
+            // Preserve any partially installed new files too. Never remove
+            // unknown data by recursive deletion during rollback.
+            if (pathExists(targetDir)) {
+                const fs::path attempted = fs::path(orphanRecovery.empty()
+                    ? (targetDir + L".failed-install")
+                    : orphanRecovery + L".failed-install");
+                if (fs::exists(attempted, ec) || ec) return false;
+                fs::rename(fs::path(targetDir), attempted, ec);
+                if (ec) return false;
+                logLine(request, L"Interrupted new installation preserved at "
+                    + attempted.wstring());
+            }
+            if (hadUserRegistry) {
+                std::wstring restoreError;
+                if (!restoreUninstallRegistry(L"user", priorUserBackup, &restoreError)) {
+                    logLine(request, L"Could not restore older HKCU registration: " + restoreError);
+                    return false;
+                }
+            } else {
+                // Remove ONLY the exact freshly registered K500 uninstall key
+                // after the new EXE has been moved out of the target folder.
+                HKEY newKey = nullptr;
+                if (RegOpenKeyExW(HKEY_CURRENT_USER, UninstallKey, 0,
+                                  KEY_READ, &newKey) == ERROR_SUCCESS) {
+                    RegCloseKey(newKey);
+                    if (!removeStaleRegistration(
+                            HKEY_CURRENT_USER, targetDir, request.log)) return false;
+                }
+            }
+            if (hadOrphanFolder) {
+                fs::rename(fs::path(orphanRecovery), fs::path(targetDir), ec);
+                if (ec) return false;
+            }
+            logLine(request, L"Previous orphaned K500 folder/registration restored.");
+            return true;
+        }
         if (!hadUserInstall)
             return cleanupPerUserMigration(request);
         std::wstring restoreError;
@@ -1088,6 +1229,12 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             L"claiming a clean migration. Recovery snapshot: " + request.backup);
     }
 
+    if (hasOrphan && !orphanRecovery.empty()) {
+        // Unknown legacy bytes are kept OUTSIDE the active installation path.
+        // Windows uninstall registration and old Program Files EXE are now gone,
+        // while user-owned files remain recoverable for manual data review.
+        logLine(request, L"Legacy unregistered folder archived safely at: " + orphanRecovery);
+    }
     discardBackup();
     logLine(request, L"Machine->user migration verified; old application and HKLM uninstall registration absent;"
                      L" canonical Program Files directory must also be absent; recovery snapshot released.");
