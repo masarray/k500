@@ -14,9 +14,10 @@ Item {
     signal qEdited(real value)
     signal resetRequested()
 
-    implicitWidth: 320
-    // INSPECTOR_CONTENT_SAFE_AREA_V2: fit actual controls with 11px breathing room.
-    implicitHeight: 112
+    // INSPECTOR_OPTICAL_PADDING_V3 — structured header and controls have
+    // 16px horizontal / 14px vertical inner space without growing the graph.
+    implicitWidth: 340
+    implicitHeight: 120
 
     // FINAL_INSPECTOR_SCOPE_COPY_V1
     // The page toolbar already owns EQ RESET (all PEQ bands). Keep the floating
@@ -45,7 +46,7 @@ Item {
 
     Rectangle {
         anchors.left: parent.left
-        anchors.leftMargin: 0
+        anchors.leftMargin: 6
         anchors.verticalCenter: parent.verticalCenter
         width: 3
         height: 27
@@ -56,16 +57,19 @@ Item {
 
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 11
-        spacing: 7
+        anchors.leftMargin: 16
+        anchors.rightMargin: 16
+        anchors.topMargin: 14
+        anchors.bottomMargin: 14
+        spacing: 8
 
         RowLayout {
             Layout.fillWidth: true
-            Layout.preferredHeight: 31
+            Layout.preferredHeight: 34
             spacing: 8
 
             ColumnLayout {
-                spacing: -1
+                spacing: 3
                 Text {
                     text: "BAND " + (root.bandIndex + 1)
                     color: Theme.textDim

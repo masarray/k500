@@ -860,7 +860,7 @@ StudioPanel {
                     visible:root.selectedTarget==="band"
                     bandModel:root.bands;bandIndex:root.selectedIndex;frequency:root.selectedFreq;gain:root.selectedGain;q:root.selectedQ
                     accentColor:root.colorFor(root.selectedIndex)
-                    width:Math.min(320,graph.width-32);height:112
+                    width:Math.min(340,graph.width-32);height:120
                     x:root.clamp(root.xFor(root.selectedFreq)-width/2,15,graph.width-width-15)
                     readonly property bool stickyTop:root.inspectorShouldTop(root.selectedFreq)
                     readonly property real edgeGap:Math.max(18,12*root.nodeScale)
@@ -880,7 +880,7 @@ StudioPanel {
                     frequency:root.inspectorFrequency
                     filterType:root.crossoverDisplayType(root.selectedTarget)
                     accentColor:Theme.amber
-                    width:Math.min(320,graph.width-32);height:112
+                    width:Math.min(340,graph.width-32);height:120
                     x:root.clamp(root.xFor(root.inspectorFrequency)-width/2,15,graph.width-width-15)
                     readonly property bool stickyTop:root.inspectorShouldTop(root.inspectorFrequency)
                     readonly property real edgeGap:Math.max(18,12*root.nodeScale)
@@ -957,18 +957,61 @@ StudioPanel {
                     // for band identity; selected band remains cyan-highlighted.
                     gradient:Gradient{GradientStop{position:0;color:bandPill.selected?"#162A2F":"#11181E"}GradientStop{position:1;color:bandPill.selected?"#0D1B20":"#0B1014"}}
                     border.width:1;border.color:bandPill.selected?Theme.accentSoft:"#28343C"
+                    // BAND_CHIP_OPTICAL_LAYOUT_V3 — accent and typography
+                    // never touch the frame; no width-arithmetic spacers.
                     Rectangle {
                         anchors.left:parent.left
-                        anchors.leftMargin:1
+                        anchors.leftMargin:7
                         anchors.verticalCenter:parent.verticalCenter
-                        width:3;height:22;radius:1.5
+                        width:3;height:24;radius:1.5
                         color:bandPill.bandColor
                         opacity:bandPill.selected?0.9:0.55
                     }
-                    Column {
-                        anchors.fill:parent;anchors.margins:8;spacing:3
-                        Row{width:parent.width;Text{text:"B"+(index+1);color:bandPill.bandColor;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-34);height:1}Text{text:root.typeShort(typeName);color:bandPill.selected?Theme.accent:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:9;font.weight:Font.DemiBold}}
-                        Row{width:parent.width;Text{text:root.fmtF(freq);color:Theme.text;font.family:Theme.monoFamily;font.pixelSize:10;font.weight:Font.DemiBold}Item{width:Math.max(0,parent.width-54);height:1}Text{text:(gain>0?"+":"")+gain.toFixed(1);color:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:10}}
+                    RowLayout {
+                        anchors.fill:parent
+                        anchors.leftMargin:18
+                        anchors.rightMargin:12
+                        anchors.topMargin:7
+                        anchors.bottomMargin:7
+                        spacing:3
+                        ColumnLayout {
+                            Layout.alignment:Qt.AlignVCenter
+                            spacing:3
+                            Text {
+                                text:"B"+(index+1)
+                                color:bandPill.bandColor
+                                font.family:Theme.monoFamily
+                                font.pixelSize:9
+                                font.weight:Font.DemiBold
+                            }
+                            Text {
+                                text:root.fmtF(freq)
+                                color:Theme.text
+                                font.family:Theme.monoFamily
+                                font.pixelSize:10
+                                font.weight:Font.DemiBold
+                            }
+                        }
+                        Item {Layout.fillWidth:true}
+                        ColumnLayout {
+                            Layout.alignment:Qt.AlignVCenter|Qt.AlignRight
+                            spacing:3
+                            Text {
+                                Layout.alignment:Qt.AlignRight
+                                text:root.typeShort(typeName)
+                                color:bandPill.selected?Theme.accent:Theme.textSoft
+                                font.family:Theme.monoFamily
+                                font.pixelSize:9
+                                font.weight:Font.DemiBold
+                            }
+                            Text {
+                                Layout.alignment:Qt.AlignRight
+                                text:(gain>0?"+":"")+gain.toFixed(1)
+                                color:Theme.textSoft
+                                font.family:Theme.monoFamily
+                                font.pixelSize:10
+                            }
+                        }
                     }
                     MouseArea{anchors.fill:parent;cursorShape:Qt.PointingHandCursor;onClicked:root.selectBand(index)}
                 }

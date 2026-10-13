@@ -86,18 +86,29 @@ verify("125-percent compact graph", {width:850,height:290,left:42,right:831,
 verify("150-percent constrained graph", {width:660,height:247,left:37,right:644,
     top:17,bottom:220,hpX:110,lpX:145,hpW:115,lpW:118,
     obstacle:{x:47,y:150,w:300,h:78}});
-// Current screenshot pain points: the 86px inspectors filled the entire
-// floating card, and B1–B7 labels were 6px from their chip border.
+// INSPECTOR_OPTICAL_PADDING_V3 / BAND_CHIP_OPTICAL_LAYOUT_V3
+// Scope must remain presentation-only, avoid negative spacers, and preserve
+// actionable signals and data ownership for 5/7/10-band instances.
 for (const inspector of [crossoverInspector, bandInspector]) {
-    assert.match(inspector, /INSPECTOR_CONTENT_SAFE_AREA_V2/);
-    assert.match(inspector, /implicitHeight: 112/);
-    assert.match(inspector, /anchors.margins: 11/);
-    assert.doesNotMatch(inspector, /anchors.margins: -4/);
+    assert.match(inspector, /INSPECTOR_OPTICAL_PADDING_V3/);
+    assert.match(inspector, /implicitWidth: 340/);
+    assert.match(inspector, /implicitHeight: 120/);
+    assert.match(inspector, /anchors.leftMargin: 16/);
+    assert.match(inspector, /anchors.rightMargin: 16/);
+    assert.match(inspector, /anchors.topMargin: 14/);
+    assert.match(inspector, /anchors.bottomMargin: 14/);
+    assert.match(inspector, /spacing: 3/);
+    assert.doesNotMatch(inspector, /spacing: -1|anchors.margins: -4/);
+    assert.match(inspector, /onClicked: root.resetRequested\(\)/);
 }
-assert.match(qml, /BAND_CHIP_SAFE_INSETS_V2/);
-assert.match(qml, /Layout.preferredHeight:62/);
+assert.match(qml, /BAND_CHIP_OPTICAL_LAYOUT_V3/);
 assert.match(qml, /Layout.preferredHeight:50;radius:10/);
-assert.match(qml, /anchors.fill:parent;anchors.margins:8;spacing:3/);
-assert.equal((qml.match(/graph.width-32\);height:112/g)||[]).length,2,
-    "both floating inspectors must have spacious hit-safe height");
+assert.match(qml, /anchors.leftMargin:18/);
+assert.match(qml, /anchors.rightMargin:12/);
+assert.match(qml, /anchors.topMargin:7/);
+assert.match(qml, /anchors.bottomMargin:7/);
+assert.match(qml, /Item \{Layout.fillWidth:true\}/);
+assert.doesNotMatch(qml, /parent.width-34|parent.width-54/);
+assert.equal((qml.match(/graph.width-32\);height:120/g)||[]).length,2,
+    "both inspectors must have the updated hit-safe height");
 console.log("PASS PEQ visual safe insets: caption plot bounds, inspectors, band chips, collision and DPI");
