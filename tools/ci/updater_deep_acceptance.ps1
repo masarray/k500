@@ -226,6 +226,16 @@ if (Test-Path $machineDir) { Remove-Item $machineDir -Recurse -Force }
 New-Item -ItemType Directory -Force -Path $machineDir | Out-Null
 Copy-Item $appFixture (Join-Path $machineDir 'SonKuPik-K500.exe')
 Copy-Item $fakeMachineUninstaller (Join-Path $machineDir 'unins000.exe')
+# RC4_FIELD_ERROR36_MACHINE_RETIRE_V5: fake Inno uninstaller intentionally
+# leaves files in its former Program Files folder after deleting app+HKLM.
+# This matches the owner log, which previously returned ERROR 36 falsely.
+$machineResidue = Join-Path $machineDir 'old-plugin-user-note.txt'
+[IO.File]::WriteAllText($machineResidue, 'KEEP-UNRECOGNIZED-LEGACY-BYTES')
+$machineRecoveryRoot = Join-Path (Split-Path $machineDir -Parent) 'SonKuPik-K500-RC-Machine-Recovery'
+$priorMachineRecovery = @()
+if (Test-Path $machineRecoveryRoot) {
+    $priorMachineRecovery = @(Get-ChildItem $machineRecoveryRoot -Directory | ForEach-Object FullName)
+}
 & reg.exe ADD $machineReg /v 'Inno Setup: App Path' /t REG_SZ /d $machineDir /f /reg:64 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Could not create machine migration registration fixture" }
 & reg.exe ADD $machineReg /v DisplayVersion /t REG_SZ /d $Version /f /reg:64 | Out-Null
@@ -268,6 +278,22 @@ if ($LASTEXITCODE -eq 0) { throw "Migration left machine-wide uninstall registra
 & reg.exe QUERY $userReg /reg:64 *> $null
 if ($LASTEXITCODE -ne 0) { throw "Migration did not create per-user uninstall registration" }
 if (Test-Path $migrationBackup) { throw "Successful migration left recovery snapshot" }
+# Old machine folder must be completely retired, not just its EXE/registry.
+# Unknown residuals are saved as an archive, NOT quietly wiped.
+if (Test-Path $machineDir) { throw "Retired Program Files machine folder still exists (owner ERROR36)" }
+$archivedResidue = @(Get-ChildItem $machineRecoveryRoot -Directory |
+    Where-Object { $_.FullName -notin $priorMachineRecovery })
+if ($archivedResidue.Count -ne 1) { throw "Machine residue must create exactly one recovery archive" }
+if ((Get-Content (Join-Path $archivedResidue[0].FullName 'old-plugin-user-note.txt') -Raw) -ne 'KEEP-UNRECOGNIZED-LEGACY-BYTES') {
+    throw "Machine residual archive lost an unknown user file"
+}
+$migrationLogData = Get-Content $migrationLog -Raw
+if ($migrationLogData -match 'ERROR 36') { throw "Verified migrated app incorrectly failed with ERROR 36" }
+if ($migrationLogData -notmatch 'Legacy Program Files residual folder safely archived') {
+    throw "Elevated one-UAC retire helper failed to archive old machine directory"
+}
+# This directory is test-owned and its arbitrary marker has been verified.
+Remove-Item $archivedResidue[0].FullName -Recurse -Force
 
 if ((Get-Content $presetMarker -Raw).Trim() -ne 'preset-user-data-must-survive') { throw "Migration changed user preset sentinel" }
 if ((Get-Content $cacheMarker -Raw).Trim() -ne 'official-cache-must-survive') { throw "Migration changed official cache sentinel" }
