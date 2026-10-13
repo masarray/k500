@@ -806,9 +806,10 @@ def check_ui_contracts() -> None:
         'root.presetManager.progress', "OperationFeedback {",
     )
     require("qml/components/OperationFeedback.qml",
-            "WINDOW_CENTERED_OPERATION_FEEDBACK_V1",
+            "COMPACT_VERIFIED_OPERATION_TOAST_V2",
             "parent: Overlay.overlay", 'visible: phase !== ""',
-            "Popup.NoAutoClose", "stage", "message", "RotationAnimator")
+            "Popup.NoAutoClose", "stage", "message",
+            "SequentialAnimation on opacity", "text: feedback.headline")
     require("CMakeLists.txt", "qml/components/OperationFeedback.qml")
     forbid("qml/components/SystemWorkspaceImpl.qml",
            "anchors.bottom: parent.bottom\n        anchors.bottomMargin: 16")
