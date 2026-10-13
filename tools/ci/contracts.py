@@ -1873,6 +1873,49 @@ def check_release_contracts() -> None:
         if "if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }" in machine_smoke:
             FAILURES.append("Machine smoke must not recursively delete pre-existing destination")
 
+    # ACCEPTED_SMART_SCOPE_REINSTALL_V2 — stable smoke MUST mirror the
+    # immutable candidate's successful native no-override reinstall (RC.6).
+    # The previous promotion suite inserted /DIR only on the second Smart
+    # invocation and failed run #38396847077 before publication.
+    smart_boundary = (
+        "      - name: Validate exact accepted native Smart Installer bytes"
+    )
+    metadata_boundary = "      - name: Generate stable metadata around exact accepted bytes"
+    if smart_boundary not in promotion or metadata_boundary not in promotion:
+        FAILURES.append("Stable promotion Smart smoke step boundaries missing")
+    else:
+        smart_smoke = promotion.split(smart_boundary, 1)[1].split(metadata_boundary, 1)[0]
+        if "ACCEPTED_SMART_SCOPE_REINSTALL_V2" not in smart_smoke:
+            FAILURES.append("Stable promotion native Smart scope-aware regression marker missing")
+        if smart_smoke.count(
+            "@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru"
+        ) != 2:
+            FAILURES.append("Stable promotion must install and reinstall Smart with the same exact native arguments")
+        if any(token in smart_smoke for token in (
+            '("/DIR=$dir")', "/DIR=", "/CURRENTUSER", "/ALLUSERS"
+        )):
+            # Non-invocation comments can document forbidden tokens safely;
+            # check actual PowerShell commands only, not comments.
+            executable_lines = [
+                line for line in smart_smoke.splitlines()
+                if "Start-Process -FilePath $setup -ArgumentList" in line
+            ]
+            if any("/DIR" in line or "/CURRENTUSER" in line or "/ALLUSERS" in line
+                   for line in executable_lines):
+                FAILURES.append("Stable promotion must not override native Smart scope or directory")
+        for expected in (
+            "if (Test-Path $dir) { throw 'Smart promotion test destination already exists; refusing deletion' }",
+            "Smart promotion test would overwrite a registered user installation",
+            "Smart promotion test would collide with a registered machine installation",
+            "--update-scope-check=user",
+            "PRESERVE-OWNER-STATE",
+            "did not retain exact HKCU LocalAppData registration",
+            "unexpectedly created an HKLM installation",
+            "Promoted Smart uninstaller deleted user-owned file",
+        ):
+            if expected not in smart_smoke:
+                FAILURES.append(f"Stable promotion Smart regression contract missing: {expected}")
+
     require(
         "packaging/windows/installer.iss",
         "SMART_INSTALL_LAYOUT_V2",

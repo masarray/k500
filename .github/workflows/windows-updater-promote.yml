@@ -242,23 +242,44 @@ jobs:
       - name: Validate exact accepted native Smart Installer bytes
         shell: pwsh
         run: |
-          # ACCEPTED_SMART_REAL_APP_V1 — test accepted bytes, no rebuilding.
+          # ACCEPTED_SMART_REAL_APP_V1 / ACCEPTED_SMART_SCOPE_REINSTALL_V2
+          # Only promotion smoke was wrong in run #38396847077: adding /DIR
+          # to the second Smart invocation violates its native no-override
+          # contract. Match the same immutable RC.6 bytes and verified
+          # unmodified invocation used by green RC #38389976497.
           $version = '${{ steps.accept.outputs.version }}'
           $setup = (Resolve-Path "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe").Path
           $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik K500'
+          $key = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
+          $machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
           if (Test-Path $dir) { throw 'Smart promotion test destination already exists; refusing deletion' }
+          & reg.exe QUERY $key /reg:64 *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Smart promotion test would overwrite a registered user installation' }
+          & reg.exe QUERY $machineKey /reg:64 *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Smart promotion test would collide with a registered machine installation' }
           $installed = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($installed.ExitCode -ne 0) { throw "Promoted Smart Installer failed: $($installed.ExitCode)" }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
+          if (-not (Test-Path $app)) { throw 'Promoted Smart installer was not installed at its native LocalAppData destination' }
+          & reg.exe QUERY $machineKey /reg:64 *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Promoted Smart installer unexpectedly registered a machine-scope installation' }
           foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
             $checked = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
             if ($checked.ExitCode -ne 0) { throw "Promoted Smart Installer $arg failed: $($checked.ExitCode)" }
           }
           $marker = Join-Path $dir 'accepted-smart-owner-state.txt'
           [IO.File]::WriteAllText($marker, 'PRESERVE-OWNER-STATE')
-          $reinstall = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$dir")) -Wait -PassThru
-          if ($reinstall.ExitCode -ne 0) { throw 'Promoted Smart reinstall failed to retain prior scope' }
+          # Native Smart determines its own user scope and directory.
+          # /DIR or /CURRENTUSER overrides are forbidden on BOTH invocations.
+          $reinstall = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
+          if ($reinstall.ExitCode -ne 0) { throw "Promoted Smart no-override reinstall failed: $($reinstall.ExitCode)" }
           if ((Get-Content $marker -Raw) -ne 'PRESERVE-OWNER-STATE') { throw 'Promoted Smart package modified sentinel' }
+          $registered = (& reg.exe QUERY $key /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
+          if ($LASTEXITCODE -ne 0 -or $registered -notmatch [regex]::Escape($dir)) {
+            throw 'Promoted Smart reinstall did not retain exact HKCU LocalAppData registration'
+          }
+          & reg.exe QUERY $machineKey /reg:64 *> $null
+          if ($LASTEXITCODE -eq 0) { throw 'Promoted Smart reinstall unexpectedly created an HKLM installation' }
           $remove = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($remove.ExitCode -ne 0) { throw 'Promoted Smart uninstallation failed' }
           if (-not (Test-Path $marker)) { throw 'Promoted Smart uninstaller deleted user-owned file' }
