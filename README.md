@@ -41,11 +41,11 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
 >
-> **Release line:** **v1.1.2** is the current public stable. It includes UAUDIO PC presets 11–20, count-aware Mass Upload (Add/Add All) with Ctrl/Shift selection, improved System controls, and readable embedded typography. The qualified support scope remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
+> **Release line:** **v1.1.3** is the current public stable. The native Smart Installer is scope-aware, and Reverb/Echo HPF/LPF are always-active frequency-only filters with improved native-reference PEQ visualization. Save/Recall feedback, Mass Upload and the preset workspace retain the accepted Windows/USB workflows. Qualified support remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
 >
-> **Updater status:** **v1.1.2** was promoted byte-identically from accepted `v1.1.2-rc.2`, built from commit `8e3be5d4e567463e5bae4aa911537417aeba11b1`. Both installers retain the exact RC.2 SHA-256 digests; they were not rebuilt after acceptance. GitHub `/releases/latest` resolves v1.1.2; the landing API and same-origin Smart Installer route use that latest release dynamically.
+> **Updater status:** **v1.1.3** was promoted byte-identically from owner-accepted `v1.1.3-rc.6` at application source commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. The three Machine, PerUser and Smart installer SHA-256 digests match the immutable RC.6 assets. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) passed; GitHub `/releases/latest` now resolves v1.1.3, and the landing route dynamically downloads its public Smart Installer.
 
-> **Release provenance:** v1.1.2 also includes a red active EQ Bypass warning and version-correct Windows title bar. [Stable v1.1.2](https://github.com/masarray/k500/releases/tag/v1.1.2) was published after owner acceptance of RC.2; see the [accepted RC record](docs/V1_1_2_UPDATER_RC_ACCEPTANCE.md) and [release model](docs/RELEASES.md).
+> **Release provenance:** [Stable v1.1.3](https://github.com/masarray/k500/releases/tag/v1.1.3) was published after owner acceptance and CI qualification. See the [accepted RC.6 record](docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md) and [release model](docs/RELEASES.md). Historical stable [v1.1.2](https://github.com/masarray/k500/releases/tag/v1.1.2) remains available.
 
 ## See the real app
 
@@ -93,14 +93,14 @@ More screenshots are available in [`assets/k500 screenshot`](assets/k500%20scree
 
 | Package | Best for | Download |
 |---|---|---|
-| **Smart Installer** | Recommended public package. Installs to `Program Files\SonKuPik K500`, keeps personal presets in Documents, and enables verified scope-aware in-app updates including the no-admin per-user path. | [Download Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
+| **Smart Installer** | Recommended public package. Installs to `%LOCALAPPDATA%\Programs\SonKuPik K500` without ordinary installation UAC. Migration of an existing machine-wide Program Files install requires explicit user authorization and may require a one-time UAC. Keeps personal presets in Documents. | [Download Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
 | **Latest release** | Release notes, SHA-256 checksums, manifest, and current packages. | [Open latest release](https://github.com/masarray/k500/releases/latest) |
 
 Official Windows binaries are currently unsigned open-source builds. Windows SmartScreen or antivirus reputation systems may therefore warn when opening a new download. Release packages include SHA-256 verification metadata. See [Windows distribution & security](docs/WINDOWS_DISTRIBUTION_SECURITY.md).
 
 ## Getting started
 
-1. **Install SonKuPik K500** using the Windows Setup package. The normal installer uses `C:\Program Files\SonKuPik K500`.
+1. **Install SonKuPik K500** with the recommended v1.1.3 Smart Installer. A new installation uses `%LOCALAPPDATA%\Programs\SonKuPik K500`; existing machine-wide setups follow the explicit migration wizard.
 2. On first run, the default personal preset library is created at **`Documents\SonKuPik K500\Presets`**.
 3. **Connect the K500 by USB.** The app reads the processor state before LIVE editing is enabled.
 4. **Choose a section** such as Music, Mic, Reverb, Main, or Subwoofer.
