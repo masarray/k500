@@ -486,8 +486,16 @@ begin
     Exit;
   end;
   Reason := '';
-  if not SmartUserDestinationReusable(Reason) or
-     not BeginSmartMigration(Reason) then
+  // Do not rely on PascalScript boolean short-circuit behavior: if the
+  // local directory is unverified, migration must NEVER be launched.
+  if not SmartUserDestinationReusable(Reason) then
+  begin
+    SmartMigrationError.Caption := Reason;
+    WizardForm.AdjustLabelHeight(SmartMigrationError);
+    SmartMigrationError.Visible := True;
+    Exit;
+  end;
+  if not BeginSmartMigration(Reason) then
   begin
     // The exact diagnostic is recorded in Setup's log, not a noisy modal.
     SmartMigrationError.Caption := Reason;
