@@ -477,7 +477,7 @@ var
   Reason: String;
 begin
   Result := True;
-  if not Assigned(SmartMigrationPage) or CurPageID <> SmartMigrationPage.ID then Exit;
+  if (not Assigned(SmartMigrationPage)) or (CurPageID <> SmartMigrationPage.ID) then Exit;
   Result := False;
   if SmartMigrationResultView then
   begin
