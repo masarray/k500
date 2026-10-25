@@ -374,17 +374,18 @@ qt_add_resources(sonkupik_studio_native embedded_fonts
 
 # Bundled official presets are the offline fallback. Runtime GitHub sync may
 # replace/add validated files in the user cache, never mutate these resources.
+# GEN3_PRIORITY_LIBRARY_V1 — primary 10 BT presets; UAUDIO companions are generated from these only.
 set(SONKUPIK_PRESET_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_KONSER_NYANYI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_MC_HOST_RADIO.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_KAR_DANGDUT.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_POP_ROCK_BALLAD.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_POP_KENANGAN_V2.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_SHOLAWAT_SYAHDU.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ_LOUNGE.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_BLUES_CLUB.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ACOUSTIC_NATURAL.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_REGGAE_DUB.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ARTIST_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_PODCAST_REBORN.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_KARAOKE_ARTIST.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_AKUSTIK_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_IMAM_QORI_GEN3.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_ROCK_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_MC_CERAMAH_GEN3.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_ADZAN_MEKAH_GEN3.k500"
 )
 # UAUDIO_COMPANION_PRESET_BANK_V1 — synthesize 11–20 during configure from the
 # exact 01–10 official donors. The source files never change and the generated
@@ -414,6 +415,19 @@ foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
     math(EXPR SONKUPIK_UAUDIO_INDEX "${SONKUPIK_UAUDIO_INDEX} + 1")
 endforeach()
 list(APPEND SONKUPIK_PRESET_FILES ${SONKUPIK_UAUDIO_PRESET_FILES})
+# Historical 10 originals follow both owner banks, and remain bundled offline.
+list(APPEND SONKUPIK_PRESET_FILES
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/21_KONSER_NYANYI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/22_MC_HOST_RADIO.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/23_KAR_DANGDUT.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/24_POP_ROCK_BALLAD.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/25_POP_KENANGAN_V2.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/26_SHOLAWAT_SYAHDU.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/27_JAZZ_LOUNGE.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/28_BLUES_CLUB.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/29_ACOUSTIC_NATURAL.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/30_REGGAE_DUB.k500"
+)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     ${SONKUPIK_PRESET_FILES}
     "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_uaudio_presets.py")

@@ -27,21 +27,21 @@ MUSIC_SOURCE_FILE_OFFSET = 0x000E
 UAUDIO_SOURCE_RAW = 5  # INPUT1=0, INPUT2=1, BT=2, UDISK=3, OPTIC=4, UAUDIO=5
 # Native slot / hardware visible names must fit within 16 ASCII characters.
 UAUDIO_NAMES = (
-    "KONSER UAUDIO",
-    "MC HOST UAUDIO",
+    "ARTIST UAUDIO",
+    "PODCAST UAUDIO",
     "DANGDUT UAUDIO",
-    "POP ROCK UAUDIO",
-    "KENANGAN UAUDIO",
-    "SHOLAWAT UAUDIO",
+    "KARAOKE UAUDIO",
+    "AKUSTIK UAUDIO",
+    "QORI UAUDIO",
     "JAZZ UAUDIO",
-    "BLUES UAUDIO",
-    "ACOUSTIC UAUDIO",
-    "REGGAE UAUDIO",
+    "ROCK UAUDIO",
+    "CERAMAH UAUDIO",
+    "ADZAN UAUDIO",
 )
 
 
 def generate(source_dir: Path, output_dir: Path) -> list[dict]:
-    source_files = sorted(source_dir.glob("[0-9][0-9]_*.k500"))
+    source_files = sorted(path for path in source_dir.glob("[0-9][0-9]_*.k500") if 1 <= int(path.name[:2]) <= 10)
     # Fail closed if the official bank changes shape: never silently shift mappings.
     expected_prefixes = [f"{n:02d}_" for n in range(1, 11)]
     if len(source_files) != 10 or any(
@@ -103,7 +103,7 @@ def main() -> None:
     args = parser.parse_args()
     entries = generate(args.source, args.output)
     print(f"UAUDIO_PRESET_BANK_V1: {len(entries)} companions; "
-          f"original 01–10 donors untouched; sourceRaw={UAUDIO_SOURCE_RAW}")
+          f"GEN3 BT donors preserved; sourceRaw={UAUDIO_SOURCE_RAW}")
 
 
 if __name__ == "__main__":

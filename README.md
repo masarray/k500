@@ -182,19 +182,10 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The bundled official preset bank promotes only the 2026-10-04 musicality candidates that have final real-K500 evidence: KONSER NYANYI Main Balance V2, KAR DANGDUT R1, and tempo-aware POP KENANGAN R2. Slots 02, 04, and 06–10 remain on their previous official bytes until each evolved R1 candidate receives its own hardware audition.
+The active PC preset collection is organized as **01–10 GEN3 Bluetooth** (owner-auditioned supplied bytes), **11–20 GEN3 UAUDIO** (automatically generated companions differing only in source/name/checksum), and **21–30 archived original SonKuPik presets** (byte-identical historical bank). Numbers **31–40** are reserved for future legacy additions. The K500 device itself still has only **10 hardware slots**; catalog numbers are not physical slot numbers.
 
+See [GEN3 preset library migration](docs/GEN3_PRESET_LIBRARY_2026-10-25.md) for exact mappings, safety gates and rollback provenance.
 
-The current official Mode 01 file at `resources/presets/01_KONSER_NYANYI.k500` is `KONSER NYANYI`, evolved surgically from the exact native `CONCERT HIFI V4` donor through K500 hardware-listening iterations.
-
-```text
-Current official SHA-256
-761d0ecf1f470ce433fcf760d7ee1317e994dbefbb16fc71e8498aea9d99d6c4
-```
-
-The exact native donor remains rollback/provenance evidence. The official preset library now carries distinct genre-specific voices across Slots 01–10; Mode 02 intentionally remains the dry Broadcast utility rather than following the concert/Air-Focus tuning.
-
-CI guards the current official Mode 01 identity used by new packages, while remote official preset updates continue to require K500 file validation before cache promotion.
 
 ## Architecture
 

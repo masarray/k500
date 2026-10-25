@@ -23,29 +23,41 @@ struct BuiltInPresetDefinition {
 };
 
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
-    {"KONSER NYANYI",     "Balanced, punchy and forgiving concert karaoke",       "01_KONSER_NYANYI.k500",       ":/presets/01_KONSER_NYANYI.k500"},
-    {"MC HOST RADIO",     "Dry and controlled broadcast utility",             "02_MC_HOST_RADIO.k500",       ":/presets/02_MC_HOST_RADIO.k500"},
-    {"KAR DANGDUT",       "Punchy dangdut groove with smooth vocal space",        "03_KAR_DANGDUT.k500", ":/presets/03_KAR_DANGDUT.k500"},
-    {"POP ROCK BALLAD",   "Pop/slow-rock ambience with singer control",       "04_POP_ROCK_BALLAD.k500",            ":/presets/04_POP_ROCK_BALLAD.k500"},
-    {"POP KENANGAN V2",   "Tempo-aware romantic slow-pop with lush vocal halo",                   "05_POP_KENANGAN_V2.k500",    ":/presets/05_POP_KENANGAN_V2.k500"},
-    {"SHOLAWAT SYAHDU",   "Fresh soft slow-tempo sholawat ambience",          "06_SHOLAWAT_SYAHDU.k500",   ":/presets/06_SHOLAWAT_SYAHDU.k500"},
-    {"JAZZ LOUNGE",       "Intimate classy lounge vocal with restrained echo","07_JAZZ_LOUNGE.k500",            ":/presets/07_JAZZ_LOUNGE.k500"},
-    {"BLUES CLUB",        "Warm vintage blues with a single slap repeat",     "08_BLUES_CLUB.k500",           ":/presets/08_BLUES_CLUB.k500"},
-    {"ACOUSTIC NATURAL",  "Natural organic vocal with subtle ambience",       "09_ACOUSTIC_NATURAL.k500",        ":/presets/09_ACOUSTIC_NATURAL.k500"},
-    {"REGGAE DUB",        "Bass/groove-led voicing with rhythmic echo",       "10_REGGAE_DUB.k500",          ":/presets/10_REGGAE_DUB.k500"},
+    // GEN3_PRIORITY_LIBRARY_V1: 01–10 BT · 11–20 UAUDIO · 21–30 legacy.
+    {"ARTIST GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "01_ARTIST_GEN3_ARI.k500", ":/presets/01_ARTIST_GEN3_ARI.k500"},
+    {"PODCAST REBORN", "GEN3 owner-auditioned · Bluetooth source", "02_PODCAST_REBORN.k500", ":/presets/02_PODCAST_REBORN.k500"},
+    {"DANGDUT GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "03_DANGDUT_GEN3_ARI.k500", ":/presets/03_DANGDUT_GEN3_ARI.k500"},
+    {"KARAOKE ARTIST", "GEN3 owner-auditioned · Bluetooth source", "04_KARAOKE_ARTIST.k500", ":/presets/04_KARAOKE_ARTIST.k500"},
+    {"AKUSTIK GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "05_AKUSTIK_GEN3_ARI.k500", ":/presets/05_AKUSTIK_GEN3_ARI.k500"},
+    {"IMAM QORI GEN 3", "GEN3 owner-auditioned · Bluetooth source", "06_IMAM_QORI_GEN3.k500", ":/presets/06_IMAM_QORI_GEN3.k500"},
+    {"JAZZ GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "07_JAZZ_GEN3_ARI.k500", ":/presets/07_JAZZ_GEN3_ARI.k500"},
+    {"ROCK GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "08_ROCK_GEN3_ARI.k500", ":/presets/08_ROCK_GEN3_ARI.k500"},
+    {"MC CERAMAH GEN 3", "GEN3 owner-auditioned · Bluetooth source", "09_MC_CERAMAH_GEN3.k500", ":/presets/09_MC_CERAMAH_GEN3.k500"},
+    {"ADZAN MEKAH GEN3", "GEN3 owner-auditioned · Bluetooth source", "10_ADZAN_MEKAH_GEN3.k500", ":/presets/10_ADZAN_MEKAH_GEN3.k500"},
 
-    // UAUDIO_COMPANION_PRESET_BANK_V1 — deterministic 01–10 counterparts.
-    // 11–20 are PC library options; physical K500 hardware still has 10 slots.
-    {"KONSER UAUDIO", "KONSER NYANYI tuning · USB Audio music source", "11_KONSER_NYANYI_UAUDIO.k500", ":/presets/11_KONSER_NYANYI_UAUDIO.k500"},
-    {"MC HOST UAUDIO", "MC HOST RADIO tuning · USB Audio music source", "12_MC_HOST_RADIO_UAUDIO.k500", ":/presets/12_MC_HOST_RADIO_UAUDIO.k500"},
-    {"DANGDUT UAUDIO", "KAR DANGDUT tuning · USB Audio music source", "13_KAR_DANGDUT_UAUDIO.k500", ":/presets/13_KAR_DANGDUT_UAUDIO.k500"},
-    {"POP ROCK UAUDIO", "POP ROCK BALLAD tuning · USB Audio music source", "14_POP_ROCK_BALLAD_UAUDIO.k500", ":/presets/14_POP_ROCK_BALLAD_UAUDIO.k500"},
-    {"KENANGAN UAUDIO", "POP KENANGAN V2 tuning · USB Audio music source", "15_POP_KENANGAN_V2_UAUDIO.k500", ":/presets/15_POP_KENANGAN_V2_UAUDIO.k500"},
-    {"SHOLAWAT UAUDIO", "SHOLAWAT SYAHDU tuning · USB Audio music source", "16_SHOLAWAT_SYAHDU_UAUDIO.k500", ":/presets/16_SHOLAWAT_SYAHDU_UAUDIO.k500"},
-    {"JAZZ UAUDIO", "JAZZ LOUNGE tuning · USB Audio music source", "17_JAZZ_LOUNGE_UAUDIO.k500", ":/presets/17_JAZZ_LOUNGE_UAUDIO.k500"},
-    {"BLUES UAUDIO", "BLUES CLUB tuning · USB Audio music source", "18_BLUES_CLUB_UAUDIO.k500", ":/presets/18_BLUES_CLUB_UAUDIO.k500"},
-    {"ACOUSTIC UAUDIO", "ACOUSTIC NATURAL tuning · USB Audio music source", "19_ACOUSTIC_NATURAL_UAUDIO.k500", ":/presets/19_ACOUSTIC_NATURAL_UAUDIO.k500"},
-    {"REGGAE UAUDIO", "REGGAE DUB tuning · USB Audio music source", "20_REGGAE_DUB_UAUDIO.k500", ":/presets/20_REGGAE_DUB_UAUDIO.k500"},
+    // UAUDIO_COMPANION_PRESET_BANK_V1 — exact GEN3 sonic clone with sourceRaw=5.
+    {"ARTIST UAUDIO", "GEN3 owner tuning · USB Audio source", "11_ARTIST_GEN3_ARI_UAUDIO.k500", ":/presets/11_ARTIST_GEN3_ARI_UAUDIO.k500"},
+    {"PODCAST UAUDIO", "GEN3 owner tuning · USB Audio source", "12_PODCAST_REBORN_UAUDIO.k500", ":/presets/12_PODCAST_REBORN_UAUDIO.k500"},
+    {"DANGDUT UAUDIO", "GEN3 owner tuning · USB Audio source", "13_DANGDUT_GEN3_ARI_UAUDIO.k500", ":/presets/13_DANGDUT_GEN3_ARI_UAUDIO.k500"},
+    {"KARAOKE UAUDIO", "GEN3 owner tuning · USB Audio source", "14_KARAOKE_ARTIST_UAUDIO.k500", ":/presets/14_KARAOKE_ARTIST_UAUDIO.k500"},
+    {"AKUSTIK UAUDIO", "GEN3 owner tuning · USB Audio source", "15_AKUSTIK_GEN3_ARI_UAUDIO.k500", ":/presets/15_AKUSTIK_GEN3_ARI_UAUDIO.k500"},
+    {"QORI UAUDIO", "GEN3 owner tuning · USB Audio source", "16_IMAM_QORI_GEN3_UAUDIO.k500", ":/presets/16_IMAM_QORI_GEN3_UAUDIO.k500"},
+    {"JAZZ UAUDIO", "GEN3 owner tuning · USB Audio source", "17_JAZZ_GEN3_ARI_UAUDIO.k500", ":/presets/17_JAZZ_GEN3_ARI_UAUDIO.k500"},
+    {"ROCK UAUDIO", "GEN3 owner tuning · USB Audio source", "18_ROCK_GEN3_ARI_UAUDIO.k500", ":/presets/18_ROCK_GEN3_ARI_UAUDIO.k500"},
+    {"CERAMAH UAUDIO", "GEN3 owner tuning · USB Audio source", "19_MC_CERAMAH_GEN3_UAUDIO.k500", ":/presets/19_MC_CERAMAH_GEN3_UAUDIO.k500"},
+    {"ADZAN UAUDIO", "GEN3 owner tuning · USB Audio source", "20_ADZAN_MEKAH_GEN3_UAUDIO.k500", ":/presets/20_ADZAN_MEKAH_GEN3_UAUDIO.k500"},
+
+    // LEGACY_PRESET_ARCHIVE_V1 — historical accepted originals, byte-identical.
+    {"KONSER NYANYI", "Legacy original tuning · preserved without DSP edits", "21_KONSER_NYANYI.k500", ":/presets/21_KONSER_NYANYI.k500"},
+    {"MC HOST RADIO", "Legacy original tuning · preserved without DSP edits", "22_MC_HOST_RADIO.k500", ":/presets/22_MC_HOST_RADIO.k500"},
+    {"KAR DANGDUT", "Legacy original tuning · preserved without DSP edits", "23_KAR_DANGDUT.k500", ":/presets/23_KAR_DANGDUT.k500"},
+    {"POP ROCK BALLAD", "Legacy original tuning · preserved without DSP edits", "24_POP_ROCK_BALLAD.k500", ":/presets/24_POP_ROCK_BALLAD.k500"},
+    {"POP KENANGAN V2", "Legacy original tuning · preserved without DSP edits", "25_POP_KENANGAN_V2.k500", ":/presets/25_POP_KENANGAN_V2.k500"},
+    {"SHOLAWAT SYAHDU", "Legacy original tuning · preserved without DSP edits", "26_SHOLAWAT_SYAHDU.k500", ":/presets/26_SHOLAWAT_SYAHDU.k500"},
+    {"JAZZ LOUNGE", "Legacy original tuning · preserved without DSP edits", "27_JAZZ_LOUNGE.k500", ":/presets/27_JAZZ_LOUNGE.k500"},
+    {"BLUES CLUB", "Legacy original tuning · preserved without DSP edits", "28_BLUES_CLUB.k500", ":/presets/28_BLUES_CLUB.k500"},
+    {"ACOUSTIC NATURAL", "Legacy original tuning · preserved without DSP edits", "29_ACOUSTIC_NATURAL.k500", ":/presets/29_ACOUSTIC_NATURAL.k500"},
+    {"REGGAE DUB", "Legacy original tuning · preserved without DSP edits", "30_REGGAE_DUB.k500", ":/presets/30_REGGAE_DUB.k500"},
 };
 
 bool readValidPreset(const QString &path, QByteArray *bytes)
@@ -282,7 +294,7 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         const int catalogNumber = fileName.left(2).toInt(&catalogNumberOk);
         if (catalogNumberOk && fileName.size() > 3
             && fileName.at(2) == QLatin1Char('_')
-            && catalogNumber >= 1 && catalogNumber <= 20) {
+            && catalogNumber >= 1 && catalogNumber <= 40) {
             entry.insert(QStringLiteral("catalogNumber"), catalogNumber);
         }
         entry.insert(QStringLiteral("description"), QString::fromLatin1(definition.description));
@@ -290,13 +302,29 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         next.append(entry);
     }
 
+    // GEN3_LEGACY_CACHE_HIDE_V1: old 01–10 cache copies may survive an offline
+    // upgrade; archived originals are now bundled at 21–30. Do not show
+    // duplicates, and do not delete user cache content without a valid sync.
+    const QStringList oldNumberedCacheNames{
+        QStringLiteral("01_KONSER_NYANYI.k500"),
+        QStringLiteral("02_MC_HOST_RADIO.k500"),
+        QStringLiteral("03_KAR_DANGDUT.k500"),
+        QStringLiteral("04_POP_ROCK_BALLAD.k500"),
+        QStringLiteral("05_POP_KENANGAN_V2.k500"),
+        QStringLiteral("06_SHOLAWAT_SYAHDU.k500"),
+        QStringLiteral("07_JAZZ_LOUNGE.k500"),
+        QStringLiteral("08_BLUES_CLUB.k500"),
+        QStringLiteral("09_ACOUSTIC_NATURAL.k500"),
+        QStringLiteral("10_REGGAE_DUB.k500"),
+    };
     if (cacheDir.exists()) {
         const QFileInfoList files = cacheDir.entryInfoList(
             {QStringLiteral("*.k500")},
             QDir::Files | QDir::Readable | QDir::NoSymLinks,
             QDir::Name | QDir::IgnoreCase);
         for (const QFileInfo &info : files) {
-            if (knownNames.contains(info.fileName().toLower()))
+            if (knownNames.contains(info.fileName().toLower())
+                || oldNumberedCacheNames.contains(info.fileName(), Qt::CaseInsensitive))
                 continue;
             QByteArray bytes;
             if (!readValidPreset(info.absoluteFilePath(), &bytes))
