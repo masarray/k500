@@ -41,7 +41,8 @@ PROFILES = json.loads('''
       "reverbLevel": 92,
       "echoLevel": 88,
       "decayMs": 2250,
-      "predelayMs": 66
+      "predelayMs": 66,
+      "repeat": 10
     },
     "donorSha256": "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55"
   },
@@ -103,7 +104,8 @@ PROFILES = json.loads('''
       "reverbLevel": 92,
       "echoLevel": 89,
       "decayMs": 2880,
-      "predelayMs": 75
+      "predelayMs": 75,
+      "repeat": 10
     },
     "donorSha256": "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1"
   },
@@ -378,12 +380,14 @@ def generate(source: Path, output: Path) -> list[dict]:
             off,width = FX_OFFSETS[scalar]
             prev=int.from_bytes(data[off:off+width],'little')
             if width == 1:
-                if not 0<=target<=100:raise ValueError(f'Scalar out of domain {scalar}')
+                limit=10 if scalar=='repeat' else 100
+                if not 0<=target<=limit:
+                    raise ValueError(f'Native scalar {scalar} must be 0..{limit}')
                 data[off]=target
             else:
-                if scalar=='decayMs' and not 200<=target<=6000:
+                if scalar=='decayMs' and not 500<=target<=5000:
                     raise ValueError('reverb decay not in qualified conservative range')
-                if scalar=='predelayMs' and not 0<=target<=200:
+                if scalar=='predelayMs' and not 0<=target<=100:
                     raise ValueError('pre-delay out of conservative range')
                 if scalar=='echoMs' and not 0<=target<=1000:
                     raise ValueError('echo delay out of conservative range')
@@ -403,6 +407,17 @@ def generate(source: Path, output: Path) -> list[dict]:
             raise ValueError(f'Unexpected bytes changed: {donor} {sorted(changed-permitted)}')
         if len(result)!=FILE_SIZE or sum(result)%256:
             raise ValueError(f'Invalid file size or checksum: {donor}')
+        # Native FX ranges from src/k500/K500Protocol.h::NativeRange.
+        # The legacy GEN3 donor may exceed UI limits; newly produced GEN4
+        # must be hardware-safe in this field even when untouched by EQ edits.
+        if result[0x7C] > 10:
+            raise ValueError(f'GEN4 echo repeat outside native 0..10: {donor}')
+        if not 500 <= struct.unpack_from('<H',result,0xC8)[0] <= 5000:
+            raise ValueError(f'GEN4 reverb decay out of native range: {donor}')
+        if not 0 <= struct.unpack_from('<H',result,0xCA)[0] <= 100:
+            raise ValueError(f'GEN4 reverb predelay out of native range: {donor}')
+        if not 0 <= struct.unpack_from('<H',result,0xCC)[0] <= 1000:
+            raise ValueError(f'GEN4 echo L delay out of native range: {donor}')
         compatibility=validate_device_slot_compatibility(result)
         if compatibility:raise ValueError(f'Native candidate incompatible: {compatibility}')
         if len(build_device_slot_image(result))!=656:

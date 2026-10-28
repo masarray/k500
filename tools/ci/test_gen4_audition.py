@@ -14,9 +14,9 @@ from generate_gen4_presets import PROFILES, FX_OFFSETS, generate
 from k500_preset_lab import CHECKSUM_OFFSET, EQ_SECTIONS, NAME_OFFSET, build_device_slot_image, validate_device_slot_compatibility
 
 GOLDEN=(
-    'c6aeb02e1c3c46e91ab412ee5bc34e934134add4f273b77daf6f04132d9c26ce',
+    'd3b2c0d11b9feaf9460c25cc2d3c1611dc8a94a1480328a3a104355d8692cb44',
     'd32730e62b8e210b2f1af871e921399197ad800e4a0251efa01b404432e5ea31',
-    '4052026439e48ad3735337d1961248b1f4665185b7974dff8b9849aa8c192ccb',
+    'da4a7790767201a045e7487e1fb649ccf9a0e529af5cde84a1aac32904ba21ea',
     'cdcc0ea1e8221fe748a77b7f29eb39061e2171383ef9185c9703c3d387f9314e',
     'e62f7e8882a6ac27a98a303c61e1192a0b3d44eb1f8bdb282e7fd94b6b856d7d',
     '50e0367fbb5a10971abcd13ac10f17c367f99296896eeedf2aaa271c39394eb0',
@@ -52,6 +52,7 @@ def main() -> None:
             assert candidate[0x0E]==original[0x0E]==2
             assert len(build_device_slot_image(candidate))==656
             assert not validate_device_slot_compatibility(candidate)
+            assert 0 <= candidate[0x7C] <= 10, 'echo repeat exceeds K500 native UI limit'
             assert candidate[NAME_OFFSET:NAME_OFFSET+16].split(bytes((0,)),1)[0].decode('ascii')==r['name']
             changes={j for j,(a,b) in enumerate(zip(original,candidate)) if a!=b}
             allowed={CHECKSUM_OFFSET,*range(NAME_OFFSET,NAME_OFFSET+16)}

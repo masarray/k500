@@ -1,4 +1,4 @@
-# GEN4 V2 — Audible K500 Singing Tuning (2026-10-29)
+# GEN4 V2.1 — K500 Pre-Hardware-Audition Correction (2026-10-29)
 
 Status: **engineering candidates for hardware audition**, not validated flagship sound.
 This revision supersedes the tiny-delta GEN4 V1 candidates in PR #217. The exact owner-preferred GEN3 01–10 and accepted legacy 21–30 stay byte-identical. PR #216 remains the prerequisite.
@@ -60,3 +60,7 @@ This model does not measure nonlinear DSP, microphone, crossover, acoustics, act
 Before any Mass Upload, back up physical hardware slots; apply one candidate to a test slot, read back, and verify its Music Source BT. A/B against exact counterpart GEN3 01↔31, 02↔32 etc on the same microphone, music, seating and amplifier routing. Match perceived level for both presets (especially 32) before judging clarity. Record held note, fast lyrics, consonants/sibilants, harsh upper-mids, bass, music mask, feedback onset, wet/dry tail and clipping across Main/Surround/Center/Sub.
 
 If one GEN4 is not clearly superior, **keep corresponding GEN3** as the known listening reference. Nothing about valid files, CI or modeled EQ alone qualifies a flagship release.
+
+## V2.1 native-FX pretest correction
+
+The first V2 zip inherited **Echo Repeat raw=12** from GEN3 in #31 Artist and #33 Dangdut. Although the older donor file is checksum-valid and a 656-byte slot can be projected, `K500Protocol::NativeRange::EchoRepeatMax` is **10**. The new audition outputs set #31 and #33 repeat=10, changing only file offset `0x007C` and additive checksum `0x0475` versus V2. No tonal EQ, gain, routing, decay or predelay changes were made by this correction. Generator now fails closed when any GEN4 output repeat exceeds 10; strict test verifies all ten. This does *not* certify unknown device DSP behavior or headroom.

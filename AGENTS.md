@@ -32,6 +32,7 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 - GEN4 V2 candidate tuning uses significant, bounded Mic A/B, Music, Main gain-only edits (selected 0.7–3.5 dB) plus carefully bounded Reverb/Echo scalar, timing and routing adjustments. Preserve EQ types, frequencies, Q, crossover, BT source, alternate EQ sections, reserved bytes, and donor hashes. One explicit exception: #32 Ballad derives from dry #02 Podcast, changes FX, music routes, and trims Main L/R output together by 2 dB to avoid excessive level; no other preset changes output master.
 - The 31–40 bank now contains Artist, Ballad, Dangdut, Karaoke, Acoustic, Qori, Jazz, Rock, Duet and Grand Hall. Modeled magnitude responses are comparative only, **not** hardware DSP emulation. GEN4 naming is the candidate intent, not proof of better karaoke sound.
 - Never promote or replace 01–10 without matched-level real K500 karaoke A/B feedback, clip/headroom/feedback checks, and owner acceptance.
+- GEN4 V2.1 audit: 31 Artist and 33 Dangdut explicitly lower inherited Echo Repeat raw 12→10 (native max10); generator/test must reject any GEN4 output exceeding K500Protocol NativeRange; prior V2 zip must not be used for final tests.
 - 40 items is a PC source catalog, **not** 40 physical slots. Hardware still stores 10 slots.
 - Stacked implementation depends on PR #216 (GEN3 migration); merge that first. No extra workflows or automatic release.
 
