@@ -186,6 +186,8 @@ The active PC preset collection is organized as **01–10 GEN3 Bluetooth** (owne
 
 See [GEN3 preset library migration](docs/GEN3_PRESET_LIBRARY_2026-10-25.md) for exact mappings, safety gates and rollback provenance.
 
+GEN4 **audition candidates** occupy catalog 31–40 and are derived deterministically at CMake configure from the byte-locked GEN3 Bluetooth bank. See [GEN4 singing-focused A/B qualification](docs/GEN4_FLAGSHIP_AUDITION_2026-10-28.md). GEN3 remains the preferred tested listening reference until GEN4 passes real-hardware A/B.
+
 
 ## Architecture
 

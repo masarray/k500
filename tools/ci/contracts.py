@@ -120,6 +120,26 @@ def check_presets() -> None:
 
 
 
+def check_gen4_candidates() -> None:
+    require("CMakeLists.txt", "GEN4_AUDITION_PRESET_BANK_V1",
+            "tools/generate_gen4_presets.py", "SONKUPIK_GEN4_PRESET_FILES")
+    require("src/k500/K500PresetFileBridge.cpp",
+            "GEN4_AUDITION_CATALOG_V1",
+            ":/presets/31_ARTIST_GEN4.k500",
+            ":/presets/40_ADZAN_GEN4.k500")
+    try:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools/ci/test_gen4_audition.py")],
+            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False)
+        if result.returncode:
+            FAILURES.append("GEN4 candidate bank regression: "
+                            + (result.stdout + result.stderr)[-2500:])
+        else:
+            PASSES.append("GEN4 candidate bank: golden hashes/native projection/strict diff")
+    except (OSError, subprocess.TimeoutExpired) as error:
+        FAILURES.append(f"GEN4 candidate bank execution: {error}")
+
+
 def check_uaudio_companions() -> None:
     """Build all ten derived .k500 files and guard the exact donor-only mutation."""
     require(
@@ -2532,6 +2552,7 @@ def check_ci_topology() -> None:
 def main() -> int:
     check_presets()
     check_uaudio_companions()
+    check_gen4_candidates()
     check_fbe_mapping_evidence()
     check_preset_semantic_safety()
     check_protocol_and_state()

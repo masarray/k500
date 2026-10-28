@@ -428,9 +428,44 @@ list(APPEND SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/29_ACOUSTIC_NATURAL.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/30_REGGAE_DUB.k500"
 )
+
+# GEN4_AUDITION_PRESET_BANK_V1 — ten separate A/B candidates. Do NOT retune
+# 01–10 GEN3 donors, 11–20 UAUDIO or historical 21–30. Generate on configure.
+set(SONKUPIK_GEN4_PRESET_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated-gen4-presets")
+execute_process(
+    COMMAND "${Python3_EXECUTABLE}"
+        "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gen4_presets.py"
+        --source "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets"
+        --output "${SONKUPIK_GEN4_PRESET_DIR}"
+    RESULT_VARIABLE SONKUPIK_GEN4_RESULT
+    OUTPUT_VARIABLE SONKUPIK_GEN4_LOG
+    ERROR_VARIABLE SONKUPIK_GEN4_ERROR
+)
+if(NOT SONKUPIK_GEN4_RESULT EQUAL 0)
+    message(FATAL_ERROR "GEN4 candidate bank generation failed: ${SONKUPIK_GEN4_ERROR}")
+endif()
+message(STATUS "${SONKUPIK_GEN4_LOG}")
+set(SONKUPIK_GEN4_PRESET_FILES)
+foreach(PRESET_FILE IN ITEMS
+    31_ARTIST_GEN4.k500
+    32_PODCAST_GEN4.k500
+    33_DANGDUT_GEN4.k500
+    34_KARAOKE_GEN4.k500
+    35_ACOUSTIC_GEN4.k500
+    36_QORI_GEN4.k500
+    37_JAZZ_GEN4.k500
+    38_ROCK_GEN4.k500
+    39_CERAMAH_GEN4.k500
+    40_ADZAN_GEN4.k500
+)
+    list(APPEND SONKUPIK_GEN4_PRESET_FILES "${SONKUPIK_GEN4_PRESET_DIR}/${PRESET_FILE}")
+endforeach()
+list(APPEND SONKUPIK_PRESET_FILES ${SONKUPIK_GEN4_PRESET_FILES})
+
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     ${SONKUPIK_PRESET_FILES}
-    "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_uaudio_presets.py")
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_uaudio_presets.py"
+    "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_gen4_presets.py")
 
 foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
     get_filename_component(PRESET_NAME "${PRESET_FILE}" NAME)
