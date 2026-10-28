@@ -126,7 +126,7 @@ def check_gen4_candidates() -> None:
     require("src/k500/K500PresetFileBridge.cpp",
             "GEN4_AUDITION_CATALOG_V2",
             ":/presets/31_ARTIST_GEN4.k500",
-            ":/presets/40_ADZAN_GEN4.k500")
+            ":/presets/40_GRAND_HALL_GEN4.k500")
     try:
         result = subprocess.run(
             [sys.executable, str(ROOT / "tools/ci/test_gen4_audition.py")],
