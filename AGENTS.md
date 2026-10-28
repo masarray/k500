@@ -20,7 +20,7 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 - **01–10:** user-supplied GEN3 BT presets, byte-identical to the owner listening reference ZIP; `sourceRaw=2`.
 - **11–20:** UAUDIO companions generated at configure time, `sourceRaw=5`; only music source/name/checksum may change from matching GEN3 donor.
 - **21–30:** former official 01–10 files moved byte-for-byte (including historical accepted KONSER, MC HOST and KAR DANGDUT).
-- **31–40:** generated GEN4 audition candidates derived solely from exact 01–10 GEN3 BT donors. Not yet owner-accepted or hardware-qualified; generator and golden SHA tests are in `tools/generate_gen4_presets.py` and `tools/ci/test_gen4_audition.py`. PC library now has 40 entries.
+- **31–40:** generated GEN4 V2 audition candidates derived solely from exact 01–10 GEN3 BT donors. Not yet owner-accepted or hardware-qualified; generator and golden SHA tests are in `tools/generate_gen4_presets.py` and `tools/ci/test_gen4_audition.py`. PC library now has 40 entries.
 - **Hardware slots:** K500 still has exactly 10 permanent slots. PC catalog numbers never dictate hardware slot numbers.
 - Primary official file: `resources/presets/01_ARTIST_GEN3_ARI.k500`, SHA-256 `8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55`.
 - Historic KONSER accepted baseline is now `resources/presets/21_KONSER_NYANYI.k500`, SHA-256 `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1`.
@@ -29,8 +29,8 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 
 ## GEN4 sonic acceptance gate (2026-10-28)
 
-- GEN4 candidates use surgical Mic A/B, Music and Main EQ gain edits plus minor Reverb pre-delay adjustments. Preserve EQ types, frequencies, Q, crossover, input/output routing, output level, original GE​​N3 wet effects, reserved bytes and donor hashes.
-- Modeled magnitude responses are comparative only, **not** hardware DSP emulation. GEN4 naming is the candidate intent, not proof of better karaoke sound.
+- GEN4 V2 candidate tuning uses significant, bounded Mic A/B, Music, Main gain-only edits (selected 0.7–3.5 dB) plus carefully bounded Reverb/Echo scalar, timing and routing adjustments. Preserve EQ types, frequencies, Q, crossover, BT source, alternate EQ sections, reserved bytes, and donor hashes. One explicit exception: #32 Ballad derives from dry #02 Podcast, changes FX, music routes, and trims Main L/R output together by 2 dB to avoid excessive level; no other preset changes output master.
+- The 31–40 bank now contains Artist, Ballad, Dangdut, Karaoke, Acoustic, Qori, Jazz, Rock, Duet and Grand Hall. Modeled magnitude responses are comparative only, **not** hardware DSP emulation. GEN4 naming is the candidate intent, not proof of better karaoke sound.
 - Never promote or replace 01–10 without matched-level real K500 karaoke A/B feedback, clip/headroom/feedback checks, and owner acceptance.
 - 40 items is a PC source catalog, **not** 40 physical slots. Hardware still stores 10 slots.
 - Stacked implementation depends on PR #216 (GEN3 migration); merge that first. No extra workflows or automatic release.

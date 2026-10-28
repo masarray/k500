@@ -59,17 +59,17 @@ constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     {"ACOUSTIC NATURAL", "Legacy original tuning · preserved without DSP edits", "29_ACOUSTIC_NATURAL.k500", ":/presets/29_ACOUSTIC_NATURAL.k500"},
     {"REGGAE DUB", "Legacy original tuning · preserved without DSP edits", "30_REGGAE_DUB.k500", ":/presets/30_REGGAE_DUB.k500"},
 
-    // GEN4_AUDITION_CATALOG_V1 — 31–40 audition candidates; never overwrite GEN3.
+    // GEN4_AUDITION_CATALOG_V2 — 31–40 audition candidates; never overwrite GEN3.
     {"ARTIST GEN4", "GEN4 audition · Natural concert lead: open mids, smooth edge", "31_ARTIST_GEN4.k500", ":/presets/31_ARTIST_GEN4.k500"},
-    {"PODCAST GEN4", "GEN4 audition · Speech clarity with tame sibilance", "32_PODCAST_GEN4.k500", ":/presets/32_PODCAST_GEN4.k500"},
+    {"BALLAD GEN4", "GEN4 audition V2 · intimate slow ballad singing with tuned echo and decay", "32_BALLAD_GEN4.k500", ":/presets/32_BALLAD_GEN4.k500"},
     {"DANGDUT GEN4", "GEN4 audition · Punch and warm vocal separation", "33_DANGDUT_GEN4.k500", ":/presets/33_DANGDUT_GEN4.k500"},
     {"KARAOKE GEN4", "GEN4 audition · Vocal intelligibility, reduced boxiness", "34_KARAOKE_GEN4.k500", ":/presets/34_KARAOKE_GEN4.k500"},
     {"ACOUSTIC GEN4", "GEN4 audition · Natural instrument separation and soft highs", "35_ACOUSTIC_GEN4.k500", ":/presets/35_ACOUSTIC_GEN4.k500"},
     {"QORI GEN4", "GEN4 audition · Qori delivery: diction and silky reverb", "36_QORI_GEN4.k500", ":/presets/36_QORI_GEN4.k500"},
     {"JAZZ GEN4", "GEN4 audition · Close warm jazz vocal with gentle ambience", "37_JAZZ_GEN4.k500", ":/presets/37_JAZZ_GEN4.k500"},
     {"ROCK GEN4", "GEN4 audition · Rock lead forward without sharpness", "38_ROCK_GEN4.k500", ":/presets/38_ROCK_GEN4.k500"},
-    {"CERAMAH GEN4", "GEN4 audition · Speech intelligibility, moderate wet field", "39_CERAMAH_GEN4.k500", ":/presets/39_CERAMAH_GEN4.k500"},
-    {"ADZAN GEN4", "GEN4 audition · Long ambient adzan with preserved articulation", "40_ADZAN_GEN4.k500", ":/presets/40_ADZAN_GEN4.k500"},
+    {"DUET GEN4", "GEN4 audition V2 · balanced lead and dual vocal blend", "39_DUET_GEN4.k500", ":/presets/39_DUET_GEN4.k500"},
+    {"GRAND HALL GEN4", "GEN4 audition V2 · large hall vocal and controlled repeats", "40_GRAND_HALL_GEN4.k500", ":/presets/40_GRAND_HALL_GEN4.k500"},
 };
 
 bool readValidPreset(const QString &path, QByteArray *bytes)

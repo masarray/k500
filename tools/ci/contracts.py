@@ -121,10 +121,10 @@ def check_presets() -> None:
 
 
 def check_gen4_candidates() -> None:
-    require("CMakeLists.txt", "GEN4_AUDITION_PRESET_BANK_V1",
+    require("CMakeLists.txt", "GEN4_AUDITION_PRESET_BANK_V2",
             "tools/generate_gen4_presets.py", "SONKUPIK_GEN4_PRESET_FILES")
     require("src/k500/K500PresetFileBridge.cpp",
-            "GEN4_AUDITION_CATALOG_V1",
+            "GEN4_AUDITION_CATALOG_V2",
             ":/presets/31_ARTIST_GEN4.k500",
             ":/presets/40_ADZAN_GEN4.k500")
     try:
