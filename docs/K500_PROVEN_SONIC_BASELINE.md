@@ -18,12 +18,12 @@ deep + round + punchy + clean + textured + detailed + silky + wide + non-fatigui
 
 Enhancement does **not** mean maximum loudness or boosting every EQ band. It comes from spectral balance, routing, depth, width, controlled transient/detail energy, and appropriate use of Main/Center/Surround/Sub.
 
-## 2. Current gold music reference — Mode 03
+## 2. Historical gold music reference — former Mode 03, now library #23
 
 The current hardware-approved **music tuning reference** remains:
 
 ```text
-resources/presets/03_KAR_DANGDUT.k500
+resources/presets/23_KAR_DANGDUT.k500
 internal/hardware name: KAR DANGDUT
 ```
 
@@ -36,7 +36,7 @@ Core V3: small very-bottom extension -> overall result became enjoyable
 2026-10-04 R1: real-K500 comparison accepted a slightly stronger 158 Hz punch / smoother upper balance while preserving the proven Sub foundation
 ```
 
-The underlying Mode 03 Hi-Fi Core V3 Music/Sub architecture remains the **GOLD MUSIC REFERENCE** inside the official `KAR DANGDUT` file. Do not casually rebuild its successful bass/mid architecture from a generic karaoke curve.
+The underlying Mode 03 Hi-Fi Core V3 Music/Sub architecture remains the **GOLD MUSIC REFERENCE** inside the preserved legacy `KAR DANGDUT` file. Do not casually rebuild its successful bass/mid architecture from a generic karaoke curve.
 
 ## 3. Proven Mode 03 tonal core
 
@@ -134,7 +134,7 @@ This is a routing proxy, not an exact acoustic/DSP model.
 The exact native `CONCERT HIFI V4` donor remains the rollback/provenance reference that fixed the pre-v1 Mass Upload failure class. The current official distribution preset is donor-derived and hardware-listening-evolved:
 
 ```text
-resources/presets/01_KONSER_NYANYI.k500
+resources/presets/21_KONSER_NYANYI.k500
 internal name: KONSER NYANYI
 SHA-256: 66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1
 ```

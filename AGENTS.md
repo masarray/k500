@@ -15,15 +15,17 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 - Stable section navigation uses fixed EQ graph/model lifetimes; do not hot-swap incompatible 10/7/5-band models through one graph instance.
 - Official preset sync is validation-gated and isolated from Local user presets.
 
-The current official Mode 01 is:
+## GEN3 preset migration authority (2026-10-25)
 
-```text
-resources/presets/01_KONSER_NYANYI.k500
-internal name: KONSER NYANYI
-SHA-256: 66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1
-```
+- **01–10:** user-supplied GEN3 BT presets, byte-identical to the owner listening reference ZIP; `sourceRaw=2`.
+- **11–20:** UAUDIO companions generated at configure time, `sourceRaw=5`; only music source/name/checksum may change from matching GEN3 donor.
+- **21–30:** former official 01–10 files moved byte-for-byte (including historical accepted KONSER, MC HOST and KAR DANGDUT).
+- **31–40:** reserved catalog numbers; there are currently 30 usable PC catalog entries, not 40 populated files.
+- **Hardware slots:** K500 still has exactly 10 permanent slots. PC catalog numbers never dictate hardware slot numbers.
+- Primary official file: `resources/presets/01_ARTIST_GEN3_ARI.k500`, SHA-256 `8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55`.
+- Historic KONSER accepted baseline is now `resources/presets/21_KONSER_NYANYI.k500`, SHA-256 `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1`.
+- Do not reinterpret this catalog migration as re-qualification of new EQ, loudness, firmware, or Windows release. Preserve both banks and their hashes.
 
-It was evolved surgically from the exact native `CONCERT HIFI V4` donor. Preserve the native donor as rollback/provenance evidence; future official changes require listening evidence, a byte-diff audit, and an updated golden reference.
 
 ## Read order by task
 
@@ -191,7 +193,7 @@ Any navigation refactor must keep the runtime section stress test green. Never r
 The current **gold music reference** remains:
 
 ```text
-resources/presets/03_KAR_DANGDUT.k500
+resources/presets/23_KAR_DANGDUT.k500
 internal/hardware name: KAR DANGDUT
 ```
 
@@ -213,7 +215,7 @@ When the user reports that a region is already good, treat it as a **LOCK** for 
 
 ### Current official preset authority
 
-Mode 01 is now `KONSER NYANYI`, evolved from the exact native `CONCERT HIFI V4` donor through iterative K500 listening. The native donor remains rollback/provenance authority; the current repository file is distribution authority.
+Historical Mode 01 (now legacy #21) is `KONSER NYANYI`, evolved from the exact native `CONCERT HIFI V4` donor through iterative K500 listening. The native donor remains rollback/provenance authority; the legacy #21 repository file preserves this previous distribution baseline.
 
 Mode 02 `MC HOST RADIO` is also hardware-auditioned and locked as the broadcast flagship. Distribution authority is `resources/presets/02_MC_HOST_RADIO.k500` at SHA-256 `adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7`; detailed provenance is in `docs/K500_MODE02_FLAGSHIP_R3_ACCEPTANCE.md`. Future work must preserve its accepted dry-vocal body, 2.5–4.5 kHz guard, 95 ms single early reflection, and fresh/airy studio-booth field unless a new controlled hardware failure is demonstrated.
 

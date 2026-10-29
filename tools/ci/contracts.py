@@ -64,22 +64,34 @@ def require_exact_count(rel: str, token: str, expected: int) -> None:
 
 
 def check_presets() -> None:
+    # Owner-auditioned GEN3: exact Bluetooth bytes from uploaded level-matched ZIP.
     expected = {
-        "01_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1"),
-        "02_MC_HOST_RADIO.k500": ("MC HOST RADIO", "adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7"),
-        "03_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc"),
-        "04_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c"),
-        "05_POP_KENANGAN_V2.k500": ("POP KENANGAN V2", "e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5"),
-        "06_SHOLAWAT_SYAHDU.k500": ("SHOLAWAT SYAHDU", "9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb"),
-        "07_JAZZ_LOUNGE.k500": ("JAZZ LOUNGE", "a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb"),
-        "08_BLUES_CLUB.k500": ("BLUES CLUB", "ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060"),
-        "09_ACOUSTIC_NATURAL.k500": ("ACOUSTIC NATURAL", "785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b"),
-        "10_REGGAE_DUB.k500": ("REGGAE DUB", "e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f"),
+        "01_ARTIST_GEN3_ARI.k500": ("ARTIST GEN3 ARI", "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55"),
+        "02_PODCAST_REBORN.k500": ("PODCAST REBORN", "a3001eafef5dde5993bafbcb56ac6834c806675ac4c36d0f55e0f154139bf170"),
+        "03_DANGDUT_GEN3_ARI.k500": ("DANGDUT GEN3 ARI", "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1"),
+        "04_KARAOKE_ARTIST.k500": ("KARAOKE ARTIST", "2836a4bdaaf369c9d848950a85d3cbb4b900073ac1ef8faf18e28ab79f0ff1c9"),
+        "05_AKUSTIK_GEN3_ARI.k500": ("AKUSTIK GEN3 ARI", "de3f92cf1198f42b0d87bcaa554cadd6f668194429a0f04829bfbf4bd5705dc3"),
+        "06_IMAM_QORI_GEN3.k500": ("IMAM QORI GEN 3", "3bbe02e77413f6b9bda1ba2b704d7a7beefcc23d977a47464109754760480ca3"),
+        "07_JAZZ_GEN3_ARI.k500": ("JAZZ GEN3 ARI", "139e378f8d68af32e39d8fb717c7164e4af489926754d45cab6dc93cb162bf03"),
+        "08_ROCK_GEN3_ARI.k500": ("ROCK GEN3 ARI", "1f841e113ff357b909f4fdff0f18bfd0bc72f3b2879edfc903c11b6214f79d9e"),
+        "09_MC_CERAMAH_GEN3.k500": ("MC CERAMAH GEN 3", "f0d39c9bf1c168c973c7d60c53ba86713bfc20344f31d1ff419ea87e5ee12520"),
+        "10_ADZAN_MEKAH_GEN3.k500": ("ADZAN MEKAH GEN3", "9519acc2b77a14bdaef4098299f1f8594294e013171aaafcfc5daed03bebbac1"),
+        # Byte-identical historical official presets, relocated from 01–10.
+        "21_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1"),
+        "22_MC_HOST_RADIO.k500": ("MC HOST RADIO", "adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7"),
+        "23_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc"),
+        "24_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c"),
+        "25_POP_KENANGAN_V2.k500": ("POP KENANGAN V2", "e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5"),
+        "26_SHOLAWAT_SYAHDU.k500": ("SHOLAWAT SYAHDU", "9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb"),
+        "27_JAZZ_LOUNGE.k500": ("JAZZ LOUNGE", "a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb"),
+        "28_BLUES_CLUB.k500": ("BLUES CLUB", "ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060"),
+        "29_ACOUSTIC_NATURAL.k500": ("ACOUSTIC NATURAL", "785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b"),
+        "30_REGGAE_DUB.k500": ("REGGAE DUB", "e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f"),
     }
     root = ROOT / "resources" / "presets"
     files = sorted(root.glob("*.k500"))
-    if len(files) != 10:
-        FAILURES.append(f"preset library: expected 10 files, found {len(files)}")
+    if len(files) != 20:
+        FAILURES.append(f"preset library: expected 20 checked-in files (10 GEN3 + 10 legacy), found {len(files)}")
         return
     actual_names = {p.name for p in files}
     if actual_names != set(expected):
@@ -99,10 +111,12 @@ def check_presets() -> None:
             FAILURES.append(f"{path.name}: embedded name {embedded!r} != {name!r}")
         if len(embedded) > 16:
             FAILURES.append(f"{path.name}: hardware name exceeds 16 chars")
+        if path.name[:2] in {f"{index:02d}" for index in range(1, 11)} and raw[0x0E] != 2:
+            FAILURES.append(f"{path.name}: GEN3 BT source must be raw=2")
         digest = hashlib.sha256(raw).hexdigest()
         if digest != expected_hash:
             FAILURES.append(f"{path.name}: sha256 {digest} != {expected_hash}")
-    PASSES.append("official preset bank: size/checksum/name/hash")
+    PASSES.append("GEN3 BT + archival legacy bank: size/checksum/name/hash")
 
 
 
@@ -118,8 +132,8 @@ def check_uaudio_companions() -> None:
     require(
         "src/k500/K500PresetFileBridge.cpp",
         "UAUDIO_COMPANION_PRESET_BANK_V1",
-        ":/presets/11_KONSER_NYANYI_UAUDIO.k500",
-        ":/presets/20_REGGAE_DUB_UAUDIO.k500",
+        ":/presets/11_ARTIST_GEN3_ARI_UAUDIO.k500",
+        ":/presets/20_ADZAN_MEKAH_GEN3_UAUDIO.k500",
     )
     try:
         with tempfile.TemporaryDirectory(prefix="k500-uaudio-") as temp:
@@ -2457,7 +2471,7 @@ def check_preset_semantic_safety() -> None:
         detail = (process.stdout + "\n" + process.stderr).strip()
         FAILURES.append(f"official preset semantic compatibility failed: {detail}")
     else:
-        PASSES.append("official preset bank: strict native-slot semantics")
+        PASSES.append("GEN3 + legacy official bank: strict native-slot semantics")
 
 
 def check_build_targets() -> None:
