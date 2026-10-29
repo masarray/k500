@@ -2329,8 +2329,8 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_3_ACCEPTANCE=accepted",
-        "v1.1.3 RC line is closed after acceptance/stable promotion",
+        "UPDATER_V1_1_4_ACCEPTANCE=accepted",
+        "v1.1.4 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
     # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
