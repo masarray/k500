@@ -580,7 +580,7 @@ Window {
                                         // MASS_UPLOAD_CANONICAL_BADGE_V1 — stable preset source identity.
                                         // Not a row index and never a destination K500 hardware slot.
                                         readonly property int catalogNumber: Number(modelData.catalogNumber || 0)
-                                        readonly property bool numberedOfficial: origin === "SONKUPIK" && catalogNumber >= 1 && catalogNumber <= 40
+                                        readonly property bool numberedOfficial: origin === "SONKUPIK" && catalogNumber >= 1 && catalogNumber <= 41
                                         readonly property string badgeText: numberedOfficial
                                                                              ? String(catalogNumber).padStart(2, "0")
                                                                              : origin === "LOCAL" ? "LOCAL" : "OFFICIAL"

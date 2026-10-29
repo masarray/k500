@@ -1,3 +1,7 @@
+# Historical record — superseded by GEN5 D2R reordering on 2026-10-29
+
+This document records the earlier planned GEN3 catalog migration; current canonical numbering is in [GEN5 D2R Primary Bank](GEN5_D2R_PRIMARY_BANK_2026-10-29.md). Binary identities remain valid but catalog numbers below are historical.
+
 # GEN3 Priority Preset Library — 2026-10-25
 
 ## Catalog (PC, not device slot)

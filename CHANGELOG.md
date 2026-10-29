@@ -1,3 +1,8 @@
+## v1.1.4-rc.1 candidate — GEN5 D2R primary preset bank
+
+- Promote owner-selected D2R genre/mosque bank as built-in PC catalog 01–10, archive GEN3 Bluetooth at 11–20, GEN3 UAUDIO at 21–30, legacy originals at 31–40, preserve exact D2R Golden at 41.
+- No silent DSP modifications to archival binaries; 41 has original checksum/name and SHA-256. Stable v1.1.3 release assets remain untouched.
+
 # Changelog
 
 All notable SonKuPik K500 changes are documented here. Hardware-facing statements are intentionally scoped: software/CI completion and physical hardware qualification are not treated as interchangeable evidence.

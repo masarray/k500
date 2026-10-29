@@ -15,17 +15,17 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 - Stable section navigation uses fixed EQ graph/model lifetimes; do not hot-swap incompatible 10/7/5-band models through one graph instance.
 - Official preset sync is validation-gated and isolated from Local user presets.
 
-## GEN3 preset migration authority (2026-10-25)
+## GEN5 D2R owner-ordered preset catalog (2026-10-29)
 
-- **01–10:** user-supplied GEN3 BT presets, byte-identical to the owner listening reference ZIP; `sourceRaw=2`.
-- **11–20:** UAUDIO companions generated at configure time, `sourceRaw=5`; only music source/name/checksum may change from matching GEN3 donor.
-- **21–30:** former official 01–10 files moved byte-for-byte (including historical accepted KONSER, MC HOST and KAR DANGDUT).
-- **31–40:** reserved catalog numbers; there are currently 30 usable PC catalog entries, not 40 populated files.
-- **Hardware slots:** K500 still has exactly 10 permanent slots. PC catalog numbers never dictate hardware slot numbers.
-- Primary official file: `resources/presets/01_ARTIST_GEN3_ARI.k500`, SHA-256 `8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55`.
-- Historic KONSER accepted baseline is now `resources/presets/21_KONSER_NYANYI.k500`, SHA-256 `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1`.
-- Do not reinterpret this catalog migration as re-qualification of new EQ, loudness, firmware, or Windows release. Preserve both banks and their hashes.
-
+- 01–10: latest D2R-derived GEN5 genre/mosque BT bank, exact ZIP-audited bytes.
+- 11–20: user-auditioned original GEN3 BT presets, relocated byte-identically.
+- 21–30: matching GEN3 UAUDIO companions generated deterministically from 11–20; only source/name/checksum mutate.
+- 31–40: historical original SonKuPik presets, relocated byte-identically.
+- **41: D2R GOLDEN** is exact owner-selected D2R raw file; SHA-256 `465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a`. Never edit, normalize, or rename embedded hardware identity `D2_REV`.
+- Physical K500 remains limited to 10 slots regardless of PC catalog count 41.
+- Saved official cache can contain old numbered file paths; hide duplicates in catalog without deleting user files. Do not equate stale cache with new bundle.
+- Canonical source and backup: `docs/GEN5_D2R_PRIMARY_BANK_2026-10-29.md`. Prior migration PR #216 is the base dependency; rejected GEN4 PR #217 must NOT be merged as a prerequisite.
+- Previous public stable v1.1.3 installer/release assets are immutable. Current source line v1.1.4, with a manual v1.1.4-rc.N prerelease pipeline and independent acceptance gate; green CI is not sonic/hardware qualification.
 
 ## Read order by task
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate K500 official UAUDIO companions (11–20) from the exact 01–10 donors.
+"""Generate K500 official UAUDIO companions (21–30) from the exact archived GEN3 11–20 donors.
 
 Build-time derivation keeps the hardware-auditioned original files byte-identical.
 Only the proven music source scalar (file 0x000E), hardware-visible name
@@ -41,17 +41,17 @@ UAUDIO_NAMES = (
 
 
 def generate(source_dir: Path, output_dir: Path) -> list[dict]:
-    source_files = sorted(path for path in source_dir.glob("[0-9][0-9]_*.k500") if 1 <= int(path.name[:2]) <= 10)
+    source_files = sorted(path for path in source_dir.glob("[0-9][0-9]_*.k500") if 11 <= int(path.name[:2]) <= 20)
     # Fail closed if the official bank changes shape: never silently shift mappings.
-    expected_prefixes = [f"{n:02d}_" for n in range(1, 11)]
+    expected_prefixes = [f"{n:02d}_" for n in range(11, 21)]
     if len(source_files) != 10 or any(
         not file.name.startswith(prefix) for file, prefix in zip(source_files, expected_prefixes)
     ):
-        raise ValueError("UAUDIO companions require the canonical 01–10 official donor bank")
+        raise ValueError("UAUDIO companions require the canonical archived GEN3 11–20 donor bank")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest: list[dict] = []
-    for n, (source_path, new_name) in enumerate(zip(source_files, UAUDIO_NAMES), start=11):
+    for n, (source_path, new_name) in enumerate(zip(source_files, UAUDIO_NAMES), start=21):
         source = source_path.read_bytes()
         error = validate_device_slot_compatibility(source)
         if error:
