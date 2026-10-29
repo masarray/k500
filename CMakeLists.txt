@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(SonkupikStudioNative VERSION 1.1.3 LANGUAGES CXX)
+project(SonkupikStudioNative VERSION 1.1.4 LANGUAGES CXX)
 
 # V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR
 # Candidate source version only: v1.1.2 is the accepted immutable public stable.
@@ -374,22 +374,32 @@ qt_add_resources(sonkupik_studio_native embedded_fonts
 
 # Bundled official presets are the offline fallback. Runtime GitHub sync may
 # replace/add validated files in the user cache, never mutate these resources.
-# GEN3_PRIORITY_LIBRARY_V1 — primary 10 BT presets; UAUDIO companions are generated from these only.
+# GEN5_D2R_PRIMARY_LIBRARY_V1: 01–10 owner-selected D2R family, 11–20 archived GEN3 Bluetooth.
+# 41 is an EXACT original D2R GOLDEN binary; never patch its embedded name/checksum.
 set(SONKUPIK_PRESET_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ARTIST_GEN3_ARI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_PODCAST_REBORN.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_GEN3_ARI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_KARAOKE_ARTIST.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_AKUSTIK_GEN3_ARI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_IMAM_QORI_GEN3.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_JAZZ_GEN3_ARI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_ROCK_GEN3_ARI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_MC_CERAMAH_GEN3.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_ADZAN_MEKAH_GEN3.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ARTIST_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BALLAD_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_ROCK_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_ACOUSTIC_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/06_JAZZ_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_MELAYU_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_QORI_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ADZAN_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_CERAMAH_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/11_ARTIST_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/12_PODCAST_REBORN.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/13_DANGDUT_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/14_KARAOKE_ARTIST.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/15_AKUSTIK_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/16_IMAM_QORI_GEN3.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/17_JAZZ_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/18_ROCK_GEN3_ARI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/19_MC_CERAMAH_GEN3.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/20_ADZAN_MEKAH_GEN3.k500"
 )
-# UAUDIO_COMPANION_PRESET_BANK_V1 — synthesize 11–20 during configure from the
-# exact 01–10 official donors. The source files never change and the generated
-# presets are embedded for fully offline use; no runtime Python dependency.
+# UAUDIO_COMPANION_PRESET_BANK_V1 — move legacy GEN3 companions to 21–30;
+# generate from exact archived GEN3 BT 11–20, never from GEN5 D2R.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(SONKUPIK_UAUDIO_PRESET_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated-uaudio-presets")
 execute_process(
@@ -406,27 +416,33 @@ if(NOT SONKUPIK_UAUDIO_RESULT EQUAL 0)
 endif()
 message(STATUS "${SONKUPIK_UAUDIO_LOG}")
 set(SONKUPIK_UAUDIO_PRESET_FILES)
-set(SONKUPIK_UAUDIO_INDEX 11)
+set(SONKUPIK_UAUDIO_INDEX 21)
 foreach(PRESET_FILE IN LISTS SONKUPIK_PRESET_FILES)
-    get_filename_component(BASE_STEM "${PRESET_FILE}" NAME_WE)
-    string(REGEX REPLACE "^[0-9][0-9]_" "" BASE_STEM "${BASE_STEM}")
-    list(APPEND SONKUPIK_UAUDIO_PRESET_FILES
-        "${SONKUPIK_UAUDIO_PRESET_DIR}/${SONKUPIK_UAUDIO_INDEX}_${BASE_STEM}_UAUDIO.k500")
-    math(EXPR SONKUPIK_UAUDIO_INDEX "${SONKUPIK_UAUDIO_INDEX} + 1")
+    get_filename_component(ARCHIVE_STEM "${PRESET_FILE}" NAME_WE)
+    if(ARCHIVE_STEM MATCHES "^(1[1-9]|20)_")
+        string(REGEX REPLACE "^[0-9][0-9]_" "" BASE_STEM "${ARCHIVE_STEM}")
+        list(APPEND SONKUPIK_UAUDIO_PRESET_FILES
+            "${SONKUPIK_UAUDIO_PRESET_DIR}/${SONKUPIK_UAUDIO_INDEX}_${BASE_STEM}_UAUDIO.k500")
+        math(EXPR SONKUPIK_UAUDIO_INDEX "${SONKUPIK_UAUDIO_INDEX} + 1")
+    endif()
 endforeach()
+if(NOT SONKUPIK_UAUDIO_INDEX EQUAL 31)
+    message(FATAL_ERROR "Expected 10 archived GEN3 source files for UAUDIO bank")
+endif()
 list(APPEND SONKUPIK_PRESET_FILES ${SONKUPIK_UAUDIO_PRESET_FILES})
-# Historical 10 originals follow both owner banks, and remain bundled offline.
+# Historic SONKUPIK presets 31–40 are exact original bytes; Golden always last.
 list(APPEND SONKUPIK_PRESET_FILES
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/21_KONSER_NYANYI.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/22_MC_HOST_RADIO.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/23_KAR_DANGDUT.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/24_POP_ROCK_BALLAD.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/25_POP_KENANGAN_V2.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/26_SHOLAWAT_SYAHDU.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/27_JAZZ_LOUNGE.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/28_BLUES_CLUB.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/29_ACOUSTIC_NATURAL.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/30_REGGAE_DUB.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/31_KONSER_NYANYI.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/32_MC_HOST_RADIO.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/33_KAR_DANGDUT.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/34_POP_ROCK_BALLAD.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/35_POP_KENANGAN_V2.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/36_SHOLAWAT_SYAHDU.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/37_JAZZ_LOUNGE.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/38_BLUES_CLUB.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/39_ACOUSTIC_NATURAL.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/40_REGGAE_DUB.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/41_GOLDEN_D2R.k500"
 )
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
     ${SONKUPIK_PRESET_FILES}

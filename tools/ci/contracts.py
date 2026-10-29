@@ -64,60 +64,69 @@ def require_exact_count(rel: str, token: str, expected: int) -> None:
 
 
 def check_presets() -> None:
-    # Owner-auditioned GEN3: exact Bluetooth bytes from uploaded level-matched ZIP.
+    # GEN5 owner test-bank exact source ZIP, archived GEN3/legacy byte-perfect,
+    # and owner-selected D2R Golden protected at the LAST PC catalog ID.
     expected = {
-        "01_ARTIST_GEN3_ARI.k500": ("ARTIST GEN3 ARI", "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55"),
-        "02_PODCAST_REBORN.k500": ("PODCAST REBORN", "a3001eafef5dde5993bafbcb56ac6834c806675ac4c36d0f55e0f154139bf170"),
-        "03_DANGDUT_GEN3_ARI.k500": ("DANGDUT GEN3 ARI", "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1"),
-        "04_KARAOKE_ARTIST.k500": ("KARAOKE ARTIST", "2836a4bdaaf369c9d848950a85d3cbb4b900073ac1ef8faf18e28ab79f0ff1c9"),
-        "05_AKUSTIK_GEN3_ARI.k500": ("AKUSTIK GEN3 ARI", "de3f92cf1198f42b0d87bcaa554cadd6f668194429a0f04829bfbf4bd5705dc3"),
-        "06_IMAM_QORI_GEN3.k500": ("IMAM QORI GEN 3", "3bbe02e77413f6b9bda1ba2b704d7a7beefcc23d977a47464109754760480ca3"),
-        "07_JAZZ_GEN3_ARI.k500": ("JAZZ GEN3 ARI", "139e378f8d68af32e39d8fb717c7164e4af489926754d45cab6dc93cb162bf03"),
-        "08_ROCK_GEN3_ARI.k500": ("ROCK GEN3 ARI", "1f841e113ff357b909f4fdff0f18bfd0bc72f3b2879edfc903c11b6214f79d9e"),
-        "09_MC_CERAMAH_GEN3.k500": ("MC CERAMAH GEN 3", "f0d39c9bf1c168c973c7d60c53ba86713bfc20344f31d1ff419ea87e5ee12520"),
-        "10_ADZAN_MEKAH_GEN3.k500": ("ADZAN MEKAH GEN3", "9519acc2b77a14bdaef4098299f1f8594294e013171aaafcfc5daed03bebbac1"),
-        # Byte-identical historical official presets, relocated from 01–10.
-        "21_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1"),
-        "22_MC_HOST_RADIO.k500": ("MC HOST RADIO", "adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7"),
-        "23_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc"),
-        "24_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c"),
-        "25_POP_KENANGAN_V2.k500": ("POP KENANGAN V2", "e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5"),
-        "26_SHOLAWAT_SYAHDU.k500": ("SHOLAWAT SYAHDU", "9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb"),
-        "27_JAZZ_LOUNGE.k500": ("JAZZ LOUNGE", "a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb"),
-        "28_BLUES_CLUB.k500": ("BLUES CLUB", "ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060"),
-        "29_ACOUSTIC_NATURAL.k500": ("ACOUSTIC NATURAL", "785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b"),
-        "30_REGGAE_DUB.k500": ("REGGAE DUB", "e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f"),
+        "01_ARTIST_D2R.k500": ("ARTIST G5", "9d6d8a09fb0eb2d10ea12092176baf877132aee4dbeaedc30d66b95dc6a70f55"),
+        "02_BALLAD_D2R.k500": ("BALLAD G5", "cb4c46bc6b70c97e8f4348b2d8e6117d223904d5a61994749a46876d287dfc3b"),
+        "03_DANGDUT_D2R.k500": ("DANGDUT G5", "3241df08a7938523133751555f3fc3daf77cd37c638e79adc529f997d47b37da"),
+        "04_ROCK_D2R.k500": ("ROCK G5", "f4b903e98582e3f5fbfd2c4739d82766ac10c5432165e00eecd49d420482302a"),
+        "05_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "d2b749412f59963fc4133a1485d949ad86a1c0970119b90f31ebdc533c4f3563"),
+        "06_JAZZ_D2R.k500": ("JAZZ G5", "c5a6afcc6dd9bcabb4d2f1044dd688c2b3c76bdf00a3df50b561fd59a3d31798"),
+        "07_MELAYU_D2R.k500": ("MELAYU G5", "4b22a5656dd5521fba0fc96c06eb8e8a9118931e739997020c9299051a308a11"),
+        "08_QORI_D2R.k500": ("QORI G5", "66d953e2f580c8d4b42473b62085ba43f698287b7e474ee5be8fc2f7060e537e"),
+        "09_ADZAN_D2R.k500": ("ADZAN G5", "cc31fb555ac0248903519363dda2f2d6a95f907a5dd69adfdfb83caf01890224"),
+        "10_CERAMAH_D2R.k500": ("CERAMAH G5", "644ffcee84c34015957ec65534ae679c8c404c14a5fe2f84e4f83d9f562e701f"),
+        "11_ARTIST_GEN3_ARI.k500": ("ARTIST GEN3 ARI", "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55"),
+        "12_PODCAST_REBORN.k500": ("PODCAST REBORN", "a3001eafef5dde5993bafbcb56ac6834c806675ac4c36d0f55e0f154139bf170"),
+        "13_DANGDUT_GEN3_ARI.k500": ("DANGDUT GEN3 ARI", "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1"),
+        "14_KARAOKE_ARTIST.k500": ("KARAOKE ARTIST", "2836a4bdaaf369c9d848950a85d3cbb4b900073ac1ef8faf18e28ab79f0ff1c9"),
+        "15_AKUSTIK_GEN3_ARI.k500": ("AKUSTIK GEN3 ARI", "de3f92cf1198f42b0d87bcaa554cadd6f668194429a0f04829bfbf4bd5705dc3"),
+        "16_IMAM_QORI_GEN3.k500": ("IMAM QORI GEN 3", "3bbe02e77413f6b9bda1ba2b704d7a7beefcc23d977a47464109754760480ca3"),
+        "17_JAZZ_GEN3_ARI.k500": ("JAZZ GEN3 ARI", "139e378f8d68af32e39d8fb717c7164e4af489926754d45cab6dc93cb162bf03"),
+        "18_ROCK_GEN3_ARI.k500": ("ROCK GEN3 ARI", "1f841e113ff357b909f4fdff0f18bfd0bc72f3b2879edfc903c11b6214f79d9e"),
+        "19_MC_CERAMAH_GEN3.k500": ("MC CERAMAH GEN 3", "f0d39c9bf1c168c973c7d60c53ba86713bfc20344f31d1ff419ea87e5ee12520"),
+        "20_ADZAN_MEKAH_GEN3.k500": ("ADZAN MEKAH GEN3", "9519acc2b77a14bdaef4098299f1f8594294e013171aaafcfc5daed03bebbac1"),
+        "31_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1"),
+        "32_MC_HOST_RADIO.k500": ("MC HOST RADIO", "adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7"),
+        "33_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc"),
+        "34_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c"),
+        "35_POP_KENANGAN_V2.k500": ("POP KENANGAN V2", "e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5"),
+        "36_SHOLAWAT_SYAHDU.k500": ("SHOLAWAT SYAHDU", "9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb"),
+        "37_JAZZ_LOUNGE.k500": ("JAZZ LOUNGE", "a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb"),
+        "38_BLUES_CLUB.k500": ("BLUES CLUB", "ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060"),
+        "39_ACOUSTIC_NATURAL.k500": ("ACOUSTIC NATURAL", "785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b"),
+        "40_REGGAE_DUB.k500": ("REGGAE DUB", "e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f"),
+        "41_GOLDEN_D2R.k500": ("D2_REV", "465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a"),
     }
     root = ROOT / "resources" / "presets"
     files = sorted(root.glob("*.k500"))
-    if len(files) != 20:
-        FAILURES.append(f"preset library: expected 20 checked-in files (10 GEN3 + 10 legacy), found {len(files)}")
+    if len(files) != 31 or {p.name for p in files} != set(expected):
+        FAILURES.append(f"GEN5 catalog: expected exactly 31 pinned .k500 files, got {[p.name for p in files]}")
         return
-    actual_names = {p.name for p in files}
-    if actual_names != set(expected):
-        FAILURES.append(f"preset library: file set mismatch: {sorted(actual_names)}")
-        return
-
     for path in files:
         raw = path.read_bytes()
         name, expected_hash = expected[path.name]
-        if len(raw) != 0x478:
-            FAILURES.append(f"{path.name}: expected 1144 bytes, got {len(raw)}")
+        if len(raw) != 0x478 or (sum(raw) & 0xFF):
+            FAILURES.append(f"{path.name}: invalid 1144-byte size/checksum")
             continue
-        if sum(raw) & 0xFF:
-            FAILURES.append(f"{path.name}: additive checksum invalid")
-        embedded = raw[0x454:0x475].split(b"\0", 1)[0].decode("ascii", errors="strict").strip()
-        if embedded != name:
-            FAILURES.append(f"{path.name}: embedded name {embedded!r} != {name!r}")
-        if len(embedded) > 16:
-            FAILURES.append(f"{path.name}: hardware name exceeds 16 chars")
-        if path.name[:2] in {f"{index:02d}" for index in range(1, 11)} and raw[0x0E] != 2:
-            FAILURES.append(f"{path.name}: GEN3 BT source must be raw=2")
-        digest = hashlib.sha256(raw).hexdigest()
-        if digest != expected_hash:
-            FAILURES.append(f"{path.name}: sha256 {digest} != {expected_hash}")
-    PASSES.append("GEN3 BT + archival legacy bank: size/checksum/name/hash")
-
+        actual_name = raw[0x454:0x464].split(bytes([0]), 1)[0].decode("ascii", errors="strict").strip()
+        if actual_name != name:
+            FAILURES.append(f"{path.name}: native embedded name {actual_name!r} != {name!r}")
+        if int(path.name[:2]) in list(range(1, 21)) + [41] and raw[0x0E] != 2:
+            FAILURES.append(f"{path.name}: protected BT music source drift")
+        sha = hashlib.sha256(raw).hexdigest()
+        if sha != expected_hash:
+            FAILURES.append(f"{path.name}: SHA-256 drift {sha} != {expected_hash}")
+    golden = (root / "41_GOLDEN_D2R.k500").read_bytes()
+    if hashlib.sha256(golden).hexdigest() != "465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a":
+        FAILURES.append("D2R GOLDEN 41 mutated: never alter user-selected sonic reference")
+    require("src/k500/K500PresetFileBridge.cpp",
+            "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500",
+            "catalogNumber <= 41")
+    require("qml/components/MassUploadTransferWindow.qml", "catalogNumber <= 41")
+    require("CMakeLists.txt", "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500")
+    PASSES.append("GEN5 01–10 + archived GEN3 11–20 + legacy 31–40 + immutable Golden 41")
 
 
 def check_uaudio_companions() -> None:
@@ -132,8 +141,8 @@ def check_uaudio_companions() -> None:
     require(
         "src/k500/K500PresetFileBridge.cpp",
         "UAUDIO_COMPANION_PRESET_BANK_V1",
-        ":/presets/11_ARTIST_GEN3_ARI_UAUDIO.k500",
-        ":/presets/20_ADZAN_MEKAH_GEN3_UAUDIO.k500",
+        ":/presets/21_ARTIST_GEN3_ARI_UAUDIO.k500",
+        ":/presets/30_ADZAN_MEKAH_GEN3_UAUDIO.k500",
     )
     try:
         with tempfile.TemporaryDirectory(prefix="k500-uaudio-") as temp:
@@ -150,7 +159,7 @@ def check_uaudio_companions() -> None:
             if len(manifest) != 10 or len(list(out.glob("*.k500"))) != 10:
                 FAILURES.append("UAUDIO companions: expected exactly 10 generated presets")
                 return
-            for index, entry in enumerate(manifest, 11):
+            for index, entry in enumerate(manifest, 21):
                 path = out / entry["file"]
                 donor = ROOT / "resources/presets" / entry["donor"]
                 generated = path.read_bytes()
@@ -1778,8 +1787,8 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.3 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must be 1.1.3 for the candidate release")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.4 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: source version must be 1.1.4 for the candidate release")
     if "V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR" not in cmake:
         FAILURES.append("CMakeLists.txt: v1.1.3 qualification anchor missing")
 
@@ -1838,16 +1847,21 @@ def check_release_contracts() -> None:
 
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "v1.1.3-rc.${{ inputs.rc_number }}",
-        "docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_3_ACCEPTANCE",
+        "v1.1.4-rc.${{ inputs.rc_number }}",
+        "docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md",
+        "UPDATER_V1_1_4_ACCEPTANCE",
         "RC_THREE_SCOPE_INSTALLERS_V1",
         "REAL_APP_SMART_RC_ACCEPTANCE_V1",
         "Public Smart default is not LocalAppData; Program Files is forbidden",
         "Windows-Smart-Installer.exe",
         "if ($check.artifacts.Count -ne 3)",
-        "v1.1.3 candidate is pending independent acceptance",
+        "v1.1.4 candidate is pending independent acceptance",
     )
+    # Independent v1.1.4 RC gate; old stable 1.1.3 remains immutable.
+    new_rc_gate = read("docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md")
+    if "UPDATER_V1_1_4_ACCEPTANCE=pending" not in new_rc_gate:
+        FAILURES.append("v1.1.4 RC acceptance must initially remain pending")
+
     require(
         ".github/workflows/windows-updater-promote.yml",
         "docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md",
@@ -2315,8 +2329,8 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_3_ACCEPTANCE=accepted",
-        "v1.1.3 RC line is closed after acceptance/stable promotion",
+        "UPDATER_V1_1_4_ACCEPTANCE=accepted",
+        "v1.1.4 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
     # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
@@ -2344,7 +2358,7 @@ def check_release_contracts() -> None:
                 FAILURES.append(f"{workflow}:{number}: orphaned PowerShell -Force")
 
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md' -Raw")
+    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md' -Raw")
     rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):
@@ -2471,7 +2485,7 @@ def check_preset_semantic_safety() -> None:
         detail = (process.stdout + "\n" + process.stderr).strip()
         FAILURES.append(f"official preset semantic compatibility failed: {detail}")
     else:
-        PASSES.append("GEN3 + legacy official bank: strict native-slot semantics")
+        PASSES.append("GEN5 + archived GEN3 + legacy official bank: strict native-slot semantics")
 
 
 def check_build_targets() -> None:

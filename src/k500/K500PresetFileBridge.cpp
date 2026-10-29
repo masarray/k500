@@ -23,41 +23,48 @@ struct BuiltInPresetDefinition {
 };
 
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
-    // GEN3_PRIORITY_LIBRARY_V1: 01–10 BT · 11–20 UAUDIO · 21–30 legacy.
-    {"ARTIST GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "01_ARTIST_GEN3_ARI.k500", ":/presets/01_ARTIST_GEN3_ARI.k500"},
-    {"PODCAST REBORN", "GEN3 owner-auditioned · Bluetooth source", "02_PODCAST_REBORN.k500", ":/presets/02_PODCAST_REBORN.k500"},
-    {"DANGDUT GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "03_DANGDUT_GEN3_ARI.k500", ":/presets/03_DANGDUT_GEN3_ARI.k500"},
-    {"KARAOKE ARTIST", "GEN3 owner-auditioned · Bluetooth source", "04_KARAOKE_ARTIST.k500", ":/presets/04_KARAOKE_ARTIST.k500"},
-    {"AKUSTIK GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "05_AKUSTIK_GEN3_ARI.k500", ":/presets/05_AKUSTIK_GEN3_ARI.k500"},
-    {"IMAM QORI GEN 3", "GEN3 owner-auditioned · Bluetooth source", "06_IMAM_QORI_GEN3.k500", ":/presets/06_IMAM_QORI_GEN3.k500"},
-    {"JAZZ GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "07_JAZZ_GEN3_ARI.k500", ":/presets/07_JAZZ_GEN3_ARI.k500"},
-    {"ROCK GEN3 ARI", "GEN3 owner-auditioned · Bluetooth source", "08_ROCK_GEN3_ARI.k500", ":/presets/08_ROCK_GEN3_ARI.k500"},
-    {"MC CERAMAH GEN 3", "GEN3 owner-auditioned · Bluetooth source", "09_MC_CERAMAH_GEN3.k500", ":/presets/09_MC_CERAMAH_GEN3.k500"},
-    {"ADZAN MEKAH GEN3", "GEN3 owner-auditioned · Bluetooth source", "10_ADZAN_MEKAH_GEN3.k500", ":/presets/10_ADZAN_MEKAH_GEN3.k500"},
-
-    // UAUDIO_COMPANION_PRESET_BANK_V1 — exact GEN3 sonic clone with sourceRaw=5.
-    {"ARTIST UAUDIO", "GEN3 owner tuning · USB Audio source", "11_ARTIST_GEN3_ARI_UAUDIO.k500", ":/presets/11_ARTIST_GEN3_ARI_UAUDIO.k500"},
-    {"PODCAST UAUDIO", "GEN3 owner tuning · USB Audio source", "12_PODCAST_REBORN_UAUDIO.k500", ":/presets/12_PODCAST_REBORN_UAUDIO.k500"},
-    {"DANGDUT UAUDIO", "GEN3 owner tuning · USB Audio source", "13_DANGDUT_GEN3_ARI_UAUDIO.k500", ":/presets/13_DANGDUT_GEN3_ARI_UAUDIO.k500"},
-    {"KARAOKE UAUDIO", "GEN3 owner tuning · USB Audio source", "14_KARAOKE_ARTIST_UAUDIO.k500", ":/presets/14_KARAOKE_ARTIST_UAUDIO.k500"},
-    {"AKUSTIK UAUDIO", "GEN3 owner tuning · USB Audio source", "15_AKUSTIK_GEN3_ARI_UAUDIO.k500", ":/presets/15_AKUSTIK_GEN3_ARI_UAUDIO.k500"},
-    {"QORI UAUDIO", "GEN3 owner tuning · USB Audio source", "16_IMAM_QORI_GEN3_UAUDIO.k500", ":/presets/16_IMAM_QORI_GEN3_UAUDIO.k500"},
-    {"JAZZ UAUDIO", "GEN3 owner tuning · USB Audio source", "17_JAZZ_GEN3_ARI_UAUDIO.k500", ":/presets/17_JAZZ_GEN3_ARI_UAUDIO.k500"},
-    {"ROCK UAUDIO", "GEN3 owner tuning · USB Audio source", "18_ROCK_GEN3_ARI_UAUDIO.k500", ":/presets/18_ROCK_GEN3_ARI_UAUDIO.k500"},
-    {"CERAMAH UAUDIO", "GEN3 owner tuning · USB Audio source", "19_MC_CERAMAH_GEN3_UAUDIO.k500", ":/presets/19_MC_CERAMAH_GEN3_UAUDIO.k500"},
-    {"ADZAN UAUDIO", "GEN3 owner tuning · USB Audio source", "20_ADZAN_MEKAH_GEN3_UAUDIO.k500", ":/presets/20_ADZAN_MEKAH_GEN3_UAUDIO.k500"},
-
-    // LEGACY_PRESET_ARCHIVE_V1 — historical accepted originals, byte-identical.
-    {"KONSER NYANYI", "Legacy original tuning · preserved without DSP edits", "21_KONSER_NYANYI.k500", ":/presets/21_KONSER_NYANYI.k500"},
-    {"MC HOST RADIO", "Legacy original tuning · preserved without DSP edits", "22_MC_HOST_RADIO.k500", ":/presets/22_MC_HOST_RADIO.k500"},
-    {"KAR DANGDUT", "Legacy original tuning · preserved without DSP edits", "23_KAR_DANGDUT.k500", ":/presets/23_KAR_DANGDUT.k500"},
-    {"POP ROCK BALLAD", "Legacy original tuning · preserved without DSP edits", "24_POP_ROCK_BALLAD.k500", ":/presets/24_POP_ROCK_BALLAD.k500"},
-    {"POP KENANGAN V2", "Legacy original tuning · preserved without DSP edits", "25_POP_KENANGAN_V2.k500", ":/presets/25_POP_KENANGAN_V2.k500"},
-    {"SHOLAWAT SYAHDU", "Legacy original tuning · preserved without DSP edits", "26_SHOLAWAT_SYAHDU.k500", ":/presets/26_SHOLAWAT_SYAHDU.k500"},
-    {"JAZZ LOUNGE", "Legacy original tuning · preserved without DSP edits", "27_JAZZ_LOUNGE.k500", ":/presets/27_JAZZ_LOUNGE.k500"},
-    {"BLUES CLUB", "Legacy original tuning · preserved without DSP edits", "28_BLUES_CLUB.k500", ":/presets/28_BLUES_CLUB.k500"},
-    {"ACOUSTIC NATURAL", "Legacy original tuning · preserved without DSP edits", "29_ACOUSTIC_NATURAL.k500", ":/presets/29_ACOUSTIC_NATURAL.k500"},
-    {"REGGAE DUB", "Legacy original tuning · preserved without DSP edits", "30_REGGAE_DUB.k500", ":/presets/30_REGGAE_DUB.k500"},
+    // UAUDIO_COMPANION_PRESET_BANK_V1 — archived GEN3 USB Audio 21–30.\n    // GEN5_D2R_PRIMARY_LIBRARY_V1 — 01–10 GEN5, 11–20 GEN3 BT, 21–30 UAUDIO, 31–40 legacy, 41 D2R golden.
+    {"ARTIST G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "01_ARTIST_D2R.k500", ":/presets/01_ARTIST_D2R.k500"},
+    {"BALLAD G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "02_BALLAD_D2R.k500", ":/presets/02_BALLAD_D2R.k500"},
+    {"DANGDUT G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "03_DANGDUT_D2R.k500", ":/presets/03_DANGDUT_D2R.k500"},
+    {"ROCK G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "04_ROCK_D2R.k500", ":/presets/04_ROCK_D2R.k500"},
+    {"ACOUSTIC G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "05_ACOUSTIC_D2R.k500", ":/presets/05_ACOUSTIC_D2R.k500"},
+    {"JAZZ G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "06_JAZZ_D2R.k500", ":/presets/06_JAZZ_D2R.k500"},
+    {"MELAYU G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "07_MELAYU_D2R.k500", ":/presets/07_MELAYU_D2R.k500"},
+    {"QORI G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "08_QORI_D2R.k500", ":/presets/08_QORI_D2R.k500"},
+    {"ADZAN G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "09_ADZAN_D2R.k500", ":/presets/09_ADZAN_D2R.k500"},
+    {"CERAMAH G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "10_CERAMAH_D2R.k500", ":/presets/10_CERAMAH_D2R.k500"},
+    {"ARTIST GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "11_ARTIST_GEN3_ARI.k500", ":/presets/11_ARTIST_GEN3_ARI.k500"},
+    {"PODCAST REBORN", "Archived GEN3 Bluetooth · original bytes", "12_PODCAST_REBORN.k500", ":/presets/12_PODCAST_REBORN.k500"},
+    {"DANGDUT GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "13_DANGDUT_GEN3_ARI.k500", ":/presets/13_DANGDUT_GEN3_ARI.k500"},
+    {"KARAOKE ARTIST", "Archived GEN3 Bluetooth · original bytes", "14_KARAOKE_ARTIST.k500", ":/presets/14_KARAOKE_ARTIST.k500"},
+    {"AKUSTIK GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "15_AKUSTIK_GEN3_ARI.k500", ":/presets/15_AKUSTIK_GEN3_ARI.k500"},
+    {"IMAM QORI GEN 3", "Archived GEN3 Bluetooth · original bytes", "16_IMAM_QORI_GEN3.k500", ":/presets/16_IMAM_QORI_GEN3.k500"},
+    {"JAZZ GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "17_JAZZ_GEN3_ARI.k500", ":/presets/17_JAZZ_GEN3_ARI.k500"},
+    {"ROCK GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "18_ROCK_GEN3_ARI.k500", ":/presets/18_ROCK_GEN3_ARI.k500"},
+    {"MC CERAMAH GEN 3", "Archived GEN3 Bluetooth · original bytes", "19_MC_CERAMAH_GEN3.k500", ":/presets/19_MC_CERAMAH_GEN3.k500"},
+    {"ADZAN MEKAH GEN3", "Archived GEN3 Bluetooth · original bytes", "20_ADZAN_MEKAH_GEN3.k500", ":/presets/20_ADZAN_MEKAH_GEN3.k500"},
+    {"ARTIST UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "21_ARTIST_GEN3_ARI_UAUDIO.k500", ":/presets/21_ARTIST_GEN3_ARI_UAUDIO.k500"},
+    {"PODCAST UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "22_PODCAST_REBORN_UAUDIO.k500", ":/presets/22_PODCAST_REBORN_UAUDIO.k500"},
+    {"DANGDUT UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "23_DANGDUT_GEN3_ARI_UAUDIO.k500", ":/presets/23_DANGDUT_GEN3_ARI_UAUDIO.k500"},
+    {"KARAOKE UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "24_KARAOKE_ARTIST_UAUDIO.k500", ":/presets/24_KARAOKE_ARTIST_UAUDIO.k500"},
+    {"AKUSTIK UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "25_AKUSTIK_GEN3_ARI_UAUDIO.k500", ":/presets/25_AKUSTIK_GEN3_ARI_UAUDIO.k500"},
+    {"QORI UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "26_IMAM_QORI_GEN3_UAUDIO.k500", ":/presets/26_IMAM_QORI_GEN3_UAUDIO.k500"},
+    {"JAZZ UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "27_JAZZ_GEN3_ARI_UAUDIO.k500", ":/presets/27_JAZZ_GEN3_ARI_UAUDIO.k500"},
+    {"ROCK UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "28_ROCK_GEN3_ARI_UAUDIO.k500", ":/presets/28_ROCK_GEN3_ARI_UAUDIO.k500"},
+    {"CERAMAH UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "29_MC_CERAMAH_GEN3_UAUDIO.k500", ":/presets/29_MC_CERAMAH_GEN3_UAUDIO.k500"},
+    {"ADZAN UAUDIO", "Archived GEN3 USB Audio · generated from 11–20", "30_ADZAN_MEKAH_GEN3_UAUDIO.k500", ":/presets/30_ADZAN_MEKAH_GEN3_UAUDIO.k500"},
+    {"KONSER NYANYI", "Historical SonKuPik preset · original bytes", "31_KONSER_NYANYI.k500", ":/presets/31_KONSER_NYANYI.k500"},
+    {"MC HOST RADIO", "Historical SonKuPik preset · original bytes", "32_MC_HOST_RADIO.k500", ":/presets/32_MC_HOST_RADIO.k500"},
+    {"KAR DANGDUT", "Historical SonKuPik preset · original bytes", "33_KAR_DANGDUT.k500", ":/presets/33_KAR_DANGDUT.k500"},
+    {"POP ROCK BALLAD", "Historical SonKuPik preset · original bytes", "34_POP_ROCK_BALLAD.k500", ":/presets/34_POP_ROCK_BALLAD.k500"},
+    {"POP KENANGAN V2", "Historical SonKuPik preset · original bytes", "35_POP_KENANGAN_V2.k500", ":/presets/35_POP_KENANGAN_V2.k500"},
+    {"SHOLAWAT SYAHDU", "Historical SonKuPik preset · original bytes", "36_SHOLAWAT_SYAHDU.k500", ":/presets/36_SHOLAWAT_SYAHDU.k500"},
+    {"JAZZ LOUNGE", "Historical SonKuPik preset · original bytes", "37_JAZZ_LOUNGE.k500", ":/presets/37_JAZZ_LOUNGE.k500"},
+    {"BLUES CLUB", "Historical SonKuPik preset · original bytes", "38_BLUES_CLUB.k500", ":/presets/38_BLUES_CLUB.k500"},
+    {"ACOUSTIC NATURAL", "Historical SonKuPik preset · original bytes", "39_ACOUSTIC_NATURAL.k500", ":/presets/39_ACOUSTIC_NATURAL.k500"},
+    {"REGGAE DUB", "Historical SonKuPik preset · original bytes", "40_REGGAE_DUB.k500", ":/presets/40_REGGAE_DUB.k500"},
+    {"D2R GOLDEN", "OWNER GOLDEN • exact original D2R · never overwrite", "41_GOLDEN_D2R.k500", ":/presets/41_GOLDEN_D2R.k500"},
 };
 
 bool readValidPreset(const QString &path, QByteArray *bytes)
@@ -294,7 +301,7 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         const int catalogNumber = fileName.left(2).toInt(&catalogNumberOk);
         if (catalogNumberOk && fileName.size() > 3
             && fileName.at(2) == QLatin1Char('_')
-            && catalogNumber >= 1 && catalogNumber <= 40) {
+            && catalogNumber >= 1 && catalogNumber <= 41) {
             entry.insert(QStringLiteral("catalogNumber"), catalogNumber);
         }
         entry.insert(QStringLiteral("description"), QString::fromLatin1(definition.description));
@@ -302,10 +309,40 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         next.append(entry);
     }
 
-    // GEN3_LEGACY_CACHE_HIDE_V1: old 01–10 cache copies may survive an offline
+    // GEN5_ARCHIVE_CACHE_HIDE_V1: pre-migration cache copies may survive an offline
     // upgrade; archived originals are now bundled at 21–30. Do not show
     // duplicates, and do not delete user cache content without a valid sync.
     const QStringList oldNumberedCacheNames{
+        QStringLiteral("01_ARTIST_GEN3_ARI.k500"),
+        QStringLiteral("02_PODCAST_REBORN.k500"),
+        QStringLiteral("03_DANGDUT_GEN3_ARI.k500"),
+        QStringLiteral("04_KARAOKE_ARTIST.k500"),
+        QStringLiteral("05_AKUSTIK_GEN3_ARI.k500"),
+        QStringLiteral("06_IMAM_QORI_GEN3.k500"),
+        QStringLiteral("07_JAZZ_GEN3_ARI.k500"),
+        QStringLiteral("08_ROCK_GEN3_ARI.k500"),
+        QStringLiteral("09_MC_CERAMAH_GEN3.k500"),
+        QStringLiteral("10_ADZAN_MEKAH_GEN3.k500"),
+        QStringLiteral("11_ARTIST_GEN3_ARI_UAUDIO.k500"),
+        QStringLiteral("12_PODCAST_REBORN_UAUDIO.k500"),
+        QStringLiteral("13_DANGDUT_GEN3_ARI_UAUDIO.k500"),
+        QStringLiteral("14_KARAOKE_ARTIST_UAUDIO.k500"),
+        QStringLiteral("15_AKUSTIK_GEN3_ARI_UAUDIO.k500"),
+        QStringLiteral("16_IMAM_QORI_GEN3_UAUDIO.k500"),
+        QStringLiteral("17_JAZZ_GEN3_ARI_UAUDIO.k500"),
+        QStringLiteral("18_ROCK_GEN3_ARI_UAUDIO.k500"),
+        QStringLiteral("19_MC_CERAMAH_GEN3_UAUDIO.k500"),
+        QStringLiteral("20_ADZAN_MEKAH_GEN3_UAUDIO.k500"),
+        QStringLiteral("21_KONSER_NYANYI.k500"),
+        QStringLiteral("22_MC_HOST_RADIO.k500"),
+        QStringLiteral("23_KAR_DANGDUT.k500"),
+        QStringLiteral("24_POP_ROCK_BALLAD.k500"),
+        QStringLiteral("25_POP_KENANGAN_V2.k500"),
+        QStringLiteral("26_SHOLAWAT_SYAHDU.k500"),
+        QStringLiteral("27_JAZZ_LOUNGE.k500"),
+        QStringLiteral("28_BLUES_CLUB.k500"),
+        QStringLiteral("29_ACOUSTIC_NATURAL.k500"),
+        QStringLiteral("30_REGGAE_DUB.k500"),
         QStringLiteral("01_KONSER_NYANYI.k500"),
         QStringLiteral("02_MC_HOST_RADIO.k500"),
         QStringLiteral("03_KAR_DANGDUT.k500"),

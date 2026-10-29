@@ -182,7 +182,9 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The active PC preset collection is organized as **01–10 GEN3 Bluetooth** (owner-auditioned supplied bytes), **11–20 GEN3 UAUDIO** (automatically generated companions differing only in source/name/checksum), and **21–30 archived original SonKuPik presets** (byte-identical historical bank). Numbers **31–40** are reserved for future legacy additions. The K500 device itself still has only **10 hardware slots**; catalog numbers are not physical slot numbers.
+The PC preset catalog is ordered as **01–10 GEN5 D2R** (owner's latest genre/mosque family), **11–20 original GEN3 Bluetooth**, **21–30 GEN3 UAUDIO** (generated from archived 11–20 without tonal changes), **31–40 archived original SonKuPik presets**, and **41 exact D2R Golden** (owner's byte-identical favorite). K500 hardware still has only **10 physical slots**; catalog numbers do not imply hardware slots. The GEN5 profiles other than Golden have not each been independently owner-auditioned.
+
+See [GEN5 bank reordering and golden identity](docs/GEN5_D2R_PRIMARY_BANK_2026-10-29.md).
 
 See [GEN3 preset library migration](docs/GEN3_PRESET_LIBRARY_2026-10-25.md) for exact mappings, safety gates and rollback provenance.
 
