@@ -128,7 +128,35 @@
       if (!response.ok) return;
 
       const release = await response.json();
-      if (!release?.tag) return;
+      if (!/^v\\d+\\.\\d+\\.\\d+$/.test(release?.tag || '')) return;
+
+      // Direct browser download. If metadata is unavailable, unchanged
+      // /download/windows hrefs still redirect to a verified stable asset.
+      // Do not trust arbitrary URLs from metadata as executable download targets.
+      const downloadUrl = release.downloadUrl;
+      let verified = false;
+      try {
+        const url = new URL(downloadUrl);
+        const expectedName = `SonKuPik-K500-${release.tag}-Windows-${(() => {
+          const [major, minor, patch] = release.tag.slice(1).split('.').map(Number);
+          return major > 1 || (major === 1 && (minor > 1 || (minor === 1 && patch >= 3)));
+        })() ? 'Smart-Installer' : 'Setup'}.exe`;
+        verified = url.protocol === 'https:' && url.host === 'github.com' &&
+          url.pathname === `/masarray/k500/releases/download/${release.tag}/${expectedName}` &&
+          !url.search && !url.hash && !url.username && !url.password;
+      } catch {
+        verified = false;
+      }
+      if (!verified) return;
+      document.querySelectorAll('[data-release-download]').forEach((element) => {
+        element.href = downloadUrl;
+      });
+      document.querySelectorAll('[data-release-page]').forEach((element) => {
+        element.href = `https://github.com/masarray/k500/releases/tag/${release.tag}`;
+      });
+      document.querySelectorAll('[data-release-checksums]').forEach((element) => {
+        element.href = `https://github.com/masarray/k500/releases/download/${release.tag}/SHA256SUMS.txt`;
+      });
 
       const label = document.getElementById('release-label');
       if (label) label.textContent = `Stable ${release.tag}`;
