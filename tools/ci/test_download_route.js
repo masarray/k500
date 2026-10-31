@@ -1,134 +1,114 @@
 #!/usr/bin/env node
-/* PUBLIC_STABLE_DOWNLOAD_ROUTING_REGRESSION_V1
- * Exercise the real Cloudflare Pages handlers with mocked fetch.
- * No internet, dependencies, Qt, Windows builds, or published releases needed.
+/* PUBLIC_STABLE_DIRECT_DOWNLOAD_REGRESSION_V2
+ * Cloudflare Pages handlers with offline mocked GitHub API. No Windows build.
  */
 "use strict";
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
-
-const root = path.join(__dirname, "../..");
-const latestUrl = "https://github.com/masarray/k500/releases/latest";
-const assetRoot = "https://github.com/masarray/k500/releases/download/";
-
-function loadHandler(file, exportName, fetchMock) {
-  const fullPath = path.join(root, file);
-  const source = fs.readFileSync(fullPath, "utf8");
-  const signature = "export async function " + exportName;
-  assert.ok(source.includes(signature), file + " must export " + exportName);
-  const script = source.replace(signature, "async function " + exportName) +
-    "\nglobalThis.testHandler = " + exportName + ";\n";
-  const context = { fetch: fetchMock, Request, Response, Headers, URL };
-  vm.runInNewContext(script, context, { filename: file, timeout: 1500 });
-  return context.testHandler;
+const root = path.resolve(__dirname, "../..");
+const API = "https://api.github.com/repos/masarray/k500/releases/latest";
+const FALLBACK = "v1.1.3";
+function installer(tag) {
+  const v = tag.slice(1).split(".").map(Number);
+  const smart = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 3)));
+  return "SonKuPik-K500-" + tag + "-Windows-" + (smart ? "Smart-Installer" : "Setup") + ".exe";
 }
-
-async function simulate(options = {}) {
-  const tag = options.tag || "v1.1.2";
-  const seen = [];
-  const fetchMock = async (url, init = {}) => {
-    seen.push({ url: String(url), init });
-    if (String(url) === latestUrl) {
-      if (options.noRedirect) return new Response(null, { status: 200 });
-      return new Response(null, {
-        status: 302,
-        headers: { Location: "https://github.com/masarray/k500/releases/tag/" + tag }
-      });
-    }
-    assert.ok(String(url).startsWith(assetRoot), "asset must use trusted repository URL");
-    if (options.assetStatus && options.assetStatus >= 400) {
-      return new Response(null, { status: options.assetStatus });
-    }
-    const partial = init.headers.get("range") === "bytes=0-3";
-    const status = partial ? 206 : 200;
-    const body = init.method === "HEAD" ? null : partial ? "K500" : "binary";
-    const headers = { "content-type": "application/octet-stream" };
-    if (partial) headers["content-range"] = "bytes 0-3/100";
-    return new Response(body, { status, headers });
+function downloadUrl(tag) {
+  return "https://github.com/masarray/k500/releases/download/" + tag + "/" + installer(tag);
+}
+function mockFor(options) {
+  const tag = options.tag || FALLBACK;
+  let calls = 0;
+  const release = {
+    tag_name: tag, prerelease: !!options.prerelease, draft: !!options.draft,
+    assets: options.missingAsset ? [] : [{
+      name: installer(tag), size: 55597616, state: "uploaded",
+      browser_download_url: options.badUrl || downloadUrl(tag)
+    }]
   };
-  const handler = loadHandler("functions/download/[kind].js", "onRequest", fetchMock);
-  const req = new Request("https://sonkupik-k500.pages.dev/download/windows", {
-    method: options.method || "GET",
-    headers: options.range ? { Range: options.range } : undefined
-  });
+  return {
+    fetch: async (url, args) => {
+      calls++;
+      assert.equal(String(url), API);
+      assert.equal(args.headers.Accept, "application/vnd.github+json");
+      if (options.throwNetwork) throw new Error("network failed");
+      if (options.apiStatus) return new Response("upstream failure", { status: options.apiStatus });
+      return Response.json(release);
+    },
+    calls: () => calls
+  };
+}
+function handlerFor(file, name, fakeFetch) {
+  const shared = fs.readFileSync(path.join(root, "lib/stable-release.mjs"), "utf8")
+    .replace(/\bexport\s+/g, "");
+  const route = fs.readFileSync(path.join(root, file), "utf8")
+    .replace(/^import [^\n]+\n/gm, "").replace(/\bexport\s+/g, "");
+  const context = { fetch: fakeFetch, Request, Response, Headers, URL,
+    console: { warn() {} } };
+  vm.runInNewContext(shared + "\n" + route + "\nglobalThis.handler = " + name + ";",
+    context, { filename: file, timeout: 2000 });
+  return context.handler;
+}
+async function checkDownload(options, expectedTag) {
+  const f = mockFor(options);
+  const handler = handlerFor("functions/download/[kind].js", "onRequest", f.fetch);
   const response = await handler({
-    request: req,
+    request: new Request("https://sonkupik-k500.pages.dev/download/windows", {
+      method: options.method || "GET"
+    }),
     params: { kind: options.kind || "windows" }
   });
-  return { response, seen, assets: seen.filter(x => x.url.startsWith(assetRoot)) };
+  assert.equal(response.status, options.expectedStatus || 302);
+  if (response.status === 302) {
+    assert.equal(response.headers.get("location"), downloadUrl(expectedTag || FALLBACK));
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.equal(await response.text(), "", "must redirect, not proxy executable");
+    assert.equal(f.calls(), 1);
+  } else {
+    assert.equal(f.calls(), 0);
+  }
 }
-
-async function checkVersion(tag, expectedName) {
-  const { response, assets } = await simulate({ tag });
-  assert.equal(response.status, 200, tag + " must download successful stable asset");
-  assert.equal(assets.length, 1, tag + " must request exactly one installer");
-  assert.ok(assets[0].url.endsWith("/" + expectedName), "wrong asset for " + tag);
-  assert.equal(response.headers.get("content-disposition"),
-    'attachment; filename="' + expectedName + '"',
-    tag + " download filename must be the exact published installer");
-  assert.equal(response.headers.get("cache-control"), "private, no-store");
-}
-
-async function checkApi(tag, expectedStatus) {
-  const fetchMock = async (url) => {
-    assert.equal(String(url), latestUrl);
-    return new Response(null, {
-      status: 302,
-      headers: { Location: "https://github.com/masarray/k500/releases/tag/" + tag }
-    });
-  };
-  const handler = loadHandler("functions/api/release.js", "onRequestGet", fetchMock);
+async function checkApi(options, expectedTag, source) {
+  const f = mockFor(options);
+  const handler = handlerFor("functions/api/release.js", "onRequestGet", f.fetch);
   const response = await handler();
-  assert.equal(response.status, expectedStatus, "API release gate must match proxy for " + tag);
-  if (expectedStatus === 200) {
-    const body = await response.json();
-    assert.equal(body.tag, tag);
-    assert.equal(body.channel, "stable");
-    assert.equal(body.setup, "/download/windows");
-  }
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  const tag = expectedTag || FALLBACK;
+  assert.equal(data.tag, tag);
+  assert.equal(data.version, tag.slice(1));
+  assert.equal(data.channel, "stable");
+  assert.equal(data.setup, "/download/windows");
+  assert.equal(data.downloadUrl, downloadUrl(tag));
+  assert.equal(data.resolution, source || "github");
 }
-
 async function main() {
-  // Historical public releases do not contain the native unified artifact.
-  for (const tag of ["v1.0.3", "v1.1.1", "v1.1.2"]) {
-    await checkVersion(tag, "SonKuPik-K500-" + tag + "-Windows-Setup.exe");
+  for (const tag of ["v1.0.3", "v1.1.2", "v1.1.3", "v1.1.4", "v2.0.0"]) {
+    await checkDownload({ tag }, tag);
+    await checkApi({ tag }, tag);
   }
-  // Switch only when /releases/latest actually points at a qualifying STABLE.
-  for (const tag of ["v1.1.3", "v1.1.12", "v1.2.0", "v2.0.0"]) {
-    await checkVersion(tag, "SonKuPik-K500-" + tag + "-Windows-Smart-Installer.exe");
+  for (const failed of [
+    { tag: "v1.1.4-rc.1", prerelease: true },
+    { tag: "v1.1.4", draft: true },
+    { tag: "v1.1.5", missingAsset: true },
+    { tag: "v1.1.5", badUrl: "https://example.org/installer.exe" },
+    { tag: "v1.1.5", badUrl: downloadUrl("v1.1.5") + "?untrusted=1" },
+    { apiStatus: 403 }, { apiStatus: 429 }, { apiStatus: 500 },
+    { throwNetwork: true }
+  ]) {
+    await checkDownload(failed);
+    await checkApi(failed, FALLBACK, "last-known-good");
   }
-  await checkApi("v1.1.2", 200);
-  await checkApi("v1.1.3", 200);
-  // A published RC and build metadata must NEVER masquerade as public stable.
-  for (const tag of ["v1.1.3-rc.1", "v1.1.3+canary", "v01.1.3", "v1.1.3-preview"]) {
-    const { response, assets } = await simulate({ tag });
-    assert.equal(response.status, 503, tag + " must fail closed");
-    assert.equal(assets.length, 0, "must not attempt prerelease/invalid asset");
-    await checkApi(tag, 503);
+  await checkDownload({ method: "HEAD" });
+  await checkDownload({ method: "POST", expectedStatus: 405 });
+  await checkDownload({ kind: "other", expectedStatus: 404 });
+  for (const file of ["site/index.html", "site/download/index.html", "site/features/index.html"]) {
+    assert.ok(fs.readFileSync(path.join(root, file), "utf8").includes("data-release-download"));
   }
-  const unavailable = await simulate({ tag: "v1.1.3", assetStatus: 404 });
-  assert.equal(unavailable.response.status, 503, "missing native Smart must be unavailable");
-  assert.equal(unavailable.assets.length, 1, "no silent downgrade to Machine installer");
-  assert.ok(unavailable.assets[0].url.endsWith("-Windows-Smart-Installer.exe"));
-  const noRedirect = await simulate({ noRedirect: true });
-  assert.equal(noRedirect.response.status, 503, "unverifiable stable must fail closed");
-  assert.equal(noRedirect.assets.length, 0);
-  const head = await simulate({ tag: "v1.1.3", method: "HEAD" });
-  assert.equal(head.response.status, 200);
-  assert.equal(head.assets[0].init.method, "HEAD", "HEAD must remain HEAD upstream");
-  assert.equal(await head.response.text(), "", "HEAD must not include installer body");
-  const range = await simulate({ tag: "v1.1.3", range: "bytes=0-3" });
-  assert.equal(range.response.status, 206, "range request must retain partial status");
-  assert.equal(range.assets[0].init.headers.get("range"), "bytes=0-3");
-  assert.equal(range.response.headers.get("content-range"), "bytes 0-3/100");
-  assert.equal((await simulate({ method: "POST" })).response.status, 405);
-  assert.equal((await simulate({ kind: "unapproved" })).response.status, 404);
-  console.log("PASS: stable Smart download routing (legacy, native, prerelease, API, 404, HEAD, Range)");
+  assert.ok(fs.readFileSync(path.join(root, "site/download/index.html"), "utf8")
+    .includes("data-release-page"), "must offer visible GitHub direct link");
+  console.log("PASS: stable redirect, metadata fallback, safety and fast download CTAs");
 }
-
-main().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+main().catch(error => { console.error(error); process.exitCode = 1; });
