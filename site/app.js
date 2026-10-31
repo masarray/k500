@@ -134,35 +134,33 @@
       // /download/windows hrefs still redirect to a verified stable asset.
       // Do not trust arbitrary URLs from metadata as executable download targets.
       const downloadUrl = release.downloadUrl;
-      let verified = false;
-      try {
-        const url = new URL(downloadUrl);
-        const expectedName = `SonKuPik-K500-${release.tag}-Windows-${(() => {
-          const [major, minor, patch] = release.tag.slice(1).split('.').map(Number);
-          return major > 1 || (major === 1 && (minor > 1 || (minor === 1 && patch >= 3)));
-        })() ? 'Smart-Installer' : 'Setup'}.exe`;
-        verified = url.protocol === 'https:' && url.host === 'github.com' &&
-          url.pathname === `/masarray/k500/releases/download/${release.tag}/${expectedName}` &&
-          !url.search && !url.hash && !url.username && !url.password;
-      } catch {
-        verified = false;
-      }
-      if (!verified) return;
-      // Only advertise ZIP after GitHub actually lists the exact uploaded asset.
-      // Browser-side EXE blocking is not reliably detectable; offer both options.
-      let verifiedZip = false;
-      if (release.zipAvailable && typeof release.zipUrl === 'string') {
+      const legacyExe = `SonKuPik-K500-${release.tag}-Windows-${(() => {
+        const [major, minor, patch] = release.tag.slice(1).split('.').map(Number);
+        return major > 1 || (major === 1 && (minor > 1 || (minor === 1 && patch >= 3)));
+      })() ? 'Smart-Installer' : 'Setup'}.exe`;
+      const shortExe = 'SonkuPik-k500-setup.exe';
+      const shortZip = 'SonkuPik-k500-setup.zip';
+      const legacyZip = `SonKuPik-K500-${release.tag}-Windows.zip`;
+      const exeFilename = release.downloadFilename || legacyExe;
+      const zipFilename = release.zipFilename || legacyZip;
+      const verifiedReleaseUrl = (url, filename) => {
+        if (typeof url !== 'string') return false;
         try {
-          const zipUrl = new URL(release.zipUrl);
-          verifiedZip = zipUrl.protocol === 'https:' &&
-            zipUrl.host === 'github.com' &&
-            zipUrl.pathname === '/masarray/k500/releases/download/' +
-              release.tag + '/SonKuPik-K500-' + release.tag + '-Windows.zip' &&
-            !zipUrl.search && !zipUrl.hash && !zipUrl.username && !zipUrl.password;
+          const parsed = new URL(url);
+          return parsed.protocol === 'https:' && parsed.host === 'github.com' &&
+            parsed.pathname === `/masarray/k500/releases/download/${release.tag}/${filename}` &&
+            !parsed.search && !parsed.hash && !parsed.username && !parsed.password;
         } catch {
-          verifiedZip = false;
+          return false;
         }
-      }
+      };
+      const validExeName = exeFilename === shortExe || exeFilename === legacyExe;
+      if (!validExeName || !verifiedReleaseUrl(downloadUrl, exeFilename)) return;
+      // ZIP is selected ONLY when explicitly listed as a canonical uploaded
+      // GitHub Release asset. Never direct the user to a guessed ZIP URL.
+      const verifiedZip = release.zipAvailable === true &&
+        (zipFilename === shortZip || zipFilename === legacyZip) &&
+        verifiedReleaseUrl(release.zipUrl, zipFilename);
       const preferredUrl = verifiedZip ? release.zipUrl : downloadUrl;
       document.querySelectorAll('[data-release-preferred]').forEach((element) => {
         element.href = preferredUrl;
@@ -186,14 +184,15 @@
       document.querySelectorAll('[data-zip-checksum]').forEach((element) => {
         if (verifiedZip) {
           element.href = 'https://github.com/masarray/k500/releases/download/' +
-            release.tag + '/SonKuPik-K500-' + release.tag + '-Windows.zip.sha256';
+            release.tag + '/' + zipFilename + '.sha256';
         }
       });
       document.querySelectorAll('[data-release-page]').forEach((element) => {
         element.href = `https://github.com/masarray/k500/releases/tag/${release.tag}`;
       });
       document.querySelectorAll('[data-release-checksums]').forEach((element) => {
-        element.href = `https://github.com/masarray/k500/releases/download/${release.tag}/SHA256SUMS.txt`;
+        element.href = `https://github.com/masarray/k500/releases/download/${release.tag}/` +
+          (exeFilename === shortExe ? shortExe + '.sha256' : 'SHA256SUMS.txt');
       });
 
       const label = document.getElementById('release-label');
