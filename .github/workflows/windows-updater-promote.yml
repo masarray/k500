@@ -365,6 +365,14 @@ jobs:
           $hash = (Get-FileHash "dist/$zipName" -Algorithm SHA256).Hash.ToLowerInvariant()
           [System.IO.File]::WriteAllText("dist/$zipName.sha256", "$hash  $zipName" + [Environment]::NewLine)
 
+      - name: Prepare short-name EXE and ZIP for public download
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.accept.outputs.stable_tag }}'
+          $original = "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+          python tools/release/package_short_downloads.py --tag $tag --installer $original --sums dist/SHA256SUMS.txt --output-dir dist
+          if ($LASTEXITCODE -ne 0) { throw 'Simple-name download package integrity failed' }
+
       - name: Upload promoted stable artifact
         uses: actions/upload-artifact@v4
         with:
@@ -375,6 +383,10 @@ jobs:
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Smart-Installer.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip.sha256
+            dist/SonkuPik-k500-setup.exe
+            dist/SonkuPik-k500-setup.exe.sha256
+            dist/SonkuPik-k500-setup.zip
+            dist/SonkuPik-k500-setup.zip.sha256
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           if-no-files-found: error
@@ -402,6 +414,10 @@ jobs:
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Smart-Installer.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip.sha256
+            dist/SonkuPik-k500-setup.exe
+            dist/SonkuPik-k500-setup.exe.sha256
+            dist/SonkuPik-k500-setup.zip
+            dist/SonkuPik-k500-setup.zip.sha256
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true
