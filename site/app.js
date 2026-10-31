@@ -130,8 +130,8 @@
       const release = await response.json();
       if (!/^v\d+\.\d+\.\d+$/.test(release?.tag || '')) return;
 
-      // Direct browser download. If metadata is unavailable, unchanged
-      // /download/windows hrefs still redirect to a verified stable asset.
+      // No visible content hydration: HTML labels remain stable and same-origin
+      // /download routes redirect to verified latest stable even without JS.
       // Do not trust arbitrary URLs from metadata as executable download targets.
       const downloadUrl = release.downloadUrl;
       const legacyExe = `SonKuPik-K500-${release.tag}-Windows-${(() => {
@@ -168,21 +168,10 @@
       document.querySelectorAll('[data-release-download]').forEach((element) => {
         element.href = downloadUrl;
       });
-      const preferredHeading = document.querySelector('[data-preferred-heading]');
-      if (preferredHeading) preferredHeading.textContent = verifiedZip ?
-        'ZIP Package (recommended)' : 'Smart Installer (EXE)';
-      const preferredDescription = document.querySelector('[data-preferred-description]');
-      if (preferredDescription) preferredDescription.textContent = verifiedZip ?
-        (zipFilename === shortZip ?
-          'Extract the ZIP, then run SonkuPik-k500-setup.exe. Exactly the same verified installer as the direct EXE.' :
-          'Extract the ZIP, then run the included Smart Installer. Same verified installer bytes as the direct EXE.') :
-        'Official Smart Installer EXE. ZIP is offered automatically when the release contains a verified archive.';
-      const preferredLabel = document.querySelector('[data-preferred-label]');
-      if (preferredLabel) preferredLabel.textContent =
-        (verifiedZip ? 'Download ZIP ' : 'Download Smart Installer ') + release.tag;
-      document.querySelectorAll('[data-zip-checksum-wrap]').forEach((element) => {
-        element.hidden = !verifiedZip;
-      });
+      // Visible copy is deliberately static: asynchronous release metadata must
+      // never rewrite headings, button text, or insert checksum text after paint.
+      // Only invisible href targets are upgraded. Same-origin 302 routes already
+      // handle the latest stable before this script runs or if it is blocked.
       document.querySelectorAll('[data-zip-checksum]').forEach((element) => {
         if (verifiedZip) {
           element.href = 'https://github.com/masarray/k500/releases/download/' +
@@ -197,24 +186,11 @@
           (exeFilename === shortExe ? shortExe + '.sha256' : 'SHA256SUMS.txt');
       });
 
-      const label = document.getElementById('release-label');
-      if (label) label.textContent = `Stable ${release.tag}`;
-
-      // LANDING_RELEASE_BUTTON_VERSION_V1 — static HTML carries the current
-      // stable fallback, while every download CTA follows /api/release so the
-      // visible version and the resolved artifact cannot silently diverge.
-      const version = release.version || String(release.tag).replace(/^v/, '');
-      const applyTemplate = (template) => template
-        .replace(/\{tag\}/g, release.tag)
-        .replace(/\{version\}/g, version);
-
-      document.querySelectorAll('[data-release-template]').forEach((element) => {
-        const template = element.getAttribute('data-release-template');
-        if (template) element.textContent = applyTemplate(template);
-      });
       document.querySelectorAll('[data-release-aria-template]').forEach((element) => {
         const template = element.getAttribute('data-release-aria-template');
-        if (template) element.setAttribute('aria-label', applyTemplate(template));
+        if (template) element.setAttribute('aria-label', template
+          .replace(/\\{tag\\}/g, release.tag)
+          .replace(/\\{version\\}/g, release.version || release.tag.slice(1)));
       });
     } catch {
       // Same-origin download routes still resolve the latest stable release even if metadata sync fails.
