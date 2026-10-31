@@ -88,7 +88,7 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.channel, "stable");
   assert.equal(data.setup, "/download/windows");
   assert.equal(data.downloadUrl, downloadUrl(tag));
-  const hasZip = !!options.zip && !options.badZipUrl;
+  const hasZip = !!options.zip && !options.badZipUrl && source !== "last-known-good";
   assert.equal(data.zipAvailable, hasZip);
   assert.equal(data.zipUrl, hasZip ? zipUrl(tag) : null);
   assert.equal(data.preferredUrl, hasZip ? zipUrl(tag) : downloadUrl(tag));
