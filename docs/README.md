@@ -53,7 +53,7 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Windows distribution | Smart Installer + scope-matched per-user updater package |
 | Code signing | unsigned open-source |
 
-The public download **routes** remain version-agnostic and resolve GitHub's canonical latest non-prerelease release. The landing buttons show the resolved stable tag (currently `v1.1.3`) and refresh that visible version from `/api/release`, so visitors can immediately see which installer is being offered without hard-coding future routes.
+The public download **routes** remain version-agnostic and resolve GitHub's canonical latest non-prerelease release. The landing buttons use stable labels and resolve the latest published release URL without text flicker (currently `v1.1.3`) and refresh that visible version from `/api/release`, so visitors can immediately see which installer is being offered without hard-coding future routes.
 
 ## Documentation principles
 
