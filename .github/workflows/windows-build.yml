@@ -8,6 +8,8 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+  release:
+    types: [published]
 
 permissions:
   contents: read
@@ -22,6 +24,7 @@ env:
 jobs:
   contracts:
     name: Fast contracts
+    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -117,3 +120,60 @@ jobs:
       - name: Compile and smoke-test installer lifecycle
         shell: pwsh
         run: ./tools/ci/installer_smoke.ps1
+
+
+  zip-release:
+    name: Package verified stable ZIP (no rebuild)
+    if: >-
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'release' && github.event.action == 'published' &&
+       !github.event.release.prerelease && !github.event.release.draft)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    permissions:
+      contents: write
+    concurrency:
+      group: k500-stable-zip-upload
+      cancel-in-progress: false
+    steps:
+      - name: Checkout packaging script
+        uses: actions/checkout@v4
+
+      - name: Verify official release, package and upload ZIP once
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUBLISHED_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "release" ]]; then
+            tag="$PUBLISHED_TAG"
+          else
+            tag="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
+          fi
+          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'No qualified stable semver release'; exit 1; }
+          release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
+          [[ "$(jq -r '.draft' <<< "$release")" == "false" &&
+             "$(jq -r '.prerelease' <<< "$release")" == "false" ]] || { echo 'Refusing draft/prerelease'; exit 1; }
+          zip="SonKuPik-K500-$tag-Windows.zip"
+          installer="SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+          if jq -e --arg file "$zip" '.assets[] | select(.name == $file and .state == "uploaded")' <<< "$release" >/dev/null; then
+            echo "Verified stable ZIP already published: $zip (no work needed)"
+            exit 0
+          fi
+          jq -e --arg file "$installer" '.assets[] | select(.name == $file and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null || {
+            echo 'No stable Smart Installer asset; do not publish an unverified ZIP'
+            exit 1
+          }
+          mkdir -p original dist
+          gh release download "$tag" --dir original --pattern "$installer" --repo "$GITHUB_REPOSITORY"
+          gh release download "$tag" --dir original --pattern "SHA256SUMS.txt" --repo "$GITHUB_REPOSITORY"
+          python3 tools/release/package_windows_zip.py \
+            --tag "$tag" \
+            --installer "original/$installer" \
+            --sums "original/SHA256SUMS.txt" \
+            --output-dir dist
+          (cd dist && sha256sum "$zip" > "$zip.sha256")
+          gh release upload "$tag" "dist/$zip" "dist/$zip.sha256" --repo "$GITHUB_REPOSITORY"
+          echo "Uploaded verified ZIP and ZIP SHA-256 for $tag"
