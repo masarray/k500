@@ -8,6 +8,10 @@ export async function onRequestGet() {
     channel: 'stable',
     setup: '/download/windows',
     downloadUrl: release.downloadUrl,
+    zipUrl: release.zipUrl,
+    zipAvailable: release.zipAvailable,
+    preferredUrl: release.preferredUrl,
+    preferredFormat: release.preferredFormat,
     releaseUrl: release.releaseUrl,
     resolution: release.source
   }), {
