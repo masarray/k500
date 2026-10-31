@@ -128,7 +128,7 @@
       if (!response.ok) return;
 
       const release = await response.json();
-      if (!/^v\\d+\\.\\d+\\.\\d+$/.test(release?.tag || '')) return;
+      if (!/^v\d+\.\d+\.\d+$/.test(release?.tag || '')) return;
 
       // Direct browser download. If metadata is unavailable, unchanged
       // /download/windows hrefs still redirect to a verified stable asset.
