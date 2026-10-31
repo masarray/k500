@@ -2291,30 +2291,44 @@ def check_release_contracts() -> None:
         "CHANGELOG.md",
         "## Unreleased — v1.1.1 patch release",
     )
+    # ZERO_VISIBLE_RELEASE_HYDRATION_V1: a late API response may update hrefs
+    # only. Every page must paint final, version-independent labels immediately.
     require(
         "site/app.js",
-        "LANDING_RELEASE_BUTTON_VERSION_V1",
+        "Visible copy is deliberately static",
+        "[data-release-preferred]",
+        "[data-release-download]",
+        "[data-zip-checksum]",
+    )
+    forbid(
+        "site/app.js",
+        "textContent =",
+        ".hidden =",
         "[data-release-template]",
-        "[data-release-aria-template]",
-        "applyTemplate",
     )
     require(
         "site/index.html",
-        "Download SonKuPik K500 v1.1.3",
-        'data-release-template="Download SonKuPik K500 {tag}"',
-        'data-release-template="Download {tag}"',
+        "Download SonKuPik K500",
+        "data-release-preferred",
     )
     require(
         "site/features/index.html",
-        "Download v1.1.3",
-        'data-release-template="Download {tag}"',
+        "Download K500",
+        "data-release-preferred",
     )
     require(
         "site/download/index.html",
-        "Download latest stable",
+        "Download K500 for Windows",
         "data-release-preferred",
         "data-release-download",
-        "data-zip-checksum-wrap",
+        "data-zip-checksum",
+    )
+    for _page in ("site/index.html", "site/features/index.html", "site/download/index.html"):
+        forbid(_page, "data-release-template=", "Download v1.1.3")
+    require(
+        "tools/release/test_landing_no_flicker.js",
+        "Visible copy mutated after paint",
+        "release links update without text flicker",
     )
     require(
         "tools/release/package_windows_zip.py",
