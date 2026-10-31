@@ -55,6 +55,9 @@ jobs:
       - name: Simple filename release integrity regression (offline)
         run: python3 tools/release/test_package_short_downloads.py
 
+      - name: Landing no-text-flicker regression (offline)
+        run: node tools/release/test_landing_no_flicker.js
+
       - name: Mass Upload offline guard regression (offline)
         # Executes real QML upload function with mocks; zero USB and no build.
         run: node tools/ci/test_mass_upload_offline.js
