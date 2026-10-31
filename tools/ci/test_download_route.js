@@ -15,6 +15,9 @@ function installer(tag) {
   const smart = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 3)));
   return "SonKuPik-K500-" + tag + "-Windows-" + (smart ? "Smart-Installer" : "Setup") + ".exe";
 }
+function zipUrl(tag) {
+  return "https://github.com/masarray/k500/releases/download/" + tag + "/SonKuPik-K500-" + tag + "-Windows.zip";
+}
 function downloadUrl(tag) {
   return "https://github.com/masarray/k500/releases/download/" + tag + "/" + installer(tag);
 }
@@ -26,7 +29,10 @@ function mockFor(options) {
     assets: options.missingAsset ? [] : [{
       name: installer(tag), size: 55597616, state: "uploaded",
       browser_download_url: options.badUrl || downloadUrl(tag)
-    }]
+    }, ...(options.zip ? [{
+      name: "SonKuPik-K500-" + tag + "-Windows.zip", size: 55000000,
+      state: "uploaded", browser_download_url: options.badZipUrl || zipUrl(tag)
+    }] : [])]
   };
   return {
     fetch: async (url, args) => {
@@ -62,7 +68,7 @@ async function checkDownload(options, expectedTag) {
   });
   assert.equal(response.status, options.expectedStatus || 302);
   if (response.status === 302) {
-    assert.equal(response.headers.get("location"), downloadUrl(expectedTag || FALLBACK));
+    assert.equal(response.headers.get("location"), options.expectedTarget || downloadUrl(expectedTag || FALLBACK));
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal(await response.text(), "", "must redirect, not proxy executable");
     assert.equal(f.calls(), 1);
@@ -82,6 +88,11 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.channel, "stable");
   assert.equal(data.setup, "/download/windows");
   assert.equal(data.downloadUrl, downloadUrl(tag));
+  const hasZip = !!options.zip && !options.badZipUrl;
+  assert.equal(data.zipAvailable, hasZip);
+  assert.equal(data.zipUrl, hasZip ? zipUrl(tag) : null);
+  assert.equal(data.preferredUrl, hasZip ? zipUrl(tag) : downloadUrl(tag));
+  assert.equal(data.preferredFormat, hasZip ? "zip" : "exe");
   assert.equal(data.resolution, source || "github");
 }
 async function main() {
@@ -102,13 +113,22 @@ async function main() {
     await checkApi(failed, FALLBACK, "last-known-good");
   }
   await checkDownload({ method: "HEAD" });
+  await checkDownload({ kind: "windows-preferred", zip: true, expectedTarget: zipUrl(FALLBACK) });
+  await checkDownload({ kind: "windows-zip", zip: true, expectedTarget: zipUrl(FALLBACK) });
+  await checkDownload({ kind: "windows-preferred" });
+  await checkDownload({ kind: "windows-zip", expectedTarget: "https://github.com/masarray/k500/releases/tag/" + FALLBACK });
+  await checkDownload({ kind: "windows-preferred", zip: true, badZipUrl: "https://not-github.example/evil.zip" });
+  await checkApi({ zip: true });
+  await checkApi({ zip: true, badZipUrl: "https://not-github.example/evil.zip" });
+  await checkApi({ apiStatus: 500, zip: true }, FALLBACK, "last-known-good");
   await checkDownload({ method: "POST", expectedStatus: 405 });
   await checkDownload({ kind: "other", expectedStatus: 404 });
   for (const file of ["site/index.html", "site/download/index.html", "site/features/index.html"]) {
-    assert.ok(fs.readFileSync(path.join(root, file), "utf8").includes("data-release-download"));
+    assert.ok(fs.readFileSync(path.join(root, file), "utf8").includes("data-release-preferred"));
   }
+  assert.ok(fs.readFileSync(path.join(root, "site/download/index.html"), "utf8").includes("data-release-download"));
   assert.ok(fs.readFileSync(path.join(root, "site/download/index.html"), "utf8")
     .includes("data-release-page"), "must offer visible GitHub direct link");
-  console.log("PASS: stable redirect, metadata fallback, safety and fast download CTAs");
+  console.log("PASS: stable redirect, metadata fallback, safety and fast download CTAs, ZIP discovery");
 }
 main().catch(error => { console.error(error); process.exitCode = 1; });
