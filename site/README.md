@@ -9,25 +9,25 @@ The site stays dependency-free and split by user intent so visitors do not need 
 - `/` — ultra-light product homepage and fast navigation
 - `/features/` — complete screenshot-led product tour
 - `/download/` — dedicated lightweight download path with no gallery
-- `/download/windows` — streams the latest stable Windows Smart Installer through the landing domain
+- `/download/windows` — HTTP redirect to the validated public stable GitHub installer (fallback when metadata fails)
 - `/api/release` — same-origin latest stable version metadata
 
 All pages share `/styles.css`. The release helper `/app.js` is progressive enhancement only: download links already point at the same-origin latest routes, while the release label **and visible download-button version** are synchronized after page load through `/api/release`. Static HTML retains the current stable version as a fallback, so visitors can still see which release is offered if metadata sync is delayed. The browser never needs to call the GitHub API directly.
 
 The Pages Functions live at repository-root `/functions` because the Cloudflare Pages project root is the repository root while the static build output is `site`.
 
-## Latest-release strategy
+## Latest-release strategy (direct + resilient)
 
-GitHub Releases remains the upstream artifact store, but the visitor-facing download contract is owned by the landing site.
+The website never proxies executable bytes through Cloudflare. All user downloads are served directly from the verified GitHub Releases asset URL.
 
-1. The Pages Function resolves GitHub's canonical `releases/latest` pointer server-side.
-2. The stable tag is combined with the release workflow's versioned artifact naming contract.
-3. The Smart Installer is streamed through Cloudflare without buffering it in Worker memory.
-4. `Content-Disposition: attachment` keeps the user on the landing page while the file downloads.
-5. Range and validator headers are forwarded so large downloads remain resilient.
-6. Download CTAs show the resolved stable tag (for example `v1.1.3`) and refresh from the same `/api/release` authority that drives the release label.
+1. `/api/release` requests the GitHub Releases JSON API for the latest non-draft, non-prerelease stable.
+2. The resolver validates the semantic tag, exact expected Windows installer filename, asset upload state and canonical GitHub download URL.
+3. Download links are progressively updated to the direct GitHub CDN URL. Without JavaScript, `/download/windows` works as a 302 redirect.
+4. GitHub API throttling, timeouts, malformed metadata, or a missing new installer fall back to the last known-good published stable Smart Installer (`v1.1.3`) rather than returning a blocking 503. Update that immutable fallback when publishing a newly qualified stable.
+5. The download page always shows a separate GitHub Release page link and checksums link. The site does not ask users to disable security protections.
+6. The offline Node routing regression covers both successful discovery and metadata failures. No desktop build is required to test the website logic.
 
-This means a future stable release becomes the download target automatically without editing landing-page HTML.
+Note: availability of GitHub's download CDN and client-side antivirus decisions are outside the website's control. No legitimate distribution strategy can guarantee every browser or security product accepts unsigned EXEs.
 
 ## Performance strategy
 

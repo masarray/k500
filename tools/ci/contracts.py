@@ -2120,20 +2120,29 @@ def check_release_contracts() -> None:
         "Smart Installer fails closed on stale same-scope registration",
         "KEEP-SMART-USER-DATA",
     )
+    # PUBLIC_STABLE_DIRECT_DOWNLOAD_V2: GitHub asset identity is verified
+    # and metadata failures must not block an already published stable.
+    require(
+        "lib/stable-release.mjs",
+        "releases/latest",
+        "FALLBACK_TAG = 'v1.1.3'",
+        "validGitHubAsset",
+        "prerelease !== false",
+        "cacheTtl: 300",
+    )
     require(
         "functions/download/[kind].js",
-        "SonKuPik-K500-${tag}-Windows-Setup.exe",
-        "PUBLIC_SMART_INSTALLER_VERSION_GATE_V1",
-        "stableInstallerAsset(tag, descriptor)",
-        "Windows-Smart-Installer.exe",
-        "releases/latest",
+        "resolveStableRelease",
+        "status: 302",
+        "Location: release.downloadUrl",
     )
     require(
         "tools/ci/test_download_route.js",
-        "PASS: stable Smart download routing",
+        "PASS: stable redirect",
         "v1.1.2",
         "v1.1.3",
-        "v1.1.3-rc.1",
+        "v1.1.4-rc.1",
+        "apiStatus: 429",
     )
     require(
         ".github/workflows/windows-build.yml",
@@ -2320,8 +2329,8 @@ def check_release_contracts() -> None:
         "decd7d8e54837d664fa586a7425b502faeec27dee280d9dc48f6f6989a23b8ab",
         "f9a1f29a9b209f47ffeb4f289b0d28b38a9df10764927dcef304397c65b3171b",
         "38046752955")
-    require("functions/api/release.js", "releases/latest", "channel: 'stable'")
-    require("functions/download/[kind].js", "releases/latest", "versioned: (tag) =>")
+    require("functions/api/release.js", "resolveStableRelease", "channel: 'stable'", "downloadUrl")
+    require("functions/download/[kind].js", "resolveStableRelease", "status: 302")
     for page in ("site/index.html", "site/features/index.html", "site/download/index.html"):
         if "v1.1.1" in read(page):
             FAILURES.append(f"{page}: outdated public stable fallback")
