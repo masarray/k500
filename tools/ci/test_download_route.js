@@ -45,6 +45,14 @@ function mockFor(options) {
     ...(options.shortZip ? [{
       name: SHORT_ZIP, size: 55599198,
       state: "uploaded", browser_download_url: options.badShortZip || shortAssetUrl(tag, SHORT_ZIP)
+    }] : []),
+    ...(options.shortExe && !options.missingShortExeChecksum ? [{
+      name: SHORT_EXE + ".sha256", size: 99, state: "uploaded",
+      browser_download_url: shortAssetUrl(tag, SHORT_EXE + ".sha256")
+    }] : []),
+    ...(options.shortZip && !options.missingShortZipChecksum ? [{
+      name: SHORT_ZIP + ".sha256", size: 99, state: "uploaded",
+      browser_download_url: shortAssetUrl(tag, SHORT_ZIP + ".sha256")
     }] : [])]
   };
   return {
@@ -101,11 +109,11 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.channel, "stable");
   assert.equal(data.setup, "/download/windows");
   const shortExe = !!options.shortExe && !options.badShortExe &&
-    !options.emptyShortExe && source !== "last-known-good";
+    !options.emptyShortExe && !options.missingShortExeChecksum && source !== "last-known-good";
   const exeUrl = shortExe ? shortAssetUrl(tag, SHORT_EXE) : downloadUrl(tag);
   assert.equal(data.downloadUrl, exeUrl);
   assert.equal(data.downloadFilename, shortExe ? SHORT_EXE : installer(tag));
-  const modernZip = !!options.shortZip && !options.badShortZip && source !== "last-known-good";
+  const modernZip = !!options.shortZip && !options.badShortZip && !options.missingShortZipChecksum && source !== "last-known-good";
   const legacyZip = !!options.zip && !options.badZipUrl && source !== "last-known-good";
   const hasZip = modernZip || legacyZip;
   const chosenZip = modernZip ? shortAssetUrl(tag, SHORT_ZIP) : legacyZip ? zipUrl(tag) : null;
@@ -144,6 +152,10 @@ async function main() {
   await checkApi({ shortExe: true, zip: true });
   await checkApi({ shortExe: true, badShortExe: "https://untrusted.example/setup.exe" });
   await checkApi({ shortExe: true, emptyShortExe: true });
+  await checkApi({ shortExe: true, missingShortExeChecksum: true });
+  await checkApi({ shortZip: true, missingShortZipChecksum: true });
+  await checkDownload({ kind: "windows-preferred", shortExe: true, missingShortExeChecksum: true });
+  await checkDownload({ kind: "windows-preferred", shortZip: true, missingShortZipChecksum: true });
   await checkApi({ shortZip: true, badShortZip: "https://untrusted.example/unsafe.zip" });
   await checkApi({ apiStatus: 429, shortExe: true, shortZip: true }, FALLBACK, "last-known-good");
   await checkDownload({ method: "HEAD" });
