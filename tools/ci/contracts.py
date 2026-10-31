@@ -2134,7 +2134,9 @@ def check_release_contracts() -> None:
         "functions/download/[kind].js",
         "resolveStableRelease",
         "status: 302",
-        "Location: release.downloadUrl",
+        "Location: target",
+        "release.preferredUrl",
+        "release.zipUrl",
     )
     require(
         "tools/ci/test_download_route.js",
@@ -2285,9 +2287,22 @@ def check_release_contracts() -> None:
     )
     require(
         "site/download/index.html",
-        "Download Smart Installer v1.1.3",
-        'data-release-template="Download Smart Installer {tag}"',
-        'data-release-template="Smart Installer {tag}"',
+        "Download latest stable",
+        "data-release-preferred",
+        "data-release-download",
+        "data-zip-checksum-wrap",
+    )
+    require(
+        "tools/release/package_windows_zip.py",
+        "verified_sha256",
+        "SHA256SUMS.txt",
+        "ZIP_STORED",
+        "testzip",
+    )
+    require(
+        "tools/release/test_package_windows_zip.py",
+        "test_refuses_tampered_executable",
+        "test_archive_is_exact_and_reproducible",
     )
     require(
         "AGENTS.md",
