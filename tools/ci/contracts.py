@@ -2355,7 +2355,7 @@ def check_release_contracts() -> None:
         "| Public stable | `v1.1.3`",
         "| Stable source line | `v1.1.3`, promoted byte-identically from accepted `v1.1.3-rc.6`",
         "V1_1_1_UPDATER_RC_ACCEPTANCE.md",
-        "landing buttons show the resolved stable tag",
+        "landing buttons use stable, version-independent labels",
     )
     forbid(
         "docs/README.md",
