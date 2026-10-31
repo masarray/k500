@@ -173,8 +173,10 @@
         'ZIP Package (recommended)' : 'Smart Installer (EXE)';
       const preferredDescription = document.querySelector('[data-preferred-description]');
       if (preferredDescription) preferredDescription.textContent = verifiedZip ?
-        'Extract the ZIP with Windows File Explorer and run the included Smart Installer. Same verified installer bytes as the direct EXE.' :
-        'Original EXE installer. ZIP will become the recommended download once the official release archive has been published.';
+        (zipFilename === shortZip ?
+          'Extract the ZIP, then run SonkuPik-k500-setup.exe. Exactly the same verified installer as the direct EXE.' :
+          'Extract the ZIP, then run the included Smart Installer. Same verified installer bytes as the direct EXE.') :
+        'Official Smart Installer EXE. ZIP is offered automatically when the release contains a verified archive.';
       const preferredLabel = document.querySelector('[data-preferred-label]');
       if (preferredLabel) preferredLabel.textContent =
         (verifiedZip ? 'Download ZIP ' : 'Download Smart Installer ') + release.tag;
