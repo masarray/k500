@@ -49,6 +49,9 @@ jobs:
         # Pure Node fetch mock, no GitHub token, packages, Qt or extra workflow.
         run: node tools/ci/test_download_route.js
 
+      - name: Verified ZIP packaging regression (offline)
+        run: python3 tools/release/test_package_windows_zip.py
+
       - name: Mass Upload offline guard regression (offline)
         # Executes real QML upload function with mocks; zero USB and no build.
         run: node tools/ci/test_mass_upload_offline.js
