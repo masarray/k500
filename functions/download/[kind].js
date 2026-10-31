@@ -10,15 +10,21 @@ export async function onRequest(context) {
       status: 405, headers: { Allow: 'GET, HEAD' }
     });
   }
-  if (params.kind !== 'windows') {
+  if (!['windows', 'windows-preferred', 'windows-zip'].includes(params.kind)) {
     return new Response('Not Found', { status: 404 });
   }
 
   const release = await resolveStableRelease();
+  // Legacy Windows route remains EXE. Preferred chooses ZIP only when a
+  // verified asset was uploaded. Explicit ZIP links fall back to the GitHub
+  // release page (not an unexpected EXE) if the archive is unavailable.
+  const target = params.kind === 'windows-preferred' ? release.preferredUrl :
+    params.kind === 'windows-zip' ? (release.zipUrl || release.releaseUrl) :
+    release.downloadUrl;
   return new Response(null, {
     status: 302,
     headers: {
-      Location: release.downloadUrl,
+      Location: target,
       'Cache-Control': 'no-store',
       'X-Content-Type-Options': 'nosniff'
     }
