@@ -52,6 +52,9 @@ jobs:
       - name: Verified ZIP packaging regression (offline)
         run: python3 tools/release/test_package_windows_zip.py
 
+      - name: Simple filename release integrity regression (offline)
+        run: python3 tools/release/test_package_short_downloads.py
+
       - name: Mass Upload offline guard regression (offline)
         # Executes real QML upload function with mocks; zero USB and no build.
         run: node tools/ci/test_mass_upload_offline.js
@@ -159,24 +162,40 @@ jobs:
           release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
           [[ "$(jq -r '.draft' <<< "$release")" == "false" &&
              "$(jq -r '.prerelease' <<< "$release")" == "false" ]] || { echo 'Refusing draft/prerelease'; exit 1; }
-          zip="SonKuPik-K500-$tag-Windows.zip"
+          short_exe="SonkuPik-k500-setup.exe"
+          short_zip="SonkuPik-k500-setup.zip"
           installer="SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
-          if jq -e --arg file "$zip" '.assets[] | select(.name == $file and .state == "uploaded")' <<< "$release" >/dev/null; then
-            echo "Verified stable ZIP already published: $zip (no work needed)"
+          # Idempotent. Keep existing immutable release assets and resumable partial uploads.
+          all_present=true
+          for name in "$short_exe" "$short_exe.sha256" "$short_zip" "$short_zip.sha256"; do
+            if ! jq -e --arg name "$name" '.assets[] | select(.name == $name and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null; then
+              all_present=false
+              break
+            fi
+          done
+          if [[ "$all_present" == "true" ]]; then
+            echo "Short EXE, ZIP and both checksums already uploaded; no work needed"
             exit 0
           fi
           jq -e --arg file "$installer" '.assets[] | select(.name == $file and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null || {
-            echo 'No stable Smart Installer asset; do not publish an unverified ZIP'
+            echo 'No stable Smart Installer to verify; refusing alias publishing'
             exit 1
           }
           mkdir -p original dist
           gh release download "$tag" --dir original --pattern "$installer" --repo "$GITHUB_REPOSITORY"
           gh release download "$tag" --dir original --pattern "SHA256SUMS.txt" --repo "$GITHUB_REPOSITORY"
-          python3 tools/release/package_windows_zip.py \
+          python3 tools/release/package_short_downloads.py \
             --tag "$tag" \
             --installer "original/$installer" \
             --sums "original/SHA256SUMS.txt" \
             --output-dir dist
-          (cd dist && sha256sum "$zip" > "$zip.sha256")
-          gh release upload "$tag" "dist/$zip" "dist/$zip.sha256" --repo "$GITHUB_REPOSITORY"
-          echo "Uploaded verified ZIP and ZIP SHA-256 for $tag"
+          # Upload missing files only. Existing EXE, ZIP, and checksum assets are never clobbered.
+          for asset in "$short_exe.sha256" "$short_zip.sha256" "$short_exe" "$short_zip"; do
+            if jq -e --arg name "$asset" '.assets[] | select(.name == $name and .state == "uploaded")' <<< "$release" >/dev/null; then
+              echo "Preserving existing asset: $asset"
+            else
+              gh release upload "$tag" "dist/$asset" --repo "$GITHUB_REPOSITORY"
+              echo "Uploaded $asset"
+            fi
+          done
+          echo "Published verified short-name EXE and ZIP for $tag"

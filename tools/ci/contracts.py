@@ -2130,6 +2130,30 @@ def check_release_contracts() -> None:
         "prerelease !== false",
         "cacheTtl: 300",
     )
+    # Simple names are additive verified release aliases; original updater
+    # artifacts must stay available and must never be silently renamed.
+    require(
+        "lib/stable-release.mjs",
+        "SonkuPik-k500-setup.exe",
+        "SonkuPik-k500-setup.zip",
+        "const original = publishedAsset(originalName)",
+        "const selectedExe = shortExe || original",
+        "const selectedZip = shortZip || legacyZip",
+    )
+    require(
+        "tools/release/package_short_downloads.py",
+        "verify_original",
+        "SHORT_EXE = ",
+        "SHORT_ZIP = ",
+        "sha256_file",
+        "testzip",
+    )
+    require(
+        "tools/release/test_package_short_downloads.py",
+        "test_aliases_identical_and_integrity",
+        "test_tampering_rejected",
+        "test_deterministic_zip",
+    )
     require(
         "functions/download/[kind].js",
         "resolveStableRelease",

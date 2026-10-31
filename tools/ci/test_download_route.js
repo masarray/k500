@@ -21,6 +21,11 @@ function zipUrl(tag) {
 function downloadUrl(tag) {
   return "https://github.com/masarray/k500/releases/download/" + tag + "/" + installer(tag);
 }
+const SHORT_EXE = "SonkuPik-k500-setup.exe";
+const SHORT_ZIP = "SonkuPik-k500-setup.zip";
+function shortAssetUrl(tag, name) {
+  return "https://github.com/masarray/k500/releases/download/" + tag + "/" + name;
+}
 function mockFor(options) {
   const tag = options.tag || FALLBACK;
   let calls = 0;
@@ -32,6 +37,22 @@ function mockFor(options) {
     }, ...(options.zip ? [{
       name: "SonKuPik-K500-" + tag + "-Windows.zip", size: 55000000,
       state: "uploaded", browser_download_url: options.badZipUrl || zipUrl(tag)
+    }] : []),
+    ...(options.shortExe ? [{
+      name: SHORT_EXE, size: options.emptyShortExe ? 0 : 55597616,
+      state: "uploaded", browser_download_url: options.badShortExe || shortAssetUrl(tag, SHORT_EXE)
+    }] : []),
+    ...(options.shortZip ? [{
+      name: SHORT_ZIP, size: 55599198,
+      state: "uploaded", browser_download_url: options.badShortZip || shortAssetUrl(tag, SHORT_ZIP)
+    }] : []),
+    ...(options.shortExe && !options.missingShortExeChecksum ? [{
+      name: SHORT_EXE + ".sha256", size: 99, state: "uploaded",
+      browser_download_url: shortAssetUrl(tag, SHORT_EXE + ".sha256")
+    }] : []),
+    ...(options.shortZip && !options.missingShortZipChecksum ? [{
+      name: SHORT_ZIP + ".sha256", size: 99, state: "uploaded",
+      browser_download_url: shortAssetUrl(tag, SHORT_ZIP + ".sha256")
     }] : [])]
   };
   return {
@@ -87,11 +108,19 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.version, tag.slice(1));
   assert.equal(data.channel, "stable");
   assert.equal(data.setup, "/download/windows");
-  assert.equal(data.downloadUrl, downloadUrl(tag));
-  const hasZip = !!options.zip && !options.badZipUrl && source !== "last-known-good";
+  const shortExe = !!options.shortExe && !options.badShortExe &&
+    !options.emptyShortExe && !options.missingShortExeChecksum && source !== "last-known-good";
+  const exeUrl = shortExe ? shortAssetUrl(tag, SHORT_EXE) : downloadUrl(tag);
+  assert.equal(data.downloadUrl, exeUrl);
+  assert.equal(data.downloadFilename, shortExe ? SHORT_EXE : installer(tag));
+  const modernZip = !!options.shortZip && !options.badShortZip && !options.missingShortZipChecksum && source !== "last-known-good";
+  const legacyZip = !!options.zip && !options.badZipUrl && source !== "last-known-good";
+  const hasZip = modernZip || legacyZip;
+  const chosenZip = modernZip ? shortAssetUrl(tag, SHORT_ZIP) : legacyZip ? zipUrl(tag) : null;
   assert.equal(data.zipAvailable, hasZip);
-  assert.equal(data.zipUrl, hasZip ? zipUrl(tag) : null);
-  assert.equal(data.preferredUrl, hasZip ? zipUrl(tag) : downloadUrl(tag));
+  assert.equal(data.zipUrl, chosenZip);
+  assert.equal(data.zipFilename, modernZip ? SHORT_ZIP : legacyZip ? "SonKuPik-K500-" + tag + "-Windows.zip" : null);
+  assert.equal(data.preferredUrl, chosenZip || exeUrl);
   assert.equal(data.preferredFormat, hasZip ? "zip" : "exe");
   assert.equal(data.resolution, source || "github");
 }
@@ -112,6 +141,23 @@ async function main() {
     await checkDownload(failed);
     await checkApi(failed, FALLBACK, "last-known-good");
   }
+  await checkDownload({ kind: "windows", shortExe: true, expectedTarget: shortAssetUrl(FALLBACK, SHORT_EXE) });
+  await checkDownload({ kind: "windows", shortExe: true, badShortExe: "https://untrusted.example/setup.exe" });
+  await checkDownload({ kind: "windows-preferred", shortExe: true, shortZip: true, expectedTarget: shortAssetUrl(FALLBACK, SHORT_ZIP) });
+  await checkDownload({ kind: "windows-zip", shortExe: true, shortZip: true, expectedTarget: shortAssetUrl(FALLBACK, SHORT_ZIP) });
+  await checkDownload({ kind: "windows-preferred", shortExe: true, expectedTarget: shortAssetUrl(FALLBACK, SHORT_EXE) });
+  await checkDownload({ kind: "windows-preferred", zip: true, shortZip: true, expectedTarget: shortAssetUrl(FALLBACK, SHORT_ZIP) });
+  await checkDownload({ kind: "windows-preferred", zip: true, shortZip: true, badShortZip: "https://evil.example/setup.zip", expectedTarget: zipUrl(FALLBACK) });
+  await checkApi({ shortExe: true, shortZip: true });
+  await checkApi({ shortExe: true, zip: true });
+  await checkApi({ shortExe: true, badShortExe: "https://untrusted.example/setup.exe" });
+  await checkApi({ shortExe: true, emptyShortExe: true });
+  await checkApi({ shortExe: true, missingShortExeChecksum: true });
+  await checkApi({ shortZip: true, missingShortZipChecksum: true });
+  await checkDownload({ kind: "windows-preferred", shortExe: true, missingShortExeChecksum: true });
+  await checkDownload({ kind: "windows-preferred", shortZip: true, missingShortZipChecksum: true });
+  await checkApi({ shortZip: true, badShortZip: "https://untrusted.example/unsafe.zip" });
+  await checkApi({ apiStatus: 429, shortExe: true, shortZip: true }, FALLBACK, "last-known-good");
   await checkDownload({ method: "HEAD" });
   await checkDownload({ kind: "windows-preferred", zip: true, expectedTarget: zipUrl(FALLBACK) });
   await checkDownload({ kind: "windows-zip", zip: true, expectedTarget: zipUrl(FALLBACK) });
