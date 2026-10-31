@@ -190,7 +190,7 @@ jobs:
             --sums "original/SHA256SUMS.txt" \
             --output-dir dist
           # Upload missing files only. Existing EXE, ZIP, and checksum assets are never clobbered.
-          for asset in "$short_exe" "$short_exe.sha256" "$short_zip" "$short_zip.sha256"; do
+          for asset in "$short_exe.sha256" "$short_zip.sha256" "$short_exe" "$short_zip"; do
             if jq -e --arg name "$asset" '.assets[] | select(.name == $name and .state == "uploaded")' <<< "$release" >/dev/null; then
               echo "Preserving existing asset: $asset"
             else
