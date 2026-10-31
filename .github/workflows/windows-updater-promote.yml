@@ -352,6 +352,19 @@ jobs:
             if ($hashes -notcontains $required) { throw "Stable manifest is missing accepted RC hash $required" }
           }
 
+      # Future stable promotions publish ZIP together with the original accepted
+      # binary bytes. This does not rebuild or alter the EXE.
+      - name: Wrap verified stable Smart Installer in ZIP
+        shell: pwsh
+        run: |
+          $tag = '${{ steps.accept.outputs.stable_tag }}'
+          $exe = "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+          python tools/release/package_windows_zip.py --tag $tag --installer $exe --sums dist/SHA256SUMS.txt --output-dir dist
+          if ($LASTEXITCODE -ne 0) { throw 'ZIP packaging/hash verification failed' }
+          $zipName = "SonKuPik-K500-$tag-Windows.zip"
+          $hash = (Get-FileHash "dist/$zipName" -Algorithm SHA256).Hash.ToLowerInvariant()
+          [System.IO.File]::WriteAllText("dist/$zipName.sha256", "$hash  $zipName" + [Environment]::NewLine)
+
       - name: Upload promoted stable artifact
         uses: actions/upload-artifact@v4
         with:
@@ -360,6 +373,8 @@ jobs:
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup-PerUser.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Smart-Installer.exe
+            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip
+            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip.sha256
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           if-no-files-found: error
@@ -385,6 +400,8 @@ jobs:
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Setup-PerUser.exe
             dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows-Smart-Installer.exe
+            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip
+            dist/SonKuPik-K500-v${{ steps.accept.outputs.version }}-Windows.zip.sha256
             dist/SHA256SUMS.txt
             dist/release-manifest.json
           fail_on_unmatched_files: true
