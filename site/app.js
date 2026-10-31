@@ -148,8 +148,46 @@
         verified = false;
       }
       if (!verified) return;
+      // Only advertise ZIP after GitHub actually lists the exact uploaded asset.
+      // Browser-side EXE blocking is not reliably detectable; offer both options.
+      let verifiedZip = false;
+      if (release.zipAvailable && typeof release.zipUrl === 'string') {
+        try {
+          const zipUrl = new URL(release.zipUrl);
+          verifiedZip = zipUrl.protocol === 'https:' &&
+            zipUrl.host === 'github.com' &&
+            zipUrl.pathname === '/masarray/k500/releases/download/' +
+              release.tag + '/SonKuPik-K500-' + release.tag + '-Windows.zip' &&
+            !zipUrl.search && !zipUrl.hash && !zipUrl.username && !zipUrl.password;
+        } catch {
+          verifiedZip = false;
+        }
+      }
+      const preferredUrl = verifiedZip ? release.zipUrl : downloadUrl;
+      document.querySelectorAll('[data-release-preferred]').forEach((element) => {
+        element.href = preferredUrl;
+      });
       document.querySelectorAll('[data-release-download]').forEach((element) => {
         element.href = downloadUrl;
+      });
+      const preferredHeading = document.querySelector('[data-preferred-heading]');
+      if (preferredHeading) preferredHeading.textContent = verifiedZip ?
+        'ZIP Package (recommended)' : 'Smart Installer (EXE)';
+      const preferredDescription = document.querySelector('[data-preferred-description]');
+      if (preferredDescription) preferredDescription.textContent = verifiedZip ?
+        'Extract the ZIP with Windows File Explorer and run the included Smart Installer. Same verified installer bytes as the direct EXE.' :
+        'Original EXE installer. ZIP will become the recommended download once the official release archive has been published.';
+      const preferredLabel = document.querySelector('[data-preferred-label]');
+      if (preferredLabel) preferredLabel.textContent =
+        (verifiedZip ? 'Download ZIP ' : 'Download Smart Installer ') + release.tag;
+      document.querySelectorAll('[data-zip-checksum-wrap]').forEach((element) => {
+        element.hidden = !verifiedZip;
+      });
+      document.querySelectorAll('[data-zip-checksum]').forEach((element) => {
+        if (verifiedZip) {
+          element.href = 'https://github.com/masarray/k500/releases/download/' +
+            release.tag + '/SonKuPik-K500-' + release.tag + '-Windows.zip.sha256';
+        }
       });
       document.querySelectorAll('[data-release-page]').forEach((element) => {
         element.href = `https://github.com/masarray/k500/releases/tag/${release.tag}`;
