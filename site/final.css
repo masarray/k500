@@ -103,3 +103,9 @@ body{font-size:16px;line-height:1.62}
   .home-page .app-shot-main.zoom-source,.zoom-pane,.zoom-hint,.zoom-lens{transition:none}
 }
 @media (forced-colors:active){:where(a,button,[tabindex]):focus-visible{outline:2px solid Highlight}}
+
+
+/* Download remains legible, compact, and usable when metadata services fail. */
+.download-alternatives{margin:12px 0 0;font-size:13px;line-height:1.65;color:var(--soft)}
+.download-alternatives a{color:var(--accent2);text-decoration:underline;text-underline-offset:3px}
+.download-alternatives a:hover{color:#fff}
