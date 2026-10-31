@@ -166,8 +166,15 @@ jobs:
           short_zip="SonkuPik-k500-setup.zip"
           installer="SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
           # Idempotent. Keep existing immutable release assets and resumable partial uploads.
-          if jq -e --arg e "$short_exe" --arg z "$short_zip" '([.assets[] | select(.state == "uploaded") | .name] | index($e) != null and index($z) != null)' <<< "$release" >/dev/null; then
-            echo "Verified simple-name EXE and ZIP already published; nothing to do"
+          all_present=true
+          for name in "$short_exe" "$short_exe.sha256" "$short_zip" "$short_zip.sha256"; do
+            if ! jq -e --arg name "$name" '.assets[] | select(.name == $name and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null; then
+              all_present=false
+              break
+            fi
+          done
+          if [[ "$all_present" == "true" ]]; then
+            echo "Short EXE, ZIP and both checksums already uploaded; no work needed"
             exit 0
           fi
           jq -e --arg file "$installer" '.assets[] | select(.name == $file and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null || {
