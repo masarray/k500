@@ -14,7 +14,7 @@ The site stays dependency-free and split by user intent so visitors do not need 
 - `/download/windows-zip` — explicit ZIP link (shows official GitHub release page until ZIP exists)
 - `/api/release` — same-origin latest stable version metadata
 
-All pages share `/styles.css`. The release helper `/app.js` is progressive enhancement only: download links already point at the same-origin latest routes, while the release label **and visible download-button version** are synchronized after page load through `/api/release`. Static HTML retains the current stable version as a fallback, so visitors can still see which release is offered if metadata sync is delayed. The browser never needs to call the GitHub API directly.
+All pages share `/styles.css`. Release hydration is URL-only: every download heading, label, and button renders its final, version-independent wording in HTML at first paint. `/app.js` may update only verified `href` targets from `/api/release`—never visible text or hidden sections. Same-origin `/download/windows-preferred` works without JavaScript; it resolves the latest stable ZIP or EXE server-side. This eliminates text swaps and layout shifts on refresh, even when release metadata arrives late, changes version, or fails.
 
 The Pages Functions live at repository-root `/functions` because the Cloudflare Pages project root is the repository root while the static build output is `site`.
 
@@ -27,7 +27,7 @@ The website never proxies executable bytes through Cloudflare. The default downl
 3. Download links are progressively updated to the direct GitHub asset URL. Without JavaScript, `/download/windows-preferred` still works as a 302 redirect. The direct EXE remains visible even when ZIP is preferred.
 4. GitHub API throttling, timeouts, malformed metadata, or a missing new installer fall back to the last known-good published stable Smart Installer (`v1.1.3`, EXE) rather than returning a blocking 503. Update that immutable fallback when publishing a newly qualified stable.
 5. The download page always shows a separate GitHub Release page link and checksums link. The site does not ask users to disable security protections.
-6. The offline Node regression covers successful ZIP discovery, missing/malicious ZIP, prereleases, and metadata failure. The Python packaging regression verifies original SHA-256, archive integrity and deterministic output. No desktop build is needed for website/package logic.
+6. The offline Node regressions cover successful ZIP discovery, missing/malicious ZIP, prereleases, metadata failure, and assert the live landing script never changes visible text after paint. The Python packaging regression verifies original SHA-256, archive integrity and deterministic output. No desktop build is needed for website/package logic.
 
 On main deployment, the consolidated CI's Linux `zip-release` job downloads the stable Smart Installer, verifies it against the published `SHA256SUMS.txt`, then publishes `SonkuPik-k500-setup.exe`, `SonkuPik-k500-setup.zip`, and a `.sha256` file for each. The ZIP also contains README and the short EXE's SHA-256 entry. The job is idempotent across partial uploads, does not overwrite assets, and never rebuilds Windows software. The same short aliases are part of the future stable-promotion publishing workflow. The versioned legacy assets and their checksums remain untouched.
 
