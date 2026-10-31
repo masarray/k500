@@ -189,8 +189,8 @@
       document.querySelectorAll('[data-release-aria-template]').forEach((element) => {
         const template = element.getAttribute('data-release-aria-template');
         if (template) element.setAttribute('aria-label', template
-          .replace(/\\{tag\\}/g, release.tag)
-          .replace(/\\{version\\}/g, release.version || release.tag.slice(1)));
+          .replace(/\{tag\}/g, release.tag)
+          .replace(/\{version\}/g, release.version || release.tag.slice(1)));
       });
     } catch {
       // Same-origin download routes still resolve the latest stable release even if metadata sync fails.
