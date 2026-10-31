@@ -109,3 +109,9 @@ body{font-size:16px;line-height:1.62}
 .download-alternatives{margin:12px 0 0;font-size:13px;line-height:1.65;color:var(--soft)}
 .download-alternatives a{color:var(--accent2);text-decoration:underline;text-underline-offset:3px}
 .download-alternatives a:hover{color:#fff}
+
+/* Keep the ZIP/EXE paths clear without adding large cards or extra widgets. */
+[hidden]{display:none!important}
+.download-exe-choice{font-size:13px;line-height:1.6;color:var(--soft);margin:10px 0 0}
+.download-exe-choice a{color:var(--accent2);text-decoration:underline;text-underline-offset:3px}
+.download-exe-choice a:hover{color:#fff}
