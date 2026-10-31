@@ -173,10 +173,10 @@
       // Only invisible href targets are upgraded. Same-origin 302 routes already
       // handle the latest stable before this script runs or if it is blocked.
       document.querySelectorAll('[data-zip-checksum]').forEach((element) => {
-        if (verifiedZip) {
-          element.href = 'https://github.com/masarray/k500/releases/download/' +
-            release.tag + '/' + zipFilename + '.sha256';
-        }
+        element.href = verifiedZip ?
+          'https://github.com/masarray/k500/releases/download/' +
+            release.tag + '/' + zipFilename + '.sha256' :
+          'https://github.com/masarray/k500/releases/tag/' + release.tag;
       });
       document.querySelectorAll('[data-release-page]').forEach((element) => {
         element.href = `https://github.com/masarray/k500/releases/tag/${release.tag}`;
@@ -186,12 +186,6 @@
           (exeFilename === shortExe ? shortExe + '.sha256' : 'SHA256SUMS.txt');
       });
 
-      document.querySelectorAll('[data-release-aria-template]').forEach((element) => {
-        const template = element.getAttribute('data-release-aria-template');
-        if (template) element.setAttribute('aria-label', template
-          .replace(/\{tag\}/g, release.tag)
-          .replace(/\{version\}/g, release.version || release.tag.slice(1)));
-      });
     } catch {
       // Same-origin download routes still resolve the latest stable release even if metadata sync fails.
     } finally {
