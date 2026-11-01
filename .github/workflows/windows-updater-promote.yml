@@ -189,6 +189,12 @@ jobs:
           if ($uninstall.ExitCode -ne 0 -or -not (Test-Path $sentinel)) {
             throw 'Uninstall failed or deleted owner data'
           }
+          # PER_USER_ABSENT_HKLM_PROBE_EXIT_V1 — reg.exe QUERY deliberately
+          # returned 1 for the ABSENT machine registration (a passing test).
+          # Start-Process does not clear the last native command exit code;
+          # without this, the GitHub pwsh wrapper falsely exits 1.
+          $global:LASTEXITCODE = 0
+          Write-Host 'Per-User install/reinstall/uninstall, HKCU scope and data preservation PASS'
 
       - name: Publish one immutable public Per-User installer
         uses: softprops/action-gh-release@v2
