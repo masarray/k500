@@ -2105,7 +2105,7 @@ def check_release_contracts() -> None:
     require(
         "lib/stable-release.mjs",
         "releases/latest",
-        "FALLBACK_TAG = 'v1.1.3'",
+        "FALLBACK_TAG = 'v1.1.4'",
         "validGitHubAsset",
         "prerelease !== false",
         "cacheTtl: 300",
@@ -2286,7 +2286,7 @@ def check_release_contracts() -> None:
     )
     require(
         "site/index.html",
-        "Download SonKuPik K500",
+        "Download for Windows",
         "data-release-preferred",
     )
     require(
@@ -2296,7 +2296,7 @@ def check_release_contracts() -> None:
     )
     require(
         "site/download/index.html",
-        "Download K500 for Windows",
+        "Download for Windows",
         "data-release-preferred",
         "data-release-download",
         "data-zip-checksum",
