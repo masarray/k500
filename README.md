@@ -182,7 +182,7 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The PC preset catalog is ordered as **01–10 GEN5 D2R UAUDIO** (MC HOST RADIO at 02 and Ballad at 10; all use native source raw=5), **11–20 original GEN3 Bluetooth**, **21–30 GEN3 UAUDIO** (generated from archived 11–20 without tonal changes), **31–40 archived original SonKuPik presets**, and **41 exact D2R Golden** (owner's byte-identical favorite). K500 hardware still has only **10 physical slots**; catalog numbers do not imply hardware slots. The GEN5 profiles other than Golden have not each been independently owner-auditioned.
+The PC preset catalog is ordered as **01–10 GEN5 D2R UAUDIO** (MC HOST RADIO at 02 and Ballad at 10; all use native source raw=5), **11–20 original GEN3 Bluetooth**, **21–30 GEN3 UAUDIO** (generated from archived 11–20 without tonal changes), **31–40 archived original SonKuPik presets**, and **41 exact D2R Golden** (owner's byte-identical favorite). K500 hardware still has only **10 physical slots**; catalog numbers do not imply hardware slots. The GEN5 profiles other than Golden have not each been independently owner-auditioned. Each official PC list name now explicitly ends in **[UAUDIO]** or **[BT]**, without changing the native hardware preset names. Number 02 is the owner-selected Velvet R1.
 
 See [GEN5 bank reordering and golden identity](docs/GEN5_D2R_PRIMARY_BANK_2026-10-29.md).
 

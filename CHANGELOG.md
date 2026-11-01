@@ -1,3 +1,16 @@
+## Unreleased — PC catalog source-mode labels (2026-11-01)
+- Show [UAUDIO] or [BT] suffix directly in all 41 official PC preset names.
+- GEN5 01–10 remain UAUDIO with owner-selected Velvet R1 as 02 MC HOST; older GEN3 / legacy and Golden unchanged.
+- Labels use metadata only: preserve all K500 native preset binaries and source checksums.
+- Release from exact-main green CI as a NEW immutable RC (next available rc.3).
+
+## Unreleased — GEN5 radio host Velvet R1 selected (2026-11-01)
+
+- Current native UAUDIO catalog #02 now uses the exact owner-listened Velvet R1. No new untested sonic tuning.
+- Former R2 Silk, R3 OnAir, D2R/Ceramah host choices are retired from the active MC HOST bank; original D2R GOLDEN #41 remains protected.
+- Pin #02 SHA-256 and prevent old UAUDIO official cache from overriding owner-selected #02.
+- Existing release assets remain immutable; Windows release of this revision needs a new qualified tag.
+
 ## Unreleased — GEN5 UAUDIO radio-preserving catalog correction (2026-11-01)
 
 - Native UAUDIO raw=5 for all GEN5 primary preset 01–10, exact source/headroom/EQ/FX preserved otherwise.
