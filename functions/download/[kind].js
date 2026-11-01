@@ -10,7 +10,7 @@ export async function onRequest(context) {
       status: 405, headers: { Allow: 'GET, HEAD' }
     });
   }
-  if (!['windows', 'windows-preferred', 'windows-zip'].includes(params.kind)) {
+  if (!['windows', 'windows-preferred', 'windows-zip', 'macos', 'linux'].includes(params.kind)) {
     return new Response('Not Found', { status: 404 });
   }
 
@@ -20,6 +20,8 @@ export async function onRequest(context) {
   // release page (not an unexpected EXE) if the archive is unavailable.
   const target = params.kind === 'windows-preferred' ? release.preferredUrl :
     params.kind === 'windows-zip' ? (release.zipUrl || release.releaseUrl) :
+    params.kind === 'macos' ? (release.macUrl || release.releaseUrl) :
+    params.kind === 'linux' ? (release.linuxUrl || release.releaseUrl) :
     release.downloadUrl;
   return new Response(null, {
     status: 302,

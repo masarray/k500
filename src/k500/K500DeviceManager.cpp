@@ -569,8 +569,8 @@ void K500DeviceManager::beginBluetoothScan()
 {
     m_serialCandidates = K500WinIo::serialPorts();
     if (m_serialCandidates.isEmpty()) {
-        setError(QStringLiteral("Tidak ada COM port Windows yang tersedia untuk Bluetooth SPP."));
-        setPortLabel(QStringLiteral("No BT COM port"));
+        setError(QStringLiteral("Tidak ada Bluetooth SPP/serial port tersedia. Pair K500 dahulu di pengaturan sistem."));
+        setPortLabel(QStringLiteral("No BT serial port"));
         setStatus(QStringLiteral("error"));
         return;
     }
@@ -594,7 +594,7 @@ void K500DeviceManager::openNextBluetoothCandidate()
 
     ++m_serialCandidateIndex;
     if (m_serialCandidateIndex >= m_serialCandidates.size()) {
-        setError(QStringLiteral("K500 Bluetooth tidak ditemukan. Pastikan KTV_BT sudah paired di Windows dan port SPP tidak sedang dipakai aplikasi lain."));
+        setError(QStringLiteral("K500 Bluetooth tidak ditemukan. Pastikan KTV_BT sudah paired pada OS dan port serial tidak dipakai aplikasi lain."));
         setPortLabel(QStringLiteral("K500 BT not found"));
         setStatus(QStringLiteral("error"));
         m_stage = Stage::Idle;

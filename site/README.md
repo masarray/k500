@@ -20,16 +20,16 @@ The Pages Functions live at repository-root `/functions` because the Cloudflare 
 
 ## Latest-release strategy (direct + resilient)
 
-The website never proxies executable bytes through Cloudflare. The default download prefers a published, verified ZIP from GitHub Releases. A clearly labeled direct EXE download remains available. The primary public names are `SonkuPik-k500-setup.exe` and `SonkuPik-k500-setup.zip` (the latter contains an EXE with exactly that short name). Both contain the byte-identical official Smart Installer; ZIP is not a portable edition. Original versioned files remain published for updater and historical link compatibility.
+The website never proxies executable bytes through Cloudflare. The default download prefers a published, verified ZIP from GitHub Releases. A clearly labeled direct EXE download remains available. The primary public names are `sonkupik-k500-setup.exe` and `sonkupik-k500-setup.zip` (the latter contains an EXE with exactly that short name). Both contain the byte-identical official Per-User Installer; ZIP is not a portable edition. Original versioned files remain published for updater and historical link compatibility.
 
 1. `/api/release` requests the GitHub Releases JSON API for the latest non-draft, non-prerelease stable.
 2. The resolver validates stable semantic tags, uploaded asset state/size, exact allowed EXE/ZIP filenames and canonical GitHub download URLs. It prefers the short aliases when actually uploaded; otherwise the versioned assets continue to work. URLs are never guessed.
 3. Download links are progressively updated to the direct GitHub asset URL. Without JavaScript, `/download/windows-preferred` still works as a 302 redirect. The direct EXE remains visible even when ZIP is preferred.
-4. GitHub API throttling, timeouts, malformed metadata, or a missing new installer fall back to the last known-good published stable Smart Installer (`v1.1.3`, EXE) rather than returning a blocking 503. Update that immutable fallback when publishing a newly qualified stable.
+4. GitHub API throttling, timeouts, malformed metadata, or a missing new installer fall back to the last known-good published stable Per-User installer (`v1.1.4`, EXE) rather than returning a blocking 503. Update that immutable fallback when publishing a newly qualified stable.
 5. The download page always shows a separate GitHub Release page link and checksums link. The site does not ask users to disable security protections.
 6. The offline Node regressions cover successful ZIP discovery, missing/malicious ZIP, prereleases, metadata failure, and assert the live landing script never changes visible text after paint. The Python packaging regression verifies original SHA-256, archive integrity and deterministic output. No desktop build is needed for website/package logic.
 
-On main deployment, the consolidated CI's Linux `zip-release` job downloads the stable Smart Installer, verifies it against the published `SHA256SUMS.txt`, then publishes `SonkuPik-k500-setup.exe`, `SonkuPik-k500-setup.zip`, and a `.sha256` file for each. The ZIP also contains README and the short EXE's SHA-256 entry. The job is idempotent across partial uploads, does not overwrite assets, and never rebuilds Windows software. The same short aliases are part of the future stable-promotion publishing workflow. The versioned legacy assets and their checksums remain untouched.
+On main deployment, the consolidated CI's Linux `zip-release` job downloads the stable Per-User installer, verifies it against the published `SHA256SUMS.txt`, then publishes `sonkupik-k500-setup.exe`, `sonkupik-k500-setup.zip`, and a `.sha256` file for each. The ZIP also contains README and the short EXE's SHA-256 entry. The job is idempotent across partial uploads, does not overwrite assets, and never rebuilds Windows software. The same short aliases are part of the future stable-promotion publishing workflow. The versioned legacy assets and their checksums remain untouched.
 
 Note: availability of GitHub's download CDN and client-side antivirus decisions are outside the website's control. No legitimate distribution strategy can guarantee every browser or security product accepts unsigned EXEs.
 
@@ -62,3 +62,6 @@ Pages Functions are deployed from the repository-root `/functions` directory alo
 ## Public URL
 
 `https://sonkupik-k500.pages.dev/`
+
+## Three-platform download policy
+Windows prefers verified `sonkupik-k500-setup.zip` containing byte-identical `sonkupik-k500-setup.exe`; no new Windows build. Mac and Linux redirects only choose exact published GitHub release assets. If assets do not yet exist, the buttons lead to the real release page, never guessed links or placeholder installers. macOS Gatekeeper and Windows antivirus protections must not be bypassed.

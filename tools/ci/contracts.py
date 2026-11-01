@@ -2114,8 +2114,8 @@ def check_release_contracts() -> None:
     # artifacts must stay available and must never be silently renamed.
     require(
         "lib/stable-release.mjs",
-        "SonkuPik-k500-setup.exe",
-        "SonkuPik-k500-setup.zip",
+        "sonkupik-k500-setup.exe",
+        "sonkupik-k500-setup.zip",
         "const original = publishedAsset(originalName)",
         "const selectedExe = shortExe || original",
         "const selectedZip = shortZip || legacyZip",
@@ -2583,6 +2583,25 @@ def check_ci_topology() -> None:
         PASSES.append(f"active workflow budget: {workflow_count}/4")
 
 
+
+def check_crossplatform_downloads() -> None:
+    # CROSS_PLATFORM_DOWNLOADS_V1 — exact verified files, not guessed paths.
+    require("CMakeLists.txt", "POSIX_K500_TRANSPORT_V1", "K500PosixIo.cpp",
+            "Qt6::SerialPort", "qt_generate_deploy_qml_app_script")
+    require("src/k500/K500PosixIo.cpp", "POSIX_K500_TRANSPORT_V1",
+            "hid_read_timeout", "hid_write", "QSerialPort", "requestWriteDrain")
+    require("lib/stable-release.mjs", "macAsset", "linuxAsset",
+            "macAvailable", "linuxAvailable", "sonkupik-k500-setup.zip")
+    require("functions/download/[kind].js", "'macos'", "'linux'",
+            "release.macUrl || release.releaseUrl", "release.linuxUrl || release.releaseUrl")
+    require("site/download/index.html", "platform-downloads",
+            "Download for Windows", "Download for Mac", "Download for Linux")
+    require(".github/workflows/windows-build.yml", "cross-platform:",
+            "qtserialport", "Package verified stable ZIP (no rebuild)",
+            "Windows-Setup-PerUser.exe", "SonKuPik-K500-v1.1.4-macOS-arm64.dmg",
+            "SonKuPik-K500-v1.1.4-Linux-x86_64.tar.gz")
+    PASSES.append("Windows byte-identical ZIP + guarded Mac/Linux packages")
+
 def main() -> int:
     check_presets()
     check_uaudio_companions()
@@ -2595,6 +2614,7 @@ def main() -> int:
     check_preset_sync()
     check_build_targets()
     check_ci_topology()
+    check_crossplatform_downloads()
 
     for item in PASSES:
         print(f"[PASS] {item}")

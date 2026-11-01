@@ -50,6 +50,14 @@ def main() -> int:
         "src/AppVersionInit.cpp",
         "tools/ci/installer_smoke.ps1",
     }
+    # Native Mac/Linux jobs run only when their real transport/build inputs change.
+    platform_names = {
+        "CMakeLists.txt", "src/k500/K500PosixIo.cpp",
+        "src/k500/K500DeviceManager.cpp",
+        ".github/workflows/windows-build.yml",
+    }
+    platform = event == "push" and any(p in platform_names for p in paths)
+
     installer = any(
         p in installer_names
         or any(p.startswith(prefix) for prefix in installer_prefixes)
@@ -60,9 +68,10 @@ def main() -> int:
     with output.open("a", encoding="utf-8") as fh:
         fh.write(f"build_required={'true' if build else 'false'}\n")
         fh.write(f"installer_required={'true' if installer else 'false'}\n")
+        fh.write(f"platform_required={'true' if platform else 'false'}\n")
         fh.write(f"changed_count={len(paths)}\n")
 
-    print(f"build_required={build}; installer_required={installer}; changed={len(paths)}")
+    print(f"build_required={build}; installer_required={installer}; platform_required={platform}; changed={len(paths)}")
     for path in paths[:80]:
         print(f"  {path}")
     return 0

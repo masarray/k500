@@ -30,6 +30,7 @@ jobs:
     outputs:
       build_required: ${{ steps.scope.outputs.build_required }}
       installer_required: ${{ steps.scope.outputs.installer_required }}
+      platform_required: ${{ steps.scope.outputs.platform_required }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -165,9 +166,12 @@ jobs:
           release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
           [[ "$(jq -r '.draft' <<< "$release")" == "false" &&
              "$(jq -r '.prerelease' <<< "$release")" == "false" ]] || { echo 'Refusing draft/prerelease'; exit 1; }
-          short_exe="SonkuPik-k500-setup.exe"
-          short_zip="SonkuPik-k500-setup.zip"
-          installer="SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+          short_exe="sonkupik-k500-setup.exe"
+          short_zip="sonkupik-k500-setup.zip"
+          installer="SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
+          if [[ "$tag" == "v1.1.3" ]]; then
+            installer="SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+          fi
           # Idempotent. Keep existing immutable release assets and resumable partial uploads.
           all_present=true
           for name in "$short_exe" "$short_exe.sha256" "$short_zip" "$short_zip.sha256"; do
@@ -181,7 +185,7 @@ jobs:
             exit 0
           fi
           jq -e --arg file "$installer" '.assets[] | select(.name == $file and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null || {
-            echo 'No stable Smart Installer to verify; refusing alias publishing'
+            echo 'No qualified Per-User/legacy stable installer; refusing packaging'
             exit 1
           }
           mkdir -p original dist
@@ -202,3 +206,104 @@ jobs:
             fi
           done
           echo "Published verified short-name EXE and ZIP for $tag"
+
+  cross-platform:
+    name: Native platform — ${{ matrix.platform }}
+    needs: contracts
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.contracts.outputs.platform_required == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            platform: linux
+            artifact: SonKuPik-K500-v1.1.4-Linux-x86_64.tar.gz
+          - os: macos-15
+            platform: macos
+            artifact: SonKuPik-K500-v1.1.4-macOS-arm64.dmg
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Install OS transport dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.platform }}" == "linux" ]]; then
+            sudo apt-get update -qq
+            sudo apt-get install -y ninja-build libhidapi-dev libudev-dev libgl1 libxkbcommon-x11-0 libxcb-cursor0
+          else
+            brew install hidapi ninja
+          fi
+      - name: Install Qt 6 including SerialPort
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.10.2'
+          modules: 'qtserialport'
+          cache: true
+      - name: Build native app and protocol tests once
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-platform -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build-platform --target sonkupik_studio_native k500_protocol_selftest k500_p1_state_selftest --parallel 3
+          ./build-platform/k500_protocol_selftest
+          ./build-platform/k500_p1_state_selftest
+      - name: Install Qt QML runtime, package and checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          cmake --install build-platform --prefix "$PWD/stage"
+          if [[ "${{ matrix.platform }}" == "macos" ]]; then
+            app="$(find "$PWD/stage" -maxdepth 2 -name '*.app' -type d -print -quit)"
+            test -n "$app"
+            exe="$app/Contents/MacOS/SONKUPIK-STUDIO-Native-UI"
+            test -x "$exe"
+            linked="$(otool -L "$exe" | awk '/libhidapi/{print $1;exit}')"
+            if [[ -n "$linked" ]]; then
+              mkdir -p "$app/Contents/Frameworks"
+              lib="$(brew --prefix hidapi)/lib/$(basename "$linked")"
+              test -f "$lib"
+              cp -L "$lib" "$app/Contents/Frameworks/$(basename "$linked")"
+              install_name_tool -change "$linked" "@executable_path/../Frameworks/$(basename "$linked")" "$exe"
+            fi
+            codesign --force --deep --sign - "$app"
+            hdiutil create -quiet -ov -format UDZO -volname "SonKuPik K500" \
+              -srcfolder "$app" "dist/${{ matrix.artifact }}"
+            hdiutil verify "dist/${{ matrix.artifact }}"
+          else
+            exe="$PWD/stage/bin/SONKUPIK-STUDIO-Native-UI"
+            test -x "$exe"
+            test -f "$PWD/stage/bin/qt.conf"
+            printf '#!/bin/sh\nHERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"\nexec "$HERE/bin/SONKUPIK-STUDIO-Native-UI" "$@"\n' > "$PWD/stage/run-sonkupik-k500"
+            chmod +x "$PWD/stage/run-sonkupik-k500"
+            tar -czf "dist/${{ matrix.artifact }}" -C stage .
+            tar -tzf "dist/${{ matrix.artifact }}" | grep -q './run-sonkupik-k500'
+          fi
+          test -s "dist/${{ matrix.artifact }}"
+          (cd dist && shasum -a 256 "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256")
+          printf 'source_commit=%s\nos=${{ matrix.platform }}\nqt=6.10.2\nhardware_test=not_yet_physically_qualified\n' \
+            "$GITHUB_SHA" > "dist/${{ matrix.artifact }}.provenance.txt"
+      - name: Publish platform package to stable v1.1.4 (additive, immutable)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v1.1.4 --repo "$GITHUB_REPOSITORY" >/dev/null
+          for file in "dist/${{ matrix.artifact }}" "dist/${{ matrix.artifact }}.sha256" "dist/${{ matrix.artifact }}.provenance.txt"; do
+            name="$(basename "$file")"
+            existing="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.1.4" --jq ".assets[] | select(.name == \"$name\") | .digest" || true)"
+            if [[ -n "$existing" ]]; then
+              if [[ "$name" == "${{ matrix.artifact }}" ]]; then
+                actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+                [[ "$existing" == "sha256:$actual" ]] || { echo "Refusing modified immutable asset"; exit 1; }
+              fi
+            else
+              gh release upload v1.1.4 "$file" --repo "$GITHUB_REPOSITORY"
+            fi
+          done

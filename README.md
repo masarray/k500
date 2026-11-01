@@ -294,3 +294,7 @@ Use **Support** in the application toolbar to save a bounded diagnostics JSON re
 ## License
 
 SonKuPik K500 is released under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See [LICENSE](LICENSE).
+
+
+### Platform downloads
+The website offers verified downloads for Windows, macOS, and Linux. The Windows ZIP encloses the same Per-User EXE as the official stable release. macOS and Linux buttons redirect to actual published platform assets only; building a Qt UI alone does not imply tested hardware support.
