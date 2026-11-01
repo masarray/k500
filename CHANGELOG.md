@@ -1,3 +1,10 @@
+## v1.1.4 — Owner-approved stable, single Per-User installer (2026-11-01)
+
+- Stable promotion is **byte-identical to v1.1.4-rc.3 Per-User**, no recompilation. The release contains exactly one native user installer, SHA256SUMS and its machine-readable manifest; zero Machine/Smart assets.
+- GEN5 01–10 UAUDIO, Velvet R1 #02 radio, archived BT/UAUDIO with visible source-mode labels, and byte-identical Golden #41.
+- Per-User install defaults to LocalAppData without Windows admin/UAC elevation; machine-wide legacy installations require a separately authorized migration.
+- CI/release costs reduced by packaging only Per-User going forward, using one consolidated CI and exact RC promotion.
+
 ## Unreleased — PC catalog source-mode labels (2026-11-01)
 - Show [UAUDIO] or [BT] suffix directly in all 41 official PC preset names.
 - GEN5 01–10 remain UAUDIO with owner-selected Velvet R1 as 02 MC HOST; older GEN3 / legacy and Golden unchanged.

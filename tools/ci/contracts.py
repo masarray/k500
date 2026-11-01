@@ -1881,107 +1881,52 @@ def check_release_contracts() -> None:
         if token not in acceptance:
             FAILURES.append(f"v1.1.3 acceptance record missing: {token}")
 
+    # SINGLE_PER_USER_RC_V1 / SINGLE_PER_USER_STABLE_V1:
+    # owner accepted exact RC.3 Per-User bytes; no third installer is built
+    # or published. Legacy Smart/Machine logic remains tested historically,
+    # but not emitted to the public for new stable releases.
     require(
         ".github/workflows/windows-updater-rc.yml",
         "v1.1.4-rc.${{ inputs.rc_number }}",
-        "docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_4_ACCEPTANCE",
-        "RC_THREE_SCOPE_INSTALLERS_V1",
-        "REAL_APP_SMART_RC_ACCEPTANCE_V1",
-        "Public Smart default is not LocalAppData; Program Files is forbidden",
-        "Windows-Smart-Installer.exe",
-        "if ($check.artifacts.Count -ne 3)",
-        "v1.1.4 candidate is pending independent acceptance",
+        "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
+        "SINGLE_PER_USER_RC_V1",
+        '"/DPerUser=1"',
+        "if ($check.artifacts.Count -ne 1)",
+        "Windows-Setup-PerUser.exe",
+        "Run deep updater lifecycle acceptance",
+        "overwrite_files: false",
     )
-    # Independent v1.1.4 RC gate; old stable 1.1.3 remains immutable.
-    new_rc_gate = read("docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md")
-    if "UPDATER_V1_1_4_ACCEPTANCE=pending" not in new_rc_gate:
-        FAILURES.append("v1.1.4 RC acceptance must initially remain pending")
+    single_rc = read(".github/workflows/windows-updater-rc.yml")
+    if single_rc.count('& $env:INNO_ISCC ') != 1 or '/DSmartInstaller=1' in single_rc:
+        FAILURES.append("RC publisher must run exactly ONE native Per-User Inno build")
 
+    gate = read("docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md")
+    for token in (
+        "UPDATER_V1_1_4_ACCEPTANCE=accepted",
+        "UPDATER_V1_1_4_ACCEPTED_TAG=v1.1.4-rc.3",
+        "UPDATER_V1_1_4_ACCEPTED_COMMIT=4fd638c77392942b2560e9a74f59e12ac7474844",
+        "UPDATER_V1_1_4_USER_SHA256=aee9c45916e69bcfcfb07dddc15ee33270dd12a18e7ec68a7f54995c7aec29fc",
+    ):
+        if token not in gate:
+            FAILURES.append(f"v1.1.4 Per-User RC.3 owner gate mismatch: {token}")
     require(
         ".github/workflows/windows-updater-promote.yml",
-        "docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md",
-        "UPDATER_V1_1_3_ACCEPTED_COMMIT",
-        "UPDATER_V1_1_3_SMART_SHA256",
-        "$stableTag = 'v1.1.3'",
-        "PROMOTION_RC_TAG_MATCHES_SOURCE_VERSION_V1",
-        "[regex]::Escape($version)",
-        "if ($tag -notmatch $expectedRcPattern)",
-        "ACCEPTED_SMART_REAL_APP_V1",
-        "PUBLIC_LOCALAPPDATA_RC1_REVOKED_V1",
-        "Public stable SonKuPik K500 v1.1.3.",
+        "SINGLE_PER_USER_STABLE_V1",
+        "v1.1.4-rc.3",
+        "4fd638c77392942b2560e9a74f59e12ac7474844",
+        "aee9c45916e69bcfcfb07dddc15ee33270dd12a18e7ec68a7f54995c7aec29fc",
+        "workflow_run:",
+        "byte-identical-rc-artifact-promotion",
+        "Windows-Setup-PerUser.exe",
+        "overwrite_files: false",
     )
-
-    # ACCEPTED_MACHINE_SCOPE_PROMOTION_SMOKE_V2 — explicit Machine /DIR
-    # and positive HKLM registration are mandatory. Previously this block
-    # was copied from Smart's per-user smoke and guaranteed a false failure.
-    promotion = read(".github/workflows/windows-updater-promote.yml")
-    if ("      - name: Validate exact accepted machine installer bytes" not in promotion
-            or "      - name: Validate exact accepted per-user installer bytes" not in promotion):
-        FAILURES.append("Stable promotion machine smoke test boundaries missing")
-    else:
-        machine_smoke = promotion.split(
-            "      - name: Validate exact accepted machine installer bytes", 1
-        )[1].split("      - name: Validate exact accepted per-user installer bytes", 1)[0]
-        for expected in (
-            "ACCEPTED_MACHINE_SCOPE_PROMOTION_SMOKE_V2",
-            '("/DIR=$dir")',
-            'if ($LASTEXITCODE -ne 0) { throw \'Promoted Machine installer failed to register its HKLM uninstall entry\' }',
-            "--update-scope-check=machine",
-            "if (Test-Path $dir) { throw 'Machine smoke destination already exists; refusing deletion' }",
-        ):
-            if expected not in machine_smoke:
-                FAILURES.append(f"Stable promotion machine smoke lost required contract: {expected}")
-        if "Public Smart unexpectedly registered all-users" in machine_smoke:
-            FAILURES.append("Machine smoke incorrectly rejects its required HKLM registration")
-        if "if (Test-Path $dir) { Remove-Item $dir -Recurse -Force }" in machine_smoke:
-            FAILURES.append("Machine smoke must not recursively delete pre-existing destination")
-
-    # ACCEPTED_SMART_SCOPE_REINSTALL_V2 — stable smoke MUST mirror the
-    # immutable candidate's successful native no-override reinstall (RC.6).
-    # The previous promotion suite inserted /DIR only on the second Smart
-    # invocation and failed run #38396847077 before publication.
-    smart_boundary = (
-        "      - name: Validate exact accepted native Smart Installer bytes"
-    )
-    metadata_boundary = "      - name: Generate stable metadata around exact accepted bytes"
-    if smart_boundary not in promotion or metadata_boundary not in promotion:
-        FAILURES.append("Stable promotion Smart smoke step boundaries missing")
-    else:
-        smart_smoke = promotion.split(smart_boundary, 1)[1].split(metadata_boundary, 1)[0]
-        if "ACCEPTED_SMART_SCOPE_REINSTALL_V2" not in smart_smoke:
-            FAILURES.append("Stable promotion native Smart scope-aware regression marker missing")
-        # Count Smart SETUP calls only. The accepted uninstaller uses the
-        # same silent flags and must not be mistaken for a third reinstall.
-        if smart_smoke.count(
-            "Start-Process -FilePath $setup -ArgumentList "
-            "@('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru"
-        ) != 2:
-            FAILURES.append("Stable promotion must install and reinstall Smart with the same exact native arguments")
-        if any(token in smart_smoke for token in (
-            '("/DIR=$dir")', "/DIR=", "/CURRENTUSER", "/ALLUSERS"
-        )):
-            # Non-invocation comments can document forbidden tokens safely;
-            # check actual PowerShell commands only, not comments.
-            executable_lines = [
-                line for line in smart_smoke.splitlines()
-                if "Start-Process -FilePath $setup -ArgumentList" in line
-            ]
-            if any("/DIR" in line or "/CURRENTUSER" in line or "/ALLUSERS" in line
-                   for line in executable_lines):
-                FAILURES.append("Stable promotion must not override native Smart scope or directory")
-        for expected in (
-            "if (Test-Path $dir) { throw 'Smart promotion test destination already exists; refusing deletion' }",
-            "Smart promotion test would overwrite a registered user installation",
-            "Smart promotion test would collide with a registered machine installation",
-            "--update-scope-check=user",
-            "PRESERVE-OWNER-STATE",
-            "did not retain exact HKCU LocalAppData registration",
-            "unexpectedly created an HKLM installation",
-            "Promoted Smart uninstaller deleted user-owned file",
-        ):
-            if expected not in smart_smoke:
-                FAILURES.append(f"Stable promotion Smart regression contract missing: {expected}")
+    promote = read(".github/workflows/windows-updater-promote.yml")
+    if "cmake --build" in promote or "INNO_ISCC" in promote:
+        FAILURES.append("Stable promotion must never rebuild an installer")
+    if "Windows-Smart-Installer.exe" in promote or "dist/SonKuPik-K500-v$version-Windows-Setup.exe" in promote:
+        FAILURES.append("Stable promotion must publish ONLY the Per-User installer")
+    require("lib/stable-release.mjs", "SINGLE_PER_USER_STABLE_V1", "Setup-PerUser")
+    require("tools/ci/test_download_route.js", "Setup-PerUser")
 
     require(
         "packaging/windows/installer.iss",
@@ -2124,10 +2069,9 @@ def check_release_contracts() -> None:
         "$migrationSetupPath",
         "$migrationHash",
     )
-    require(
-        ".github/workflows/windows-updater-rc.yml",
-        '-SmartSetup "dist/SonKuPik-K500-',
-    )
+    require(".github/workflows/windows-updater-rc.yml",
+            "SINGLE_PER_USER_RC_V1",
+            "tools/ci/updater_deep_acceptance.ps1")
     # ISSUE182_PUBLIC_LOCALAPPDATA_ONLY_SMART_V1 — never default to
     # Program Files or use previous machine privileges on the public Setup.
     require(
@@ -2280,15 +2224,13 @@ def check_release_contracts() -> None:
         "tools/ci/windows_test_suite.ps1",
         "--update-health-check=1.1.0",
     )
-    require(
-        ".github/workflows/windows-updater-promote.yml",
-        "byte-identical-rc-artifact-promotion",
-        "UPDATER_V1_1_3_ACCEPTED_COMMIT",
-        "UPDATER_V1_1_3_SMART_SHA256",
-        "Stable staging changed accepted bytes:",
-        "if ($check.artifacts.Count -ne 3)",
-        "overwrite_files: false",
-    )
+    require(".github/workflows/windows-updater-promote.yml",
+            "byte-identical-rc-artifact-promotion",
+            "SINGLE_PER_USER_STABLE_V1",
+            "SHA256SUMS.txt",
+            "release-manifest.json",
+            "fail_on_unmatched_files: true")
+
     require(
         "README.md",
         "**v1.1.3** is the current public stable",

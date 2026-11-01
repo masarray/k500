@@ -12,8 +12,9 @@ const API = "https://api.github.com/repos/masarray/k500/releases/latest";
 const FALLBACK = "v1.1.3";
 function installer(tag) {
   const v = tag.slice(1).split(".").map(Number);
-  const smart = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 3)));
-  return "SonKuPik-K500-" + tag + "-Windows-" + (smart ? "Smart-Installer" : "Setup") + ".exe";
+  const perUser = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 4)));
+  const smart = v[0] === 1 && v[1] === 1 && v[2] === 3;
+  return "SonKuPik-K500-" + tag + "-Windows-" + (perUser ? "Setup-PerUser" : smart ? "Smart-Installer" : "Setup") + ".exe";
 }
 function zipUrl(tag) {
   return "https://github.com/masarray/k500/releases/download/" + tag + "/SonKuPik-K500-" + tag + "-Windows.zip";

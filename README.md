@@ -1,3 +1,7 @@
+### Windows installer distribution (v1.1.4 stable)
+
+The public Windows download is **one Per-User installer**, targeting `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator elevation. It is the same verified EXE as the accepted RC.3 Per-User artifact, not a new compile. Old all-users installations must undergo a separate explicit migration; they are not silently changed.
+
 <p align="center">
   <img src="assets/SonKuPik-k500-logo.png" alt="SonKuPik K500" width="200">
 </p>
