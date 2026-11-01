@@ -12,7 +12,7 @@
 
 ### GEN5 01–10 current filenames / SHA-256
 - 01_ARTIST_D2R.k500 (ARTIST G5, UAUDIO=5): `e99acae1fd80cf89257006b233a56c43801dc3e6655601c0fff574bbe58b9c4c`
-- 02_MC_HOST_RADIO_D2R.k500 (MC HOST RADIO, UAUDIO=5): `5049dfae4e1c39170ad8ab37c1fc6e32c5340bc13d42976921660611e6273440`
+- 02_MC_HOST_RADIO_D2R.k500 (MC HOST RADIO, UAUDIO=5): `7fd3f30ebc1e759e3b2e5c0f03c66764efa2f19b52dc085da2aa371f5f5e913a`
 - 03_DANGDUT_D2R.k500 (DANGDUT G5, UAUDIO=5): `732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1`
 - 04_ROCK_D2R.k500 (ROCK G5, UAUDIO=5): `1a52db23ff5d08f45783228cf2aa48cde21a8afd477308e0572319d256922fcf`
 - 05_ACOUSTIC_D2R.k500 (ACOUSTIC G5, UAUDIO=5): `a644d2d51865dc82a59ef2dd2878c3b2363c3b8d298446c765198a01341063c0`
@@ -38,7 +38,11 @@ User personally selected D2R_33_REVERB_SOFT over all GEN4 candidates. The latest
 - **02 MC HOST RADIO** replaces prior Ballad at catalog 02 using the previous #10 CERAMAH D2R DSP, source=UAUDIO (raw5), native embedded name `MC HOST RADIO`; target broadcast/hosting speech, not a vocal-singing Ballad curve.
 - **10 BALLAD** retains the previous #02 BALLAD D2R DSP at catalog 10 with native UAUDIO source.
 - 01,03–09 retain their full DSP tonal, FX, routing, and dynamics parameter bytes; only source 2→5 and checksum differ.
-- 02 differs from the previous Ceramah DSP only by music source byte, embedded native name and checksum; 10 differs from previous Ballad only by source+checksum.
+- 02 preserves the former Ceramah microphone/EQ/reverb/echo and voice-processing DSP; it additionally enables Music→Main at raw70 (from the earlier Ballad/Main balanced music routing), so radio announcers can hear UAUDIO backing tracks. Source, hardware name, Main music level and checksum are the only changed fields relative to the Ceramah donor. 10 differs from previous Ballad only by source+checksum.
 - Preserve *exact* GOLDEN 41 SHA-256 `465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a` and archival 11–40 hashes.
 - The official library loader rejects **stale BT cache** for primary 01–10 and ignores prior cache filenames `02_BALLAD_D2R.k500` and `10_CERAMAH_D2R.k500` without deleting user content.
 - v1.1.4-rc.1 is an immutable prerelease with the older arrangement; publish a **new** RC number (e.g. v1.1.4-rc.2) only after exact-main green CI.
+
+### Radio-host usability audit (2026-11-01)
+
+The original GEN5 Ceramah preset muted music in all output routes. A radio-host preset must not silently discard the UAUDIO backing track. Therefore **02 MC HOST RADIO** now restores Music→Main at native raw=70, with its speech-focused Mic EQ, reverb and zero echo unchanged. Other music routes (Surround, Center, Sub) stay 0 by design; users can change routing if required. Verified SHA-256: `7fd3f30ebc1e759e3b2e5c0f03c66764efa2f19b52dc085da2aa371f5f5e913a`.

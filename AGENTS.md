@@ -321,3 +321,5 @@ The repository uses **tests as regression units, not GitHub workflows as regress
 Read `docs/CI_ARCHITECTURE.md` before changing CI.
 
 - GEN5_UAUDIO_CACHE_MODE_GUARD_V1 ensures old cached BT preset images cannot override UAUDIO 01–10 on upgrade; old #02/#10 cache names are ignored, not deleted.
+
+- Radio host corrective guard: GEN5 02 native source raw5 and Music→Main raw70; Mic/EQ/FX remain inherited from Ceramah, other outputs' music routing still 0. Regress SHA-256 `7fd3f30ebc1e759e3b2e5c0f03c66764efa2f19b52dc085da2aa371f5f5e913a`.

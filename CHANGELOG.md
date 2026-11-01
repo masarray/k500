@@ -1,7 +1,7 @@
 ## Unreleased — GEN5 UAUDIO radio-preserving catalog correction (2026-11-01)
 
 - Native UAUDIO raw=5 for all GEN5 primary preset 01–10, exact source/headroom/EQ/FX preserved otherwise.
-- Restore the familiar preset **02 MC HOST RADIO** from prior **10 CERAMAH** vocal speech profile; move prior **02 BALLAD** to **10 BALLAD**.
+- Restore the familiar preset **02 MC HOST RADIO** from prior **10 CERAMAH** vocal speech profile, and restore moderate **Music→Main raw70** for usable UAUDIO radio background tracks; move prior **02 BALLAD** to **10 BALLAD**.
 - Prevent stale Bluetooth official cache from shadowing UAUDIO presets; preserve archived 11–40 and original D2R GOLDEN 41 byte-for-byte.
 - Do not alter already-published immutable v1.1.4-rc.1 installer; follow with a separately tagged release candidate.
 

@@ -68,7 +68,7 @@ def check_presets() -> None:
     # and owner-selected D2R Golden protected at the LAST PC catalog ID.
     expected = {
         "01_ARTIST_D2R.k500": ("ARTIST G5", "e99acae1fd80cf89257006b233a56c43801dc3e6655601c0fff574bbe58b9c4c"),
-        "02_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "5049dfae4e1c39170ad8ab37c1fc6e32c5340bc13d42976921660611e6273440"),
+        "02_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "7fd3f30ebc1e759e3b2e5c0f03c66764efa2f19b52dc085da2aa371f5f5e913a"),
         "03_DANGDUT_D2R.k500": ("DANGDUT G5", "732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1"),
         "04_ROCK_D2R.k500": ("ROCK G5", "1a52db23ff5d08f45783228cf2aa48cde21a8afd477308e0572319d256922fcf"),
         "05_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "a644d2d51865dc82a59ef2dd2878c3b2363c3b8d298446c765198a01341063c0"),
@@ -116,6 +116,8 @@ def check_presets() -> None:
         catalog_id = int(path.name[:2])
         if 1 <= catalog_id <= 10 and raw[0x0E] != 5:
             FAILURES.append(f"{path.name}: GEN5 primary must use UAUDIO raw=5; got {raw[0x0E]}")
+        if catalog_id == 2 and raw[0x2A] != 70:
+            FAILURES.append("02 MC HOST RADIO must route UAUDIO background music into Main at raw=70")
         if (11 <= catalog_id <= 20 or catalog_id == 41) and raw[0x0E] != 2:
             FAILURES.append(f"{path.name}: protected archival / GOLDEN BT source drift")
         sha = hashlib.sha256(raw).hexdigest()
