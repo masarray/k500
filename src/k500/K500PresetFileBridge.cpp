@@ -25,7 +25,7 @@ struct BuiltInPresetDefinition {
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     // UAUDIO_COMPANION_PRESET_BANK_V1 — archived GEN3 USB Audio 21–30.\n    // GEN5_D2R_PRIMARY_LIBRARY_V1 — 01–10 GEN5, 11–20 GEN3 BT, 21–30 UAUDIO, 31–40 legacy, 41 D2R golden.
     {"ARTIST G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "01_ARTIST_D2R.k500", ":/presets/01_ARTIST_D2R.k500"},
-    {"MC HOST RADIO", "GEN5 UAUDIO · native MC host / radio announcer voice (derived from Ceramah)", "02_MC_HOST_RADIO_D2R.k500", ":/presets/02_MC_HOST_RADIO_D2R.k500"},
+    {"MC HOST RADIO", "GEN5 UAUDIO · MC/radio speaking EQ + Main music bed (raw70), without karaoke echo", "02_MC_HOST_RADIO_D2R.k500", ":/presets/02_MC_HOST_RADIO_D2R.k500"},
     {"DANGDUT G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "03_DANGDUT_D2R.k500", ":/presets/03_DANGDUT_D2R.k500"},
     {"ROCK G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "04_ROCK_D2R.k500", ":/presets/04_ROCK_D2R.k500"},
     {"ACOUSTIC G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "05_ACOUSTIC_D2R.k500", ":/presets/05_ACOUSTIC_D2R.k500"},
