@@ -20,7 +20,7 @@
 - 07_MELAYU_D2R.k500 (MELAYU G5, UAUDIO=5): `e4eb5f5c1d1f83517196ba52fccf4f2f4997742a9c5bebeb8a95b135b22dc92b`
 - 08_QORI_D2R.k500 (QORI G5, UAUDIO=5): `9a2c34414d75010acbfdea19603797c7a5986e0d84647834dece7dfad2ef11c4`
 - 09_ADZAN_D2R.k500 (ADZAN G5, UAUDIO=5): `3a8638dbe5777ea257bf3e9aa8a2a7f07fbdb872673e935c8b1257f9e8ed1de6`
-- 10_BALLAD_D2R.k500 (BALLAD G5, UAUDIO=5): `a9e38086329e37a94a9a83a6773b0191604ff37cf27527c006920dfd5f86b78e6`
+- 10_BALLAD_D2R.k500 (BALLAD G5, UAUDIO=5): `a9e38086329e37a94a9a83a6773b0191604ff37cf27527c006920dfd5f86b78e`
 
 ## Sonic qualification
 User personally selected D2R_33_REVERB_SOFT over all GEN4 candidates. The latest GEN5 genre/mosque variants are extrapolations from that reference, not all individually tested to be equal or better. Only 41 is a bit-perfect golden reference. Tested 03 DANGDUT (formerly GEN5 33) differs from Golden solely in embedded name and checksum, with identical DSP data. New GEN5 01–10 all operate in UAUDIO mode raw=5. Old GEN3 BT 11–20 and exact original D2R GOLDEN 41 remain raw=2.
