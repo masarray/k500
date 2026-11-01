@@ -9,7 +9,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const root = path.resolve(__dirname, "../..");
 const API = "https://api.github.com/repos/masarray/k500/releases/latest";
-const FALLBACK = "v1.1.3";
+const FALLBACK = "v1.1.4";
 function installer(tag) {
   const v = tag.slice(1).split(".").map(Number);
   const perUser = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 4)));
@@ -22,8 +22,8 @@ function zipUrl(tag) {
 function downloadUrl(tag) {
   return "https://github.com/masarray/k500/releases/download/" + tag + "/" + installer(tag);
 }
-const SHORT_EXE = "SonkuPik-k500-setup.exe";
-const SHORT_ZIP = "SonkuPik-k500-setup.zip";
+const SHORT_EXE = "sonkupik-k500-setup.exe";
+const SHORT_ZIP = "sonkupik-k500-setup.zip";
 function shortAssetUrl(tag, name) {
   return "https://github.com/masarray/k500/releases/download/" + tag + "/" + name;
 }

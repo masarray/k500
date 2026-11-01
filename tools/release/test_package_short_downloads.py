@@ -9,7 +9,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 SCRIPT = Path(__file__).with_name("package_short_downloads.py")
-SHORT = "SonkuPik-k500-setup"
+SHORT = "sonkupik-k500-setup"
 
 
 class AliasTests(unittest.TestCase):
@@ -17,9 +17,9 @@ class AliasTests(unittest.TestCase):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
-        self.tag = "v1.1.3"
+        self.tag = "v1.1.4"
         self.payload = b"untouched K500 installer fixture \x00\x01"
-        self.source = self.root / f"SonKuPik-K500-{self.tag}-Windows-Smart-Installer.exe"
+        self.source = self.root / f"SonKuPik-K500-{self.tag}-Windows-Setup-PerUser.exe"
         self.source.write_bytes(self.payload)
         self.sums = self.root / "SHA256SUMS.txt"
         self.hash = hashlib.sha256(self.payload).hexdigest()
@@ -64,7 +64,7 @@ class AliasTests(unittest.TestCase):
         self.assertFalse(list(self.out.glob("*")) if self.out.exists() else False)
 
     def test_rc_rejected(self):
-        self.assertNotEqual(self.run_pack("v1.1.3-rc.1").returncode, 0)
+        self.assertNotEqual(self.run_pack("v1.1.4-rc.1").returncode, 0)
 
     def test_missing_original_hash_rejected(self):
         self.sums.write_text("0" * 64 + "  unexpected.exe\n")

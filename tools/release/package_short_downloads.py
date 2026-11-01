@@ -16,8 +16,8 @@ from zipfile import ZIP_STORED, ZipFile, ZipInfo
 
 TAG = re.compile(r"^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$")
 SUM_LINE = re.compile(r"^([a-fA-F0-9]{64})\s+\*?(.+?)\s*$")
-SHORT_EXE = "SonkuPik-k500-setup.exe"
-SHORT_ZIP = "SonkuPik-k500-setup.zip"
+SHORT_EXE = "sonkupik-k500-setup.exe"
+SHORT_ZIP = "sonkupik-k500-setup.zip"
 
 
 def sha256_file(path: Path) -> str:
@@ -29,9 +29,12 @@ def sha256_file(path: Path) -> str:
 
 
 def verify_original(source: Path, sums: Path, tag: str) -> str:
-    expected = f"SonKuPik-K500-{tag}-Windows-Smart-Installer.exe"
+    # v1.1.4+ publishes ONE Per-User installer. Preserve v1.1.3 legacy.
+    numbers = tuple(int(x) for x in tag[1:].split(".")) if TAG.fullmatch(tag) else (0, 0, 0)
+    suffix = "Setup-PerUser" if numbers >= (1, 1, 4) else "Smart-Installer"
+    expected = f"SonKuPik-K500-{tag}-Windows-{suffix}.exe"
     if not TAG.fullmatch(tag) or source.name != expected:
-        raise ValueError("Not a published stable Smart Installer filename")
+        raise ValueError("Not a published stable Windows Per-User/legacy installer filename")
     if not source.is_file() or source.stat().st_size == 0:
         raise ValueError("Missing or empty installer")
     records: dict[str, str] = {}

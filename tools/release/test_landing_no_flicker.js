@@ -11,8 +11,8 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '../..');
 const script = fs.readFileSync(path.join(root, 'site/app.js'), 'utf8');
 const host = 'https://github.com/masarray/k500/releases/';
-const shortExe = 'SonkuPik-k500-setup.exe';
-const shortZip = 'SonkuPik-k500-setup.zip';
+const shortExe = 'sonkupik-k500-setup.exe';
+const shortZip = 'sonkupik-k500-setup.zip';
 
 function anchor(fallback, copy) {
   let text = copy;

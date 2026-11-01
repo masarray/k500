@@ -138,8 +138,8 @@
         const [major, minor, patch] = release.tag.slice(1).split('.').map(Number);
         return major > 1 || (major === 1 && (minor > 1 || (minor === 1 && patch >= 3)));
       })() ? 'Smart-Installer' : 'Setup'}.exe`;
-      const shortExe = 'SonkuPik-k500-setup.exe';
-      const shortZip = 'SonkuPik-k500-setup.zip';
+      const shortExe = 'sonkupik-k500-setup.exe';
+      const shortZip = 'sonkupik-k500-setup.zip';
       const legacyZip = `SonKuPik-K500-${release.tag}-Windows.zip`;
       const exeFilename = release.downloadFilename || legacyExe;
       const zipFilename = release.zipFilename || legacyZip;
@@ -162,6 +162,16 @@
         (zipFilename === shortZip || zipFilename === legacyZip) &&
         verifiedReleaseUrl(release.zipUrl, zipFilename);
       const preferredUrl = verifiedZip ? release.zipUrl : downloadUrl;
+      const macName = `SonKuPik-K500-${release.tag}-macOS-arm64.dmg`;
+      const linuxName = `SonKuPik-K500-${release.tag}-Linux-x86_64.tar.gz`;
+      // Missing platform builds open the actual release page instead of a dead URL.
+      const releasePage = `https://github.com/masarray/k500/releases/tag/${release.tag}`;
+      const macUrl = release.macAvailable === true && verifiedReleaseUrl(release.macUrl, macName) ?
+        release.macUrl : releasePage;
+      const linuxUrl = release.linuxAvailable === true && verifiedReleaseUrl(release.linuxUrl, linuxName) ?
+        release.linuxUrl : releasePage;
+      document.querySelectorAll('[data-release-macos]').forEach(e => { e.href = macUrl; });
+      document.querySelectorAll('[data-release-linux]').forEach(e => { e.href = linuxUrl; });
       document.querySelectorAll('[data-release-preferred]').forEach((element) => {
         element.href = preferredUrl;
       });

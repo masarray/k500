@@ -23,6 +23,17 @@ set(CMAKE_AUTOMOC ON)
 find_package(Qt6 6.8 REQUIRED COMPONENTS Quick QuickControls2 Network)
 find_package(Git QUIET)
 qt_standard_project_setup(REQUIRES 6.8)
+# POSIX_K500_TRANSPORT_V1 — build real HID/serial backend only on Mac/Linux.
+# Never add QtSerialPort/hidapi to the long-qualified Windows toolchain.
+if(NOT WIN32)
+    find_package(Qt6 6.8 REQUIRED COMPONENTS SerialPort)
+    find_path(K500_HIDAPI_INCLUDE_DIR NAMES hidapi/hidapi.h REQUIRED)
+    find_library(K500_HIDAPI_LIBRARY NAMES hidapi-hidraw hidapi REQUIRED)
+    set(K500_NATIVE_TRANSPORT_SOURCE src/k500/K500PosixIo.cpp)
+else()
+    set(K500_NATIVE_TRANSPORT_SOURCE src/k500/K500WinIo.cpp)
+endif()
+
 
 set(SONKUPIK_GIT_SHA "unknown")
 if(GIT_FOUND)
@@ -78,7 +89,7 @@ qt_add_executable(sonkupik_studio_native WIN32
     src/k500/K500TransactionScheduler.h
     src/k500/K500ResponseParser.cpp
     src/k500/K500ResponseParser.h
-    src/k500/K500WinIo.cpp
+    ${K500_NATIVE_TRANSPORT_SOURCE}
     src/k500/K500WinIo.h
     src/k500/K500DeviceManager.cpp
     src/k500/K500DeviceManager.h
@@ -467,11 +478,40 @@ target_link_libraries(sonkupik_studio_native
 if(WIN32)
     target_link_libraries(sonkupik_studio_native PRIVATE setupapi hid psapi shell32 advapi32 user32)
 endif()
+if(NOT WIN32)
+    target_include_directories(sonkupik_studio_native PRIVATE "${K500_HIDAPI_INCLUDE_DIR}")
+    target_link_libraries(sonkupik_studio_native PRIVATE Qt6::SerialPort "${K500_HIDAPI_LIBRARY}")
+endif()
+
 
 # Keep the internal executable name stable for regression harnesses; user-facing
 # product/package identity is SonKuPik K500.
 set_target_properties(sonkupik_studio_native PROPERTIES
     OUTPUT_NAME "SONKUPIK-STUDIO-Native-UI"
 )
+if(APPLE)
+    set_target_properties(sonkupik_studio_native PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_BUNDLE_NAME "SonKuPik K500"
+        MACOSX_BUNDLE_GUI_IDENTIFIER "audio.sonkupik.k500"
+    )
+endif()
+
+# Qt's supported QML deployment script embeds Qt plugins and libraries.
+# Windows continues to use its exact qualified Per-User Inno setup workflow.
+if(NOT WIN32)
+    include(GNUInstallDirs)
+    install(TARGETS sonkupik_studio_native
+        BUNDLE DESTINATION .
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+    )
+    qt_generate_deploy_qml_app_script(
+        TARGET sonkupik_studio_native
+        OUTPUT_SCRIPT k500_qml_deploy
+        NO_UNSUPPORTED_PLATFORM_ERROR
+    )
+    install(SCRIPT ${k500_qml_deploy})
+endif()
+
 
 qt_import_qml_plugins(sonkupik_studio_native)
