@@ -1,28 +1,31 @@
-# KTVPRO Singer Challenge — 2026-11-01
+# KTVPRO Singer Challenge (2026-11-01)
 
-Three new **audition-only**, native-compatible K500 preset candidates built from the exact current GEN5 03_DANGDUT_D2R.k500 DSP donor. Reference SHA-256: `732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1`. **These are not proven better until matched-level A/B singing on a physical K500.**
+**Audition candidates, not proven better on physical hardware.** Exact donor `resources/presets/03_DANGDUT_D2R.k500` (GEN5 UAUDIO; same DSP as untouched D2R GOLDEN #41), source SHA-256 `732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1`.
 
-| Candidate | Relative purpose | EQ changes |
-|---|---|---|
-| FOCUS A | Keep 1.5k articulation, control 3.9–6.2k harshness, reduce backing masking | Mic both: 1550 +0.7, 2550 -0.2, 3900 -1.5, 6200 -0.8 dB. Music: 2880 -1.2, 6500 -0.6 dB |
-| WARM B | Stronger body and more forgiving upper-mid | Mic both: 388 +0.8, 1550 -0.8, 2550 -0.3, 3900 -0.5, 6200 -0.8 dB. Music: 1300 -0.6, 2880 -0.8, 6500 -0.6 dB |
-| SPACE C | Sharper separation between dry and wet vocal, softer upper-mid | Mic both: 1550 +0.4, 2550 -0.1, 3900 -1.0, 6200 -0.7 dB. Music: 2880 -0.8, 6500 -0.5 dB. Echo repeat 10→9, delay 207→240 ms; reverb decay 2880→3080 ms, predelay 75→85 ms |
+All EQ changes below refer to **real frequency Hz, not index order**. This is critical: K500 Mic band 1 = 2550Hz, band 6 = 1550Hz, band 7 = 3900Hz, band 8 = 6200Hz, band 9 = 9270Hz.
 
-## Quantitative simulation relative to GEN5
-48kHz RBJ cascaded Mic+Main and Music+Main, NOT a real K500 measurement:
+| Candidate | Mic A+B individual band gain delta | Music gain delta | Other |
+|---|---|---|---|
+| FOCUS A | 1550 +0.7, 2550 -0.2, 3900 -1.5, 6200 -0.8 dB | 2880 -1.2, 6500 -0.6 dB | No other DSP changes |
+| WARM B | 388 +0.8, 1550 -0.8, 2550 -0.3, 3900 -0.5, 6200 -0.8 dB | 1300 -0.6, 2880 -0.8, 6500 -0.6 dB | No other DSP changes |
+| SPACE C | 1550 +0.4, 2550 -0.1, 3900 -1.0, 6200 -0.7 dB | 2880 -0.8, 6500 -0.5 dB | Echo repeat 10→9, delay 207→240ms; Reverb decay 2880→3080ms, predelay 75→85ms |
 
-| Model | Focus A | Warm B | Space C |
+## 48 kHz canonical RBJ simulation: Mic/Main and Music/Main deltas vs GEN5
+
+| Region / modeled delta | Focus A | Warm B | Space C |
 |---|---:|---:|---:|
-| Vocal 1.5–2.8kHz delta (mean) | +0.17 | -0.37 | +0.08 dB |
-| Vocal 3.2–6.8kHz delta (mean) | -0.96 | -0.61 | -0.67 dB |
-| Backing 2.5–4kHz delta (mean) | -0.93 | -0.70 | -0.63 dB |
-| Dry vocal 300–8k broadband model | -0.04 | +0.01 | -0.06 dB |
+| Dry vocal 1.5–2.8 kHz average | -0.02 dB | -0.49 dB | -0.03 dB |
+| Dry vocal 3.2–6.8 kHz average | -1.10 dB | -0.63 dB | -0.80 dB |
+| Music 2.5–4 kHz average | -0.93 dB | -0.70 dB | -0.63 dB |
+| Vocal 300–8 kHz power-proxy | -0.09 dB | -0.01 dB | -0.09 dB |
+| Music 300–8 kHz power-proxy | -0.30 dB | -0.35 dB | -0.22 dB |
 
-Changes across full filter stacks differ from individual band gains due to interaction. Comparisons must be loudness-matched on the physical hardware. No claimed clipping/headroom proof.
+These are model differences, not measured SPL/LUFS, DSP clipping guarantees, or proof of subjective preference. Relative vocal/articulation protection and backing masking must be judged with matched-level device audition.
 
-## Safety and source preservation
-- The original GEN5 primary library, #41 D2R GOLDEN, archived GEN3 and hardware protocols remain untouched.
-- Only whitelisted Mic A+B and Music EQ gain words, limited C FX timing scalars, the native hardware-visible name, and additive checksum are modified.
-- Every candidate is 1144 bytes, valid checksum, strict native-compatible PEQ domain; source remains UAUDIO raw=5; filter types/frequencies/Q, crossovers/Alt, dynamics, routing, and output gains are unchanged.
-- Exact independent file SHA-256 and complete changed-byte audits are supplied in local audition package.
-- Physical device testing: backup existing device presets, audition baseline vs A/B/C at equal perceived level, monitor clipping/feedback, keep whichever sounds best or retain unchanged GEN5.
+## Binary safety and implementation status
+- Every candidate passes 1144-byte size / sum%256=0 checksum, hardware visible name <=16 chars, strict PEQ native domain and 656-byte native-slot encoding.
+- Mic A/B changes are paired. All EQ **type, frequency, Q**, crossover/footers, hidden Alt, compressor, output gain/routing and unknown bytes are preserved. Source stays UAUDIO raw=5. Only whitelisted gain words, C FX temporal scalars, name and checksum differ.
+- Native GEN5 01–10, Gen3 11–30, legacy 31–40 and D2R GOLDEN 41 are untouched.
+- No build / CI / release workflows added. Do not promote as official or merge until physical K500 blind/matched-level A/B demonstrates meaningful benefit and no clipping/feedback.
+
+Full reproduction script, comparative plots, per-offset audit, SHA-256, and USB-audio baseline are provided in the accompanying audition ZIP.
