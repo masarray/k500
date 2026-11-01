@@ -10,6 +10,11 @@ int priorityValue(K500TransactionScheduler::Priority priority)
 }
 }
 
+K500TransactionScheduler::K500TransactionScheduler()
+    : K500TransactionScheduler(Config{})
+{
+}
+
 K500TransactionScheduler::K500TransactionScheduler(Config config)
     : m_config(config)
 {

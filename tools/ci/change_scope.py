@@ -54,6 +54,8 @@ def main() -> int:
     platform_names = {
         "CMakeLists.txt", "src/k500/K500PosixIo.cpp",
         "src/k500/K500DeviceManager.cpp",
+        "src/k500/K500TransactionScheduler.h",
+        "src/k500/K500TransactionScheduler.cpp",
         ".github/workflows/windows-build.yml",
     }
     platform = event == "push" and any(p in platform_names for p in paths)

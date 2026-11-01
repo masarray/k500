@@ -77,7 +77,8 @@ public:
         int peakQueued = 0;
     };
 
-    explicit K500TransactionScheduler(Config config = {});
+    K500TransactionScheduler();
+    explicit K500TransactionScheduler(Config config);
 
     void beginSession(quint64 sessionEpoch);
     void endSession();
