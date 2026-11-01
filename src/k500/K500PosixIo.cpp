@@ -196,7 +196,7 @@ public:
         constexpr int payload = 64;
         for (int offset = 0; offset < usb.size(); offset += payload) {
             QByteArray report(65, '\0');
-            const int length = std::min(payload, usb.size() - offset);
+            const int length = static_cast<int>(std::min<qsizetype>(payload, usb.size() - offset));
             std::copy_n(usb.constData() + offset, length, report.data() + 1);
             hidWrites.enqueue(std::move(report));
         }
