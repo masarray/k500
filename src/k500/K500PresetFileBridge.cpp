@@ -24,16 +24,16 @@ struct BuiltInPresetDefinition {
 
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     // UAUDIO_COMPANION_PRESET_BANK_V1 — archived GEN3 USB Audio 21–30.\n    // GEN5_D2R_PRIMARY_LIBRARY_V1 — 01–10 GEN5, 11–20 GEN3 BT, 21–30 UAUDIO, 31–40 legacy, 41 D2R golden.
-    {"ARTIST G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "01_ARTIST_D2R.k500", ":/presets/01_ARTIST_D2R.k500"},
-    {"BALLAD G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "02_BALLAD_D2R.k500", ":/presets/02_BALLAD_D2R.k500"},
-    {"DANGDUT G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "03_DANGDUT_D2R.k500", ":/presets/03_DANGDUT_D2R.k500"},
-    {"ROCK G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "04_ROCK_D2R.k500", ":/presets/04_ROCK_D2R.k500"},
-    {"ACOUSTIC G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "05_ACOUSTIC_D2R.k500", ":/presets/05_ACOUSTIC_D2R.k500"},
-    {"JAZZ G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "06_JAZZ_D2R.k500", ":/presets/06_JAZZ_D2R.k500"},
-    {"MELAYU G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "07_MELAYU_D2R.k500", ":/presets/07_MELAYU_D2R.k500"},
-    {"QORI G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "08_QORI_D2R.k500", ":/presets/08_QORI_D2R.k500"},
-    {"ADZAN G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "09_ADZAN_D2R.k500", ":/presets/09_ADZAN_D2R.k500"},
-    {"CERAMAH G5", "GEN5 D2R sonic family · owner-selected anchor; BT music source", "10_CERAMAH_D2R.k500", ":/presets/10_CERAMAH_D2R.k500"},
+    {"ARTIST G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "01_ARTIST_D2R.k500", ":/presets/01_ARTIST_D2R.k500"},
+    {"MC HOST RADIO", "GEN5 UAUDIO · native MC host / radio announcer voice (derived from Ceramah)", "02_MC_HOST_RADIO_D2R.k500", ":/presets/02_MC_HOST_RADIO_D2R.k500"},
+    {"DANGDUT G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "03_DANGDUT_D2R.k500", ":/presets/03_DANGDUT_D2R.k500"},
+    {"ROCK G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "04_ROCK_D2R.k500", ":/presets/04_ROCK_D2R.k500"},
+    {"ACOUSTIC G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "05_ACOUSTIC_D2R.k500", ":/presets/05_ACOUSTIC_D2R.k500"},
+    {"JAZZ G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "06_JAZZ_D2R.k500", ":/presets/06_JAZZ_D2R.k500"},
+    {"MELAYU G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "07_MELAYU_D2R.k500", ":/presets/07_MELAYU_D2R.k500"},
+    {"QORI G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "08_QORI_D2R.k500", ":/presets/08_QORI_D2R.k500"},
+    {"ADZAN G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "09_ADZAN_D2R.k500", ":/presets/09_ADZAN_D2R.k500"},
+    {"BALLAD G5", "GEN5 UAUDIO · melodic ballad singing (moved from old 02)", "10_BALLAD_D2R.k500", ":/presets/10_BALLAD_D2R.k500"},
     {"ARTIST GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "11_ARTIST_GEN3_ARI.k500", ":/presets/11_ARTIST_GEN3_ARI.k500"},
     {"PODCAST REBORN", "Archived GEN3 Bluetooth · original bytes", "12_PODCAST_REBORN.k500", ":/presets/12_PODCAST_REBORN.k500"},
     {"DANGDUT GEN3 ARI", "Archived GEN3 Bluetooth · original bytes", "13_DANGDUT_GEN3_ARI.k500", ":/presets/13_DANGDUT_GEN3_ARI.k500"},
@@ -268,11 +268,22 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         const QString fileName = QString::fromLatin1(definition.fileName);
         knownNames.append(fileName.toLower());
 
+        // GEN5_UAUDIO_CACHE_MODE_GUARD_V1: an upgrade may still have the
+        // prior BT-mode 01–10 under identical filenames. Never let a valid
+        // but stale BT cache shadow the bundled native UAUDIO preset.
+        // Do not delete the cached file or interfere with archived 11–41.
+        const bool isGen5Primary = fileName.size() > 3
+            && fileName.at(2) == QLatin1Char('_')
+            && fileName.left(2).toInt() >= 1
+            && fileName.left(2).toInt() <= 10;
         QByteArray bytes;
         const QString cachedPath = cacheDir.filePath(fileName);
         QString path = QString::fromLatin1(definition.resourcePath);
         QString source = QStringLiteral("official-bundled");
-        if (readValidPreset(cachedPath, &bytes)) {
+        const bool cacheValid = readValidPreset(cachedPath, &bytes);
+        const bool cacheModeOk = !isGen5Primary
+            || (bytes.size() > 0x0E && static_cast<quint8>(bytes.at(0x0E)) == 5);
+        if (cacheValid && cacheModeOk) {
             path = cachedPath;
             source = QStringLiteral("official-cache");
         } else {
@@ -313,6 +324,8 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
     // upgrade; archived originals are now bundled at 21–30. Do not show
     // duplicates, and do not delete user cache content without a valid sync.
     const QStringList oldNumberedCacheNames{
+        QStringLiteral("02_BALLAD_D2R.k500"),
+        QStringLiteral("10_CERAMAH_D2R.k500"),
         QStringLiteral("01_ARTIST_GEN3_ARI.k500"),
         QStringLiteral("02_PODCAST_REBORN.k500"),
         QStringLiteral("03_DANGDUT_GEN3_ARI.k500"),

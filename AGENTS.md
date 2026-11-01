@@ -17,7 +17,7 @@ This file is the mandatory restart point for a new ChatGPT/Codex/AI thread worki
 
 ## GEN5 D2R owner-ordered preset catalog (2026-10-29)
 
-- 01–10: latest D2R-derived GEN5 genre/mosque BT bank, exact ZIP-audited bytes.
+- 01–10: latest D2R-derived GEN5 **UAUDIO** bank, sourceRaw=5 in every file; 02 is MC HOST RADIO based on the previous 10 Ceramah speaking DSP; 10 is the original Ballad DSP. All other sonic bytes preserved.
 - 11–20: user-auditioned original GEN3 BT presets, relocated byte-identically.
 - 21–30: matching GEN3 UAUDIO companions generated deterministically from 11–20; only source/name/checksum mutate.
 - 31–40: historical original SonKuPik presets, relocated byte-identically.
@@ -319,3 +319,5 @@ The repository uses **tests as regression units, not GitHub workflows as regress
 - Any proposal to add another active workflow must first prove that it cannot be expressed as a test/job in `windows-build.yml`.
 
 Read `docs/CI_ARCHITECTURE.md` before changing CI.
+
+- GEN5_UAUDIO_CACHE_MODE_GUARD_V1 ensures old cached BT preset images cannot override UAUDIO 01–10 on upgrade; old #02/#10 cache names are ignored, not deleted.
