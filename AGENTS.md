@@ -1,3 +1,6 @@
+## Visible source mode requirement (2026-11-01)
+All built-in PC catalog display names must end with `[UAUDIO]` or `[BT]` to make input selection obvious. Canonical 01–10 UAUDIO, 11–20 BT, 21–30 UAUDIO, 31–40 BT, 41 GOLDEN BT. Display metadata only, preserve firmware-native preset names, all .k500 exact bytes, and owner-selected Velvet R1 #02. See `OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1` in FileBridge and regression `check_presets()`. Next planned Windows prerelease is rc.3 if unused; existing rc.1/rc.2 immutable.
+
 # SonKuPik K500 — AI / Agent Entry Point
 
 ## LATEST owner-approved MC HOST baseline (2026-11-01; overrides older R3/Ceramah notes)

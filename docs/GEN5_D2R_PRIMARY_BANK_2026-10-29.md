@@ -54,3 +54,10 @@ The original GEN5 Ceramah preset muted music in all output routes. A radio-host 
 - **R1 sonic anchor:** Mic compressor ratio3, gate -70 dB, Music->Main raw48, Reverb level22, Main Reverb49, decay850 ms and predelay32 ms, Echo disabled. Native Mic EQ: 1550Hz -7.5 dB, 3900Hz -10.2 dB, 6300Hz -11dB, 9270Hz -16dB, high shelf 11000Hz +10dB. Full EQ response includes other shelf/bell filters.
 - **Why R2 lost (hypothesis):** RBJ proxy suggests R2 attenuates about 1.96 dB more than R1 at 6300Hz and 1.86 dB more at 8000Hz, plus less 1550Hz articulation and more 125Hz body. Suppression of sibilance at the cost of natural voice timbre may explain the owner's verdict; not a verified isolated causal experiment.
 - **Safety:** official cache must not override #02 with a prior same-named valid UAUDIO preset unless byte SHA matches R1. Never delete user-owned cached files. Historical Ceramah/R3 notes in this document are superseded as *current* authority.
+
+## Final visible source-mode labels — 2026-11-01
+- All **41 official PC catalog entries** show a mode suffix in their *visible display name*: 01–10 and 21–30 are **[UAUDIO]**, 11–20, 31–40 and protected 41 GOLDEN are **[BT]**. Confirmed legacy 31–40 sourceRaw=2.
+- Only the official `displayName` metadata changes; `presetName` remains native K500 <=16 characters and every .k500 binary (including R1 and Golden) is byte-identical.
+- **02 MC HOST RADIO [UAUDIO]** uses owner-selected Velvet R1; **10 BALLAD G5 [UAUDIO]** remains as designed; **41 D2R GOLDEN [BT]** is preserved.
+- See `OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1` and the 41-entry regression guard.
+- Already-published immutable RC.1 and RC.2 cannot contain this final revision. Next candidate requires unused tag, intended `v1.1.4-rc.3` if still vacant, and success on the exact main commit.

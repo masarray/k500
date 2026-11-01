@@ -140,6 +140,28 @@ def check_presets() -> None:
             "catalogNumber <= 41")
     require("qml/components/MassUploadTransferWindow.qml", "catalogNumber <= 41")
     require("CMakeLists.txt", "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500")
+    # OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1: 41 display suffixes,
+    # while keeping the 16-character hardware names byte-identical.
+    bridge = read("src/k500/K500PresetFileBridge.cpp")
+    require("src/k500/K500PresetFileBridge.cpp",
+            "OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1",
+            "QString::fromLatin1(definition.displayName)")
+    labels = re.findall(
+        r'^\s+\{"([^"]+)", "[^"]+", "(\d\d_[^"]+\.k500)", ":/presets/[^"]+"\},?$',
+        bridge, re.MULTILINE,
+    )
+    if len(labels) != 41:
+        FAILURES.append(f"Expected 41 official visible source-mode labels, got {len(labels)}")
+    if len({fname for _, fname in labels}) != 41:
+        FAILURES.append("Duplicate filename in official PC catalog")
+    for title, fname in labels:
+        slot = int(fname[:2])
+        mode = "UAUDIO" if slot <= 10 or 21 <= slot <= 30 else "BT"
+        if not title.endswith(f" [{mode}]"):
+            FAILURES.append(f"{fname}: wrong visible input-mode label {title!r}")
+    if len(labels) == 41 and (labels[1][0] != "MC HOST RADIO [UAUDIO]"
+                            or labels[40][0] != "D2R GOLDEN [BT]"):
+        FAILURES.append("MC HOST 02 or GOLDEN 41 display label drift")
     PASSES.append("GEN5 UAUDIO 01–10 + native MC HOST 02 + Ballad 10 + archived GEN3 11–20 + legacy 31–40 + immutable Golden 41")
 
 
