@@ -61,3 +61,7 @@ The original GEN5 Ceramah preset muted music in all output routes. A radio-host 
 - **02 MC HOST RADIO [UAUDIO]** uses owner-selected Velvet R1; **10 BALLAD G5 [UAUDIO]** remains as designed; **41 D2R GOLDEN [BT]** is preserved.
 - See `OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1` and the 41-entry regression guard.
 - Already-published immutable RC.1 and RC.2 cannot contain this final revision. Next candidate requires unused tag, intended `v1.1.4-rc.3` if still vacant, and success on the exact main commit.
+
+## Owner stable approval and single-user installation (2026-11-01)
+
+Owner accepted GEN5 01–10 and Velvet R1 #02 for public stable. RC3 `https://github.com/masarray/k500/actions/runs/41294486690` succeeded from commit `4fd638c77392942b2560e9a74f59e12ac7474844`. Only accepted Per-User installer is promoted byte-identically as stable, hash `aee9c45916e69bcfcfb07dddc15ee33270dd12a18e7ec68a7f54995c7aec29fc`. Do not publish extra Machine-Wide or Smart installer or rebuild accepted bytes. Legacy machine installations are not automatically upgraded by this user-only distribution.

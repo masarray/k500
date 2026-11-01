@@ -165,7 +165,7 @@ jobs:
           if (-not $iscc -or -not (Test-Path $iscc)) { throw 'Inno Setup ISCC.exe not found.' }
           "INNO_ISCC=$iscc" >> $env:GITHUB_ENV
 
-      - name: Build machine and per-user candidates
+      - name: Build single native Per-User installer (no admin)
         shell: pwsh
         run: |
           $version = '${{ steps.meta.outputs.version }}'
@@ -176,55 +176,13 @@ jobs:
           $env:SONKUPIK_WIZARD_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard.bmp).Path
           $env:SONKUPIK_WIZARD_SMALL_IMAGE = (Resolve-Path build/packaging/SonKuPik-K500-wizard-small.bmp).Path
 
-          & $env:INNO_ISCC "/DAppVersion=$version" packaging/windows/installer.iss
-          if ($LASTEXITCODE -ne 0) { throw 'Machine-wide Inno packaging failed' }
-          $machineStable = "dist/SonKuPik-K500-v$version-Windows-Setup.exe"
-          $machineRc = "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
-          if (-not (Test-Path $machineStable)) { throw 'Machine-wide Setup output missing' }
-          Move-Item $machineStable $machineRc -Force
-
+          # SINGLE_PER_USER_RC_V1 — ONE ISCC call, no machine/smart builds.
           & $env:INNO_ISCC "/DAppVersion=$version" "/DPerUser=1" packaging/windows/installer.iss
           if ($LASTEXITCODE -ne 0) { throw 'Per-user Inno packaging failed' }
           $userStable = "dist/SonKuPik-K500-v$version-Windows-Setup-PerUser.exe"
           $userRc = "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
           if (-not (Test-Path $userStable)) { throw 'Per-user Setup output missing' }
           Move-Item $userStable $userRc
-
-          # RC_THREE_SCOPE_INSTALLERS_V1: same frozen real application bytes.
-          # Backend names remain intact so already-installed older updaters
-          # can select their exact Machine/Per-User asset.
-          & $env:INNO_ISCC "/DAppVersion=$version" "/DSmartInstaller=1" packaging/windows/installer.iss
-          if ($LASTEXITCODE -ne 0) { throw 'Native Smart Inno packaging failed' }
-          $smartStable = "dist/SonKuPik-K500-v$version-Windows-Smart-Installer.exe"
-          $smartRc = "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
-          if (-not (Test-Path $smartStable)) { throw 'Native Smart Installer Setup output missing' }
-          Move-Item $smartStable $smartRc -Force
-
-
-      - name: Validate machine-wide candidate
-        shell: pwsh
-        run: |
-          $tag = '${{ steps.meta.outputs.tag }}'
-          $version = '${{ steps.meta.outputs.version }}'
-          $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Setup.exe").Path
-          $installDir = Join-Path $env:RUNNER_TEMP 'SonKuPik-K500-v11-rc-machine'
-          if (Test-Path $installDir) { Remove-Item $installDir -Recurse -Force }
-          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',("/DIR=$installDir")) -Wait -PassThru
-          if ($install.ExitCode -ne 0) { throw "Machine installer failed: $($install.ExitCode)" }
-          $machineReg = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
-          $machineQuery = (& reg.exe QUERY $machineReg /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
-          if ($LASTEXITCODE -ne 0 -or $machineQuery -notmatch [regex]::Escape($installDir)) {
-            throw "Machine installer registration is missing or points elsewhere: $machineQuery"
-          }
-          $app = Join-Path $installDir 'SonKuPik-K500.exe'
-          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=machine')) {
-            $p = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
-            if ($p.ExitCode -ne 0) { throw "Machine candidate $arg failed: $($p.ExitCode)" }
-          }
-          $helper = Start-Process -FilePath (Join-Path $installDir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
-          if ($helper.ExitCode -ne 0) { throw 'Installed machine updater helper failed self-test' }
-          $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
-          if ($uninstall.ExitCode -ne 0) { throw "Machine candidate uninstall failed: $($uninstall.ExitCode)" }
 
       - name: Validate per-user candidate
         shell: pwsh
@@ -251,53 +209,10 @@ jobs:
           $uninstall = Start-Process -FilePath (Join-Path $installDir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
           if ($uninstall.ExitCode -ne 0) { throw "Per-user candidate uninstall failed: $($uninstall.ExitCode)" }
 
-      - name: Validate native Smart Installer candidate with actual app
-        shell: pwsh
-        run: |
-          # REAL_APP_SMART_RC_ACCEPTANCE_V1: not the tiny installer-smoke fixture.
-          $tag = '${{ steps.meta.outputs.tag }}'
-          $version = '${{ steps.meta.outputs.version }}'
-          $setup = (Resolve-Path "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe").Path
-          $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik K500'
-          if (Test-Path $dir) { throw 'Smart RC destination already exists; refusing to erase files' }
-          $key = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
-          & reg.exe QUERY $key /reg:64 *> $null
-          if ($LASTEXITCODE -eq 0) { throw 'Smart RC test would overwrite registered software' }
-          $install = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
-          if ($install.ExitCode -ne 0) { throw "Smart RC fresh user installation failed: $($install.ExitCode)" }
-          $app = Join-Path $dir 'SonKuPik-K500.exe'
-          if (-not (Test-Path $app)) { throw 'Public Smart default is not LocalAppData; Program Files is forbidden' }
-          $machineKey = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
-          & reg.exe QUERY $machineKey /reg:64 *> $null
-          if ($LASTEXITCODE -eq 0) { throw 'Public Smart unexpectedly registered an admin/machine install' }
-          foreach ($arg in @("--update-health-check=$version",'--update-scope-check=user')) {
-            $test = Start-Process -FilePath $app -ArgumentList $arg -Wait -PassThru
-            if ($test.ExitCode -ne 0) { throw "Smart RC actual application $arg failed: $($test.ExitCode)" }
-          }
-          $helper = Start-Process -FilePath (Join-Path $dir 'SonKuPik-K500-Updater.exe') -ArgumentList '--self-test' -Wait -PassThru
-          if ($helper.ExitCode -ne 0) { throw 'Smart RC installed updater helper failed self-test' }
-          $marker = Join-Path $dir 'smart-rc-user-state-sentinel.txt'
-          [IO.File]::WriteAllText($marker, 'KEEP-RC-USER-STATE')
-          # No scope/directory override on either invocation: the installer itself
-          # must choose LocalAppData and preserve owner-owned content.
-          $upgrade = Start-Process -FilePath $setup -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
-          if ($upgrade.ExitCode -ne 0) { throw "Smart RC scope-preserving reinstall failed: $($upgrade.ExitCode)" }
-          if ((Get-Content $marker -Raw) -ne 'KEEP-RC-USER-STATE') { throw 'Smart RC reinstall changed user-owned sentinel' }
-          $registered = (& reg.exe QUERY $key /v 'Inno Setup: App Path' /reg:64 2>&1 | Out-String)
-          if ($LASTEXITCODE -ne 0 -or $registered -notmatch [regex]::Escape($dir)) {
-            throw 'Smart RC scope-preserving reinstall lost its exact HKCU registration'
-          }
-          $uninstall = Start-Process -FilePath (Join-Path $dir 'unins000.exe') -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Wait -PassThru
-          if ($uninstall.ExitCode -ne 0) { throw "Smart RC uninstaller failed: $($uninstall.ExitCode)" }
-          if (-not (Test-Path $marker)) { throw 'Smart RC uninstaller removed a user-owned sentinel' }
-          Remove-Item -LiteralPath $marker -Force
-          Remove-Item -LiteralPath $dir -ErrorAction SilentlyContinue
-          $global:LASTEXITCODE = 0
-
       - name: Run deep updater lifecycle acceptance
         shell: pwsh
         run: |
-          ./tools/ci/updater_deep_acceptance.ps1 -Version '${{ steps.meta.outputs.version }}' -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" -SmartSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Smart-Installer.exe" -PackageDir package -BuildDir build
+          ./tools/ci/updater_deep_acceptance.ps1 -Version '${{ steps.meta.outputs.version }}' -UserSetup "dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe" -PackageDir package -BuildDir build
 
       - name: Generate and validate RC provenance
         shell: pwsh
@@ -305,9 +220,7 @@ jobs:
           $tag = '${{ steps.meta.outputs.tag }}'
           $version = '${{ steps.meta.outputs.version }}'
           $files = @(
-            Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup.exe"
             Get-Item "dist/SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
-            Get-Item "dist/SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
           )
           $artifacts = @()
           foreach ($file in ($files | Sort-Object Name)) {
@@ -332,8 +245,8 @@ jobs:
             updaterAcceptance = $acceptance
             codeSigning = 'unsigned-open-source'
             installerTechnology = 'Inno Setup 6'
-            installerScopes = @('machine','user','native-smart')
-            publicInstaller = "SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
+            installerScopes = @('user')
+            publicInstaller = "SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
             smartManualRollbackQualification = 'pending-owner-windows-matrix'
             migration = 'explicit-machine-to-user'
             rollbackRecovery = $true
@@ -344,7 +257,7 @@ jobs:
           $manifest | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 dist/updater-rc-manifest.json
           $check = Get-Content dist/updater-rc-manifest.json -Raw | ConvertFrom-Json
           if ($check.stableReleaseEligible -ne $false) { throw 'RC must never be stable-release eligible' }
-          if ($check.artifacts.Count -ne 3) { throw 'RC manifest must describe the machine, per-user and native Smart Installer assets' }
+          if ($check.artifacts.Count -ne 1) { throw 'SINGLE_PER_USER_RC_V1: one Per-User installer required' }
           if ($check.commit -ne $env:GITHUB_SHA) { throw 'RC manifest commit mismatch' }
 
       - name: Upload exact RC artifact
@@ -352,9 +265,7 @@ jobs:
         with:
           name: SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows
           path: |
-            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
             dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
-            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Smart-Installer.exe
             dist/SHA256SUMS.txt
             dist/updater-rc-manifest.json
           if-no-files-found: error
@@ -372,15 +283,13 @@ jobs:
           body: |
             **Updater release candidate — not public stable.**
 
-            This candidate packages three real-application installers: one scope-aware public Smart Installer, plus historical machine/per-user updater backends. The updater helper retains its proven verified handoff and rollback. Manual Smart Installer upgrades and cross-scope migration require separate Windows/owner acceptance before stable.
+            SINGLE_PER_USER_RC_V1 — one native Per-User installer, no machine-wide/Smart installer and no Windows administrator prompt. Existing machine-wide installations require explicit migration outside this public setup.
 
             v1.1.4 candidate is pending independent acceptance. Publish only a new immutable RC, then record accepted hashes before stable promotion.
 
             Windows binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
           files: |
-            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup.exe
             dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Setup-PerUser.exe
-            dist/SonKuPik-K500-${{ steps.meta.outputs.tag }}-Windows-Smart-Installer.exe
             dist/SHA256SUMS.txt
             dist/updater-rc-manifest.json
           fail_on_unmatched_files: true
