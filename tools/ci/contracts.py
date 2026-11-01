@@ -64,19 +64,19 @@ def require_exact_count(rel: str, token: str, expected: int) -> None:
 
 
 def check_presets() -> None:
-    # GEN5 owner test-bank exact source ZIP, archived GEN3/legacy byte-perfect,
+    # GEN5 owner UAUDIO bank, broadcaster #02 and Ballad #10, archived GEN3/legacy byte-perfect,
     # and owner-selected D2R Golden protected at the LAST PC catalog ID.
     expected = {
-        "01_ARTIST_D2R.k500": ("ARTIST G5", "9d6d8a09fb0eb2d10ea12092176baf877132aee4dbeaedc30d66b95dc6a70f55"),
-        "02_BALLAD_D2R.k500": ("BALLAD G5", "cb4c46bc6b70c97e8f4348b2d8e6117d223904d5a61994749a46876d287dfc3b"),
-        "03_DANGDUT_D2R.k500": ("DANGDUT G5", "3241df08a7938523133751555f3fc3daf77cd37c638e79adc529f997d47b37da"),
-        "04_ROCK_D2R.k500": ("ROCK G5", "f4b903e98582e3f5fbfd2c4739d82766ac10c5432165e00eecd49d420482302a"),
-        "05_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "d2b749412f59963fc4133a1485d949ad86a1c0970119b90f31ebdc533c4f3563"),
-        "06_JAZZ_D2R.k500": ("JAZZ G5", "c5a6afcc6dd9bcabb4d2f1044dd688c2b3c76bdf00a3df50b561fd59a3d31798"),
-        "07_MELAYU_D2R.k500": ("MELAYU G5", "4b22a5656dd5521fba0fc96c06eb8e8a9118931e739997020c9299051a308a11"),
-        "08_QORI_D2R.k500": ("QORI G5", "66d953e2f580c8d4b42473b62085ba43f698287b7e474ee5be8fc2f7060e537e"),
-        "09_ADZAN_D2R.k500": ("ADZAN G5", "cc31fb555ac0248903519363dda2f2d6a95f907a5dd69adfdfb83caf01890224"),
-        "10_CERAMAH_D2R.k500": ("CERAMAH G5", "644ffcee84c34015957ec65534ae679c8c404c14a5fe2f84e4f83d9f562e701f"),
+        "01_ARTIST_D2R.k500": ("ARTIST G5", "e99acae1fd80cf89257006b233a56c43801dc3e6655601c0fff574bbe58b9c4c"),
+        "02_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "5049dfae4e1c39170ad8ab37c1fc6e32c5340bc13d42976921660611e6273440"),
+        "03_DANGDUT_D2R.k500": ("DANGDUT G5", "732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1"),
+        "04_ROCK_D2R.k500": ("ROCK G5", "1a52db23ff5d08f45783228cf2aa48cde21a8afd477308e0572319d256922fcf"),
+        "05_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "a644d2d51865dc82a59ef2dd2878c3b2363c3b8d298446c765198a01341063c0"),
+        "06_JAZZ_D2R.k500": ("JAZZ G5", "9280b098f626aa96a8e6f8840ab3fb1559132162f0d35249714a5c20bf58a217"),
+        "07_MELAYU_D2R.k500": ("MELAYU G5", "e4eb5f5c1d1f83517196ba52fccf4f2f4997742a9c5bebeb8a95b135b22dc92b"),
+        "08_QORI_D2R.k500": ("QORI G5", "9a2c34414d75010acbfdea19603797c7a5986e0d84647834dece7dfad2ef11c4"),
+        "09_ADZAN_D2R.k500": ("ADZAN G5", "3a8638dbe5777ea257bf3e9aa8a2a7f07fbdb872673e935c8b1257f9e8ed1de6"),
+        "10_BALLAD_D2R.k500": ("BALLAD G5", "a9e38086329e37a94a9a83a6773b0191604ff37cf27527c006920dfd5f86b78e6"),
         "11_ARTIST_GEN3_ARI.k500": ("ARTIST GEN3 ARI", "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55"),
         "12_PODCAST_REBORN.k500": ("PODCAST REBORN", "a3001eafef5dde5993bafbcb56ac6834c806675ac4c36d0f55e0f154139bf170"),
         "13_DANGDUT_GEN3_ARI.k500": ("DANGDUT GEN3 ARI", "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1"),
@@ -113,8 +113,11 @@ def check_presets() -> None:
         actual_name = raw[0x454:0x464].split(bytes([0]), 1)[0].decode("ascii", errors="strict").strip()
         if actual_name != name:
             FAILURES.append(f"{path.name}: native embedded name {actual_name!r} != {name!r}")
-        if int(path.name[:2]) in list(range(1, 21)) + [41] and raw[0x0E] != 2:
-            FAILURES.append(f"{path.name}: protected BT music source drift")
+        catalog_id = int(path.name[:2])
+        if 1 <= catalog_id <= 10 and raw[0x0E] != 5:
+            FAILURES.append(f"{path.name}: GEN5 primary must use UAUDIO raw=5; got {raw[0x0E]}")
+        if (11 <= catalog_id <= 20 or catalog_id == 41) and raw[0x0E] != 2:
+            FAILURES.append(f"{path.name}: protected archival / GOLDEN BT source drift")
         sha = hashlib.sha256(raw).hexdigest()
         if sha != expected_hash:
             FAILURES.append(f"{path.name}: SHA-256 drift {sha} != {expected_hash}")
@@ -123,10 +126,14 @@ def check_presets() -> None:
         FAILURES.append("D2R GOLDEN 41 mutated: never alter user-selected sonic reference")
     require("src/k500/K500PresetFileBridge.cpp",
             "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500",
+            "GEN5_UAUDIO_CACHE_MODE_GUARD_V1",
+            'QStringLiteral("02_BALLAD_D2R.k500")',
+            'QStringLiteral("10_CERAMAH_D2R.k500")',
+            "02_MC_HOST_RADIO_D2R.k500", "10_BALLAD_D2R.k500",
             "catalogNumber <= 41")
     require("qml/components/MassUploadTransferWindow.qml", "catalogNumber <= 41")
     require("CMakeLists.txt", "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500")
-    PASSES.append("GEN5 01–10 + archived GEN3 11–20 + legacy 31–40 + immutable Golden 41")
+    PASSES.append("GEN5 UAUDIO 01–10 + native MC HOST 02 + Ballad 10 + archived GEN3 11–20 + legacy 31–40 + immutable Golden 41")
 
 
 def check_uaudio_companions() -> None:

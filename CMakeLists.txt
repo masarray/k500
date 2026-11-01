@@ -378,7 +378,7 @@ qt_add_resources(sonkupik_studio_native embedded_fonts
 # 41 is an EXACT original D2R GOLDEN binary; never patch its embedded name/checksum.
 set(SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/01_ARTIST_D2R.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_BALLAD_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/02_MC_HOST_RADIO_D2R.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/03_DANGDUT_D2R.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/04_ROCK_D2R.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/05_ACOUSTIC_D2R.k500"
@@ -386,7 +386,7 @@ set(SONKUPIK_PRESET_FILES
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/07_MELAYU_D2R.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/08_QORI_D2R.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/09_ADZAN_D2R.k500"
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_CERAMAH_D2R.k500"
+    "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/10_BALLAD_D2R.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/11_ARTIST_GEN3_ARI.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/12_PODCAST_REBORN.k500"
     "${CMAKE_CURRENT_SOURCE_DIR}/resources/presets/13_DANGDUT_GEN3_ARI.k500"
