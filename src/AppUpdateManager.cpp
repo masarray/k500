@@ -307,18 +307,18 @@ void AppUpdateManager::resetReleaseMetadata()
     m_migrationMode = false;
     m_targetScope = InstallScope::Unknown;
     m_setupAssetName.clear();
-    m_setupAssetUrl = {};
-    m_manifestUrl = {};
-    m_checksumsUrl = {};
+    m_setupAssetUrl = QUrl{};
+    m_manifestUrl = QUrl{};
+    m_checksumsUrl = QUrl{};
     m_manifestSha256.clear();
     m_expectedSha256.clear();
     m_manifestSetupBytes = -1;
     m_releaseSetupBytes = -1;
     m_machineSetupAssetName.clear();
-    m_machineSetupAssetUrl = {};
+    m_machineSetupAssetUrl = QUrl{};
     m_machineSetupBytes = -1;
     m_userSetupAssetName.clear();
-    m_userSetupAssetUrl = {};
+    m_userSetupAssetUrl = QUrl{};
     m_userSetupBytes = -1;
     setProgress(0.0);
     emit updateChanged();
@@ -337,7 +337,7 @@ void AppUpdateManager::selectPackageForScope(InstallScope scope)
         m_releaseSetupBytes = m_machineSetupBytes;
     } else {
         m_setupAssetName.clear();
-        m_setupAssetUrl = {};
+        m_setupAssetUrl = QUrl{};
         m_releaseSetupBytes = -1;
     }
     m_manifestSha256.clear();
