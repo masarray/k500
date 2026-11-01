@@ -1,3 +1,10 @@
+## Unreleased — GEN5 radio host Velvet R1 selected (2026-11-01)
+
+- Current native UAUDIO catalog #02 now uses the exact owner-listened Velvet R1. No new untested sonic tuning.
+- Former R2 Silk, R3 OnAir, D2R/Ceramah host choices are retired from the active MC HOST bank; original D2R GOLDEN #41 remains protected.
+- Pin #02 SHA-256 and prevent old UAUDIO official cache from overriding owner-selected #02.
+- Existing release assets remain immutable; Windows release of this revision needs a new qualified tag.
+
 ## Unreleased — GEN5 UAUDIO radio-preserving catalog correction (2026-11-01)
 
 - Native UAUDIO raw=5 for all GEN5 primary preset 01–10, exact source/headroom/EQ/FX preserved otherwise.

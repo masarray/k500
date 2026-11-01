@@ -46,3 +46,11 @@ User personally selected D2R_33_REVERB_SOFT over all GEN4 candidates. The latest
 ### Radio-host usability audit (2026-11-01)
 
 The original GEN5 Ceramah preset muted music in all output routes. A radio-host preset must not silently discard the UAUDIO backing track. Therefore **02 MC HOST RADIO** now restores Music→Main at native raw=70, with its speech-focused Mic EQ, reverb and zero echo unchanged. Other music routes (Surround, Center, Sub) stay 0 by design; users can change routing if required. Verified SHA-256: `7fd3f30ebc1e759e3b2e5c0f03c66764efa2f19b52dc085da2aa371f5f5e913a`.
+
+## 2026-11-01: owner audition selected Velvet R1 for GEN5 02 MC HOST
+- **Active #02:** exact owner-listened `02_MC_HOST_RADIO_VELVET_R1.k500` binary promoted under the current repository path `resources/presets/02_MC_HOST_RADIO_D2R.k500`; SHA-256 `af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e`, 1144 bytes, native name MC HOST RADIO and UAUDIO raw5.
+- **Verdict:** R1 best ('lumayan'); OnAir R3 only second choice; Silk R2 worst; old D2R/Ceramah MC HOST unacceptable. These verdicts are specifically for radio-host voice. **D2R GOLDEN #41 for singing remains untouched.**
+- **Important audit:** `BEST_START` and `VELVET_R1` have identical complete SHA-256 and bytes. Perceived difference cannot arise from differing preset parameters; investigate device slot state, readback, monitoring level and external processing before fine-tuning.
+- **R1 sonic anchor:** Mic compressor ratio3, gate -70 dB, Music->Main raw48, Reverb level22, Main Reverb49, decay850 ms and predelay32 ms, Echo disabled. Native Mic EQ: 1550Hz -7.5 dB, 3900Hz -10.2 dB, 6300Hz -11dB, 9270Hz -16dB, high shelf 11000Hz +10dB. Full EQ response includes other shelf/bell filters.
+- **Why R2 lost (hypothesis):** RBJ proxy suggests R2 attenuates about 1.96 dB more than R1 at 6300Hz and 1.86 dB more at 8000Hz, plus less 1550Hz articulation and more 125Hz body. Suppression of sibilance at the cost of natural voice timbre may explain the owner's verdict; not a verified isolated causal experiment.
+- **Safety:** official cache must not override #02 with a prior same-named valid UAUDIO preset unless byte SHA matches R1. Never delete user-owned cached files. Historical Ceramah/R3 notes in this document are superseded as *current* authority.

@@ -1,5 +1,9 @@
 # SonKuPik K500 — AI / Agent Entry Point
 
+## LATEST owner-approved MC HOST baseline (2026-11-01; overrides older R3/Ceramah notes)
+
+The GEN5 UAUDIO catalog slot **02 MC HOST RADIO** must use the exact owner-listened **VELVET R1**, SHA256 `af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e`. The owner ranks R1 best of the Radio Sonic Lab set ('lumayan', not final/perfect); Silk R2, OnAir R3, and the prior D2R/Ceramah-host candidate are rejected for ongoing MC HOST tuning. `BEST_START` is byte-identical to R1 and must not be treated as an alternate EQ recipe. Copy R1 **without modifying any EQ, routing or effects**; source raw5, music->Main raw48, reverb 850ms predelay32ms, echo OFF, Mic comp3, gate -70dB. The previous Mode02 R3 acceptance cited further below relates to a **historical/legacy preset** and is NOT authority for current GEN5 #02. Do not touch `41_GOLDEN_D2R.k500` (singing GOLDEN), archived 11–40, or other GEN5 binaries. Cache guard must reject same-named stale UAUDIO file unless exact R1 checksum/hash matches.
+
 This file is the mandatory restart point for a new ChatGPT/Codex/AI thread working on this repository. It exists so engineering can continue from repository truth instead of hidden conversation history.
 
 ## Current stable baseline

@@ -4,6 +4,7 @@
 #include "K500PresetEditMapper.h"
 #include "../StudioEngine.h"
 
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
@@ -25,7 +26,7 @@ struct BuiltInPresetDefinition {
 constexpr BuiltInPresetDefinition BuiltInPresetDefinitions[] = {
     // UAUDIO_COMPANION_PRESET_BANK_V1 — archived GEN3 USB Audio 21–30.\n    // GEN5_D2R_PRIMARY_LIBRARY_V1 — 01–10 GEN5, 11–20 GEN3 BT, 21–30 UAUDIO, 31–40 legacy, 41 D2R golden.
     {"ARTIST G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "01_ARTIST_D2R.k500", ":/presets/01_ARTIST_D2R.k500"},
-    {"MC HOST RADIO", "GEN5 UAUDIO · MC/radio speaking EQ + Main music bed (raw70), without karaoke echo", "02_MC_HOST_RADIO_D2R.k500", ":/presets/02_MC_HOST_RADIO_D2R.k500"},
+    {"MC HOST RADIO", "Owner-selected Velvet R1 · Podcast voice / UAUDIO / gentle room / echo off", "02_MC_HOST_RADIO_D2R.k500", ":/presets/02_MC_HOST_RADIO_D2R.k500"},
     {"DANGDUT G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "03_DANGDUT_D2R.k500", ":/presets/03_DANGDUT_D2R.k500"},
     {"ROCK G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "04_ROCK_D2R.k500", ":/presets/04_ROCK_D2R.k500"},
     {"ACOUSTIC G5", "GEN5 D2R UAUDIO · original sonic tuning; source raw=5", "05_ACOUSTIC_D2R.k500", ":/presets/05_ACOUSTIC_D2R.k500"},
@@ -283,7 +284,16 @@ void K500PresetFileBridge::rebuildBuiltInPresets()
         const bool cacheValid = readValidPreset(cachedPath, &bytes);
         const bool cacheModeOk = !isGen5Primary
             || (bytes.size() > 0x0E && static_cast<quint8>(bytes.at(0x0E)) == 5);
-        if (cacheValid && cacheModeOk) {
+        // GEN5_RADIO_VELVET_R1_CACHE_IDENTITY_V1: stale #02 UAUDIO
+        // can still be the rejected Ceramah tuning. Preserve files; only
+        // use cache if it matches the owner's selected binary exactly.
+        const bool isOwnerSelectedRadio =
+            fileName == QStringLiteral("02_MC_HOST_RADIO_D2R.k500");
+        const bool cacheWinnerOk = !isOwnerSelectedRadio
+            || (cacheValid && QCryptographicHash::hash(
+                    bytes, QCryptographicHash::Sha256).toHex()
+                == QByteArrayLiteral("af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e"));
+        if (cacheValid && cacheModeOk && cacheWinnerOk) {
             path = cachedPath;
             source = QStringLiteral("official-cache");
         } else {

@@ -68,7 +68,7 @@ def check_presets() -> None:
     # and owner-selected D2R Golden protected at the LAST PC catalog ID.
     expected = {
         "01_ARTIST_D2R.k500": ("ARTIST G5", "e99acae1fd80cf89257006b233a56c43801dc3e6655601c0fff574bbe58b9c4c"),
-        "02_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "7fd3f30ebc1e759e3b2e5c0f03c66764efa2f19b52dc085da2aa371f5f5e913a"),
+        "02_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e"),
         "03_DANGDUT_D2R.k500": ("DANGDUT G5", "732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1"),
         "04_ROCK_D2R.k500": ("ROCK G5", "1a52db23ff5d08f45783228cf2aa48cde21a8afd477308e0572319d256922fcf"),
         "05_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "a644d2d51865dc82a59ef2dd2878c3b2363c3b8d298446c765198a01341063c0"),
@@ -116,8 +116,11 @@ def check_presets() -> None:
         catalog_id = int(path.name[:2])
         if 1 <= catalog_id <= 10 and raw[0x0E] != 5:
             FAILURES.append(f"{path.name}: GEN5 primary must use UAUDIO raw=5; got {raw[0x0E]}")
-        if catalog_id == 2 and raw[0x2A] != 70:
-            FAILURES.append("02 MC HOST RADIO must route UAUDIO background music into Main at raw=70")
+        if catalog_id == 2:
+            if raw[0x2A] != 48 or raw[0x7B] != 0 or raw[0x7C] != 0:
+                FAILURES.append("02 Velvet R1 requires Music->Main=48 and Echo OFF")
+            if raw[0x18] != 3 or raw[0x16] != 11:
+                FAILURES.append("02 Velvet R1 must retain Mic compressor ratio3 / gate -70dB")
         if (11 <= catalog_id <= 20 or catalog_id == 41) and raw[0x0E] != 2:
             FAILURES.append(f"{path.name}: protected archival / GOLDEN BT source drift")
         sha = hashlib.sha256(raw).hexdigest()
@@ -129,6 +132,8 @@ def check_presets() -> None:
     require("src/k500/K500PresetFileBridge.cpp",
             "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500",
             "GEN5_UAUDIO_CACHE_MODE_GUARD_V1",
+            "GEN5_RADIO_VELVET_R1_CACHE_IDENTITY_V1",
+            "af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e",
             'QStringLiteral("02_BALLAD_D2R.k500")',
             'QStringLiteral("10_CERAMAH_D2R.k500")',
             "02_MC_HOST_RADIO_D2R.k500", "10_BALLAD_D2R.k500",
