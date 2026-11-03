@@ -1762,6 +1762,13 @@ def check_public_surface_contracts() -> None:
         "Layout.minimumWidth: 224",
     )
     require(
+        "src/main.cpp",
+        "WINDOW_ACTIVE_SCREEN_WORKAREA_V1",
+        "screen->availableGeometry()",
+        "QWindow::screenChanged",
+        "window->resize(fitted)",
+    )
+    require(
         "qml/components/SectionDrawer.qml",
         "property bool compact: false",
         "id: navScroll",

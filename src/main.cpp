@@ -7,6 +7,7 @@
 #include <QList>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QScreen>
 #include <QSettings>
 #include <QStringList>
 #include <QTimer>
@@ -882,6 +883,34 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
     engine.loadFromModule(QStringLiteral("SonkupikStudio"), QStringLiteral("Main"));
+
+    // WINDOW_ACTIVE_SCREEN_WORKAREA_V1 — the active monitor (not the whole
+    // virtual desktop) determines how much Qt logical work area is available.
+    if (!engine.rootObjects().isEmpty()) {
+        if (auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst())) {
+            const auto fitToWorkArea = [window] {
+                const QScreen *screen = window->screen();
+                if (!screen)
+                    return;
+                const QRect area = screen->availableGeometry();
+                if (!area.isValid())
+                    return;
+                const QSize fitted = window->size().boundedTo(area.size());
+                if (fitted != window->size())
+                    window->resize(fitted);
+                QPoint pos = window->position();
+                pos.setX(qBound(area.left(), pos.x(), area.right() - fitted.width() + 1));
+                pos.setY(qBound(area.top(), pos.y(), area.bottom() - fitted.height() + 1));
+                if (pos != window->position())
+                    window->setPosition(pos);
+            };
+            fitToWorkArea();
+            QObject::connect(window, &QWindow::screenChanged, window,
+                             [window, fitToWorkArea](QScreen *) {
+                                 QTimer::singleShot(0, window, fitToWorkArea);
+                             });
+        }
+    }
 
     // UPDATE_RELAUNCH_FOREGROUND_V1 — updater-triggered launches should be
     // noticeable without making K500 an always-on-top window. Request focus
