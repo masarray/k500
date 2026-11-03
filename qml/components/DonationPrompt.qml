@@ -14,7 +14,12 @@ Popup {
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
     padding: 0
-    closePolicy: Popup.NoAutoClose
+    // Native Qt Escape handling is reliable even when popup focus moves.
+    closePolicy: Popup.CloseOnEscape
+    onAboutToHide: {
+        if (root.promptController && root.promptController.shouldShow)
+            root.promptController.acknowledge()
+    }
 
     // DONATION_DISMISS_ALWAYS_AVAILABLE_V1: no voluntary popup may trap users.
     function dismiss() {
@@ -22,11 +27,7 @@ Popup {
             root.promptController.acknowledge()
         root.close()
     }
-    Keys.onEscapePressed: function(event) {
-        root.dismiss()
-        event.accepted = true
-    }
-
+ 
     property int countdownSeconds: 3
     readonly property bool canAcknowledge: countdownSeconds <= 0
     readonly property bool qrisReady: promptController && promptController.qrisAvailable

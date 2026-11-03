@@ -1285,10 +1285,10 @@ def check_public_surface_contracts() -> None:
     require(
         "qml/components/DonationPrompt.qml",
         "countdownSeconds: 3",
-        "Popup.NoAutoClose",
+        "Popup.CloseOnEscape",
         "DONATION_DISMISS_ALWAYS_AVAILABLE_V1",
         "function dismiss()",
-        "Keys.onEscapePressed:",
+        "onAboutToHide:",
         "id: donationScroll",
         "contentHeight: donationBody.implicitHeight + 10",
         "onClicked: root.dismiss()",
