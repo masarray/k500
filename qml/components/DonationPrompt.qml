@@ -9,12 +9,23 @@ Popup {
     parent: Overlay.overlay
     modal: true
     focus: true
-    width: Math.min(640, parent ? parent.width - 48 : 640)
-    height: Math.min(760, parent ? parent.height - 48 : 760)
+    width: Math.min(640, parent ? Math.max(1, parent.width - 16) : 640)
+    height: Math.min(760, parent ? Math.max(1, parent.height - 16) : 760)
     x: parent ? Math.round((parent.width - width) / 2) : 0
     y: parent ? Math.round((parent.height - height) / 2) : 0
     padding: 0
     closePolicy: Popup.NoAutoClose
+
+    // DONATION_DISMISS_ALWAYS_AVAILABLE_V1: no voluntary popup may trap users.
+    function dismiss() {
+        if (root.promptController)
+            root.promptController.acknowledge()
+        root.close()
+    }
+    Keys.onEscapePressed: function(event) {
+        root.dismiss()
+        event.accepted = true
+    }
 
     property int countdownSeconds: 3
     readonly property bool canAcknowledge: countdownSeconds <= 0
@@ -43,10 +54,7 @@ Popup {
         }
     }
 
-    onOpened: {
-        countdownSeconds = 3
-        countdownTimer.restart()
-    }
+    onOpened: countdownSeconds = 0
 
     background: Item {
         Rectangle {
@@ -87,8 +95,42 @@ Popup {
     // Supporting copy, links, legal note and dismissal are deliberately quieter.
     contentItem: ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 32
-        spacing: 0
+        anchors.margins: root.width < 420 ? 14 : 24
+        spacing: 8
+
+        // Fixed close control above the scrollable QRIS content.
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 34
+            Item { Layout.fillWidth: true }
+            SoftButton {
+                Layout.preferredWidth: 36
+                Layout.preferredHeight: 34
+                text: ""
+                iconName: "x"
+                iconOnly: true
+                compact: true
+                toolbar: true
+                onClicked: root.dismiss()
+            }
+        }
+
+        Flickable {
+            id: donationScroll
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            clip: true
+            boundsBehavior: Flickable.StopAtBounds
+            contentWidth: width
+            contentHeight: donationBody.implicitHeight + 10
+            ScrollBar.vertical: ScrollBar {
+                policy: donationScroll.contentHeight > donationScroll.height + 1
+                        ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+            }
+            ColumnLayout {
+                id: donationBody
+                width: Math.max(1, donationScroll.width - 8)
+                spacing: 0
 
         RowLayout {
             Layout.fillWidth: true
@@ -163,8 +205,10 @@ Popup {
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            Layout.preferredWidth: 390
-            Layout.preferredHeight: 390
+            readonly property real qrSide: Math.min(390, Math.max(180,
+                Math.min(donationBody.width - 12, root.height - 290)))
+            Layout.preferredWidth: qrSide
+            Layout.preferredHeight: qrSide
             radius: 15
             color: "#FAFCFD"
             border.width: 1
@@ -329,26 +373,22 @@ Popup {
             wrapMode: Text.Wrap
         }
 
-        Item { Layout.fillHeight: true; Layout.minimumHeight: 12 }
+            }
+        }
 
+        // Fixed footer remains available even on short-height displays.
         SoftButton {
             Layout.alignment: Qt.AlignHCenter
             Layout.preferredWidth: 176
             Layout.preferredHeight: 42
-            text: root.canAcknowledge ? "OK" : "OK (" + root.countdownSeconds + ")"
+            text: "Tutup"
             labelPixelSize: 13
             compact: false
             mixerSelect: true
             primaryAction: true
             checked: root.canAcknowledge
-            enabled: root.canAcknowledge
-            onClicked: {
-                if (!root.canAcknowledge)
-                    return
-
-                root.promptController.acknowledge()
-                root.close()
-            }
+            enabled: true
+            onClicked: root.dismiss()
         }
     }
 }

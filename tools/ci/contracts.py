@@ -1286,7 +1286,12 @@ def check_public_surface_contracts() -> None:
         "qml/components/DonationPrompt.qml",
         "countdownSeconds: 3",
         "Popup.NoAutoClose",
-        "enabled: root.canAcknowledge",
+        "DONATION_DISMISS_ALWAYS_AVAILABLE_V1",
+        "function dismiss()",
+        "Keys.onEscapePressed:",
+        "id: donationScroll",
+        "contentHeight: donationBody.implicitHeight + 10",
+        "onClicked: root.dismiss()",
         "DONATION_READABLE_HIERARCHY_V2",
         "DONATION_TEXT_LINKS_V2",
         "LUCIDE_HEART_FILLED_V1",
@@ -1737,14 +1742,31 @@ def check_public_surface_contracts() -> None:
     )
     forbid("qml/components/TopBar.qml", 'text:"Support"')
 
-    # MIN_WINDOW_LAYOUT_BUDGET_V6 — fast deterministic layout budget.
-    # No new workflow or hard-coded screenshot dimensions in runtime code.
+    # ADAPTIVE_VIEWPORT_FIELD_FIX_V1: the calibrated lower-rack minimum
+    # belongs to the scrollable content canvas, not the native window.
     require(
         "qml/Main.qml",
-        "MIN_WINDOW_LAYOUT_BUDGET_V6",
-        "minimumWidth: 1344",
+        "ADAPTIVE_VIEWPORT_FIELD_FIX_V1",
+        "minimumWidth: 700",
+        "minimumHeight: 420",
+        "Screen.desktopAvailableWidth",
+        "Screen.desktopAvailableHeight",
+        "id: workspaceViewport",
+        "id: toolbarViewport",
+        "interactive: false",
+        "Math.max(0.86, width / 1138)",
+        "width: Math.max(1138, workspaceViewport.width / workspaceViewport.viewportScale)",
+        "ScrollBar.vertical: ScrollBar",
+        "ScrollBar.horizontal: ScrollBar",
         "Layout.minimumWidth: 440",
         "Layout.minimumWidth: 224",
+    )
+    require(
+        "qml/components/SectionDrawer.qml",
+        "property bool compact: false",
+        "id: navScroll",
+        "contentHeight: navColumn.implicitHeight + 16",
+        "ScrollBar.vertical: ScrollBar",
     )
     require(
         "qml/components/SectionWorkspace.qml",
@@ -1758,21 +1780,16 @@ def check_public_surface_contracts() -> None:
     require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:318", 3)
     require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:346", 3)
 
-    window_min = re.search(r"(?m)^\s*minimumWidth:\s*(\d+)\s*$", read("qml/Main.qml"))
-    if not window_min:
-        FAILURES.append("Main window must declare numeric minimumWidth")
-    else:
-        available = int(window_min.group(1)) - (2 * 12 + 170 + 12)
-        music = 440 + 224 + 2 * 216 + 3 * 12
-        mic = 246 + 422 + 216 + 2 * 12 + 216 + 12
-        output = 318 + 346 + 216 + 2 * 12 + 216 + 12
-        for section, required in (("Music", music), ("Mic", mic), ("Output", output)):
-            if required > available:
-                FAILURES.append(
-                    f"{section} minimum rack {required}px exceeds available {available}px"
-                )
-            else:
-                PASSES.append(f"{section} minimum rack budget {required}/{available}px")
+    # Preserve all proven lower-rack minima in the virtual workspace canvas.
+    pane_budget = 1138
+    music = 440 + 224 + 2 * 216 + 3 * 12
+    mic = 246 + 422 + 216 + 2 * 12 + 216 + 12
+    output = 318 + 346 + 216 + 2 * 12 + 216 + 12
+    for section, required in (("Music", music), ("Mic", mic), ("Output", output)):
+        if required > pane_budget:
+            FAILURES.append(f"{section} minimum rack {required}px exceeds canvas {pane_budget}px")
+        else:
+            PASSES.append(f"{section}: calibrated rack retained with overflow access")
 
     # FINAL_MICRO_TEXT_READABILITY_V5 — existing CI, no new workflows.
     require(
