@@ -2470,8 +2470,8 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_4_ACCEPTANCE=accepted",
-        "v1.1.4 RC line is closed after acceptance/stable promotion",
+        "UPDATER_V1_1_5_ACCEPTANCE=accepted",
+        "v1.1.5 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
     # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
@@ -2499,7 +2499,7 @@ def check_release_contracts() -> None:
                 FAILURES.append(f"{workflow}:{number}: orphaned PowerShell -Force")
 
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md' -Raw")
+    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw")
     rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):
