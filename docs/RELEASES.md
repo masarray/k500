@@ -41,6 +41,7 @@ Official presets can update independently through the in-app sync path and there
 - Target: adaptive window/workspace for high-DPI and short-height laptops, visible System faders and non-blocking QRIS dismissal.
 - Source baseline: [PR #233](https://github.com/masarray/k500/pull/233).
 - Windows Per-User-only distribution remains the public model; legacy v1.1.4 assets are immutable.
+- v1.1.5 public EXE link is `sonkupik-k500-setup.exe`; public ZIP `sonkupik-k500-setup.zip` contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe` as requested, with identical verified bytes. The top-level GitHub asset `-Setup-PerUser.exe` remains for existing auto-updater clients: older machine-scope updater logic would misclassify a top-level `-Windows-Setup.exe` as a machine installer. Immutable prerelease v1.1.5-rc.1 remains unchanged.
 - v1.1.5 is **not released** until a verified, immutable candidate passes CI and explicit acceptance; see `docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md`.
 - Native macOS/Linux QA jobs must never inject source-built binaries into the historical v1.1.4 release.
 

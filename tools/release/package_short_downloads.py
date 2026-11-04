@@ -68,12 +68,19 @@ def package(tag: str, source: Path, sums: Path, output: Path) -> None:
     planned = [exe, zpath, output / (SHORT_EXE + ".sha256"), output / (SHORT_ZIP + ".sha256")]
     if any(p.exists() for p in planned):
         raise FileExistsError("Refusing to overwrite an existing download asset")
+    # V115_PUBLIC_ZIP_SETUP_NAME_V1: clean user-facing filename lives INSIDE
+    # ZIP, not as a GitHub Release top-level asset. Older installed updater
+    # binaries interpret a top-level versioned '-Windows-Setup.exe' as a
+    # MACHINE-SCOPE installer; publishing that alias would misroute updates.
+    # Keep the canonical '-PerUser' asset for updater compatibility.
+    numbers = tuple(int(x) for x in tag[1:].split("."))
+    inner_exe = f"SonKuPik-K500-{tag}-Windows-Setup.exe" if numbers >= (1, 1, 5) else SHORT_EXE
     # Both the renamed EXE and the installer inside ZIP MUST retain identical bytes.
     readme = (
         "SonKuPik K500 - Official Windows Setup\n"
         "=====================================\n\n"
         "1. Right-click the ZIP and choose Extract All in Windows File Explorer.\n"
-        f"2. Run {SHORT_EXE} from the extracted folder.\n"
+        f"2. Run {inner_exe} from the extracted folder.\n"
         "3. Follow the installation prompts.\n\n"
         f"Official release: https://github.com/masarray/k500/releases/tag/{tag}\n"
         f"Original asset: {source.name}\n"
@@ -82,26 +89,26 @@ def package(tag: str, source: Path, sums: Path, output: Path) -> None:
         "The ZIP is NOT a portable edition, and does NOT bypass antivirus or\n"
         "Windows SmartScreen. Never disable security protection to install.\n"
     )
-    inner_sums = f"{source_hash}  {SHORT_EXE}\n"
+    inner_sums = f"{source_hash}  {inner_exe}\n"
     try:
         shutil.copyfile(source, exe)
         if sha256_file(exe) != source_hash:
             raise ValueError("Renamed copy changed the installer bytes")
         with ZipFile(zpath, "w", allowZip64=True) as archive:
-            with archive.open(zi(SHORT_EXE), "w", force_zip64=True) as target:
+            with archive.open(zi(inner_exe), "w", force_zip64=True) as target:
                 with source.open("rb") as original:
                     for block in iter(lambda: original.read(1024 * 1024), b""):
                         target.write(block)
             archive.writestr(zi("README.txt"), readme.encode("utf-8"))
             archive.writestr(zi("SHA256SUMS.txt"), inner_sums.encode("ascii"))
         with ZipFile(zpath) as archive:
-            if archive.namelist() != [SHORT_EXE, "README.txt", "SHA256SUMS.txt"]:
+            if archive.namelist() != [inner_exe, "README.txt", "SHA256SUMS.txt"]:
                 raise ValueError("Unexpected archive entries")
             if archive.testzip() is not None:
                 raise ValueError("ZIP CRC check failed")
-            if archive.getinfo(SHORT_EXE).file_size != source.stat().st_size:
+            if archive.getinfo(inner_exe).file_size != source.stat().st_size:
                 raise ValueError("ZIP installer length mismatch")
-            with archive.open(SHORT_EXE) as bundled:
+            with archive.open(inner_exe) as bundled:
                 digest = hashlib.sha256()
                 for block in iter(lambda: bundled.read(1024 * 1024), b""):
                     digest.update(block)

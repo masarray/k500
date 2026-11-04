@@ -228,8 +228,10 @@ jobs:
           body: |
             SonKuPik K500 v1.1.5 — adaptive Windows DPI/laptop console and QRIS dismissal accessibility patch. The previously accepted GEN5 preset bank remains unchanged.
 
-            **One Windows x64 Per-User installer. No machine-wide installer or Smart Installer.**
-            Installs to %LOCALAPPDATA%\Programs\SonKuPik K500 with standard Windows user privileges (no UAC elevation requested). The EXE is byte-for-byte identical to the approved ${{ steps.accepted.outputs.tag }} Per-User installer; no release rebuild.
+            **Windows x64: download sonkupik-k500-setup.exe or sonkupik-k500-setup.zip.**
+            The ZIP includes SonKuPik-K500-v1.1.5-Windows-Setup.exe (the requested clean filename). Both use the same verified Per-User installer, installed to %LOCALAPPDATA%\Programs\SonKuPik K500 without admin/UAC elevation.
+
+            The additional versioned -PerUser.exe release asset is necessary for the existing in-app auto-updater. Renaming it directly to -Setup.exe would be misidentified by older machine-scope clients. All EXE aliases are byte-identical to the approved ${{ steps.accepted.outputs.tag }} RC; no Qt/Inno rebuild.
 
             Existing machine-wide installations require separate explicit migration; this installer never silently escalates or uninstalls machine-wide software.
             Unsigned open-source build; Windows SmartScreen may still display its normal publisher warning.
