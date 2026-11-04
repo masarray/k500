@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 from pathlib import Path
 
@@ -35,7 +36,9 @@ def main() -> int:
     # validate only the fast Ubuntu contracts.
     build_prefixes = ("src/", "qml/", "resources/", "packaging/", "tests/", "tools/ci/")
     build_names = {"CMakeLists.txt", ".github/workflows/windows-build.yml"}
-    force_build = event in {"push", "workflow_dispatch"} or "<unknown-diff>" in paths
+    # SMART_CI_SCOPE_V2: normal main pushes obey the same file-based rules
+    # as PRs. Only an explicit manual diagnostic or missing diff forces build.
+    force_build = event == "workflow_dispatch" or "<unknown-diff>" in paths
     build = force_build or any(p in build_names or p.startswith(build_prefixes) for p in paths)
 
     installer_prefixes = (
@@ -68,14 +71,35 @@ def main() -> int:
         for p in paths
     )
 
+    # SMART_STABLE_PROMOTION_GATE_V1: no extra release workflow is spawned.
+    # A single, verified acceptance-file change in main unlocks the existing
+    # byte-identical promotion as a final job of K500 CI. Never auto-approve RC.
+    gate_path = "docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md"
+    gate = Path(gate_path).read_text(encoding="utf-8") if Path(gate_path).is_file() else ""
+    def gate_value(key: str) -> str:
+        match = re.search(rf"(?m)^{re.escape(key)}=(.*)$", gate)
+        return match.group(1).strip() if match else ""
+
+    approval = gate_value("UPDATER_V1_1_5_ACCEPTANCE") == "accepted"
+    provenance = all((
+        re.fullmatch(r"v1\.1\.5-rc\.[1-9][0-9]*",
+                     gate_value("UPDATER_V1_1_5_ACCEPTED_TAG")),
+        re.fullmatch(r"[a-fA-F0-9]{40}",
+                     gate_value("UPDATER_V1_1_5_ACCEPTED_COMMIT")),
+        re.fullmatch(r"[a-fA-F0-9]{64}",
+                     gate_value("UPDATER_V1_1_5_USER_SHA256")),
+    ))
+    promotion = event == "push" and gate_path in paths and approval and provenance
+
     output = Path(os.environ["GITHUB_OUTPUT"])
     with output.open("a", encoding="utf-8") as fh:
         fh.write(f"build_required={'true' if build else 'false'}\n")
         fh.write(f"installer_required={'true' if installer else 'false'}\n")
         fh.write(f"platform_required={'true' if platform else 'false'}\n")
+        fh.write(f"promotion_required={'true' if promotion else 'false'}\n")
         fh.write(f"changed_count={len(paths)}\n")
 
-    print(f"build_required={build}; installer_required={installer}; platform_required={platform}; changed={len(paths)}")
+    print(f"build_required={build}; installer_required={installer}; platform_required={platform}; promotion_required={promotion}; changed={len(paths)}")
     for path in paths[:80]:
         print(f"  {path}")
     return 0
