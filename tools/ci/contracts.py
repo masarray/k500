@@ -2240,7 +2240,7 @@ def check_release_contracts() -> None:
     require(
         "lib/stable-release.mjs",
         "releases/latest",
-        "FALLBACK_TAG = 'v1.1.4'",
+        "FALLBACK_TAG = 'v1.1.5'",
         "validGitHubAsset",
         "prerelease !== false",
         "cacheTtl: 300",
@@ -2368,9 +2368,9 @@ def check_release_contracts() -> None:
 
     require(
         "README.md",
-        "**v1.1.3** is the current public stable",
-        "promoted byte-identically from owner-accepted `v1.1.3-rc.6`",
-        "landing route",
+        "**[v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5)**",
+        "owner-tested `v1.1.5-rc.1`",
+        "Verified Windows ZIP",
     )
     forbid(
         "README.md",
@@ -2379,7 +2379,7 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/RELEASES.md",
-        "Current public stable: **v1.1.4**",
+        "Current public stable: **v1.1.5**",
         "## v1.1.3 stable record",
         "## v1.1.2 stable record",
         "## v1.1.1 stable record",
@@ -2457,7 +2457,7 @@ def check_release_contracts() -> None:
     )
     require(
         "AGENTS.md",
-        "Public stable line: **v1.1.3**",
+        "CURRENT PUBLIC STABLE v1.1.5",
     )
     forbid(
         "AGENTS.md",
@@ -2465,8 +2465,8 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/README.md",
-        "| Public stable | `v1.1.3`",
-        "| Stable source line | `v1.1.3`, promoted byte-identically from accepted `v1.1.3-rc.6`",
+        "| Public stable | `v1.1.5`",
+        "| Stable provenance | Accepted `v1.1.5-rc.1`",
         "V1_1_1_UPDATER_RC_ACCEPTANCE.md",
         "landing buttons use stable, version-independent labels",
     )

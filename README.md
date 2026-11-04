@@ -1,6 +1,8 @@
-### Windows installer distribution (v1.1.4 stable)
+### Windows installer distribution — v1.1.5 stable
 
-The public Windows download is **one Per-User installer**, targeting `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator elevation. It is the same verified EXE as the accepted RC.3 Per-User artifact, not a new compile. Old all-users installations must undergo a separate explicit migration; they are not silently changed.
+The latest public stable is **[v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5)**, promoted byte-for-byte from the owner-tested `v1.1.5-rc.1`. Windows 10/11 x64 + USB HID are the qualified scope. Fresh installs use `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator elevation. Older machine-wide installs require explicit migration and are not silently changed.
+
+**Recommended:** [Verified Windows ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) · [Direct Windows EXE](https://sonkupik-k500.pages.dev/download/windows). The ZIP contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe`; the direct EXE is `sonkupik-k500-setup.exe`. Both have the same installer bytes. The versioned `-Setup-PerUser.exe` release asset is kept for existing in-app updater compatibility.
 
 <p align="center">
   <img src="assets/SonKuPik-k500-logo.png" alt="SonKuPik K500" width="200">
@@ -14,7 +16,7 @@ The public Windows download is **one Per-User installer**, targeting `%LOCALAPPD
 
 <p align="center">
   <a href="https://github.com/masarray/k500/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/masarray/k500?display_name=tag&sort=semver"></a>
-  <a href="https://github.com/masarray/k500/actions/workflows/windows-stable-release.yml"><img alt="Windows stable release" src="https://github.com/masarray/k500/actions/workflows/windows-stable-release.yml/badge.svg"></a>
+  <a href="https://github.com/masarray/k500/actions/workflows/windows-build.yml"><img alt="Windows stable release" src="https://github.com/masarray/k500/actions/workflows/windows-build.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg"></a>
   <img alt="Windows x64" src="https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4">
   <img alt="Qt 6" src="https://img.shields.io/badge/native-Qt%206%20%2F%20QML-41CD52">
@@ -45,11 +47,9 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
 >
-> **Release line:** **v1.1.3** is the current public stable. The native Smart Installer is scope-aware, and Reverb/Echo HPF/LPF are always-active frequency-only filters with improved native-reference PEQ visualization. Save/Recall feedback, Mass Upload and the preset workspace retain the accepted Windows/USB workflows. Qualified support remains Windows 10/11 x64 + USB HID; Bluetooth SPP remains experimental.
+> **Release line:** **v1.1.5** improves layouts on smaller/high-DPI laptops, keeps System faders reachable and makes the voluntary QRIS popup easy to dismiss. Core music, mic, effects, presets and qualified USB controls remain supported.
 >
-> **Updater status:** **v1.1.3** was promoted byte-identically from owner-accepted `v1.1.3-rc.6` at application source commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. The three Machine, PerUser and Smart installer SHA-256 digests match the immutable RC.6 assets. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) passed; GitHub `/releases/latest` now resolves v1.1.3, and the landing route dynamically downloads its public Smart Installer.
-
-> **Release provenance:** [Stable v1.1.3](https://github.com/masarray/k500/releases/tag/v1.1.3) was published after owner acceptance and CI qualification. See the [accepted RC.6 record](docs/V1_1_3_UPDATER_RC_ACCEPTANCE.md) and [release model](docs/RELEASES.md). Historical stable [v1.1.2](https://github.com/masarray/k500/releases/tag/v1.1.2) remains available.
+> **Release provenance:** [Stable v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5) was promoted by [CI #41911424715](https://github.com/masarray/k500/actions/runs/41911424715) from [owner-approved v1.1.5-rc.1](docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md). Verified installer SHA-256: `72651326cd871ae3278b92b713b2bb9db03dd3761970fab2e7ec0d5bba62cb3f`. No release rebuild; older releases remain immutable.
 
 ## See the real app
 
@@ -95,23 +95,24 @@ More screenshots are available in [`assets/k500 screenshot`](assets/k500%20scree
 
 ## Download
 
-| Package | Best for | Download |
+| Package | Best for | Link |
 |---|---|---|
-| **Smart Installer** | Recommended public package. Installs to `%LOCALAPPDATA%\Programs\SonKuPik K500` without ordinary installation UAC. Migration of an existing machine-wide Program Files install requires explicit user authorization and may require a one-time UAC. Keeps personal presets in Documents. | [Download Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
-| **Latest release** | Release notes, SHA-256 checksums, manifest, and current packages. | [Open latest release](https://github.com/masarray/k500/releases/latest) |
+| **Verified ZIP (recommended)** | Stable v1.1.5 archive. Extract first, then run `SonKuPik-K500-v1.1.5-Windows-Setup.exe`. Not a portable edition. | [Download ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) |
+| **Direct EXE** | `sonkupik-k500-setup.exe`; same verified Per-User installer, no admin/UAC for normal fresh installs. | [Download EXE](https://sonkupik-k500.pages.dev/download/windows) |
+| **GitHub Release** | Notes, checksums, release manifest and historical versions. | [v1.1.5 stable](https://github.com/masarray/k500/releases/tag/v1.1.5) |
 
 Official Windows binaries are currently unsigned open-source builds. Windows SmartScreen or antivirus reputation systems may therefore warn when opening a new download. Release packages include SHA-256 verification metadata. See [Windows distribution & security](docs/WINDOWS_DISTRIBUTION_SECURITY.md).
 
 ## Getting started
 
-1. **Install SonKuPik K500** with the recommended v1.1.3 Smart Installer. A new installation uses `%LOCALAPPDATA%\Programs\SonKuPik K500`; existing machine-wide setups follow the explicit migration wizard.
+1. **Install SonKuPik K500 v1.1.5** via the verified ZIP or direct EXE. A new installation uses `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator rights; older Program Files installations require explicit migration.
 2. On first run, the default personal preset library is created at **`Documents\SonKuPik K500\Presets`**.
 3. **Connect the K500 by USB.** The app reads the processor state before LIVE editing is enabled.
 4. **Choose a section** such as Music, Mic, Reverb, Main, or Subwoofer.
 5. **Tune the sound** or select a preset.
 6. For presets, use **Preview** before choosing a permanent upload.
 
-Starting with v1.0.2, installed builds can discover a newer public stable release inside the app. Before Windows UAC is requested, SonKuPik cross-checks the release manifest, checksum file, Setup identity/size, and locally computed SHA-256. A failed verification never runs the installer.
+Starting with v1.0.2, installed builds can discover a newer public stable release inside the app. Before installed updates run, SonKuPik cross-checks the release manifest, checksum file, scope-matched Setup identity/size and locally computed SHA-256. Normal Per-User updates do not need UAC; migrating a legacy machine-wide installation may require separate approval. A failed verification never runs the installer.
 
 For a complete walkthrough, see the [User Guide](docs/USER_GUIDE.md).
 
@@ -156,10 +157,10 @@ Official downloads must pass K500 file validation before replacing the last-know
 - Offline preset Preview/edit tracking with controlled persistence and atomic Save As.
 - Official preset sync, bundled offline fallback, last-known-good cache, and Local preset library.
 - Default personal preset home under `Documents\SonKuPik K500\Presets`, separate from application binaries.
-- Verified in-app stable updater with manifest/SHA-256 checks and normal Windows UAC elevation.
+- Verified in-app stable updater with manifest/SHA-256 checks, no UAC for Per-User updates and explicit migration approval for legacy machine-wide installations.
 - Support Report JSON with sensitive preset payload/path information excluded.
 - Optional one-time voluntary-support prompt after three distinct usage days; it is isolated from K500 control and only auto-opens when a verified bundled QRIS asset is present.
-- Branded Smart Installer plus the scope-matched per-user updater package.
+- Verified Per-User Windows Setup distributed as direct EXE or ZIP; versioned Setup-PerUser asset preserved for strict legacy updater compatibility.
 
 **Intentionally unsupported:** persistent LCD / Equipment Mode rename remains disabled until a donor-verified native rename transaction is captured.
 
@@ -297,4 +298,4 @@ SonKuPik K500 is released under the **GNU General Public License v3.0 or later (
 
 
 ### Platform downloads
-The website offers verified downloads for Windows, macOS, and Linux. The Windows ZIP encloses the same Per-User EXE as the official stable release. macOS and Linux buttons redirect to actual published platform assets only; building a Qt UI alone does not imply tested hardware support.
+The website publishes the verified Windows v1.1.5 ZIP and direct EXE. ZIP contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe` and has identical installer bytes to the direct `sonkupik-k500-setup.exe`. No macOS/Linux stable packages are published for v1.1.5; those site links check availability instead of claiming qualified support.

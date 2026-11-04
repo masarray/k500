@@ -9,7 +9,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const root = path.resolve(__dirname, "../..");
 const API = "https://api.github.com/repos/masarray/k500/releases/latest";
-const FALLBACK = "v1.1.4";
+const FALLBACK = "v1.1.5";
 function installer(tag) {
   const v = tag.slice(1).split(".").map(Number);
   const perUser = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 4)));
@@ -90,7 +90,13 @@ async function checkDownload(options, expectedTag) {
   });
   assert.equal(response.status, options.expectedStatus || 302);
   if (response.status === 302) {
-    assert.equal(response.headers.get("location"), options.expectedTarget || downloadUrl(expectedTag || FALLBACK));
+    // Metadata failure uses the last verified stable v1.1.5 public aliases.
+    const fallback = !!(options.prerelease || options.draft || options.missingAsset ||
+      options.badUrl || options.apiStatus || options.throwNetwork);
+    const fallbackTarget = (options.kind === "windows-preferred" || options.kind === "windows-zip")
+      ? shortAssetUrl(FALLBACK, SHORT_ZIP) : shortAssetUrl(FALLBACK, SHORT_EXE);
+    assert.equal(response.headers.get("location"),
+      options.expectedTarget || (fallback ? fallbackTarget : downloadUrl(expectedTag || FALLBACK)));
     assert.equal(response.headers.get("cache-control"), "no-store");
     assert.equal(await response.text(), "", "must redirect, not proxy executable");
     assert.equal(f.calls(), 1);
@@ -109,13 +115,15 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.version, tag.slice(1));
   assert.equal(data.channel, "stable");
   assert.equal(data.setup, "/download/windows");
+  const fallback = source === "last-known-good";
   const shortExe = !!options.shortExe && !options.badShortExe &&
-    !options.emptyShortExe && !options.missingShortExeChecksum && source !== "last-known-good";
-  const exeUrl = shortExe ? shortAssetUrl(tag, SHORT_EXE) : downloadUrl(tag);
+    !options.emptyShortExe && !options.missingShortExeChecksum && !fallback;
+  const exeUrl = fallback || shortExe ? shortAssetUrl(tag, SHORT_EXE) : downloadUrl(tag);
   assert.equal(data.downloadUrl, exeUrl);
-  assert.equal(data.downloadFilename, shortExe ? SHORT_EXE : installer(tag));
-  const modernZip = !!options.shortZip && !options.badShortZip && !options.missingShortZipChecksum && source !== "last-known-good";
-  const legacyZip = !!options.zip && !options.badZipUrl && source !== "last-known-good";
+  assert.equal(data.downloadFilename, fallback || shortExe ? SHORT_EXE : installer(tag));
+  const modernZip = fallback ||
+    (!!options.shortZip && !options.badShortZip && !options.missingShortZipChecksum);
+  const legacyZip = !!options.zip && !options.badZipUrl && !fallback;
   const hasZip = modernZip || legacyZip;
   const chosenZip = modernZip ? shortAssetUrl(tag, SHORT_ZIP) : legacyZip ? zipUrl(tag) : null;
   assert.equal(data.zipAvailable, hasZip);
@@ -126,7 +134,7 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.resolution, source || "github");
 }
 async function main() {
-  for (const tag of ["v1.0.3", "v1.1.2", "v1.1.3", "v1.1.4", "v2.0.0"]) {
+  for (const tag of ["v1.0.3", "v1.1.2", "v1.1.3", "v1.1.4", "v1.1.5", "v2.0.0"]) {
     await checkDownload({ tag }, tag);
     await checkApi({ tag }, tag);
   }
@@ -159,6 +167,8 @@ async function main() {
   await checkDownload({ kind: "windows-preferred", shortZip: true, missingShortZipChecksum: true });
   await checkApi({ shortZip: true, badShortZip: "https://untrusted.example/unsafe.zip" });
   await checkApi({ apiStatus: 429, shortExe: true, shortZip: true }, FALLBACK, "last-known-good");
+  await checkDownload({ apiStatus: 403, kind: "windows-preferred" });
+  await checkDownload({ apiStatus: 403, kind: "windows-zip" });
   await checkDownload({ method: "HEAD" });
   await checkDownload({ kind: "windows-preferred", zip: true, expectedTarget: zipUrl(FALLBACK) });
   await checkDownload({ kind: "windows-zip", zip: true, expectedTarget: zipUrl(FALLBACK) });

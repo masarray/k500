@@ -8,6 +8,8 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 
 - [User Guide](USER_GUIDE.md) — install, connect, edit, Preview, Save As, Upload, Mass Upload, preset Sync, diagnostics.
 - [Release Model](RELEASES.md) — stable/prerelease policy, package verification, official preset updates.
+- [v1.1.5 RC Acceptance](V1_1_5_UPDATER_RC_ACCEPTANCE.md) — accepted RC.1, checksum and exact public stable provenance.
+- [v1.1.4 RC Acceptance](V1_1_4_UPDATER_RC_ACCEPTANCE.md) — historical v1.1.4 qualification.
 - [v1.1.3 RC Acceptance](V1_1_3_UPDATER_RC_ACCEPTANCE.md) — accepted RC.6 provenance and byte-identical v1.1.3 stable publication.
 - [v1.1.2 RC Acceptance](V1_1_2_UPDATER_RC_ACCEPTANCE.md) — historical RC.2 and v1.1.2 stable publication.
 - [v1.1.2 Candidate Scope](V1_1_2_CANDIDATE_SCOPE.md) — UAUDIO 11–20, multiselect, bypass warning and title.
@@ -38,9 +40,9 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Contract | Current truth |
 |---|---|
 | Hardware-qualified baseline | `v1.0.0` |
-| Public stable | `v1.1.3` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
-| Stable source line | `v1.1.3`, promoted byte-identically from accepted `v1.1.3-rc.6` at `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff` |
-| Product download router | [Smart Installer](https://sonkupik-k500.pages.dev/download/windows) |
+| Public stable | `v1.1.5` via [GitHub latest stable](https://github.com/masarray/k500/releases/latest) |
+| Stable provenance | Accepted `v1.1.5-rc.1` at source `89a1e59535c891190d226b9eb636a5c967dd4c73`; [CI promotion](https://github.com/masarray/k500/actions/runs/41911424715) |
+| Product download router | [Verified ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) · [Direct EXE](https://sonkupik-k500.pages.dev/download/windows) |
 | Qualified platform | Windows 10/11 x64 |
 | Qualified transport | USB HID |
 | Bluetooth SPP | Implemented, experimental |
@@ -50,10 +52,10 @@ This directory is the authoritative documentation set for the SonKuPik K500 v1 s
 | Official Mode 01 | `KONSER NYANYI` (native-donor lineage) |
 | Mode 01 SHA-256 | `66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1` |
 | Official Mode 02 | `MC HOST RADIO` — SHA-256 `adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7` |
-| Windows distribution | Smart Installer + scope-matched per-user updater package |
+| Windows distribution | Per-User Setup, verified ZIP/EXE and versioned compatibility asset for old updater clients |
 | Code signing | unsigned open-source |
 
-The public download **routes** remain version-agnostic and resolve GitHub's canonical latest non-prerelease release. The landing buttons use stable, version-independent labels from the initial HTML paint; `/api/release` upgrades only verified download links, not visible text, so refreshes no longer cause text flicker. The GitHub Release page identifies the exact available version (currently `v1.1.3`).
+The public download **routes** remain version-agnostic and resolve GitHub's canonical latest non-prerelease release. The landing buttons use stable, version-independent labels from the initial HTML paint; `/api/release` upgrades only verified download links, not visible text, so refreshes no longer cause text flicker. The GitHub Release page identifies the exact available version (currently `v1.1.5`). Its ZIP contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe` with unchanged Per-User installer behavior.
 
 ## Documentation principles
 

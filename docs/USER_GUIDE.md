@@ -12,15 +12,16 @@ Bluetooth SPP is available in the application but remains experimental until ind
 
 Download the current stable build from the official SonKuPik K500 download page or GitHub Release page:
 
-- `SonKuPik-K500-vX.Y.Z-Windows-Setup.exe` — recommended normal installation;
+- **Verified ZIP (recommended):** [sonkupik-k500-setup.zip](https://sonkupik-k500.pages.dev/download/windows-preferred), containing `SonKuPik-K500-v1.1.5-Windows-Setup.exe`. Extract All, then run Setup.
+- **Direct EXE:** [sonkupik-k500-setup.exe](https://sonkupik-k500.pages.dev/download/windows). Both carry identical verified Per-User installer bytes.
 
-The normal installer uses the standard Windows application layout:
+For a fresh v1.1.5 install, the default location is:
 
 ```text
-C:\Program Files\SonKuPik K500\
+%LOCALAPPDATA%\Programs\SonKuPik K500\
 ```
 
-Windows will show its normal Administrator/UAC confirmation because Program Files is protected. The installer does not ask beginners to choose an application directory; updates use the same canonical location automatically.
+A normal fresh Per-User installation does **not** request administrator elevation/UAC. Older machine-wide copies installed under `C:\Program Files` require explicit migration and may request UAC to remove the old installation. Never silently replace a machine-wide installation.
 
 The binaries are currently unsigned open-source builds, so Windows may display a reputation warning. Verify the artifact against `SHA256SUMS.txt` and `release-manifest.json` from the same release. Do not disable Windows security software to install SonKuPik K500.
 
@@ -45,16 +46,14 @@ Starting with v1.0.2, SonKuPik can handle stable Windows updates inside the appl
 3. Choose **Update sekarang** to continue, **Nanti** to postpone, or **Lewati versi** to suppress that exact version.
 4. The app downloads `release-manifest.json`, `SHA256SUMS.txt`, and the exact versioned Windows Setup package.
 5. The manifest, Windows target, stable-release eligibility, package filename/size, and SHA-256 are cross-checked before execution.
-6. Windows shows its normal Administrator/UAC confirmation.
-7. Setup updates Program Files quietly and opens the new SonKuPik K500 version automatically.
+6. Per-User Setup runs without UAC. Migrating from a legacy machine-wide installation requires a separate authorization step.
+7. The accepted updater completes its installation health check/recovery sequence and reopens SonKuPik K500.
 
-The primary update flow does not open a browser. A cancelled UAC request or failed integrity check leaves the application/update unexecuted rather than bypassing Windows security.
+The primary update flow does not open a browser. Failed integrity verification does not run Setup. The versioned `-Windows-Setup-PerUser.exe` GitHub asset is retained because installed updater clients verify the name; the ZIP's clean `-Windows-Setup.exe` is the same Per-User installer.
 
-When upgrading from the earlier per-user v1.0.1 layout, the v1.0.2 installer migrates the old LocalAppData application install before writing the new Program Files copy. Personal presets and application preferences are intentionally preserved.
+### Scope-aware updater lifecycle (public v1.1.5)
 
-### Pre-release updater lifecycle in the current source
-
-The current source tree contains the next Windows updater lifecycle, but it is not a public stable contract until a new tagged release is accepted and published.
+The following safety behavior is in the accepted v1.1.5 updater path. Existing Program Files installations still require deliberate migration.
 
 - A registered Program Files installation can explicitly choose **Update tanpa Admin**. SonKuPik first installs and health-checks the per-user copy, then asks for Administrator permission one time only to remove the old Program Files installation.
 - Once installed per-user, later matching updates use the per-user Setup package and do not require Administrator permission.
@@ -66,7 +65,7 @@ The current source tree contains the next Windows updater lifecycle, but it is n
 
 If a no-admin migration download fails after you selected it, **Coba lagi** preserves that selected per-user path; it does not silently switch back to the Administrator/machine-wide package.
 
-For release-candidate acceptance only, an installed v1.1 candidate can be started with `--update-candidate=v1.1.0-rc.N`. This explicit QA flag is process-local: it requests exactly that GitHub prerelease tag and does not change the normal stable update channel or stable skip/throttle preferences. Public v1.0.3 itself intentionally cannot discover prereleases; RC testing starts by manually applying the exact RC machine installer over a real v1.0.3 installation. Accepted RC binaries are later promoted byte-for-byte to stable rather than rebuilt.
+For QA only, the installed app can request the exact prerelease with `--update-candidate=v1.1.5-rc.1`; regular users should use stable v1.1.5. Candidate testing does not change the normal stable channel or user preferences. The accepted RC binary was promoted byte-identically to stable.
 
 ## Connect to K500
 
@@ -232,7 +231,9 @@ Attach the report to a reproducible GitHub issue when appropriate.
 PowerShell example:
 
 ```powershell
-Get-FileHash .\SonKuPik-K500-vX.Y.Z-Windows-Setup.exe -Algorithm SHA256
+Get-FileHash .\sonkupik-k500-setup.exe -Algorithm SHA256
+# Or extract the ZIP first:
+Get-FileHash .\SonKuPik-K500-v1.1.5-Windows-Setup.exe -Algorithm SHA256
 ```
 
 Compare the output with `SHA256SUMS.txt` from the same GitHub release tag.
