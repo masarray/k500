@@ -1907,8 +1907,8 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.4 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must be 1.1.4 for the candidate release")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.5 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: source version must be 1.1.5 for the candidate release")
     if "V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR" not in cmake:
         FAILURES.append("CMakeLists.txt: v1.1.3 qualification anchor missing")
 
@@ -1971,7 +1971,7 @@ def check_release_contracts() -> None:
     # but not emitted to the public for new stable releases.
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "v1.1.4-rc.${{ inputs.rc_number }}",
+        "v1.1.5-rc.${{ inputs.rc_number }}",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
         "SINGLE_PER_USER_RC_V1",
         '"/DPerUser=1"',
@@ -1993,16 +1993,33 @@ def check_release_contracts() -> None:
     ):
         if token not in gate:
             FAILURES.append(f"v1.1.4 Per-User RC.3 owner gate mismatch: {token}")
+    # v1.1.4 remains immutable historical acceptance. The NEXT patch must
+    # explicitly record a different, owner-tested, exact-SHA v1.1.5 RC.
+    new_gate = read("docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md")
+    if not re.search(r"(?m)^UPDATER_V1_1_5_ACCEPTANCE=(pending|accepted)$", new_gate):
+        FAILURES.append("v1.1.5 RC acceptance status must be pending or accepted")
+    for token in (
+        "UPDATER_V1_1_5_ACCEPTED_TAG=",
+        "UPDATER_V1_1_5_ACCEPTED_COMMIT=",
+        "UPDATER_V1_1_5_USER_SHA256=",
+    ):
+        if token not in new_gate:
+            FAILURES.append(f"v1.1.5 RC acceptance record missing: {token}")
     require(
         ".github/workflows/windows-updater-promote.yml",
         "SINGLE_PER_USER_STABLE_V1",
-        "v1.1.4-rc.3",
-        "4fd638c77392942b2560e9a74f59e12ac7474844",
-        "aee9c45916e69bcfcfb07dddc15ee33270dd12a18e7ec68a7f54995c7aec29fc",
-        "workflow_run:",
+        "PATCH_115_ACCEPTED_RC_AUTHORITY_V1",
+        "PATCH_115_EXPLICIT_PROMOTION_V1",
+        "v1\\.1\\.5-rc",
         "byte-identical-rc-artifact-promotion",
         "Windows-Setup-PerUser.exe",
         "overwrite_files: false",
+    )
+    require(
+        ".github/workflows/windows-build.yml",
+        "PATCH_115_NO_STALE_RELEASE_MUTATION_V1",
+        "Upload native platform QA evidence (not a stable release)",
+        "SonKuPik-K500-native-macOS-arm64.dmg",
     )
     promote = read(".github/workflows/windows-updater-promote.yml")
     if "cmake --build" in promote or "INNO_ISCC" in promote:
@@ -2328,7 +2345,7 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/RELEASES.md",
-        "Current public stable: **v1.1.3**",
+        "Current public stable: **v1.1.4**",
         "## v1.1.3 stable record",
         "## v1.1.2 stable record",
         "## v1.1.1 stable record",

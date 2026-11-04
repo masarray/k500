@@ -221,10 +221,10 @@ jobs:
         include:
           - os: ubuntu-24.04
             platform: linux
-            artifact: SonKuPik-K500-v1.1.4-Linux-x86_64.tar.gz
+            artifact: SonKuPik-K500-native-Linux-x86_64.tar.gz
           - os: macos-15
             platform: macos
-            artifact: SonKuPik-K500-v1.1.4-macOS-arm64.dmg
+            artifact: SonKuPik-K500-native-macOS-arm64.dmg
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -288,22 +288,16 @@ jobs:
           (cd dist && shasum -a 256 "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256")
           printf 'source_commit=%s\nos=${{ matrix.platform }}\nqt=6.10.2\nhardware_test=not_yet_physically_qualified\n' \
             "$GITHUB_SHA" > "dist/${{ matrix.artifact }}.provenance.txt"
-      - name: Publish platform package to stable v1.1.4 (additive, immutable)
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh release view v1.1.4 --repo "$GITHUB_REPOSITORY" >/dev/null
-          for file in "dist/${{ matrix.artifact }}" "dist/${{ matrix.artifact }}.sha256" "dist/${{ matrix.artifact }}.provenance.txt"; do
-            name="$(basename "$file")"
-            existing="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/v1.1.4" --jq ".assets[] | select(.name == \"$name\") | .digest" || true)"
-            if [[ -n "$existing" ]]; then
-              if [[ "$name" == "${{ matrix.artifact }}" ]]; then
-                actual="$(shasum -a 256 "$file" | awk '{print $1}')"
-                [[ "$existing" == "sha256:$actual" ]] || { echo "Refusing modified immutable asset"; exit 1; }
-              fi
-            else
-              gh release upload v1.1.4 "$file" --repo "$GITHUB_REPOSITORY"
-            fi
-          done
+      # PATCH_115_NO_STALE_RELEASE_MUTATION_V1: a source push must never
+      # upload new binary bytes into the immutable v1.1.4 public release.
+      # Keep native packages as short-lived QA evidence only.
+      - name: Upload native platform QA evidence (not a stable release)
+        uses: actions/upload-artifact@v4
+        with:
+          name: SonKuPik-K500-${{ matrix.platform }}-${{ github.sha }}-QA
+          path: |
+            dist/${{ matrix.artifact }}
+            dist/${{ matrix.artifact }}.sha256
+            dist/${{ matrix.artifact }}.provenance.txt
+          if-no-files-found: error
+          retention-days: 5

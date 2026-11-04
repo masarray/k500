@@ -8,7 +8,7 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.1.3**.
+Current public stable: **v1.1.4** (Per-User-only Windows x64 installer).
 
 Owner-accepted `v1.1.3-rc.6` was promoted byte-identically from application commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) verified all three installer SHA-256 digests and successfully published `v1.1.3` as the GitHub Latest Release. No installer bytes were rebuilt. The site routes resolve this latest non-prerelease release dynamically; v1.1.2 remains a historical stable.
 
@@ -35,6 +35,14 @@ MAJOR.MINOR.PATCH
 - **MAJOR** — support/architecture/API expectations that intentionally reset compatibility expectations.
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
+
+## v1.1.5 UI patch — next release candidate
+
+- Target: adaptive window/workspace for high-DPI and short-height laptops, visible System faders and non-blocking QRIS dismissal.
+- Source baseline: [PR #233](https://github.com/masarray/k500/pull/233).
+- Windows Per-User-only distribution remains the public model; legacy v1.1.4 assets are immutable.
+- v1.1.5 is **not released** until a verified, immutable candidate passes CI and explicit acceptance; see `docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md`.
+- Native macOS/Linux QA jobs must never inject source-built binaries into the historical v1.1.4 release.
 
 ## v1.1.3 stable record — 2026-10-13
 
