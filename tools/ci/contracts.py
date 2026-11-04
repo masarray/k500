@@ -2016,11 +2016,16 @@ def check_release_contracts() -> None:
             "Only the consolidated K500 CI may automatically promote")
 
     ci_release_gate = read(".github/workflows/windows-build.yml")
-    zip_region = ci_release_gate.split("  zip-release:", 1)[-1].split("  promote-approved-rc:", 1)[0]
-    if "github.event_name == 'push'" in zip_region:
-        FAILURES.append("Stable ZIP must not run for ordinary main commits")
+    if "  zip-release:" in ci_release_gate or "\\n  release:\\n" in ci_release_gate:
+        FAILURES.append("No duplicate ZIP job or release-triggered CI workflow")
     if "on:\\n  workflow_run:" in read(".github/workflows/windows-updater-promote.yml"):
         FAILURES.append("Stable publisher must not auto-spawn a second workflow_run")
+    require(".github/workflows/windows-updater-promote.yml",
+            "SMART_STABLE_ATOMIC_ALIASES_V1",
+            "python tools/release/package_short_downloads.py",
+            "dist/sonkupik-k500-setup.exe",
+            "dist/sonkupik-k500-setup.zip",
+            "dist/sonkupik-k500-setup.zip.sha256")
 
     # v1.1.4 remains immutable historical acceptance. The NEXT patch must
     # explicitly record a different, owner-tested, exact-SHA v1.1.5 RC.
@@ -2727,7 +2732,7 @@ def check_crossplatform_downloads() -> None:
     require("site/download/index.html", "platform-downloads",
             "Download for Windows", "Download for Mac", "Download for Linux")
     require(".github/workflows/windows-build.yml", "cross-platform:",
-            "qtserialport", "Package verified stable ZIP (no rebuild)",
+            "qtserialport", "SMART_STABLE_PROMOTION_GATE_V1",
             "Windows-Setup-PerUser.exe", "SonKuPik-K500-native-macOS-arm64.dmg",
             "SonKuPik-K500-native-Linux-x86_64.tar.gz",
             "Upload native platform QA evidence (not a stable release)")

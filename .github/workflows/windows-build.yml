@@ -8,8 +8,6 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-  release:
-    types: [published]
 
 permissions:
   contents: read
@@ -24,7 +22,6 @@ env:
 jobs:
   contracts:
     name: Fast contracts
-    if: github.event_name != 'release'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -132,82 +129,6 @@ jobs:
         shell: pwsh
         run: ./tools/ci/installer_smoke.ps1
 
-
-  zip-release:
-    name: Package verified stable ZIP (no rebuild)
-    # SMART_CI_SCOPE_V2: never allocate the ZIP runner on ordinary main pushes.
-    # Release publication alone creates the byte-identical public short ZIP.
-    if: >-
-      github.event_name == 'release' && github.event.action == 'published' &&
-      !github.event.release.prerelease && !github.event.release.draft
-    runs-on: ubuntu-latest
-    timeout-minutes: 12
-    permissions:
-      contents: write
-    concurrency:
-      group: k500-stable-zip-upload
-      cancel-in-progress: false
-    steps:
-      - name: Checkout packaging script
-        uses: actions/checkout@v4
-
-      - name: Verify official release, package and upload ZIP once
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          EVENT_NAME: ${{ github.event_name }}
-          PUBLISHED_TAG: ${{ github.event.release.tag_name }}
-        run: |
-          set -euo pipefail
-          if [[ "$EVENT_NAME" == "release" ]]; then
-            tag="$PUBLISHED_TAG"
-          else
-            tag="$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq '.tag_name')"
-          fi
-          [[ "$tag" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]] || { echo 'No qualified stable semver release'; exit 1; }
-          release="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag")"
-          [[ "$(jq -r '.draft' <<< "$release")" == "false" &&
-             "$(jq -r '.prerelease' <<< "$release")" == "false" ]] || { echo 'Refusing draft/prerelease'; exit 1; }
-          short_exe="sonkupik-k500-setup.exe"
-          short_zip="sonkupik-k500-setup.zip"
-          installer="SonKuPik-K500-$tag-Windows-Setup-PerUser.exe"
-          if [[ "$tag" == "v1.1.3" ]]; then
-            installer="SonKuPik-K500-$tag-Windows-Smart-Installer.exe"
-          fi
-          # Idempotent. Keep existing immutable release assets and resumable partial uploads.
-          all_present=true
-          for name in "$short_exe" "$short_exe.sha256" "$short_zip" "$short_zip.sha256"; do
-            if ! jq -e --arg name "$name" '.assets[] | select(.name == $name and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null; then
-              all_present=false
-              break
-            fi
-          done
-          if [[ "$all_present" == "true" ]]; then
-            echo "Short EXE, ZIP and both checksums already uploaded; no work needed"
-            exit 0
-          fi
-          jq -e --arg file "$installer" '.assets[] | select(.name == $file and .state == "uploaded" and .size > 0)' <<< "$release" >/dev/null || {
-            echo 'No qualified Per-User/legacy stable installer; refusing packaging'
-            exit 1
-          }
-          mkdir -p original dist
-          gh release download "$tag" --dir original --pattern "$installer" --repo "$GITHUB_REPOSITORY"
-          gh release download "$tag" --dir original --pattern "SHA256SUMS.txt" --repo "$GITHUB_REPOSITORY"
-          python3 tools/release/package_short_downloads.py \
-            --tag "$tag" \
-            --installer "original/$installer" \
-            --sums "original/SHA256SUMS.txt" \
-            --output-dir dist
-          # Upload missing files only. Existing EXE, ZIP, and checksum assets are never clobbered.
-          for asset in "$short_exe.sha256" "$short_zip.sha256" "$short_exe" "$short_zip"; do
-            if jq -e --arg name "$asset" '.assets[] | select(.name == $name and .state == "uploaded")' <<< "$release" >/dev/null; then
-              echo "Preserving existing asset: $asset"
-            else
-              gh release upload "$tag" "dist/$asset" --repo "$GITHUB_REPOSITORY"
-              echo "Uploaded $asset"
-            fi
-          done
-          echo "Published verified short-name EXE and ZIP for $tag"
 
   promote-approved-rc:
     # SMART_STABLE_PROMOTION_GATE_V1: same K500 CI run, not a second

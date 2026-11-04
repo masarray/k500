@@ -207,7 +207,16 @@ jobs:
           $global:LASTEXITCODE = 0
           Write-Host 'Per-User install/reinstall/uninstall, HKCU scope and data preservation PASS'
 
-      - name: Publish one immutable public Per-User installer
+      # SMART_STABLE_ATOMIC_ALIASES_V1: generate the EXE and ZIP aliases from
+      # the already-hash-verified RC installer in this SAME job. GitHub's
+      # GITHUB_TOKEN release event does not start another Actions workflow.
+      - name: Package verified short-name EXE and ZIP (no rebuild)
+        shell: pwsh
+        run: |
+          python tools/release/package_short_downloads.py --tag 'v${{ steps.accepted.outputs.version }}' --installer 'dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup-PerUser.exe' --sums 'dist/SHA256SUMS.txt' --output-dir dist
+          if ($LASTEXITCODE -ne 0) { throw 'Exact-RC ZIP alias verification failed' }
+
+      - name: Publish one immutable public Per-User installer + verified ZIP
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.accepted.outputs.stable }}
@@ -228,5 +237,9 @@ jobs:
             dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup-PerUser.exe
             dist/SHA256SUMS.txt
             dist/release-manifest.json
+            dist/sonkupik-k500-setup.exe
+            dist/sonkupik-k500-setup.exe.sha256
+            dist/sonkupik-k500-setup.zip
+            dist/sonkupik-k500-setup.zip.sha256
           fail_on_unmatched_files: true
           overwrite_files: false

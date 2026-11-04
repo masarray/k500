@@ -1,7 +1,7 @@
 ## K500 SMART RELEASE PIPELINE (2026-11-05)
 - ONE consolidated `.github/workflows/windows-build.yml` for PR/main.
 - `tools/ci/change_scope.py` now gates Windows compilation by changed paths even for main pushes; docs-only acceptance must not rebuild Qt/installer.
-- A published stable release alone triggers verified short-name ZIP packaging; normal main pushes do not run that runner.
+- The SAME stable promotion job builds verified short-name EXE + ZIP aliases from the immutable accepted installer, after checksum verification and without app/Qt/Inno rebuild. No extra ZIP runner or release-triggered CI run.
 - RC generation is manual/on-demand to prevent expensive duplicate installer builds. RC success NEVER by itself means owner acceptance.
 - Owner approves the exact immutable RC tag, commit and SHA-256 in `docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md`. A main push changing this file to `accepted` invokes the existing stable promotion as a reusable final job of K500 CI. No second automatically spawned workflow and NO stable rebuild.
 - Stable promotion is fail-closed: exact current main, successful CI gates, accepted RC provenance, installer SHA and Per-User lifecycle verification, and no preexisting stable tag. `workflow_dispatch` remains a manual recovery path.
