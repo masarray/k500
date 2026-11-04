@@ -1768,6 +1768,17 @@ def check_public_surface_contracts() -> None:
         "QWindow::screenChanged",
         "window->resize(fitted)",
     )
+    # COMPACT_TONE_RACK_V3 / FX_FIELD_RESPONSIVE_HEIGHT_V3 — no hidden
+    # slider rows or clipped reverb/echo field after the lower rack shortens.
+    require("qml/components/MusicTonePanel.qml",
+            "COMPACT_TONE_RACK_V3", "readonly property bool compactRack: height < 285",
+            "spacing: root.compactRack ? 3 : 6")
+    require_count("qml/components/MusicTonePanel.qml",
+                  "Layout.preferredHeight:root.compactRack ? 22 : 32", 5)
+    require("qml/components/RackFaderPanel.qml",
+            "FX_FIELD_RESPONSIVE_HEIGHT_V3",
+            "height: Math.min(220, Math.max(152, fieldSlot.height - 4))")
+
     # ADAPTIVE_RACK_GEOMETRY_V3: one responsive source feeds all fader strips.
     require("qml/Main.qml", "ADAPTIVE_RACK_GEOMETRY_V3",
             "readonly property int lowerRackHeight: Math.max(250, Math.min(304,",
