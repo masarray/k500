@@ -134,10 +134,16 @@
       // /download routes redirect to verified latest stable even without JS.
       // Do not trust arbitrary URLs from metadata as executable download targets.
       const downloadUrl = release.downloadUrl;
-      const legacyExe = `SonKuPik-K500-${release.tag}-Windows-${(() => {
-        const [major, minor, patch] = release.tag.slice(1).split('.').map(Number);
-        return major > 1 || (major === 1 && (minor > 1 || (minor === 1 && patch >= 3)));
-      })() ? 'Smart-Installer' : 'Setup'}.exe`;
+      // Match the native updater and the GitHub release resolver exactly:
+      // v1.1.3 was Smart; v1.1.4+ uses the qualified Per-User name.
+      // A mismatched guess previously prevented ALL href synchronization
+      // for an otherwise valid stable release.
+      const [major, minor, patch] = release.tag.slice(1).split('.').map(Number);
+      const perUser = major > 1 || (major === 1 &&
+        (minor > 1 || (minor === 1 && patch >= 4)));
+      const smart = major === 1 && minor === 1 && patch === 3;
+      const legacyExe = `SonKuPik-K500-${release.tag}-Windows-${perUser
+        ? 'Setup-PerUser' : smart ? 'Smart-Installer' : 'Setup'}.exe`;
       const shortExe = 'sonkupik-k500-setup.exe';
       const shortZip = 'sonkupik-k500-setup.zip';
       const legacyZip = `SonKuPik-K500-${release.tag}-Windows.zip`;

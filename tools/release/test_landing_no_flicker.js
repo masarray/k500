@@ -32,9 +32,9 @@ async function exercise(metadata, expected = {}) {
   const preferred = anchor('/download/windows-preferred', original);
   const nav = anchor('/download/windows-preferred', 'Download K500');
   const direct = anchor('/download/windows', 'Download EXE');
-  const relPage = anchor(host + 'tag/v1.1.3', 'GitHub release');
-  const exeChecksum = anchor(host + 'download/v1.1.3/SHA256SUMS.txt', 'Installer checksum');
-  const zipChecksum = anchor(host + 'tag/v1.1.3', 'ZIP checksum');
+  const relPage = anchor(host + 'tag/v1.1.5', 'GitHub release');
+  const exeChecksum = anchor(host + 'download/v1.1.5/sonkupik-k500-setup.exe.sha256', 'Installer checksum');
+  const zipChecksum = anchor(host + 'download/v1.1.5/sonkupik-k500-setup.zip.sha256', 'ZIP checksum');
   const selectors = {
     '[data-release-preferred]': [preferred, nav],
     '[data-release-download]': [direct],
@@ -62,7 +62,8 @@ async function exercise(metadata, expected = {}) {
   assert.equal(preferred.href, expected.preferred || '/download/windows-preferred');
   assert.equal(nav.href, expected.preferred || '/download/windows-preferred');
   assert.equal(direct.href, expected.exe || '/download/windows');
-  assert.equal(zipChecksum.href, expected.zipChecksum || host + 'tag/v1.1.3');
+  assert.equal(zipChecksum.href, expected.zipChecksum ||
+    host + 'download/v1.1.5/sonkupik-k500-setup.zip.sha256');
 }
 
 async function main() {
@@ -94,7 +95,16 @@ async function main() {
     preferred: exe, exe, zipChecksum: host + 'tag/v1.1.3'
   });
   await exercise({...valid, downloadUrl: 'https://unsafe.example/payload.exe'});
-  const newTag = 'v1.1.4';
+  // The published v1.1.5 legacy updater filename must be accepted by JS.
+  const v115 = 'v1.1.5';
+  const fullName = 'SonKuPik-K500-v1.1.5-Windows-Setup-PerUser.exe';
+  const fullUrl = host + 'download/' + v115 + '/' + fullName;
+  await exercise({...valid, tag: v115, version: '1.1.5',
+    downloadFilename: fullName, downloadUrl: fullUrl,
+    zipAvailable: false, zipUrl: null}, {
+      preferred: fullUrl, exe: fullUrl, zipChecksum: host + 'tag/v1.1.5'
+    });
+  const newTag = 'v1.1.6';
   const newExe = host + 'download/' + newTag + '/' + shortExe;
   const newZip = host + 'download/' + newTag + '/' + shortZip;
   await exercise({...valid, tag: newTag, version:'1.1.4', downloadUrl: newExe, zipUrl: newZip},

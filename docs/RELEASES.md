@@ -8,7 +8,7 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.1.4** (Per-User-only Windows x64 installer).
+Current public stable: **v1.1.5** (Windows 10/11 x64 + USB HID; no-admin Per-User installer).
 
 Owner-accepted `v1.1.3-rc.6` was promoted byte-identically from application commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) verified all three installer SHA-256 digests and successfully published `v1.1.3` as the GitHub Latest Release. No installer bytes were rebuilt. The site routes resolve this latest non-prerelease release dynamically; v1.1.2 remains a historical stable.
 
@@ -36,14 +36,15 @@ MAJOR.MINOR.PATCH
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
 
-## v1.1.5 UI patch — next release candidate
+## v1.1.5 stable — published 2026-11-05 (WIB)
 
-- Target: adaptive window/workspace for high-DPI and short-height laptops, visible System faders and non-blocking QRIS dismissal.
-- Source baseline: [PR #233](https://github.com/masarray/k500/pull/233).
-- Windows Per-User-only distribution remains the public model; legacy v1.1.4 assets are immutable.
-- v1.1.5 public EXE link is `sonkupik-k500-setup.exe`; public ZIP `sonkupik-k500-setup.zip` contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe` as requested, with identical verified bytes. The top-level GitHub asset `-Setup-PerUser.exe` remains for existing auto-updater clients: older machine-scope updater logic would misclassify a top-level `-Windows-Setup.exe` as a machine installer. Immutable prerelease v1.1.5-rc.1 remains unchanged.
-- v1.1.5 is **not released** until a verified, immutable candidate passes CI and explicit acceptance; see `docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md`.
-- Native macOS/Linux QA jobs must never inject source-built binaries into the historical v1.1.4 release.
+- [Official stable](https://github.com/masarray/k500/releases/tag/v1.1.5) was promoted from [owner-accepted v1.1.5-rc.1](V1_1_5_UPDATER_RC_ACCEPTANCE.md) by [single-pass CI #41911424715](https://github.com/masarray/k500/actions/runs/41911424715), without recompiling Qt/Inno.
+- Exact RC source commit: `89a1e59535c891190d226b9eb636a5c967dd4c73`. Verified installer SHA-256: `72651326cd871ae3278b92b713b2bb9db03dd3761970fab2e7ec0d5bba62cb3f`.
+- User fixes: adaptive short/high-DPI console, reachable System controls, faders and QRIS dismissal.
+- Public `sonkupik-k500-setup.zip` contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe`; public direct EXE is `sonkupik-k500-setup.exe`. Both have byte-identical Per-User binary contents and do not normally request UAC.
+- Versioned `-Windows-Setup-PerUser.exe` remains in GitHub Release for previously shipped updater clients. Do not publish a top-level versioned `-Windows-Setup.exe` asset: old machine-scope clients misclassify that filename.
+- Windows x64 USB HID is hardware-qualified; Bluetooth SPP remains experimental. No stable macOS/Linux packages for v1.1.5. Prior release assets remain immutable.
+- Release aliases and checksum files are produced by the existing stable promotion job, not a separate runner or build.
 
 ## v1.1.3 stable record — 2026-10-13
 
