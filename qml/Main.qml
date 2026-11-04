@@ -107,7 +107,12 @@ ApplicationWindow {
                 clip: true
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
-                readonly property real viewportScale: Math.min(1, Math.max(0.86, width / 1138))
+                // SHORT_SCREEN_RACK_FIT_V2: at 1366x768 the EQ can surrender
+                // some vertical space before the 304px control rack is clipped.
+                // Preserve readable text (at most 6% height-only reduction);
+                // narrower screens retain the existing horizontal fallback.
+                readonly property real viewportScale: Math.min(
+                    1, Math.max(0.86, width / 1138), Math.max(0.94, height / 640))
                 contentWidth: workspaceCanvas.width * viewportScale
                 contentHeight: workspaceCanvas.height * viewportScale
                 ScrollBar.horizontal: ScrollBar {
@@ -121,7 +126,10 @@ ApplicationWindow {
                 Item {
                     id: workspaceCanvas
                     width: Math.max(1138, workspaceViewport.width / workspaceViewport.viewportScale)
-                    height: Math.max(root.selectedSection === 8 ? 750 : 680,
+                    // Let the EQ compress to the *real* viewport instead of
+                    // reserving an invisible 680/750px virtual page. System
+                    // uses its own stable compact workspace mode below 740px.
+                    height: Math.max(548,
                                      workspaceViewport.height / workspaceViewport.viewportScale)
                     scale: workspaceViewport.viewportScale
                     transformOrigin: Item.TopLeft

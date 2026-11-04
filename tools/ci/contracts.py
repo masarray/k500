@@ -1768,6 +1768,26 @@ def check_public_surface_contracts() -> None:
         "QWindow::screenChanged",
         "window->resize(fitted)",
     )
+    # Screenshot-driven 1366x768 regression: 304px faders fit without
+    # scrolling the entire processor. System swaps persistent surfaces
+    # instead of shrinking 10 physical preset slots to unreadable rows.
+    require(
+        "qml/Main.qml",
+        "SHORT_SCREEN_RACK_FIT_V2",
+        "Math.max(0.94, height / 640)",
+        "height: Math.max(548,",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_SHORT_HEIGHT_PAGES_V1",
+        "readonly property bool compactSystem: root.height < 740",
+        "property int compactSystemPage: 0",
+        'text: "PRESETS & DEVICE"',
+        'text: "LEVELS & RECORDING"',
+        "visible: !root.compactSystem || root.compactSystemPage === 0",
+        "visible: !root.compactSystem || root.compactSystemPage === 1",
+        "Layout.maximumHeight: root.compactSystem ? 400 : root.lowerRackHeight",
+    )
     require(
         "qml/components/SectionDrawer.qml",
         "property bool compact: false",

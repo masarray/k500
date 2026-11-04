@@ -457,6 +457,12 @@ Item {
                                              && root.normalizedBtNameDraft() !== String(root.currentBtName || "").trim()
     readonly property int lowerRackHeight: 304
 
+    // SYSTEM_SHORT_HEIGHT_PAGES_V1: the 10-slot preset workspace and five
+    // live faders cannot coexist vertically on a 768px physical laptop.
+    // Switch existing stable QML surfaces without destroying/reloading them.
+    readonly property bool compactSystem: root.height < 740
+    property int compactSystemPage: 0  // 0 = Presets & Device, 1 = Levels
+
     // STARTUP_LIMIT_STABLE_MODEL_V1 — metadata identity is constant for the
     // lifetime of this workspace. Live values are owned by StudioEngine and
     // resolved in-place by RackFaderPanel; changing one value must never rebuild
@@ -631,7 +637,39 @@ Item {
         anchors.fill: parent
         spacing: 12
 
+        // The only extra UI on short screens: two concise, persistent tabs.
+        // Wide desktop geometry and all hardware authority paths stay intact.
         RowLayout {
+            visible: root.compactSystem
+            Layout.fillWidth: true
+            Layout.preferredHeight: root.compactSystem ? 34 : 0
+            Layout.minimumHeight: Layout.preferredHeight
+            Layout.maximumHeight: Layout.preferredHeight
+            spacing: 8
+
+            SoftButton {
+                Layout.preferredWidth: 178
+                Layout.preferredHeight: 32
+                text: "PRESETS & DEVICE"
+                labelPixelSize: 11
+                mixerSelect: true
+                checked: root.compactSystemPage === 0
+                onClicked: root.compactSystemPage = 0
+            }
+            SoftButton {
+                Layout.preferredWidth: 188
+                Layout.preferredHeight: 32
+                text: "LEVELS & RECORDING"
+                labelPixelSize: 11
+                mixerSelect: true
+                checked: root.compactSystemPage === 1
+                onClicked: root.compactSystemPage = 1
+            }
+            Item { Layout.fillWidth: true }
+        }
+
+        RowLayout {
+            visible: !root.compactSystem || root.compactSystemPage === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 12
@@ -1283,10 +1321,13 @@ Item {
         }
 
         RowLayout {
+            visible: !root.compactSystem || root.compactSystemPage === 1
             Layout.fillWidth: true
-            Layout.preferredHeight: root.lowerRackHeight
+            // On compact screens the lower rack gets its own usable page.
+            // Its 160px calibrated StudioFader tracks remain unchanged.
+            Layout.preferredHeight: root.compactSystem ? 400 : root.lowerRackHeight
             Layout.minimumHeight: root.lowerRackHeight
-            Layout.maximumHeight: root.lowerRackHeight
+            Layout.maximumHeight: root.compactSystem ? 400 : root.lowerRackHeight
             spacing: 12
 
             RackFaderPanel {
