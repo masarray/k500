@@ -140,12 +140,21 @@ jobs:
           if ($entry.Count -ne 1 -or [int64]$entry[0].bytes -ne (Get-Item $file).Length) {
             throw 'RC manifest does not match accepted Per-User bytes'
           }
+          # V115_PUBLIC_SETUP_FILENAME_V1: the legacy updater expects the
+          # qualified '-PerUser' asset name. Keep it as a byte-identical
+          # internal alias, while publishing the simpler Setup.exe to users.
+          # Do not rename/modify the immutable RC. No app or installer build.
           $stableName = 'SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup-PerUser.exe'
+          $publicName = 'SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup.exe'
           Copy-Item $file (Join-Path dist $stableName)
-          if ((Get-FileHash (Join-Path dist $stableName) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
-            throw 'Stable staging changed the accepted installer bytes'
+          Copy-Item $file (Join-Path dist $publicName)
+          foreach ($name in @($stableName, $publicName)) {
+            if ((Get-FileHash (Join-Path dist $name) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $hash) {
+              throw "Stable alias $name changed accepted RC bytes"
+            }
           }
           "$hash  $stableName" | Set-Content -Encoding ascii dist/SHA256SUMS.txt
+          "$hash  $publicName" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
           $manifest = [ordered]@{
             schema = 'sonkupik-k500-release-manifest-v3'
             product = 'SonKuPik K500'
@@ -159,17 +168,21 @@ jobs:
             stableReleaseEligible = $true
             installerTechnology = 'Inno Setup 6'
             distributionModel = 'per-user-only-no-uac'
-            primaryDownload = $stableName
+            primaryDownload = $publicName
+            updaterCanonicalAsset = $stableName
             hardwareAcceptance = 'owner-confirmed-preset-library'
             machineScopeUpdates = 'not-published-use-explicit-migration'
-            artifacts = @([ordered]@{ file=$stableName; sha256=$hash; bytes=(Get-Item (Join-Path dist $stableName)).Length })
+            artifacts = @(
+              [ordered]@{ file=$stableName; sha256=$hash; bytes=(Get-Item (Join-Path dist $stableName)).Length },
+              [ordered]@{ file=$publicName; sha256=$hash; bytes=(Get-Item (Join-Path dist $publicName)).Length }
+            )
           }
           $manifest | ConvertTo-Json -Depth 7 | Set-Content -Encoding utf8 dist/release-manifest.json
 
       - name: Test original Per-User bytes, no admin, preserve user data
         shell: pwsh
         run: |
-          $setup = (Resolve-Path 'dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup-PerUser.exe').Path
+          $setup = (Resolve-Path 'dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup.exe').Path
           $dir = Join-Path $env:LOCALAPPDATA 'Programs/SonKuPik K500'
           $reg = 'HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
           $machine = 'HKLM\Software\Microsoft\Windows\CurrentVersion\Uninstall\{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1'
@@ -216,7 +229,7 @@ jobs:
           python tools/release/package_short_downloads.py --tag 'v${{ steps.accepted.outputs.version }}' --installer 'dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup-PerUser.exe' --sums 'dist/SHA256SUMS.txt' --output-dir dist
           if ($LASTEXITCODE -ne 0) { throw 'Exact-RC ZIP alias verification failed' }
 
-      - name: Publish one immutable public Per-User installer + verified ZIP
+      - name: Publish public Setup.exe, updater-compatible alias and verified ZIP
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.accepted.outputs.stable }}
@@ -228,13 +241,15 @@ jobs:
           body: |
             SonKuPik K500 v1.1.5 — adaptive Windows DPI/laptop console and QRIS dismissal accessibility patch. The previously accepted GEN5 preset bank remains unchanged.
 
-            **One Windows x64 Per-User installer. No machine-wide installer or Smart Installer.**
-            Installs to %LOCALAPPDATA%\Programs\SonKuPik K500 with standard Windows user privileges (no UAC elevation requested). The EXE is byte-for-byte identical to the approved ${{ steps.accepted.outputs.tag }} Per-User installer; no release rebuild.
+            **Windows x64 — download SonKuPik-K500-v1.1.5-Windows-Setup.exe.**
+            This setup installs per-user to %LOCALAPPDATA%\Programs\SonKuPik K500 (no admin/UAC elevation). The filename no longer includes "-PerUser", but the installer behavior is unchanged. The additional -PerUser asset is a byte-identical compatibility alias retained for existing auto-updater clients.
+            All distributed installer aliases are SHA-256-identical to the owner-tested ${{ steps.accepted.outputs.tag }} candidate; no rebuild.
 
             Existing machine-wide installations require separate explicit migration; this installer never silently escalates or uninstalls machine-wide software.
             Unsigned open-source build; Windows SmartScreen may still display its normal publisher warning.
           files: |
             dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup-PerUser.exe
+            dist/SonKuPik-K500-v${{ steps.accepted.outputs.version }}-Windows-Setup.exe
             dist/SHA256SUMS.txt
             dist/release-manifest.json
             dist/sonkupik-k500-setup.exe
