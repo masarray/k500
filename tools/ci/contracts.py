@@ -1292,6 +1292,8 @@ def check_public_surface_contracts() -> None:
         "id: donationScroll",
         "contentHeight: donationBody.implicitHeight + 10",
         "onClicked: root.dismiss()",
+        "DONATION_QR_VIEWPORT_FIT_V3",
+        "readonly property real qrSide: Math.min(350, Math.max(180,",
         "DONATION_READABLE_HIERARCHY_V2",
         "DONATION_TEXT_LINKS_V2",
         "LUCIDE_HEART_FILLED_V1",
@@ -1304,6 +1306,8 @@ def check_public_surface_contracts() -> None:
         "Qt.openUrlExternally(SupportLinks.youtubeUrl)",
         "Qt.openUrlExternally(SupportLinks.tokopediaUrl)",
     )
+    require("qml/components/LucideIcon.qml", "DONATION_CLOSE_X_GLYPH_V1",
+            'case "x": return "M18 6 6 18 M6 6l12 12"')
     require_exact_count("qml/components/DonationPrompt.qml", "font.underline: true", 2)
     forbid(
         "qml/components/DonationPrompt.qml",

@@ -206,8 +206,10 @@ Popup {
 
         Rectangle {
             Layout.alignment: Qt.AlignHCenter
-            readonly property real qrSide: Math.min(390, Math.max(180,
-                Math.min(donationBody.width - 12, root.height - 290)))
+            // DONATION_QR_VIEWPORT_FIT_V3: allow more room for the voluntary
+            // footer copy without stretching or cropping the official bitmap.
+            readonly property real qrSide: Math.min(350, Math.max(180,
+                Math.min(donationBody.width - 12, root.height - 360)))
             Layout.preferredWidth: qrSide
             Layout.preferredHeight: qrSide
             radius: 15
