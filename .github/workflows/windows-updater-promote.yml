@@ -4,9 +4,12 @@ name: Windows Stable — Per-User only
 # installer. Never rebuild, package, advertise or upload machine/Smart installers.
 # Manually publish after exact-main K500 CI and approved RC hash and SHA;
 # stable promotion NEVER rebuilds application bytes.
-# PATCH_115_EXPLICIT_PROMOTION_V1 — manually promote after acceptance.
-# Prior v1.1.4 tag and binaries remain immutable; no extra workflows created.
+# PATCH_115_EXPLICIT_PROMOTION_V1 — manual fallback stays available.
+# SMART_STABLE_PROMOTION_GATE_V1: the consolidated CI can also call this
+# exact byte-identical promotion after the acceptance-only main commit.
+# No workflow_run cascade, no extra workflow file or app rebuild.
 on:
+  workflow_call:
   workflow_dispatch:
 
 permissions:
@@ -19,7 +22,7 @@ concurrency:
 
 jobs:
   promote-user:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.workflow == 'K500 CI') }}
     runs-on: windows-2022
     timeout-minutes: 18
     steps:
@@ -35,6 +38,7 @@ jobs:
           CI_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
           CI_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           CI_SOURCE_EVENT: ${{ github.event.workflow_run.event }}
+          CI_WORKFLOW_NAME: ${{ github.workflow }}
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:GITHUB_REF -ne 'refs/heads/main') { throw 'Stable release must run on main' }
@@ -42,15 +46,21 @@ jobs:
           if ($LASTEXITCODE -ne 0 -or $mainSha -ne $env:GITHUB_SHA) {
             throw 'Promotion checkout is not the current main commit'
           }
-          if ($env:CI_EVENT_NAME -eq 'workflow_run') {
-            if ($env:CI_SOURCE_EVENT -ne 'push' -or $env:CI_CONCLUSION -ne 'success' -or $env:CI_HEAD_SHA -ne $mainSha) {
-              throw 'Exact-main push CI has not passed'
+          if ($env:CI_EVENT_NAME -eq 'push') {
+            # This is a reusable job inside K500 CI: the caller explicitly
+            # needs successful contracts and successful-or-skipped native jobs.
+            # The workflow itself is still in progress here, so querying for
+            # a completed exact-main CI would be a false failure.
+            if ($env:CI_WORKFLOW_NAME -ne 'K500 CI') {
+              throw 'Only the consolidated K500 CI may automatically promote'
             }
-          } else {
+          } elseif ($env:CI_EVENT_NAME -eq 'workflow_dispatch') {
             $results = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs?head_sha=$mainSha&per_page=100" | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0 -or @($results.workflow_runs | Where-Object {
               $_.name -eq 'K500 CI' -and $_.event -eq 'push' -and $_.status -eq 'completed' -and $_.conclusion -eq 'success'
             }).Count -eq 0) { throw 'No exact-main successful K500 CI push exists' }
+          } else {
+            throw 'Stable promotion must be invoked by K500 CI or manual dispatch'
           }
           $cmake = Get-Content 'CMakeLists.txt' -Raw
           if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION (1\.1\.5) LANGUAGES CXX\)') {
@@ -103,7 +113,7 @@ jobs:
           "hash=$hash" >> $env:GITHUB_OUTPUT
           "asset=$asset" >> $env:GITHUB_OUTPUT
 
-      - name: Download and verify exact Per-User RC.3 bytes only
+      - name: Download and verify exact accepted Per-User RC bytes only
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -210,7 +220,7 @@ jobs:
             SonKuPik K500 v1.1.5 — adaptive Windows DPI/laptop console and QRIS dismissal accessibility patch. The previously accepted GEN5 preset bank remains unchanged.
 
             **One Windows x64 Per-User installer. No machine-wide installer or Smart Installer.**
-            Installs to %LOCALAPPDATA%\Programs\SonKuPik K500 with standard Windows user privileges (no UAC elevation requested). The EXE is byte-for-byte identical to the approved v1.1.5-rc.3 Per-User installer; no release rebuild.
+            Installs to %LOCALAPPDATA%\Programs\SonKuPik K500 with standard Windows user privileges (no UAC elevation requested). The EXE is byte-for-byte identical to the approved ${{ steps.accepted.outputs.tag }} Per-User installer; no release rebuild.
 
             Existing machine-wide installations require separate explicit migration; this installer never silently escalates or uninstalls machine-wide software.
             Unsigned open-source build; Windows SmartScreen may still display its normal publisher warning.

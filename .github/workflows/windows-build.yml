@@ -31,6 +31,7 @@ jobs:
       build_required: ${{ steps.scope.outputs.build_required }}
       installer_required: ${{ steps.scope.outputs.installer_required }}
       platform_required: ${{ steps.scope.outputs.platform_required }}
+      promotion_required: ${{ steps.scope.outputs.promotion_required }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -134,10 +135,11 @@ jobs:
 
   zip-release:
     name: Package verified stable ZIP (no rebuild)
+    # SMART_CI_SCOPE_V2: never allocate the ZIP runner on ordinary main pushes.
+    # Release publication alone creates the byte-identical public short ZIP.
     if: >-
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (github.event_name == 'release' && github.event.action == 'published' &&
-       !github.event.release.prerelease && !github.event.release.draft)
+      github.event_name == 'release' && github.event.action == 'published' &&
+      !github.event.release.prerelease && !github.event.release.draft
     runs-on: ubuntu-latest
     timeout-minutes: 12
     permissions:
@@ -206,6 +208,23 @@ jobs:
             fi
           done
           echo "Published verified short-name EXE and ZIP for $tag"
+
+  promote-approved-rc:
+    # SMART_STABLE_PROMOTION_GATE_V1: same K500 CI run, not a second
+    # automatic workflow. On acceptance-only commits, Windows and installer
+    # jobs are skipped; the immutable RC is promoted without recompilation.
+    name: Promote owner-accepted RC (no rebuild)
+    needs: [contracts, windows, installer]
+    if: >-
+      always() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
+      needs.contracts.result == 'success' &&
+      needs.contracts.outputs.promotion_required == 'true' &&
+      (needs.windows.result == 'success' || needs.windows.result == 'skipped') &&
+      (needs.installer.result == 'success' || needs.installer.result == 'skipped')
+    permissions:
+      contents: write
+      actions: read
+    uses: ./.github/workflows/windows-updater-promote.yml
 
   cross-platform:
     name: Native platform — ${{ matrix.platform }}

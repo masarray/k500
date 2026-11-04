@@ -1,3 +1,13 @@
+## K500 SMART RELEASE PIPELINE (2026-11-05)
+- ONE consolidated `.github/workflows/windows-build.yml` for PR/main.
+- `tools/ci/change_scope.py` now gates Windows compilation by changed paths even for main pushes; docs-only acceptance must not rebuild Qt/installer.
+- A published stable release alone triggers verified short-name ZIP packaging; normal main pushes do not run that runner.
+- RC generation is manual/on-demand to prevent expensive duplicate installer builds. RC success NEVER by itself means owner acceptance.
+- Owner approves the exact immutable RC tag, commit and SHA-256 in `docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md`. A main push changing this file to `accepted` invokes the existing stable promotion as a reusable final job of K500 CI. No second automatically spawned workflow and NO stable rebuild.
+- Stable promotion is fail-closed: exact current main, successful CI gates, accepted RC provenance, installer SHA and Per-User lifecycle verification, and no preexisting stable tag. `workflow_dispatch` remains a manual recovery path.
+- v1.1.5-rc.1 (commit 89a1e59535c891190d226b9eb636a5c967dd4c73) passed RC run 41899434321; the acceptance file is still `pending`, so no stable release is authorized yet.
+- Historical v1.1.4 assets must never be modified. Do not introduce separate workflows for normal features.
+
 ## Three-platform distribution — authoritative decision (2026-11-02)
 ONE Windows Per-User installer, no UAC, no rebuild to generate ZIP. The public `sonkupik-k500-setup.zip` contains original byte-identical `sonkupik-k500-setup.exe` and SHA256. All three platform buttons must use canonical verified GitHub Release assets; missing Mac/Linux binaries redirect to the release page (never fake files). macOS/Linux transport uses QtSerialPort and hidapi instead of Win32; physical K500 device validation remains unqualified until actual FAT. Consolidated `windows-build.yml` runs macOS ARM64/Linux x86_64 OS jobs on relevant main-source changes only, no new workflows. No change to protected #41 D2R GOLDEN or old stable Windows installer.
 

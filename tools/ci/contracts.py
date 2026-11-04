@@ -1993,6 +1993,35 @@ def check_release_contracts() -> None:
     ):
         if token not in gate:
             FAILURES.append(f"v1.1.4 Per-User RC.3 owner gate mismatch: {token}")
+    # SMART_CI_SCOPE_V2 / SMART_STABLE_PROMOTION_GATE_V1:
+    # The same K500 CI run conditionally calls existing promotion; no nested
+    # workflow_run event, no Qt rebuild for docs-only owner acceptance.
+    require(".github/workflows/windows-build.yml",
+            "SMART_CI_SCOPE_V2",
+            "SMART_STABLE_PROMOTION_GATE_V1",
+            "promotion_required: ${{ steps.scope.outputs.promotion_required }}",
+            "needs: [contracts, windows, installer]",
+            "needs.contracts.outputs.promotion_required == 'true'",
+            "uses: ./.github/workflows/windows-updater-promote.yml")
+    require("tools/ci/change_scope.py",
+            "SMART_CI_SCOPE_V2",
+            'force_build = event == "workflow_dispatch"',
+            "SMART_STABLE_PROMOTION_GATE_V1",
+            'promotion_required=',
+            're.fullmatch(r"v1\\.1\\.5-rc\\.[1-9][0-9]*"')
+    require(".github/workflows/windows-updater-promote.yml",
+            "SMART_STABLE_PROMOTION_GATE_V1",
+            "workflow_call:",
+            "CI_WORKFLOW_NAME:",
+            "Only the consolidated K500 CI may automatically promote")
+
+    ci_release_gate = read(".github/workflows/windows-build.yml")
+    zip_region = ci_release_gate.split("  zip-release:", 1)[-1].split("  promote-approved-rc:", 1)[0]
+    if "github.event_name == 'push'" in zip_region:
+        FAILURES.append("Stable ZIP must not run for ordinary main commits")
+    if "on:\\n  workflow_run:" in read(".github/workflows/windows-updater-promote.yml"):
+        FAILURES.append("Stable publisher must not auto-spawn a second workflow_run")
+
     # v1.1.4 remains immutable historical acceptance. The NEXT patch must
     # explicitly record a different, owner-tested, exact-SHA v1.1.5 RC.
     new_gate = read("docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md")
