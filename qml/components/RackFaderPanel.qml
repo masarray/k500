@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Window
 
 StudioPanel {
     id: root
@@ -23,7 +24,9 @@ StudioPanel {
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
-    readonly property real faderHeight: 160
+    readonly property real faderHeight: root.Window.window
+        && root.Window.window.adaptiveFaderHeight !== undefined
+        ? root.Window.window.adaptiveFaderHeight : 160
     accentTop: false
 
     // PREMIUM_FX_SPACE_PANEL_V1

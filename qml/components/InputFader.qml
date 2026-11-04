@@ -60,9 +60,7 @@ Item {
 
         StudioFader {
             id: inputFader
-            Layout.preferredHeight: 160
-            Layout.minimumHeight: 160
-            Layout.maximumHeight: 160
+            // ADAPTIVE_FADER_TRAVEL_V3: StudioFader owns the shared track height.
             Layout.preferredWidth: 48
             Layout.alignment: Qt.AlignHCenter
             value: root.value

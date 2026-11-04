@@ -20,7 +20,14 @@ ApplicationWindow {
     title: "SonKuPik K500 - Karaoke Processor v" + Qt.application.version
     color: Theme.bg
 
-    readonly property int lowerRackHeight: 304
+    // ADAPTIVE_RACK_GEOMETRY_V3: measure the usable *logical viewport*.
+    // The 304px rack remains unchanged on large desktop screens. Short
+    // laptops use a 250px rack to return visual space to the EQ graph.
+    readonly property int lowerRackHeight: Math.max(250, Math.min(304,
+        Math.round(250 + (workspaceViewport.height - 600) * 0.45)))
+    // Shared 132..160px physical fader travel, never a scaled/fake slider.
+    readonly property int adaptiveFaderHeight: Math.max(132, Math.min(160,
+        Math.round(160 - (304 - lowerRackHeight) * 0.52)))
     readonly property int rightPanelWidth: 216
     // P3_AUTHORITATIVE_RECONCILIATION_UI_BARRIER_V1 — during initial sync or
     // P3 verification the central editor is read-only. This prevents a user
@@ -107,10 +114,8 @@ ApplicationWindow {
                 clip: true
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
-                // SHORT_SCREEN_RACK_FIT_V2: at 1366x768 the EQ can surrender
-                // some vertical space before the 304px control rack is clipped.
-                // Preserve readable text (at most 6% height-only reduction);
-                // narrower screens retain the existing horizontal fallback.
+                // SHORT_SCREEN_RACK_FIT_V2: moderate visual scale plus an
+                // adaptive rack; tiny windows retain accessible scrollbars.
                 readonly property real viewportScale: Math.min(
                     1, Math.max(0.86, width / 1138), Math.max(0.94, height / 640))
                 contentWidth: workspaceCanvas.width * viewportScale

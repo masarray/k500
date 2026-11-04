@@ -541,14 +541,14 @@ def check_ui_contracts() -> None:
     # SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1: two equally spaced faders in each card.
     if system_qml.count("width:parent ? parent.width / 2 : 96") != 2:
         FAILURES.append("Recording and Mic Trigger must each have two equally wide centered fader slots")
-    if system_qml.count("Item { Layout.fillHeight:true; Layout.minimumHeight:0 }") != 4:
-        FAILURES.append("Fader label, track and value must remain vertically centered")
+    if system_qml.count("Item { Layout.fillHeight:true; Layout.minimumHeight:0 }") != 2:
+        FAILURES.append("Recording/Trigger must not have top flexible spacers that misalign faders")
     if system_qml.count("titlePixelSize:11") != 2:
         FAILURES.append("Plain-language K500 toggle titles must retain legible type")
     if system_qml.count('text:"RECORDING"') != 1 or system_qml.count('text:"MIC TRIGGER"') != 1:
         FAILURES.append("System must have exactly one header per fader pair")
-    if system_qml.count("Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160") != 2:
-        FAILURES.append("Recording and Mic Trigger must use equal fixed fader heights")
+    if system_qml.count("Layout.preferredHeight:root.faderHeight;Layout.minimumHeight:root.faderHeight;Layout.maximumHeight:root.faderHeight") != 2:
+        FAILURES.append("Recording and Mic Trigger must share the adaptive fader travel")
     if 'text:"RECORDING / MIC TRIGGER"' in system_qml:
         FAILURES.append("Combined Recording / Mic Trigger heading must not duplicate pair headings")
     require("qml/components/RackFaderPanel.qml",
@@ -1768,6 +1768,31 @@ def check_public_surface_contracts() -> None:
         "QWindow::screenChanged",
         "window->resize(fitted)",
     )
+    # ADAPTIVE_RACK_GEOMETRY_V3: one responsive source feeds all fader strips.
+    require("qml/Main.qml", "ADAPTIVE_RACK_GEOMETRY_V3",
+            "readonly property int lowerRackHeight: Math.max(250, Math.min(304,",
+            "readonly property int adaptiveFaderHeight: Math.max(132, Math.min(160,")
+    require("qml/components/StudioFader.qml", "ADAPTIVE_FADER_TRAVEL_V3",
+            "readonly property int trackHeight: root.Window.window",
+            "Layout.preferredHeight: trackHeight", "Layout.minimumHeight: trackHeight",
+            "Layout.maximumHeight: trackHeight")
+    require("qml/components/SectionWorkspace.qml", "ADAPTIVE_RACK_GEOMETRY_V3",
+            "root.Window.window.lowerRackHeight")
+    require("qml/components/RackFaderPanel.qml", "root.Window.window.adaptiveFaderHeight")
+    require("qml/components/MasterStripPanel.qml", "ADAPTIVE_FADER_TRAVEL_V3")
+    require("qml/components/SystemWorkspaceImpl.qml", "Layout.topMargin:7",
+            "Layout.preferredHeight:25;verticalAlignment:Text.AlignVCenter")
+
+    # Compare the intended 1366x768 / spacious desktop geometry budgets.
+    def console_metrics(h: int) -> tuple[int, int]:
+        rack = max(250, min(304, round(250 + (h - 600) * 0.45)))
+        fader = max(132, min(160, round(160 - (304 - rack) * 0.52)))
+        return rack, fader
+    if console_metrics(600) != (250, 132) or console_metrics(820) != (304, 160):
+        FAILURES.append("Adaptive rack/fader constraints fail laptop/desktop budgets")
+    else:
+        PASSES.append("Responsive fader geometry 250/132 short to 304/160 wide")
+
     # Screenshot-driven 1366x768 regression: 304px faders fit without
     # scrolling the entire processor. System swaps persistent surfaces
     # instead of shrinking 10 physical preset slots to unreadable rows.
@@ -1840,7 +1865,7 @@ def check_public_surface_contracts() -> None:
     require(
         "qml/components/InputFader.qml",
         "FINAL_MICRO_TEXT_READABILITY_V5",
-        "Layout.preferredHeight: 160",
+        "ADAPTIVE_FADER_TRAVEL_V3",
         "font.pixelSize: Theme.rackCaptionSize",
         "font.pixelSize: Theme.rackReadoutSize",
         "font.pixelSize: Theme.rackUnitSize",

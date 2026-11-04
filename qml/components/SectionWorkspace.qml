@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 
 Item {
     id: root
@@ -9,7 +10,10 @@ Item {
     property int micChannel: 0
     readonly property bool micEqLinked: root.engine ? Boolean(root.engine.micEqLinked) : false
     signal micEqLinkUserRequested(bool linked)
-    readonly property int lowerRackHeight: 304
+    // ADAPTIVE_RACK_GEOMETRY_V3: match Music while keeping the 8 fixed EQ pages.
+    readonly property int lowerRackHeight: root.Window.window
+        && root.Window.window.lowerRackHeight !== undefined
+        ? root.Window.window.lowerRackHeight : 304
     readonly property int rightPanelWidth: 216
     readonly property int masterWidth: rightPanelWidth
 
