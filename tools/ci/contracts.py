@@ -2699,8 +2699,9 @@ def check_crossplatform_downloads() -> None:
             "Download for Windows", "Download for Mac", "Download for Linux")
     require(".github/workflows/windows-build.yml", "cross-platform:",
             "qtserialport", "Package verified stable ZIP (no rebuild)",
-            "Windows-Setup-PerUser.exe", "SonKuPik-K500-v1.1.4-macOS-arm64.dmg",
-            "SonKuPik-K500-v1.1.4-Linux-x86_64.tar.gz")
+            "Windows-Setup-PerUser.exe", "SonKuPik-K500-native-macOS-arm64.dmg",
+            "SonKuPik-K500-native-Linux-x86_64.tar.gz",
+            "Upload native platform QA evidence (not a stable release)")
     PASSES.append("Windows byte-identical ZIP + guarded Mac/Linux packages")
 
 def main() -> int:
