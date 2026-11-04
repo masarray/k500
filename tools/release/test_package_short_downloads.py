@@ -63,6 +63,24 @@ class AliasTests(unittest.TestCase):
         self.assertNotEqual(self.run_pack().returncode, 0)
         self.assertFalse(list(self.out.glob("*")) if self.out.exists() else False)
 
+    def test_v115_friendly_exe_inside_zip_same_bytes(self):
+        # User-facing Setup.exe must never be published as a top-level
+        # machine-scope-looking asset; the ZIP can safely carry that name.
+        self.tag = "v1.1.5"
+        original = self.source
+        self.source = self.root / f"SonKuPik-K500-{self.tag}-Windows-Setup-PerUser.exe"
+        original.rename(self.source)
+        self.sums.write_text(f"{self.hash}  {self.source.name}\n")
+        result = self.run_pack()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        friendly = f"SonKuPik-K500-{self.tag}-Windows-Setup.exe"
+        with ZipFile(self.out / (SHORT + ".zip")) as archive:
+            self.assertEqual(archive.namelist(), [friendly, "README.txt", "SHA256SUMS.txt"])
+            self.assertEqual(archive.read(friendly), self.payload)
+            self.assertIn(friendly.encode(), archive.read("README.txt"))
+            self.assertIn(f"{self.hash}  {friendly}".encode(), archive.read("SHA256SUMS.txt"))
+        self.assertEqual((self.out / (SHORT + ".exe")).read_bytes(), self.payload)
+
     def test_rc_rejected(self):
         self.assertNotEqual(self.run_pack("v1.1.4-rc.1").returncode, 0)
 
