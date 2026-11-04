@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Layouts
 import QtQuick.Controls
+import QtQuick.Window
 
 StudioPanel {
     id: root
@@ -23,7 +24,9 @@ StudioPanel {
     property color accentColor: Theme.accent
     property bool compactCluster: title === "Reverb" || title === "Echo"
     property int selectedFader: -1
-    readonly property real faderHeight: 160
+    readonly property real faderHeight: root.Window.window
+        && root.Window.window.adaptiveFaderHeight !== undefined
+        ? root.Window.window.adaptiveFaderHeight : 160
     accentTop: false
 
     // PREMIUM_FX_SPACE_PANEL_V1
@@ -379,7 +382,9 @@ StudioPanel {
                         anchors.topMargin: 4
                         // MasterStripPanel uses the same rack content origin. Its value
                         // capsule ends 224px below that origin; 4 + 220 lands on it.
-                        height: 220
+                        // FX_FIELD_RESPONSIVE_HEIGHT_V3: align the visualization
+                        // to the actual rack interior on a short laptop.
+                        height: Math.min(220, Math.max(152, fieldSlot.height - 4))
                         radius: 10
                         border.width: 1
                         border.color: fieldMouse.containsMouse ? Theme.accentSoft : "#18242B"

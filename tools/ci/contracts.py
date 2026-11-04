@@ -541,14 +541,14 @@ def check_ui_contracts() -> None:
     # SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1: two equally spaced faders in each card.
     if system_qml.count("width:parent ? parent.width / 2 : 96") != 2:
         FAILURES.append("Recording and Mic Trigger must each have two equally wide centered fader slots")
-    if system_qml.count("Item { Layout.fillHeight:true; Layout.minimumHeight:0 }") != 4:
-        FAILURES.append("Fader label, track and value must remain vertically centered")
+    if system_qml.count("Item { Layout.fillHeight:true; Layout.minimumHeight:0 }") != 2:
+        FAILURES.append("Recording/Trigger must not have top flexible spacers that misalign faders")
     if system_qml.count("titlePixelSize:11") != 2:
         FAILURES.append("Plain-language K500 toggle titles must retain legible type")
     if system_qml.count('text:"RECORDING"') != 1 or system_qml.count('text:"MIC TRIGGER"') != 1:
         FAILURES.append("System must have exactly one header per fader pair")
-    if system_qml.count("Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160") != 2:
-        FAILURES.append("Recording and Mic Trigger must use equal fixed fader heights")
+    if system_qml.count("Layout.preferredHeight:root.faderHeight;Layout.minimumHeight:root.faderHeight;Layout.maximumHeight:root.faderHeight") != 2:
+        FAILURES.append("Recording and Mic Trigger must share the adaptive fader travel")
     if 'text:"RECORDING / MIC TRIGGER"' in system_qml:
         FAILURES.append("Combined Recording / Mic Trigger heading must not duplicate pair headings")
     require("qml/components/RackFaderPanel.qml",
@@ -1285,8 +1285,15 @@ def check_public_surface_contracts() -> None:
     require(
         "qml/components/DonationPrompt.qml",
         "countdownSeconds: 3",
-        "Popup.NoAutoClose",
-        "enabled: root.canAcknowledge",
+        "Popup.CloseOnEscape",
+        "DONATION_DISMISS_ALWAYS_AVAILABLE_V1",
+        "function dismiss()",
+        "onAboutToHide:",
+        "id: donationScroll",
+        "contentHeight: donationBody.implicitHeight + 10",
+        "onClicked: root.dismiss()",
+        "DONATION_QR_VIEWPORT_FIT_V3",
+        "readonly property real qrSide: Math.min(350, Math.max(180,",
         "DONATION_READABLE_HIERARCHY_V2",
         "DONATION_TEXT_LINKS_V2",
         "LUCIDE_HEART_FILLED_V1",
@@ -1299,6 +1306,8 @@ def check_public_surface_contracts() -> None:
         "Qt.openUrlExternally(SupportLinks.youtubeUrl)",
         "Qt.openUrlExternally(SupportLinks.tokopediaUrl)",
     )
+    require("qml/components/LucideIcon.qml", "DONATION_CLOSE_X_GLYPH_V1",
+            'case "x": return "M18 6 6 18 M6 6l12 12"')
     require_exact_count("qml/components/DonationPrompt.qml", "font.underline: true", 2)
     forbid(
         "qml/components/DonationPrompt.qml",
@@ -1737,14 +1746,94 @@ def check_public_surface_contracts() -> None:
     )
     forbid("qml/components/TopBar.qml", 'text:"Support"')
 
-    # MIN_WINDOW_LAYOUT_BUDGET_V6 — fast deterministic layout budget.
-    # No new workflow or hard-coded screenshot dimensions in runtime code.
+    # ADAPTIVE_VIEWPORT_FIELD_FIX_V1: the calibrated lower-rack minimum
+    # belongs to the scrollable content canvas, not the native window.
     require(
         "qml/Main.qml",
-        "MIN_WINDOW_LAYOUT_BUDGET_V6",
-        "minimumWidth: 1344",
+        "ADAPTIVE_VIEWPORT_FIELD_FIX_V1",
+        "minimumWidth: 700",
+        "minimumHeight: 420",
+        "Screen.desktopAvailableWidth",
+        "Screen.desktopAvailableHeight",
+        "id: workspaceViewport",
+        "id: toolbarViewport",
+        "interactive: false",
+        "Math.max(0.86, width / 1138)",
+        "width: Math.max(1138, workspaceViewport.width / workspaceViewport.viewportScale)",
+        "ScrollBar.vertical: ScrollBar",
+        "ScrollBar.horizontal: ScrollBar",
         "Layout.minimumWidth: 440",
         "Layout.minimumWidth: 224",
+    )
+    require(
+        "src/main.cpp",
+        "WINDOW_ACTIVE_SCREEN_WORKAREA_V1",
+        "screen->availableGeometry()",
+        "QWindow::screenChanged",
+        "window->resize(fitted)",
+    )
+    # COMPACT_TONE_RACK_V3 / FX_FIELD_RESPONSIVE_HEIGHT_V3 — no hidden
+    # slider rows or clipped reverb/echo field after the lower rack shortens.
+    require("qml/components/MusicTonePanel.qml",
+            "COMPACT_TONE_RACK_V3", "readonly property bool compactRack: height < 285",
+            "spacing: root.compactRack ? 3 : 6")
+    require_count("qml/components/MusicTonePanel.qml",
+                  "Layout.preferredHeight:root.compactRack ? 22 : 32", 5)
+    require("qml/components/RackFaderPanel.qml",
+            "FX_FIELD_RESPONSIVE_HEIGHT_V3",
+            "height: Math.min(220, Math.max(152, fieldSlot.height - 4))")
+
+    # ADAPTIVE_RACK_GEOMETRY_V3: one responsive source feeds all fader strips.
+    require("qml/Main.qml", "ADAPTIVE_RACK_GEOMETRY_V3",
+            "readonly property int lowerRackHeight: Math.max(250, Math.min(304,",
+            "readonly property int adaptiveFaderHeight: Math.max(132, Math.min(160,")
+    require("qml/components/StudioFader.qml", "ADAPTIVE_FADER_TRAVEL_V3",
+            "readonly property int trackHeight: root.Window.window",
+            "Layout.preferredHeight: trackHeight", "Layout.minimumHeight: trackHeight",
+            "Layout.maximumHeight: trackHeight")
+    require("qml/components/SectionWorkspace.qml", "ADAPTIVE_RACK_GEOMETRY_V3",
+            "root.Window.window.lowerRackHeight")
+    require("qml/components/RackFaderPanel.qml", "root.Window.window.adaptiveFaderHeight")
+    require("qml/components/MasterStripPanel.qml", "ADAPTIVE_FADER_TRAVEL_V3")
+    require("qml/components/SystemWorkspaceImpl.qml", "Layout.topMargin:7",
+            "Layout.preferredHeight:25;verticalAlignment:Text.AlignVCenter")
+
+    # Compare the intended 1366x768 / spacious desktop geometry budgets.
+    def console_metrics(h: int) -> tuple[int, int]:
+        rack = max(250, min(304, round(250 + (h - 600) * 0.45)))
+        fader = max(132, min(160, round(160 - (304 - rack) * 0.52)))
+        return rack, fader
+    if console_metrics(600) != (250, 132) or console_metrics(820) != (304, 160):
+        FAILURES.append("Adaptive rack/fader constraints fail laptop/desktop budgets")
+    else:
+        PASSES.append("Responsive fader geometry 250/132 short to 304/160 wide")
+
+    # Screenshot-driven 1366x768 regression: 304px faders fit without
+    # scrolling the entire processor. System swaps persistent surfaces
+    # instead of shrinking 10 physical preset slots to unreadable rows.
+    require(
+        "qml/Main.qml",
+        "SHORT_SCREEN_RACK_FIT_V2",
+        "Math.max(0.94, height / 640)",
+        "height: Math.max(548,",
+    )
+    require(
+        "qml/components/SystemWorkspaceImpl.qml",
+        "SYSTEM_SHORT_HEIGHT_PAGES_V1",
+        "readonly property bool compactSystem: root.height < 740",
+        "property int compactSystemPage: 0",
+        'text: "PRESETS & DEVICE"',
+        'text: "LEVELS & RECORDING"',
+        "visible: !root.compactSystem || root.compactSystemPage === 0",
+        "visible: !root.compactSystem || root.compactSystemPage === 1",
+        "Layout.maximumHeight: root.compactSystem ? 400 : root.lowerRackHeight",
+    )
+    require(
+        "qml/components/SectionDrawer.qml",
+        "property bool compact: false",
+        "id: navScroll",
+        "contentHeight: navColumn.implicitHeight + 16",
+        "ScrollBar.vertical: ScrollBar",
     )
     require(
         "qml/components/SectionWorkspace.qml",
@@ -1758,21 +1847,16 @@ def check_public_surface_contracts() -> None:
     require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:318", 3)
     require_count("qml/components/SectionWorkspace.qml", "Layout.minimumWidth:346", 3)
 
-    window_min = re.search(r"(?m)^\s*minimumWidth:\s*(\d+)\s*$", read("qml/Main.qml"))
-    if not window_min:
-        FAILURES.append("Main window must declare numeric minimumWidth")
-    else:
-        available = int(window_min.group(1)) - (2 * 12 + 170 + 12)
-        music = 440 + 224 + 2 * 216 + 3 * 12
-        mic = 246 + 422 + 216 + 2 * 12 + 216 + 12
-        output = 318 + 346 + 216 + 2 * 12 + 216 + 12
-        for section, required in (("Music", music), ("Mic", mic), ("Output", output)):
-            if required > available:
-                FAILURES.append(
-                    f"{section} minimum rack {required}px exceeds available {available}px"
-                )
-            else:
-                PASSES.append(f"{section} minimum rack budget {required}/{available}px")
+    # Preserve all proven lower-rack minima in the virtual workspace canvas.
+    pane_budget = 1138
+    music = 440 + 224 + 2 * 216 + 3 * 12
+    mic = 246 + 422 + 216 + 2 * 12 + 216 + 12
+    output = 318 + 346 + 216 + 2 * 12 + 216 + 12
+    for section, required in (("Music", music), ("Mic", mic), ("Output", output)):
+        if required > pane_budget:
+            FAILURES.append(f"{section} minimum rack {required}px exceeds canvas {pane_budget}px")
+        else:
+            PASSES.append(f"{section}: calibrated rack retained with overflow access")
 
     # FINAL_MICRO_TEXT_READABILITY_V5 — existing CI, no new workflows.
     require(
@@ -1796,7 +1880,7 @@ def check_public_surface_contracts() -> None:
     require(
         "qml/components/InputFader.qml",
         "FINAL_MICRO_TEXT_READABILITY_V5",
-        "Layout.preferredHeight: 160",
+        "ADAPTIVE_FADER_TRAVEL_V3",
         "font.pixelSize: Theme.rackCaptionSize",
         "font.pixelSize: Theme.rackReadoutSize",
         "font.pixelSize: Theme.rackUnitSize",
@@ -1823,8 +1907,8 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.4 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must be 1.1.4 for the candidate release")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.5 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: source version must be 1.1.5 for the candidate release")
     if "V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR" not in cmake:
         FAILURES.append("CMakeLists.txt: v1.1.3 qualification anchor missing")
 
@@ -1887,7 +1971,7 @@ def check_release_contracts() -> None:
     # but not emitted to the public for new stable releases.
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "v1.1.4-rc.${{ inputs.rc_number }}",
+        "v1.1.5-rc.${{ inputs.rc_number }}",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
         "SINGLE_PER_USER_RC_V1",
         '"/DPerUser=1"',
@@ -1909,16 +1993,33 @@ def check_release_contracts() -> None:
     ):
         if token not in gate:
             FAILURES.append(f"v1.1.4 Per-User RC.3 owner gate mismatch: {token}")
+    # v1.1.4 remains immutable historical acceptance. The NEXT patch must
+    # explicitly record a different, owner-tested, exact-SHA v1.1.5 RC.
+    new_gate = read("docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md")
+    if not re.search(r"(?m)^UPDATER_V1_1_5_ACCEPTANCE=(pending|accepted)$", new_gate):
+        FAILURES.append("v1.1.5 RC acceptance status must be pending or accepted")
+    for token in (
+        "UPDATER_V1_1_5_ACCEPTED_TAG=",
+        "UPDATER_V1_1_5_ACCEPTED_COMMIT=",
+        "UPDATER_V1_1_5_USER_SHA256=",
+    ):
+        if token not in new_gate:
+            FAILURES.append(f"v1.1.5 RC acceptance record missing: {token}")
     require(
         ".github/workflows/windows-updater-promote.yml",
         "SINGLE_PER_USER_STABLE_V1",
-        "v1.1.4-rc.3",
-        "4fd638c77392942b2560e9a74f59e12ac7474844",
-        "aee9c45916e69bcfcfb07dddc15ee33270dd12a18e7ec68a7f54995c7aec29fc",
-        "workflow_run:",
+        "PATCH_115_ACCEPTED_RC_AUTHORITY_V1",
+        "PATCH_115_EXPLICIT_PROMOTION_V1",
+        "v1\\.1\\.5-rc",
         "byte-identical-rc-artifact-promotion",
         "Windows-Setup-PerUser.exe",
         "overwrite_files: false",
+    )
+    require(
+        ".github/workflows/windows-build.yml",
+        "PATCH_115_NO_STALE_RELEASE_MUTATION_V1",
+        "Upload native platform QA evidence (not a stable release)",
+        "SonKuPik-K500-native-macOS-arm64.dmg",
     )
     promote = read(".github/workflows/windows-updater-promote.yml")
     if "cmake --build" in promote or "INNO_ISCC" in promote:
@@ -2244,7 +2345,7 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/RELEASES.md",
-        "Current public stable: **v1.1.3**",
+        "Current public stable: **v1.1.4**",
         "## v1.1.3 stable record",
         "## v1.1.2 stable record",
         "## v1.1.1 stable record",
@@ -2369,8 +2470,8 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-rc.yml",
         "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_4_ACCEPTANCE=accepted",
-        "v1.1.4 RC line is closed after acceptance/stable promotion",
+        "UPDATER_V1_1_5_ACCEPTANCE=accepted",
+        "v1.1.5 RC line is closed after acceptance/stable promotion",
         "Bump the source version before starting a new RC line.",
     )
     # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
@@ -2398,7 +2499,7 @@ def check_release_contracts() -> None:
                 FAILURES.append(f"{workflow}:{number}: orphaned PowerShell -Force")
 
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md' -Raw")
+    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw")
     rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):
@@ -2598,8 +2699,9 @@ def check_crossplatform_downloads() -> None:
             "Download for Windows", "Download for Mac", "Download for Linux")
     require(".github/workflows/windows-build.yml", "cross-platform:",
             "qtserialport", "Package verified stable ZIP (no rebuild)",
-            "Windows-Setup-PerUser.exe", "SonKuPik-K500-v1.1.4-macOS-arm64.dmg",
-            "SonKuPik-K500-v1.1.4-Linux-x86_64.tar.gz")
+            "Windows-Setup-PerUser.exe", "SonKuPik-K500-native-macOS-arm64.dmg",
+            "SonKuPik-K500-native-Linux-x86_64.tar.gz",
+            "Upload native platform QA evidence (not a stable release)")
     PASSES.append("Windows byte-identical ZIP + guarded Mac/Linux packages")
 
 def main() -> int:

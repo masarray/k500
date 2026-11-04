@@ -7,6 +7,7 @@
 #include <QList>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QScreen>
 #include <QSettings>
 #include <QStringList>
 #include <QTimer>
@@ -882,6 +883,43 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
 
     engine.loadFromModule(QStringLiteral("SonkupikStudio"), QStringLiteral("Main"));
+
+    // WINDOW_ACTIVE_SCREEN_WORKAREA_V1 — the active monitor (not the whole
+    // virtual desktop) determines how much Qt logical work area is available.
+    if (!engine.rootObjects().isEmpty()) {
+        if (auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst())) {
+            const auto fitToWorkArea = [window] {
+                const QScreen *screen = window->screen();
+                if (!screen)
+                    return;
+                const QRect area = screen->availableGeometry();
+                if (!area.isValid())
+                    return;
+                // QWindow::size excludes native title-bar/borders, while the
+                // screen work area includes the full decorated window.
+                const QMargins frameMargins = window->frameMargins();
+                const QSize maxClient(qMax(1, area.width() - frameMargins.left() - frameMargins.right()),
+                                      qMax(1, area.height() - frameMargins.top() - frameMargins.bottom()));
+                const QSize fitted = window->size().boundedTo(maxClient);
+                if (fitted != window->size())
+                    window->resize(fitted);
+                const QSize frameSize(fitted.width() + frameMargins.left() + frameMargins.right(),
+                                      fitted.height() + frameMargins.top() + frameMargins.bottom());
+                QPoint framePos = window->framePosition();
+                framePos.setX(qBound(area.left(), framePos.x(),
+                                     qMax(area.left(), area.right() - frameSize.width() + 1)));
+                framePos.setY(qBound(area.top(), framePos.y(),
+                                     qMax(area.top(), area.bottom() - frameSize.height() + 1)));
+                if (framePos != window->framePosition())
+                    window->setFramePosition(framePos);
+            };
+            fitToWorkArea();
+            QObject::connect(window, &QWindow::screenChanged, window,
+                             [window, fitToWorkArea](QScreen *) {
+                                 QTimer::singleShot(0, window, fitToWorkArea);
+                             });
+        }
+    }
 
     // UPDATE_RELAUNCH_FOREGROUND_V1 — updater-triggered launches should be
     // noticeable without making K500 an always-on-top window. Request focus

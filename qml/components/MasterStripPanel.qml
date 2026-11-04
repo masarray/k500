@@ -100,9 +100,7 @@ StudioPanel {
 
                         StudioFader {
                             id: masterFader
-                            Layout.preferredHeight: 160
-                            Layout.minimumHeight: 160
-                            Layout.maximumHeight: 160
+                            // ADAPTIVE_FADER_TRAVEL_V3: same track as the music/mic rack.
                             Layout.preferredWidth: 48
                             Layout.alignment: Qt.AlignHCenter
                             value: channel.liveValue

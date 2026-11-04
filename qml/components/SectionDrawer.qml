@@ -1,20 +1,37 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Controls
 
 StudioPanel {
     id: root
     property int selectedSection: 0
+    property bool compact: false
     signal sectionSelected(int index)
     accentTop: false
 
-    ColumnLayout {
+    // Short-height screens retain access to all sections, including System.
+    Flickable {
+        id: navScroll
         anchors.fill: parent
-        anchors.margins: 8
-        spacing: 4
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+        contentWidth: width
+        contentHeight: navColumn.implicitHeight + 16
+        ScrollBar.vertical: ScrollBar {
+            policy: navScroll.contentHeight > navScroll.height + 1
+                    ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+        }
+        ColumnLayout {
+            id: navColumn
+            x: 8
+            y: 8
+            width: Math.max(1, navScroll.width - 16)
+            spacing: 4
 
         Item {
             Layout.fillWidth: true
-            Layout.preferredHeight: 28
+            visible: !root.compact
+            Layout.preferredHeight: root.compact ? 0 : 28
             Text {
                 anchors.left: parent.left
                 anchors.leftMargin: 7
@@ -81,7 +98,8 @@ StudioPanel {
                 Rectangle {
                     id: iconShell
                     anchors.left: parent.left
-                    anchors.leftMargin: 9
+                    anchors.leftMargin: root.compact
+                                        ? Math.max(0, Math.round((parent.width - width) / 2)) : 9
                     anchors.verticalCenter: parent.verticalCenter
                     width: Theme.navIconSize
                     height: Theme.navIconSize
@@ -102,6 +120,7 @@ StudioPanel {
                 }
 
                 Column {
+                    visible: !root.compact
                     anchors.left: iconShell.right
                     anchors.leftMargin: 10
                     anchors.right: parent.right
@@ -146,6 +165,6 @@ StudioPanel {
             }
         }
 
-        Item { Layout.fillHeight: true }
+        }
     }
 }

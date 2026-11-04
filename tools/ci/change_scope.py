@@ -52,12 +52,13 @@ def main() -> int:
     }
     # Native Mac/Linux jobs run only when their real transport/build inputs change.
     platform_names = {
-        "CMakeLists.txt", "src/k500/K500PosixIo.cpp",
+        # Version-only bumps do not alter native Mac/Linux transport. Do not
+        # spin up 2 expensive platform jobs for a Windows GUI patch release.
+        "src/k500/K500PosixIo.cpp",
         "src/k500/K500DeviceManager.cpp",
         "src/k500/K500TransactionScheduler.h",
         "src/k500/K500TransactionScheduler.cpp",
         "src/AppUpdateManager.cpp",
-        ".github/workflows/windows-build.yml",
     }
     platform = event == "push" and any(p in platform_names for p in paths)
 

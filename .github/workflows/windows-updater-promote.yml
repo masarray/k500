@@ -2,14 +2,12 @@ name: Windows Stable — Per-User only
 
 # SINGLE_PER_USER_STABLE_V1: promote the EXACT owner-accepted RC Per-User
 # installer. Never rebuild, package, advertise or upload machine/Smart installers.
-# Automatically publish after a successful exact-main K500 CI push; optional
-# manual dispatch is fail-closed on the same gate and SHA.
+# Manually publish after exact-main K500 CI and approved RC hash and SHA;
+# stable promotion NEVER rebuilds application bytes.
+# PATCH_115_EXPLICIT_PROMOTION_V1 — manually promote after acceptance.
+# Prior v1.1.4 tag and binaries remain immutable; no extra workflows created.
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["K500 CI"]
-    types: [completed]
-    branches: [main]
 
 permissions:
   contents: write
@@ -55,25 +53,28 @@ jobs:
             }).Count -eq 0) { throw 'No exact-main successful K500 CI push exists' }
           }
           $cmake = Get-Content 'CMakeLists.txt' -Raw
-          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION (1\.1\.4) LANGUAGES CXX\)') {
-            throw 'Wrong version for v1.1.4 stable'
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION (1\.1\.5) LANGUAGES CXX\)') {
+            throw 'Wrong version for v1.1.5 stable'
           }
           $version = $Matches[1]
-          $gate = Get-Content 'docs/V1_1_4_UPDATER_RC_ACCEPTANCE.md' -Raw
+          $gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw
           function Gate([string]$key) {
             $m = [regex]::Match($gate, "(?m)^$([regex]::Escape($key))=(.*)$")
             if (-not $m.Success) { throw "Missing acceptance token $key" }
             return $m.Groups[1].Value.Trim()
           }
-          if ((Gate 'UPDATER_V1_1_4_ACCEPTANCE') -ne 'accepted') {
+          if ((Gate 'UPDATER_V1_1_5_ACCEPTANCE') -ne 'accepted') {
             throw 'Owner acceptance is not approved'
           }
-          $tag = Gate 'UPDATER_V1_1_4_ACCEPTED_TAG'
-          $commit = (Gate 'UPDATER_V1_1_4_ACCEPTED_COMMIT').ToLowerInvariant()
-          $hash = (Gate 'UPDATER_V1_1_4_USER_SHA256').ToLowerInvariant()
-          if ($tag -ne 'v1.1.4-rc.3' -or $commit -ne '4fd638c77392942b2560e9a74f59e12ac7474844' -or
-              $hash -ne 'aee9c45916e69bcfcfb07dddc15ee33270dd12a18e7ec68a7f54995c7aec29fc') {
-            throw 'Unexpected immutable RC.3 acceptance identity'
+          $tag = Gate 'UPDATER_V1_1_5_ACCEPTED_TAG'
+          $commit = (Gate 'UPDATER_V1_1_5_ACCEPTED_COMMIT').ToLowerInvariant()
+          $hash = (Gate 'UPDATER_V1_1_5_USER_SHA256').ToLowerInvariant()
+          # PATCH_115_ACCEPTED_RC_AUTHORITY_V1 — only an explicitly accepted
+          # v1.1.5 RC identity from a separate owner-audited acceptance record.
+          if ($tag -notmatch '^v1\.1\.5-rc\.[1-9][0-9]*$' -or
+              $commit -notmatch '^[a-f0-9]{40}$' -or
+              $hash -notmatch '^[a-f0-9]{64}$') {
+            throw 'No valid v1.1.5 accepted RC identity; stable promotion blocked'
           }
           $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0 -or $release.draft -or $release.tag_name -ne $tag -or
@@ -171,7 +172,7 @@ jobs:
           if ($install.ExitCode -ne 0) { throw 'Per-User install failed' }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
           if (-not (Test-Path $app)) { throw 'Installer did not use default user LocalAppData' }
-          foreach ($arg in @('--update-scope-check=user','--update-health-check=1.1.4')) {
+          foreach ($arg in @('--update-scope-check=user','--update-health-check=1.1.5')) {
             $p = Start-Process $app -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "App regression $arg failed" }
           }
@@ -206,10 +207,10 @@ jobs:
           make_latest: true
           generate_release_notes: true
           body: |
-            SonKuPik K500 v1.1.4 stable — user-approved GEN5 preset bank, Velvet R1 MC HOST, and clear [UAUDIO]/[BT] labels.
+            SonKuPik K500 v1.1.5 — adaptive Windows DPI/laptop console and QRIS dismissal accessibility patch. The previously accepted GEN5 preset bank remains unchanged.
 
             **One Windows x64 Per-User installer. No machine-wide installer or Smart Installer.**
-            Installs to %LOCALAPPDATA%\Programs\SonKuPik K500 with standard Windows user privileges (no UAC elevation requested). The EXE is byte-for-byte identical to the approved v1.1.4-rc.3 Per-User installer; no release rebuild.
+            Installs to %LOCALAPPDATA%\Programs\SonKuPik K500 with standard Windows user privileges (no UAC elevation requested). The EXE is byte-for-byte identical to the approved v1.1.5-rc.3 Per-User installer; no release rebuild.
 
             Existing machine-wide installations require separate explicit migration; this installer never silently escalates or uninstalls machine-wide software.
             Unsigned open-source build; Windows SmartScreen may still display its normal publisher warning.

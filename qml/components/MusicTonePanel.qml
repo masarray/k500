@@ -15,6 +15,9 @@ StudioPanel {
                                            && !Boolean(systemState.adjMannerVrOff)
 
     implicitHeight: 304
+    // COMPACT_TONE_RACK_V3: key control remains 56px, while five horizontal
+    // sliders compact only their vertical spacing (not typography or width).
+    readonly property bool compactRack: height < 285
     accentTop: false
 
     ColumnLayout {
@@ -43,9 +46,9 @@ StudioPanel {
             Layout.fillHeight: true
             Layout.leftMargin: 12
             Layout.rightMargin: 12
-            Layout.topMargin: 10
-            Layout.bottomMargin: 10
-            spacing: 6
+            Layout.topMargin: root.compactRack ? 7 : 10
+            Layout.bottomMargin: root.compactRack ? 7 : 10
+            spacing: root.compactRack ? 3 : 6
 
             KeyControl {
                 Layout.fillWidth: true
@@ -54,12 +57,12 @@ StudioPanel {
                 onKeyEdited: function(v) { root.engine.musicKey = v }
             }
             // MUSIC_TONE_CAPTURED_V1 — native Noise Gate is OFF, then -90..-50 dB.
-            ParameterSlider { Layout.fillWidth:true;label:"NOISE GATE";value:root.engine.noiseGate;from:-91;to:-50;step:1;defaultValue:-70;decimals:0;unit:"dB";offAtMin:true;onValueEdited:function(v){root.engine.noiseGate=v} }
+            ParameterSlider { Layout.fillWidth:true;Layout.preferredHeight:root.compactRack ? 22 : 32;label:"NOISE GATE";value:root.engine.noiseGate;from:-91;to:-50;step:1;defaultValue:-70;decimals:0;unit:"dB";offAtMin:true;onValueEdited:function(v){root.engine.noiseGate=v} }
             // Native Bass is -12.0..+12.0 dB in 0.1 dB steps (CMD 0x0C selector 0x02).
-            ParameterSlider { Layout.fillWidth:true;label:"BASS";value:root.engine.bass;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.bass=v} }
-            ParameterSlider { Layout.fillWidth:true;label:"MID";value:root.engine.mid;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.mid=v} }
-            ParameterSlider { Layout.fillWidth:true;label:"MID FREQ";value:root.engine.midFreq;from:80;to:8000;step:10;defaultValue:1000;decimals:0;unit:"Hz";logarithmic:true;editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.midFreq=v} }
-            ParameterSlider { Layout.fillWidth:true;label:"TREBLE";value:root.engine.treble;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.treble=v} }
+            ParameterSlider { Layout.fillWidth:true;Layout.preferredHeight:root.compactRack ? 22 : 32;label:"BASS";value:root.engine.bass;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.bass=v} }
+            ParameterSlider { Layout.fillWidth:true;Layout.preferredHeight:root.compactRack ? 22 : 32;label:"MID";value:root.engine.mid;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.mid=v} }
+            ParameterSlider { Layout.fillWidth:true;Layout.preferredHeight:root.compactRack ? 22 : 32;label:"MID FREQ";value:root.engine.midFreq;from:80;to:8000;step:10;defaultValue:1000;decimals:0;unit:"Hz";logarithmic:true;editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.midFreq=v} }
+            ParameterSlider { Layout.fillWidth:true;Layout.preferredHeight:root.compactRack ? 22 : 32;label:"TREBLE";value:root.engine.treble;from:-12;to:12;step:.1;defaultValue:0;decimals:1;unit:"dB";editable:!root.manualVrActive;accentColor:root.manualVrActive?Theme.green:Theme.accent;onValueEdited:function(v){root.engine.treble=v} }
         }
     }
 }

@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 import QtQuick.Layouts
 
 ApplicationWindow {
@@ -8,18 +9,25 @@ ApplicationWindow {
     required property var deviceManager
     required property var donationPrompt
     visible: true
-    width: 1484
-    height: 920
-    // MIN_WINDOW_LAYOUT_BUDGET_V6 — fixed rack controls have an actual
-    // minimum layout budget; avoid clipping them at 1260px.
-    minimumWidth: 1344
-    minimumHeight: 800
+    // ADAPTIVE_VIEWPORT_FIELD_FIX_V1: work area is in device-independent px.
+    width: Math.min(1484, Screen.desktopAvailableWidth > 0 ? Screen.desktopAvailableWidth : 1484)
+    height: Math.min(920, Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 920)
+    minimumWidth: 700
+    minimumHeight: 420
+    readonly property bool compactNavigation: width < 1260
     // WINDOW_TITLE_RUNTIME_VERSION_V1 — CMake -> QCoreApplication -> Qt.application.version.
     // Never hard-code the public stable tag here: binary version is authoritative.
     title: "SonKuPik K500 - Karaoke Processor v" + Qt.application.version
     color: Theme.bg
 
-    readonly property int lowerRackHeight: 304
+    // ADAPTIVE_RACK_GEOMETRY_V3: measure the usable *logical viewport*.
+    // The 304px rack remains unchanged on large desktop screens. Short
+    // laptops use a 250px rack to return visual space to the EQ graph.
+    readonly property int lowerRackHeight: Math.max(250, Math.min(304,
+        Math.round(250 + (workspaceViewport.height - 600) * 0.45)))
+    // Shared 132..160px physical fader travel, never a scaled/fake slider.
+    readonly property int adaptiveFaderHeight: Math.max(132, Math.min(160,
+        Math.round(160 - (304 - lowerRackHeight) * 0.52)))
     readonly property int rightPanelWidth: 216
     // P3_AUTHORITATIVE_RECONCILIATION_UI_BARRIER_V1 — during initial sync or
     // P3 verification the central editor is read-only. This prevents a user
@@ -55,14 +63,29 @@ ApplicationWindow {
         anchors.margins: 12
         spacing: 12
 
-        TopBar {
+        // Keep transport / Connect / Report reachable without shrinking labels.
+        Flickable {
+            id: toolbarViewport
             Layout.fillWidth: true
             Layout.preferredHeight: 52
             Layout.minimumHeight: 52
             Layout.maximumHeight: 52
-            deviceManager: root.deviceManager
-            engine: root.studioEngine
-            onAboutRequested: aboutDialog.open()
+            clip: true
+            interactive: false
+            boundsBehavior: Flickable.StopAtBounds
+            contentWidth: Math.max(width, 1120)
+            contentHeight: height
+            ScrollBar.horizontal: ScrollBar {
+                policy: toolbarViewport.contentWidth > toolbarViewport.width + 1
+                        ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+            }
+            TopBar {
+                width: toolbarViewport.contentWidth
+                height: toolbarViewport.height
+                deviceManager: root.deviceManager
+                engine: root.studioEngine
+                onAboutRequested: aboutDialog.open()
+            }
         }
 
         RowLayout {
@@ -73,18 +96,52 @@ ApplicationWindow {
             opacity: enabled ? 1.0 : 0.72
 
             SectionDrawer {
-                Layout.preferredWidth: 170
-                Layout.minimumWidth: 170
-                Layout.maximumWidth: 170
+                compact: root.compactNavigation
+                Layout.preferredWidth: root.compactNavigation ? 56 : 170
+                Layout.minimumWidth: Layout.preferredWidth
+                Layout.maximumWidth: Layout.preferredWidth
                 Layout.fillHeight: true
                 selectedSection: root.selectedSection
                 onSectionSelected: function(index) { root.selectedSection = index }
             }
 
-            StackLayout {
+            // Scale conservatively; fall back to explicit scrollbars, not clipping.
+            // Outer Flickable never steals EQ / fader pointer drags.
+            Flickable {
+                id: workspaceViewport
                 Layout.fillWidth: true
                 Layout.fillHeight: true
-                currentIndex: root.selectedSection === 0 ? 0 : 1
+                clip: true
+                interactive: false
+                boundsBehavior: Flickable.StopAtBounds
+                // SHORT_SCREEN_RACK_FIT_V2: moderate visual scale plus an
+                // adaptive rack; tiny windows retain accessible scrollbars.
+                readonly property real viewportScale: Math.min(
+                    1, Math.max(0.86, width / 1138), Math.max(0.94, height / 640))
+                contentWidth: workspaceCanvas.width * viewportScale
+                contentHeight: workspaceCanvas.height * viewportScale
+                ScrollBar.horizontal: ScrollBar {
+                    policy: workspaceViewport.contentWidth > workspaceViewport.width + 1
+                            ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                }
+                ScrollBar.vertical: ScrollBar {
+                    policy: workspaceViewport.contentHeight > workspaceViewport.height + 1
+                            ? ScrollBar.AlwaysOn : ScrollBar.AlwaysOff
+                }
+                Item {
+                    id: workspaceCanvas
+                    width: Math.max(1138, workspaceViewport.width / workspaceViewport.viewportScale)
+                    // Let the EQ compress to the *real* viewport instead of
+                    // reserving an invisible 680/750px virtual page. System
+                    // uses its own stable compact workspace mode below 740px.
+                    height: Math.max(548,
+                                     workspaceViewport.height / workspaceViewport.viewportScale)
+                    scale: workspaceViewport.viewportScale
+                    transformOrigin: Item.TopLeft
+
+                    StackLayout {
+                        anchors.fill: parent
+                        currentIndex: root.selectedSection === 0 ? 0 : 1
 
                 Item {
                     ColumnLayout {
@@ -150,6 +207,8 @@ ApplicationWindow {
                     id: sectionWorkspace
                     engine: root.studioEngine
                     sectionIndex: root.selectedSection
+                }
+                    }
                 }
             }
         }

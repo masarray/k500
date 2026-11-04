@@ -1,5 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
+import QtQuick.Window
 
 Item {
     id: root
@@ -22,13 +23,16 @@ Item {
     signal valueEdited(real newValue)
     signal activated()
 
+    // ADAPTIVE_FADER_TRAVEL_V3: maintain exactly one shared track metric.
+    // Independent component previews without Main keep their original 160px.
+    readonly property int trackHeight: root.Window.window
+        && root.Window.window.adaptiveFaderHeight !== undefined
+        ? root.Window.window.adaptiveFaderHeight : 160
     implicitWidth: 48
-    implicitHeight: 160
-    // One physical fader metric for the entire product. These attached
-    // layout constraints also cover direct StudioFader users.
-    Layout.preferredHeight: 160
-    Layout.minimumHeight: 160
-    Layout.maximumHeight: 160
+    implicitHeight: trackHeight
+    Layout.preferredHeight: trackHeight
+    Layout.minimumHeight: trackHeight
+    Layout.maximumHeight: trackHeight
 
     // FADER_INTERACTION_PARITY_V1
     // FADER_SINGLE_ACTIVE_FOCUS_V1

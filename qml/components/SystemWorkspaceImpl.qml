@@ -456,6 +456,15 @@ Item {
                                              && root.validBtNameDraft()
                                              && root.normalizedBtNameDraft() !== String(root.currentBtName || "").trim()
     readonly property int lowerRackHeight: 304
+    readonly property int faderHeight: root.Window.window
+        && root.Window.window.adaptiveFaderHeight !== undefined
+        ? root.Window.window.adaptiveFaderHeight : 160
+
+    // SYSTEM_SHORT_HEIGHT_PAGES_V1: the 10-slot preset workspace and five
+    // live faders cannot coexist vertically on a 768px physical laptop.
+    // Switch existing stable QML surfaces without destroying/reloading them.
+    readonly property bool compactSystem: root.height < 740
+    property int compactSystemPage: 0  // 0 = Presets & Device, 1 = Levels
 
     // STARTUP_LIMIT_STABLE_MODEL_V1 — metadata identity is constant for the
     // lifetime of this workspace. Live values are owned by StudioEngine and
@@ -631,7 +640,39 @@ Item {
         anchors.fill: parent
         spacing: 12
 
+        // The only extra UI on short screens: two concise, persistent tabs.
+        // Wide desktop geometry and all hardware authority paths stay intact.
         RowLayout {
+            visible: root.compactSystem
+            Layout.fillWidth: true
+            Layout.preferredHeight: root.compactSystem ? 34 : 0
+            Layout.minimumHeight: Layout.preferredHeight
+            Layout.maximumHeight: Layout.preferredHeight
+            spacing: 8
+
+            SoftButton {
+                Layout.preferredWidth: 178
+                Layout.preferredHeight: 32
+                text: "PRESETS & DEVICE"
+                labelPixelSize: 11
+                mixerSelect: true
+                checked: root.compactSystemPage === 0
+                onClicked: root.compactSystemPage = 0
+            }
+            SoftButton {
+                Layout.preferredWidth: 188
+                Layout.preferredHeight: 32
+                text: "LEVELS & RECORDING"
+                labelPixelSize: 11
+                mixerSelect: true
+                checked: root.compactSystemPage === 1
+                onClicked: root.compactSystemPage = 1
+            }
+            Item { Layout.fillWidth: true }
+        }
+
+        RowLayout {
+            visible: !root.compactSystem || root.compactSystemPage === 0
             Layout.fillWidth: true
             Layout.fillHeight: true
             spacing: 12
@@ -1283,10 +1324,13 @@ Item {
         }
 
         RowLayout {
+            visible: !root.compactSystem || root.compactSystemPage === 1
             Layout.fillWidth: true
-            Layout.preferredHeight: root.lowerRackHeight
+            // Compact pages keep a stable rack while StudioFaders follow the
+            // same adaptive physical travel used on every processor page.
+            Layout.preferredHeight: root.compactSystem ? 400 : root.lowerRackHeight
             Layout.minimumHeight: root.lowerRackHeight
-            Layout.maximumHeight: root.lowerRackHeight
+            Layout.maximumHeight: root.compactSystem ? 400 : root.lowerRackHeight
             spacing: 12
 
             RackFaderPanel {
@@ -1331,7 +1375,9 @@ Item {
                         Rectangle{anchors.left:parent.left;anchors.right:parent.right;anchors.bottom:parent.bottom;height:1;color:Theme.borderSoft}
                     }
                     RowLayout {
-                        Layout.fillWidth:true;Layout.fillHeight:true;Layout.margins:10;spacing:10
+                        Layout.fillWidth:true;Layout.fillHeight:true
+                        Layout.leftMargin:10;Layout.rightMargin:10
+                        Layout.topMargin:7;Layout.bottomMargin:10;spacing:10
                         Rectangle {
                             Layout.fillWidth:true;Layout.fillHeight:true;radius:10;color:"#151B21";border.width:1;border.color:Theme.borderSoft
                             // SYSTEM_PAIR_FADER_EQUAL_SLOTS_V1 — two equal
@@ -1385,11 +1431,10 @@ Item {
                                             width:parent ? parent.width / 2 : 96
                                             height:parent ? parent.height : 240
                                             spacing:3
-                                            Item { Layout.fillHeight:true; Layout.minimumHeight:0 }
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;Layout.preferredHeight:25;verticalAlignment:Text.AlignVCenter;text:modelData.label+" · "+modelData.badge;color:recFader.highlighted?recFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:recFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:recFader
-                                                Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160
+                                                Layout.preferredHeight:root.faderHeight;Layout.minimumHeight:root.faderHeight;Layout.maximumHeight:root.faderHeight
                                                 Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:recChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
@@ -1478,11 +1523,10 @@ Item {
                                             width:parent ? parent.width / 2 : 96
                                             height:parent ? parent.height : 240
                                             spacing:3
-                                            Item { Layout.fillHeight:true; Layout.minimumHeight:0 }
-                                            Text{Layout.alignment:Qt.AlignHCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
+                                            Text{Layout.alignment:Qt.AlignHCenter;Layout.preferredHeight:25;verticalAlignment:Text.AlignVCenter;text:modelData.label;color:triggerFader.highlighted?triggerFader.accentColor:Theme.textSoft;font.family:Theme.monoFamily;font.pixelSize:Theme.systemCaptionSize;font.weight:triggerFader.highlighted?Font.DemiBold:Font.Medium;Behavior on color{ColorAnimation{duration:75}}}
                                             StudioFader{
                                                 id:triggerFader
-                                                Layout.preferredHeight:160;Layout.minimumHeight:160;Layout.maximumHeight:160
+                                                Layout.preferredHeight:root.faderHeight;Layout.minimumHeight:root.faderHeight;Layout.maximumHeight:root.faderHeight
                                                 Layout.preferredWidth:48;Layout.alignment:Qt.AlignHCenter
                                                 enabled:triggerChannel.channelEditable
                                                 opacity:enabled?1.0:0.52
