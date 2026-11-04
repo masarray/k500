@@ -1,3 +1,12 @@
+## v1.1.5 — Adaptive laptop UI and verified stable downloads (2026-11-05)
+
+- [Public stable v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5) promoted without rebuilding from owner-tested `v1.1.5-rc.1` by [single-pass CI #41911424715](https://github.com/masarray/k500/actions/runs/41911424715).
+- Windows short/high-DPI layout responsiveness: readable EQ and faders, accessible System tabs and QRIS dismissal.
+- Recommended `sonkupik-k500-setup.zip` contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe`. Direct `sonkupik-k500-setup.exe` has identical verified Per-User installer bytes. The versioned `-Setup-PerUser.exe` asset remains for existing updater clients.
+- Original installer SHA-256: `72651326cd871ae3278b92b713b2bb9db03dd3761970fab2e7ec0d5bba62cb3f`; install/upgrade and user-data preservation passed release CI.
+- Windows 10/11 x64 + USB HID remain qualified. No public stable Mac/Linux assets; Bluetooth SPP remains experimental.
+- Website/README/user guide synchronized after promotion; ZIP-first download and v1.1.5 last-known-good fallback avoid stale-version redirects during GitHub API errors.
+
 ## v1.1.4 — Owner-approved stable, single Per-User installer (2026-11-01)
 
 - Stable promotion is **byte-identical to v1.1.4-rc.3 Per-User**, no recompilation. The release contains exactly one native user installer, SHA256SUMS and its machine-readable manifest; zero Machine/Smart assets.
