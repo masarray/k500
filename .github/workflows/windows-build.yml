@@ -1,6 +1,7 @@
 name: K500 CI
 
 # CI_CONSOLIDATED_PIPELINE_V1
+# SMART_CI_SCOPE_V2 — no unnecessary main-push Windows builds or ZIP jobs.
 # One PR/main workflow, one Windows build, many tests. Regressions belong in
 # executable tests or tools/ci/contracts.py, not new per-feature workflows.
 on:

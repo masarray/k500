@@ -2016,9 +2016,9 @@ def check_release_contracts() -> None:
             "Only the consolidated K500 CI may automatically promote")
 
     ci_release_gate = read(".github/workflows/windows-build.yml")
-    if "  zip-release:" in ci_release_gate or "\\n  release:\\n" in ci_release_gate:
+    if "  zip-release:" in ci_release_gate or "  release:" in ci_release_gate:
         FAILURES.append("No duplicate ZIP job or release-triggered CI workflow")
-    if "on:\\n  workflow_run:" in read(".github/workflows/windows-updater-promote.yml"):
+    if "  workflow_run:" in read(".github/workflows/windows-updater-promote.yml"):
         FAILURES.append("Stable publisher must not auto-spawn a second workflow_run")
     require(".github/workflows/windows-updater-promote.yml",
             "SMART_STABLE_ATOMIC_ALIASES_V1",
@@ -2733,10 +2733,12 @@ def check_crossplatform_downloads() -> None:
             "Download for Windows", "Download for Mac", "Download for Linux")
     require(".github/workflows/windows-build.yml", "cross-platform:",
             "qtserialport", "SMART_STABLE_PROMOTION_GATE_V1",
-            "Windows-Setup-PerUser.exe", "SonKuPik-K500-native-macOS-arm64.dmg",
+            "SonKuPik-K500-native-macOS-arm64.dmg",
             "SonKuPik-K500-native-Linux-x86_64.tar.gz",
             "Upload native platform QA evidence (not a stable release)")
-    PASSES.append("Windows byte-identical ZIP + guarded Mac/Linux packages")
+    require(".github/workflows/windows-updater-promote.yml",
+            "Windows-Setup-PerUser.exe", "SMART_STABLE_ATOMIC_ALIASES_V1")
+    PASSES.append("Single-job verified installer + ZIP; guarded Mac/Linux QA")
 
 def main() -> int:
     check_presets()
