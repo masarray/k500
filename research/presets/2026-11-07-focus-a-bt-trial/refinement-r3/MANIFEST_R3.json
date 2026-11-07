@@ -1,0 +1,110 @@
+{
+  "revision": "R3",
+  "date": "2026-11-07",
+  "status": "offline-verified; owner physical K500 audition pending",
+  "donor": "KTVPRO_FOCUS_A",
+  "sourceRaw": 2,
+  "protectedBankSlots": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    8,
+    9
+  ],
+  "parentPreferences": {
+    "melayu": "Melayu R2 vocal improved but ~2k ringing",
+    "ballad": "Ballad ALT is superior to Ballad R2"
+  },
+  "description": "Reverb-targeted 2kHz wet control while keeping Mic dry/echo; preserve Ballad ALT as baseline",
+  "trials": [
+    {
+      "file": "07_MELAYU_R3.k500",
+      "bankSlot": 7,
+      "role": "primary",
+      "name": "F7 MELAYU R3",
+      "parent": "07_MELAYU_R2.k500",
+      "sha256": "315b750917e028d99472cf46ad50240a792904594ebe4e9e0c0ca237d3904030",
+      "gitBlobSha": "04ae105932e042eca37d683cf6d99d0863f7ef08",
+      "reverbEdits": {
+        "2": {
+          "frequency_hz": 2500,
+          "q": 2,
+          "gain_db": -12
+        },
+        "5": {
+          "gain_db": 12.7
+        }
+      },
+      "modelDeltaDb": {
+        "reverb1700_2300": -3.269,
+        "vocalComposite1700_2300": -1.146,
+        "dry1700_2300": 0
+      }
+    },
+    {
+      "file": "07_MELAYU_SOFT_R3.k500",
+      "bankSlot": 7,
+      "role": "alternative",
+      "name": "F7 MELAYU SOFT",
+      "parent": "07_MELAYU_R2.k500",
+      "sha256": "3a7cd7d6d2403ebed00b14be6430248cfd142d965334367eeb66c6a968bdb206",
+      "gitBlobSha": "80b1d988c76e423d128beac995c6bbc65dc3cec9",
+      "reverbEdits": {
+        "2": {
+          "frequency_hz": 2550,
+          "q": 2.1,
+          "gain_db": -12
+        },
+        "5": {
+          "gain_db": 12.6
+        }
+      },
+      "modelDeltaDb": {
+        "reverb1700_2300": -2.655,
+        "vocalComposite1700_2300": -0.973,
+        "dry1700_2300": 0
+      }
+    },
+    {
+      "file": "10_BALLAD_ALT_FAVORITE.k500",
+      "bankSlot": 10,
+      "role": "primary",
+      "name": "F10 BALLAD ALT",
+      "parent": "10_BALLAD_ALT.k500",
+      "sha256": "9c90d1e7de5ea838ae3bf3f321a6d9a170c15b8350deb142171e4fc2d83da9e8",
+      "gitBlobSha": "1a0e815ee6aa08372783e743bcb08b06fd7567aa",
+      "reverbEdits": {},
+      "modelDeltaDb": {
+        "reverb1700_2300": 0,
+        "vocalComposite1700_2300": 0,
+        "dry1700_2300": 0
+      }
+    },
+    {
+      "file": "10_BALLAD_SILK_R3.k500",
+      "bankSlot": 10,
+      "role": "alternative",
+      "name": "F10 BALLAD SILK",
+      "parent": "10_BALLAD_ALT.k500",
+      "sha256": "b03efb076ad816fa69152a9e60bf76e5895e77f2e0783263e99a6d3c6318d8b4",
+      "gitBlobSha": "9318fb6e821f62842a50b23a7937f68791371adc",
+      "reverbEdits": {
+        "2": {
+          "frequency_hz": 2600,
+          "q": 2.4
+        },
+        "5": {
+          "gain_db": 12.9
+        }
+      },
+      "modelDeltaDb": {
+        "reverb1700_2300": -1.366,
+        "vocalComposite1700_2300": -0.517,
+        "dry1700_2300": 0
+      }
+    }
+  ]
+}

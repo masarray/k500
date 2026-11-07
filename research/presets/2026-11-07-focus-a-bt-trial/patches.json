@@ -1,0 +1,406 @@
+{
+  "version": 1,
+  "date": "2026-11-07",
+  "status": "R4 Artist01 effects 2–2.5 kHz refinement; owner Melayu R3 accepted and held exact; hardware R4 audition pending",
+  "donor": {
+    "path": "source/KTVPRO_FOCUS_A.k500",
+    "sha256": "e48e45d5cdbd66aa6b80609d1ad48987fff48eddb5673e2fc893e53e463ddfdb",
+    "gitBlobSha": "5c9304dc66179d4e0805b0e23249f4fd04be456f",
+    "length": 1144,
+    "originalSourceRaw": 5
+  },
+  "presets": [
+    {
+      "slot": 1,
+      "file": "01_FOCUS_ARTIST_BT.k500",
+      "name": "F1 ARTIST R4",
+      "intent": "Owner 2026-11-07: Artist 01 effects ringing at 2–2.5k; surgical transplant of accepted Melayu R3 Reverb PEQ band2 and band5; unchanged dry Mic/Music/Echo/routing",
+      "sourceRaw": 2,
+      "scalars": {},
+      "eqGainDb": {
+        "reverb": {
+          "2": -12,
+          "5": 12.7
+        }
+      },
+      "gitBlobSha": "f70a943cfb146a71b5e7bdef759e666597aa13dc",
+      "sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+      "eqBandEdits": {
+        "reverb": {
+          "2": {
+            "frequency_hz": 2500,
+            "q": 2
+          }
+        }
+      },
+      "changedOffsets": [
+        "0x000E",
+        "0x03E4",
+        "0x03E5",
+        "0x03E6",
+        "0x03E8",
+        "0x0400",
+        "0x0454",
+        "0x0455",
+        "0x0456",
+        "0x0457",
+        "0x0459",
+        "0x045A",
+        "0x045B",
+        "0x045C",
+        "0x045D",
+        "0x045E",
+        "0x045F",
+        "0x0460",
+        "0x0461",
+        "0x0475"
+      ],
+      "changedOffsetCount": 20
+    },
+    {
+      "slot": 2,
+      "file": "02_FOCUS_MC_BT.k500",
+      "name": "F2 MC RADIO BT",
+      "intent": "Drier speech, echo OFF",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.level": 40,
+        "reverb.decay_ms": 900,
+        "reverb.predelay_ms": 32,
+        "echo.level": 0,
+        "echo.repeat": 0,
+        "main.reverb": 52,
+        "main.echo": 0,
+        "center.reverb": 42,
+        "center.echo": 0,
+        "surround.reverb": 45,
+        "surround.echo": 0,
+        "mic.comp.ratio": 3,
+        "main.music": 55
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -4.4
+        },
+        "micA": {
+          "3": 21.7
+        },
+        "micB": {
+          "3": 21.7
+        }
+      },
+      "gitBlobSha": "963e15ff870aebfb78a9237a6332f76ab8491dcb",
+      "sha256": "50c2dc10e188f213d7d8c2b3c662c0af9c42596383e70eec78c3f833407b6790"
+    },
+    {
+      "slot": 3,
+      "file": "03_FOCUS_DANGDUT_BT.k500",
+      "name": "F3 DANGDUT BT",
+      "intent": "Rhythmic, controlled repeats",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 2700,
+        "reverb.predelay_ms": 65,
+        "echo.repeat": 7,
+        "echo.level": 85,
+        "main.echo": 92
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -3.7,
+          "4": -5.4
+        }
+      },
+      "gitBlobSha": "c3113e54868d8e072ab8758623bc1ce9281aea9d",
+      "sha256": "d76de172139c8c3641d176ee1693fe10c46f7626abce5234157d51e05b6ae8d7"
+    },
+    {
+      "slot": 4,
+      "file": "04_FOCUS_ROCK_BT.k500",
+      "name": "F4 ROCK BT",
+      "intent": "Tighter tail, clearer articulation",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 2100,
+        "reverb.predelay_ms": 60,
+        "echo.level": 69,
+        "echo.repeat": 4,
+        "main.reverb": 82,
+        "main.echo": 80,
+        "center.reverb": 75,
+        "center.echo": 70
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -3.8,
+          "5": -10.4
+        },
+        "micA": {
+          "7": -11.6
+        },
+        "micB": {
+          "7": -11.6
+        }
+      },
+      "gitBlobSha": "7cfc51322a06d2be5475b061e0380400ab1547a6",
+      "sha256": "32d64cc38c606b645ce73782a3a0b32d505be2e3c03caa0aa6bc42e9e96fb014"
+    },
+    {
+      "slot": 5,
+      "file": "05_FOCUS_ACOUSTIC_BT.k500",
+      "name": "F5 ACOUSTIC BT",
+      "intent": "Close and natural",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 1900,
+        "reverb.predelay_ms": 52,
+        "echo.level": 43,
+        "echo.repeat": 2,
+        "main.reverb": 76,
+        "main.echo": 55,
+        "center.reverb": 70,
+        "center.echo": 52
+      },
+      "eqGainDb": {
+        "music": {
+          "3": 14.8,
+          "5": -10.7
+        },
+        "micA": {
+          "3": 21.5
+        },
+        "micB": {
+          "3": 21.5
+        }
+      },
+      "gitBlobSha": "332e1b462a6d7b23d5a0a1d69370167561d7d637",
+      "sha256": "bbb37c515a989036bcf13e137a96cd9afa16c754173637ea0576f449ae1e50c8"
+    },
+    {
+      "slot": 6,
+      "file": "06_FOCUS_JAZZ_BT.k500",
+      "name": "F6 JAZZ BT",
+      "intent": "Relaxed dynamics, warm club tone",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 2300,
+        "reverb.predelay_ms": 62,
+        "echo.level": 46,
+        "echo.repeat": 2,
+        "main.reverb": 78,
+        "main.echo": 58,
+        "center.reverb": 72,
+        "center.echo": 55,
+        "mic.comp.ratio": 3,
+        "mic.comp.attack_ms": 14
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -4,
+          "3": 15.1
+        }
+      },
+      "gitBlobSha": "512bb12b13d5ba19b8ed825ef899a6c5f42d37f3",
+      "sha256": "3c645deaf988003096ccd38213f808b69489ea937ac31735a83af08e963e8467"
+    },
+    {
+      "slot": 7,
+      "file": "07_FOCUS_MELAYU_BT.k500",
+      "name": "F7 MELAYU R3",
+      "intent": "R3 user K500 feedback: keep R2 vocal presence, control wet-band ringing near 2kHz without cutting Mic dry/echo",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3100,
+        "reverb.predelay_ms": 72,
+        "echo.repeat": 9,
+        "echo.level": 88
+      },
+      "eqGainDb": {
+        "reverb": {
+          "2": -12,
+          "5": 12.7
+        }
+      },
+      "gitBlobSha": "04ae105932e042eca37d683cf6d99d0863f7ef08",
+      "sha256": "315b750917e028d99472cf46ad50240a792904594ebe4e9e0c0ca237d3904030",
+      "changedOffsets": [
+        "0x000E",
+        "0x007B",
+        "0x007C",
+        "0x00C8",
+        "0x00C9",
+        "0x00CA",
+        "0x03E4",
+        "0x03E5",
+        "0x03E6",
+        "0x03E8",
+        "0x0400",
+        "0x0454",
+        "0x0455",
+        "0x0456",
+        "0x0457",
+        "0x0458",
+        "0x0459",
+        "0x045A",
+        "0x045B",
+        "0x045C",
+        "0x045D",
+        "0x045E",
+        "0x045F",
+        "0x0460",
+        "0x0461",
+        "0x0475"
+      ],
+      "changedOffsetCount": 26,
+      "eqBandEdits": {
+        "reverb": {
+          "2": {
+            "frequency_hz": 2500,
+            "q": 2
+          }
+        }
+      }
+    },
+    {
+      "slot": 8,
+      "file": "08_FOCUS_QORI_BT.k500",
+      "name": "F8 QORI BT",
+      "intent": "Vocal anchor, spacious, lower backing level",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3800,
+        "reverb.predelay_ms": 80,
+        "echo.level": 43,
+        "echo.repeat": 2,
+        "main.reverb": 95,
+        "main.echo": 60,
+        "center.mic": 92,
+        "center.reverb": 86,
+        "center.echo": 56,
+        "main.music": 45,
+        "center.music": 23
+      },
+      "eqGainDb": {
+        "micA": {
+          "8": -11.2
+        },
+        "micB": {
+          "8": -11.2
+        }
+      },
+      "gitBlobSha": "2f14b935bf150be8ec9aa7b7e31a171500ce9b9a",
+      "sha256": "987578d889a945aea6646195fc931d22c34d3c475f7f1b863ca8038f913f0e25"
+    },
+    {
+      "slot": 9,
+      "file": "09_FOCUS_ADZAN_BT.k500",
+      "name": "F9 ADZAN BT",
+      "intent": "Long reverb, quiet backing, near-zero echo",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3900,
+        "reverb.predelay_ms": 78,
+        "echo.level": 25,
+        "echo.repeat": 0,
+        "main.reverb": 95,
+        "main.echo": 30,
+        "center.mic": 92,
+        "center.reverb": 88,
+        "center.echo": 30,
+        "main.music": 43,
+        "center.music": 18
+      },
+      "eqGainDb": {},
+      "gitBlobSha": "324170d8fe5f2018b4b7d0797dfc2c217fb14697",
+      "sha256": "f0c1881102e22d98efde210b66e3d29428732f992e9b5bec9d6449ec3db4dd4c"
+    },
+    {
+      "slot": 10,
+      "file": "10_FOCUS_BALLAD_BT.k500",
+      "name": "F10 BALLAD ALT",
+      "intent": "Owner-preferred Ballad ALT promoted as research trial bank 10 unchanged byte-for-byte; optional SILK R3 is separately auditionable",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3000,
+        "main.reverb": 93
+      },
+      "eqGainDb": {},
+      "gitBlobSha": "1a0e815ee6aa08372783e743bcb08b06fd7567aa",
+      "sha256": "9c90d1e7de5ea838ae3bf3f321a6d9a170c15b8350deb142171e4fc2d83da9e8",
+      "changedOffsets": [
+        "0x000E",
+        "0x002C",
+        "0x00C8",
+        "0x0454",
+        "0x0455",
+        "0x0456",
+        "0x0457",
+        "0x0458",
+        "0x0459",
+        "0x045A",
+        "0x045B",
+        "0x045C",
+        "0x045D",
+        "0x045E",
+        "0x045F",
+        "0x0460",
+        "0x0461",
+        "0x0475"
+      ],
+      "changedOffsetCount": 18
+    }
+  ],
+  "feedbackR2": {
+    "ballad": "not enjoyable",
+    "melayu": "somewhat lacking",
+    "changedSlots": [
+      7,
+      10
+    ],
+    "unchangedSlots": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+    ]
+  },
+  "feedbackR3": {
+    "date": "2026-11-07",
+    "melayu": "R2 vocal present and becoming pleasant but ringing around 2kHz",
+    "ballad": "ALT preferred to R2",
+    "changedSlots": [
+      7,
+      10
+    ],
+    "untouched": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+    ],
+    "primaryBank7": "07_MELAYU_R3.k500",
+    "primaryBank10": "10_BALLAD_ALT_FAVORITE.k500",
+    "hardwareAcceptance": "pending",
+    "modelPurpose": "RBJ software comparison; no hardware measurement"
+  },
+  "feedbackR4": {
+    "date": "2026-11-07",
+    "artist01": "Mild effect ringing ~2-2.5 kHz",
+    "melayu07": "R3 already OK; do not modify",
+    "ballad10": "Preserve owner-preferred Ballad ALT",
+    "primaryArtist": "F1 ARTIST R4",
+    "other9Preserved": true,
+    "wetReverbModeledDeltaDb2k_2p5k": -3.835,
+    "mainVocalProxyModeledDeltaDb2k_2p5k": -1.108,
+    "dryMicDeltaDb": 0,
+    "limitations": "RBJ comparative model; no physical K500 DSP/feedback guarantee"
+  }
+}
