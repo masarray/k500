@@ -1,0 +1,272 @@
+{
+  "version": 1,
+  "date": "2026-11-07",
+  "status": "OFFLINE VERIFIED — PHYSICAL K500 AUDITION REQUIRED",
+  "donor": {
+    "path": "source/KTVPRO_FOCUS_A.k500",
+    "sha256": "e48e45d5cdbd66aa6b80609d1ad48987fff48eddb5673e2fc893e53e463ddfdb",
+    "gitBlobSha": "5c9304dc66179d4e0805b0e23249f4fd04be456f",
+    "length": 1144,
+    "originalSourceRaw": 5
+  },
+  "presets": [
+    {
+      "slot": 1,
+      "file": "01_FOCUS_ARTIST_BT.k500",
+      "name": "F1 ARTIST BT",
+      "intent": "Anchor FOCUS A vocal for singing",
+      "sourceRaw": 2,
+      "scalars": {},
+      "eqGainDb": {},
+      "gitBlobSha": "f0ce42d298905f8ca95e83f33acc6b191c60a6b0",
+      "sha256": "9afa28ed2849676b9df715e22658143af63965ed58867b025bbaeb5242b93077"
+    },
+    {
+      "slot": 2,
+      "file": "02_FOCUS_MC_BT.k500",
+      "name": "F2 MC RADIO BT",
+      "intent": "Drier speech, echo OFF",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.level": 40,
+        "reverb.decay_ms": 900,
+        "reverb.predelay_ms": 32,
+        "echo.level": 0,
+        "echo.repeat": 0,
+        "main.reverb": 52,
+        "main.echo": 0,
+        "center.reverb": 42,
+        "center.echo": 0,
+        "surround.reverb": 45,
+        "surround.echo": 0,
+        "mic.comp.ratio": 3,
+        "main.music": 55
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -4.4
+        },
+        "micA": {
+          "3": 21.7
+        },
+        "micB": {
+          "3": 21.7
+        }
+      },
+      "gitBlobSha": "963e15ff870aebfb78a9237a6332f76ab8491dcb",
+      "sha256": "50c2dc10e188f213d7d8c2b3c662c0af9c42596383e70eec78c3f833407b6790"
+    },
+    {
+      "slot": 3,
+      "file": "03_FOCUS_DANGDUT_BT.k500",
+      "name": "F3 DANGDUT BT",
+      "intent": "Rhythmic, controlled repeats",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 2700,
+        "reverb.predelay_ms": 65,
+        "echo.repeat": 7,
+        "echo.level": 85,
+        "main.echo": 92
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -3.7,
+          "4": -5.4
+        }
+      },
+      "gitBlobSha": "c3113e54868d8e072ab8758623bc1ce9281aea9d",
+      "sha256": "d76de172139c8c3641d176ee1693fe10c46f7626abce5234157d51e05b6ae8d7"
+    },
+    {
+      "slot": 4,
+      "file": "04_FOCUS_ROCK_BT.k500",
+      "name": "F4 ROCK BT",
+      "intent": "Tighter tail, clearer articulation",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 2100,
+        "reverb.predelay_ms": 60,
+        "echo.level": 69,
+        "echo.repeat": 4,
+        "main.reverb": 82,
+        "main.echo": 80,
+        "center.reverb": 75,
+        "center.echo": 70
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -3.8,
+          "5": -10.4
+        },
+        "micA": {
+          "7": -11.6
+        },
+        "micB": {
+          "7": -11.6
+        }
+      },
+      "gitBlobSha": "7cfc51322a06d2be5475b061e0380400ab1547a6",
+      "sha256": "32d64cc38c606b645ce73782a3a0b32d505be2e3c03caa0aa6bc42e9e96fb014"
+    },
+    {
+      "slot": 5,
+      "file": "05_FOCUS_ACOUSTIC_BT.k500",
+      "name": "F5 ACOUSTIC BT",
+      "intent": "Close and natural",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 1900,
+        "reverb.predelay_ms": 52,
+        "echo.level": 43,
+        "echo.repeat": 2,
+        "main.reverb": 76,
+        "main.echo": 55,
+        "center.reverb": 70,
+        "center.echo": 52
+      },
+      "eqGainDb": {
+        "music": {
+          "3": 14.8,
+          "5": -10.7
+        },
+        "micA": {
+          "3": 21.5
+        },
+        "micB": {
+          "3": 21.5
+        }
+      },
+      "gitBlobSha": "332e1b462a6d7b23d5a0a1d69370167561d7d637",
+      "sha256": "bbb37c515a989036bcf13e137a96cd9afa16c754173637ea0576f449ae1e50c8"
+    },
+    {
+      "slot": 6,
+      "file": "06_FOCUS_JAZZ_BT.k500",
+      "name": "F6 JAZZ BT",
+      "intent": "Relaxed dynamics, warm club tone",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 2300,
+        "reverb.predelay_ms": 62,
+        "echo.level": 46,
+        "echo.repeat": 2,
+        "main.reverb": 78,
+        "main.echo": 58,
+        "center.reverb": 72,
+        "center.echo": 55,
+        "mic.comp.ratio": 3,
+        "mic.comp.attack_ms": 14
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -4,
+          "3": 15.1
+        }
+      },
+      "gitBlobSha": "512bb12b13d5ba19b8ed825ef899a6c5f42d37f3",
+      "sha256": "3c645deaf988003096ccd38213f808b69489ea937ac31735a83af08e963e8467"
+    },
+    {
+      "slot": 7,
+      "file": "07_FOCUS_MELAYU_BT.k500",
+      "name": "F7 MELAYU BT",
+      "intent": "Long gentle vocal tails",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3200,
+        "reverb.predelay_ms": 73,
+        "echo.level": 80,
+        "echo.repeat": 6,
+        "main.echo": 89,
+        "center.echo": 79
+      },
+      "eqGainDb": {
+        "music": {
+          "2": -3.9,
+          "6": -8.6
+        }
+      },
+      "gitBlobSha": "383acd820c93932a355e3aeba3bc45b2d742d5b0",
+      "sha256": "5fdde4353d821010f988a209513814eb01b12f38af3e194b9bd9e482c9df2d94"
+    },
+    {
+      "slot": 8,
+      "file": "08_FOCUS_QORI_BT.k500",
+      "name": "F8 QORI BT",
+      "intent": "Vocal anchor, spacious, lower backing level",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3800,
+        "reverb.predelay_ms": 80,
+        "echo.level": 43,
+        "echo.repeat": 2,
+        "main.reverb": 95,
+        "main.echo": 60,
+        "center.mic": 92,
+        "center.reverb": 86,
+        "center.echo": 56,
+        "main.music": 45,
+        "center.music": 23
+      },
+      "eqGainDb": {
+        "micA": {
+          "8": -11.2
+        },
+        "micB": {
+          "8": -11.2
+        }
+      },
+      "gitBlobSha": "2f14b935bf150be8ec9aa7b7e31a171500ce9b9a",
+      "sha256": "987578d889a945aea6646195fc931d22c34d3c475f7f1b863ca8038f913f0e25"
+    },
+    {
+      "slot": 9,
+      "file": "09_FOCUS_ADZAN_BT.k500",
+      "name": "F9 ADZAN BT",
+      "intent": "Long reverb, quiet backing, near-zero echo",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3900,
+        "reverb.predelay_ms": 78,
+        "echo.level": 25,
+        "echo.repeat": 0,
+        "main.reverb": 95,
+        "main.echo": 30,
+        "center.mic": 92,
+        "center.reverb": 88,
+        "center.echo": 30,
+        "main.music": 43,
+        "center.music": 18
+      },
+      "eqGainDb": {},
+      "gitBlobSha": "324170d8fe5f2018b4b7d0797dfc2c217fb14697",
+      "sha256": "f0c1881102e22d98efde210b66e3d29428732f992e9b5bec9d6449ec3db4dd4c"
+    },
+    {
+      "slot": 10,
+      "file": "10_FOCUS_BALLAD_BT.k500",
+      "name": "F10 BALLAD BT",
+      "intent": "Lush ballad, softer echo feedback",
+      "sourceRaw": 2,
+      "scalars": {
+        "reverb.decay_ms": 3400,
+        "reverb.predelay_ms": 82,
+        "echo.level": 74,
+        "echo.repeat": 5,
+        "main.reverb": 96,
+        "main.echo": 82,
+        "center.reverb": 91,
+        "center.echo": 76
+      },
+      "eqGainDb": {
+        "music": {
+          "3": 15.3,
+          "5": -10.8
+        }
+      },
+      "gitBlobSha": "db53750627f17702d80166fd96ffc542d028194c",
+      "sha256": "c38282beb0d65b4a60afb7983c6a22dd28d7b98267d1d80e458af884f130a341"
+    }
+  ]
+}
