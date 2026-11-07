@@ -1,3 +1,9 @@
+# R2 IMPORTANT: owner feedback for slots 07 and 10
+
+R1 Ballad was not enjoyable and R1 Melayu was somewhat lacking on real K500. Their trial files here are NOW R2 (not accepted yet), with near-original preferred FOCUS A vocal EQ/echo. Other eight trial files are byte-for-byte unchanged. See refinement-r2/ for both ALT variants. Historical R1 descriptions below are superseded for 07 and 10.
+
+---
+
 # K500 FOCUS A BT — Trial Preset Bank 01–10
 
 **Research only — not yet physically auditioned on a K500.** The exact owner-supplied KTVPRO FOCUS A preset is kept in source/ unchanged. The original source mode is UAUDIO (raw 5); all ten research trials use Bluetooth (raw 2).
