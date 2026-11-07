@@ -1,3 +1,14 @@
+# 2026-11-07 R3 — K500 listening-feedback override
+
+**Melayu R2:** user hears vocal clearly and finds it increasingly enjoyable, but reports effect ringing near 2 kHz. R3 retains all dry Mic A/B, Music, Main, Echo, dynamics, routing and timing, and changes only two Reverb EQ bands to reduce wet resonance in the 1.7–2.3 kHz range.
+
+**Ballad:** user explicitly prefers R2 **ALT** over regular R2. The exact existing Ballad ALT binary is now the default 10th trial file, and SILK R3 is only an optional A/B experiment.
+
+Four R3 audition files, hypothesis limitations, reproducibility hashes, and listening instructions are documented in `refinement-r3/`.
+
+Source master/official 41-entry library/Golden #41/owner-selected radio #02/installer/workflows are unchanged. Model comparisons are not physical K500 listening proof.
+
+---
 # R2 IMPORTANT: owner feedback for slots 07 and 10
 
 R1 Ballad was not enjoyable and R1 Melayu was somewhat lacking on real K500. Their trial files here are NOW R2 (not accepted yet), with near-original preferred FOCUS A vocal EQ/echo. Other eight trial files are byte-for-byte unchanged. See refinement-r2/ for both ALT variants. Historical R1 descriptions below are superseded for 07 and 10.

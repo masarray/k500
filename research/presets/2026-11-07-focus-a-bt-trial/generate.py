@@ -18,7 +18,7 @@ S = {
  "mic.comp.ratio":0x18,"mic.comp.attack_ms":0x19,"mic.comp.release_s":0x1A,
  "music.bluetooth_gain_db":0x20
 }
-EQ = {"micA":(0xF0,10),"micB":(0x150,10),"music":(0x1B0,7)}
+EQ = {"micA":(0xF0,10),"micB":(0x150,10),"music":(0x1B0,7),"reverb":(0x3D8,5)}
 p = argparse.ArgumentParser()
 p.add_argument("--check", action="store_true")
 opt = p.parse_args()
@@ -54,6 +54,29 @@ for item in spec["presets"]:
             assert -240 <= raw <= 240
             struct.pack_into("<h", b, off, raw)
             whitelist.update((off,off+1))
+    # R3 narrow PEQ geometry control: never modify unknown types/Alt or neighboring bytes.
+    for section, band_specs in item.get('eqBandEdits', {}).items():
+        assert section in ('reverb',), section
+        base, count = EQ[section]
+        for index, change in band_specs.items():
+            band = int(index)
+            assert 1 <= band <= count and set(change) <= {'frequency_hz','q','gain_db'}
+            off = base + 2 + (band - 1)*8
+            if 'frequency_hz' in change:
+                value = int(change['frequency_hz'])
+                assert 20 <= value <= 20000
+                struct.pack_into('<H', b, off+2, value)
+                whitelist.update((off+2,off+3))
+            if 'q' in change:
+                raw = round(float(change['q'])*10)
+                assert 1 <= raw <= 250
+                struct.pack_into('<H', b, off+4, raw)
+                whitelist.update((off+4,off+5))
+            if 'gain_db' in change:
+                raw = round(float(change['gain_db'])*10)
+                assert -240 <= raw <= 240
+                struct.pack_into('<h', b, off+6, raw)
+                whitelist.update((off+6,off+7))
     b[0x475] = 0
     b[0x475] = (-sum(b)) & 255
     output = bytes(b)

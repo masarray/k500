@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-11-07",
-  "status": "R2 07/10 corrected following user K500 feedback; offline validated; not hardware-accepted",
+  "status": "R3 research-only: owner liked Melayu R2 vocal but hears 2k wet ringing; Ballad ALT > Ballad R2; K500 R3 A/B pending",
   "donor": {
     "path": "source/KTVPRO_FOCUS_A.k500",
     "sha256": "e48e45d5cdbd66aa6b80609d1ad48987fff48eddb5673e2fc893e53e463ddfdb",
@@ -170,8 +170,8 @@
     {
       "slot": 7,
       "file": "07_FOCUS_MELAYU_BT.k500",
-      "name": "F7 MELAYU BT",
-      "intent": "R2: restore user-preferred FOCUS A vocal/echo support; hardware audition pending",
+      "name": "F7 MELAYU R3",
+      "intent": "R3 user K500 feedback: keep R2 vocal presence, control wet-band ringing near 2kHz without cutting Mic dry/echo",
       "sourceRaw": 2,
       "scalars": {
         "reverb.decay_ms": 3100,
@@ -179,9 +179,14 @@
         "echo.repeat": 9,
         "echo.level": 88
       },
-      "eqGainDb": {},
-      "gitBlobSha": "f61e379818fda2f02858ec49628d5668ea362e20",
-      "sha256": "1dcb3b05ce6a6b99d80e355228bf88a9508cedb9532f2ab0b0d6822da5bf7658",
+      "eqGainDb": {
+        "reverb": {
+          "2": -12,
+          "5": 12.7
+        }
+      },
+      "gitBlobSha": "04ae105932e042eca37d683cf6d99d0863f7ef08",
+      "sha256": "315b750917e028d99472cf46ad50240a792904594ebe4e9e0c0ca237d3904030",
       "changedOffsets": [
         "0x000E",
         "0x007B",
@@ -189,6 +194,11 @@
         "0x00C8",
         "0x00C9",
         "0x00CA",
+        "0x03E4",
+        "0x03E5",
+        "0x03E6",
+        "0x03E8",
+        "0x0400",
         "0x0454",
         "0x0455",
         "0x0456",
@@ -205,7 +215,15 @@
         "0x0461",
         "0x0475"
       ],
-      "changedOffsetCount": 21
+      "changedOffsetCount": 26,
+      "eqBandEdits": {
+        "reverb": {
+          "2": {
+            "frequency_hz": 2500,
+            "q": 2
+          }
+        }
+      }
     },
     {
       "slot": 8,
@@ -263,19 +281,19 @@
     {
       "slot": 10,
       "file": "10_FOCUS_BALLAD_BT.k500",
-      "name": "F10 BALLAD BT",
-      "intent": "R2: restore user-preferred FOCUS A vocal/echo support; hardware audition pending",
+      "name": "F10 BALLAD ALT",
+      "intent": "Owner-preferred Ballad ALT promoted as research trial bank 10 unchanged byte-for-byte; optional SILK R3 is separately auditionable",
       "sourceRaw": 2,
       "scalars": {
         "reverb.decay_ms": 3000,
-        "echo.repeat": 9
+        "main.reverb": 93
       },
       "eqGainDb": {},
-      "gitBlobSha": "193ec922f2d06c67769bb8c7c7c23c15b7469fe6",
-      "sha256": "205420c962b03ad76f080366519d87507006ab56d01aee02b1b5c1aa1c17af8f",
+      "gitBlobSha": "1a0e815ee6aa08372783e743bcb08b06fd7567aa",
+      "sha256": "9c90d1e7de5ea838ae3bf3f321a6d9a170c15b8350deb142171e4fc2d83da9e8",
       "changedOffsets": [
         "0x000E",
-        "0x007C",
+        "0x002C",
         "0x00C8",
         "0x0454",
         "0x0455",
@@ -313,5 +331,28 @@
       8,
       9
     ]
+  },
+  "feedbackR3": {
+    "date": "2026-11-07",
+    "melayu": "R2 vocal present and becoming pleasant but ringing around 2kHz",
+    "ballad": "ALT preferred to R2",
+    "changedSlots": [
+      7,
+      10
+    ],
+    "untouched": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      9
+    ],
+    "primaryBank7": "07_MELAYU_R3.k500",
+    "primaryBank10": "10_BALLAD_ALT_FAVORITE.k500",
+    "hardwareAcceptance": "pending",
+    "modelPurpose": "RBJ software comparison; no hardware measurement"
   }
 }
