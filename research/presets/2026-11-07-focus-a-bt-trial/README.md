@@ -1,3 +1,14 @@
+# R4 update (2026-11-07) — Artist 01 effects ringing at 2–2.5kHz
+
+**Owner feedback:** Melayu R3 sounds good and is frozen; Artist 01 now has mild wet-effect ringing around 2–2.5 kHz. Ballad ALT remains the owner's preferred Ballad.
+
+**Trial bank update:** Slot 01 becomes `F1 ARTIST R4`, using the identical wet Reverb PEQ band2/band5 geometry that made Melayu R3 good. Mic A/B, Echo EQ, Music, Main, routing, compressor and time settings on Artist remain unchanged. All other nine bank files are byte-for-byte unchanged. `refinement-r4/` contains Artist original rollback, primary R4, Soft and Echo9 alternatives.
+
+Comparative 48 kHz RBJ magnitude model for Artist R4 vs Artist original: wet Reverb **−3.835 dB** over 2.0–2.5 kHz; Main vocal energy proxy **−1.108 dB** over 2.0–2.5 kHz; dry Mic signal **0.000 dB change**. This is a model, **not** measured K500 acoustic response or feedback cure.
+
+**Do not promote into official `resources/presets` or change stable installers** before real K500 listening acceptance. Further details: `refinement-r4/README.md`.
+
+---
 # 2026-11-07 R3 — K500 listening-feedback override
 
 **Melayu R2:** user hears vocal clearly and finds it increasingly enjoyable, but reports effect ringing near 2 kHz. R3 retains all dry Mic A/B, Music, Main, Echo, dynamics, routing and timing, and changes only two Reverb EQ bands to reduce wet resonance in the 1.7–2.3 kHz range.
