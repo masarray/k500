@@ -64,157 +64,117 @@ def require_exact_count(rel: str, token: str, expected: int) -> None:
 
 
 def check_presets() -> None:
-    # GEN5 owner UAUDIO bank, broadcaster #02 and Ballad #10, archived GEN3/legacy byte-perfect,
-    # and owner-selected D2R Golden protected at the LAST PC catalog ID.
+    """FOCUS_BT_PRIMARY_LIBRARY_V1 · pinned 41 immutable binaries in 51-entry PC catalog."""
     expected = {
-        "01_ARTIST_D2R.k500": ("ARTIST G5", "e99acae1fd80cf89257006b233a56c43801dc3e6655601c0fff574bbe58b9c4c"),
-        "02_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e"),
-        "03_DANGDUT_D2R.k500": ("DANGDUT G5", "732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1"),
-        "04_ROCK_D2R.k500": ("ROCK G5", "1a52db23ff5d08f45783228cf2aa48cde21a8afd477308e0572319d256922fcf"),
-        "05_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "a644d2d51865dc82a59ef2dd2878c3b2363c3b8d298446c765198a01341063c0"),
-        "06_JAZZ_D2R.k500": ("JAZZ G5", "9280b098f626aa96a8e6f8840ab3fb1559132162f0d35249714a5c20bf58a217"),
-        "07_MELAYU_D2R.k500": ("MELAYU G5", "e4eb5f5c1d1f83517196ba52fccf4f2f4997742a9c5bebeb8a95b135b22dc92b"),
-        "08_QORI_D2R.k500": ("QORI G5", "9a2c34414d75010acbfdea19603797c7a5986e0d84647834dece7dfad2ef11c4"),
-        "09_ADZAN_D2R.k500": ("ADZAN G5", "3a8638dbe5777ea257bf3e9aa8a2a7f07fbdb872673e935c8b1257f9e8ed1de6"),
-        "10_BALLAD_D2R.k500": ("BALLAD G5", "a9e38086329e37a94a9a83a6773b0191604ff37cf27527c006920dfd5f86b78e"),
-        "11_ARTIST_GEN3_ARI.k500": ("ARTIST GEN3 ARI", "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55"),
-        "12_PODCAST_REBORN.k500": ("PODCAST REBORN", "a3001eafef5dde5993bafbcb56ac6834c806675ac4c36d0f55e0f154139bf170"),
-        "13_DANGDUT_GEN3_ARI.k500": ("DANGDUT GEN3 ARI", "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1"),
-        "14_KARAOKE_ARTIST.k500": ("KARAOKE ARTIST", "2836a4bdaaf369c9d848950a85d3cbb4b900073ac1ef8faf18e28ab79f0ff1c9"),
-        "15_AKUSTIK_GEN3_ARI.k500": ("AKUSTIK GEN3 ARI", "de3f92cf1198f42b0d87bcaa554cadd6f668194429a0f04829bfbf4bd5705dc3"),
-        "16_IMAM_QORI_GEN3.k500": ("IMAM QORI GEN 3", "3bbe02e77413f6b9bda1ba2b704d7a7beefcc23d977a47464109754760480ca3"),
-        "17_JAZZ_GEN3_ARI.k500": ("JAZZ GEN3 ARI", "139e378f8d68af32e39d8fb717c7164e4af489926754d45cab6dc93cb162bf03"),
-        "18_ROCK_GEN3_ARI.k500": ("ROCK GEN3 ARI", "1f841e113ff357b909f4fdff0f18bfd0bc72f3b2879edfc903c11b6214f79d9e"),
-        "19_MC_CERAMAH_GEN3.k500": ("MC CERAMAH GEN 3", "f0d39c9bf1c168c973c7d60c53ba86713bfc20344f31d1ff419ea87e5ee12520"),
-        "20_ADZAN_MEKAH_GEN3.k500": ("ADZAN MEKAH GEN3", "9519acc2b77a14bdaef4098299f1f8594294e013171aaafcfc5daed03bebbac1"),
-        "31_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1"),
-        "32_MC_HOST_RADIO.k500": ("MC HOST RADIO", "adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7"),
-        "33_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc"),
-        "34_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c"),
-        "35_POP_KENANGAN_V2.k500": ("POP KENANGAN V2", "e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5"),
-        "36_SHOLAWAT_SYAHDU.k500": ("SHOLAWAT SYAHDU", "9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb"),
-        "37_JAZZ_LOUNGE.k500": ("JAZZ LOUNGE", "a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb"),
-        "38_BLUES_CLUB.k500": ("BLUES CLUB", "ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060"),
-        "39_ACOUSTIC_NATURAL.k500": ("ACOUSTIC NATURAL", "785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b"),
-        "40_REGGAE_DUB.k500": ("REGGAE DUB", "e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f"),
-        "41_GOLDEN_D2R.k500": ("D2_REV", "465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a"),
+        "01_FOCUS_ARTIST_BT.k500": ("F1 MUSIC R6", "eb64073940b3907e15b0c77fc630baf8aef737fb3ab6980d5310d8b459604dd9", 2),
+        "02_FOCUS_MC_BT.k500": ("F2 MC MUSIC R6", "4c8937765af3e2c7bc441b25daf4674cfdc87fbbb94240809cfbb8e00dfc9bfe", 2),
+        "03_FOCUS_DANGDUT_BT.k500": ("F3 DANGDUT BT", "d76de172139c8c3641d176ee1693fe10c46f7626abce5234157d51e05b6ae8d7", 2),
+        "04_FOCUS_ROCK_BT.k500": ("F4 ROCK BT", "32d64cc38c606b645ce73782a3a0b32d505be2e3c03caa0aa6bc42e9e96fb014", 2),
+        "05_FOCUS_ACOUSTIC_BT.k500": ("F5 ACOUSTIC BT", "bbb37c515a989036bcf13e137a96cd9afa16c754173637ea0576f449ae1e50c8", 2),
+        "06_FOCUS_JAZZ_BT.k500": ("F6 JAZZ BT", "3c645deaf988003096ccd38213f808b69489ea937ac31735a83af08e963e8467", 2),
+        "07_FOCUS_MELAYU_BT.k500": ("F7 MELAYU R3", "315b750917e028d99472cf46ad50240a792904594ebe4e9e0c0ca237d3904030", 2),
+        "08_FOCUS_QORI_BT.k500": ("F8 QORI BT", "987578d889a945aea6646195fc931d22c34d3c475f7f1b863ca8038f913f0e25", 2),
+        "09_FOCUS_ADZAN_BT.k500": ("F9 ADZAN BT", "f0c1881102e22d98efde210b66e3d29428732f992e9b5bec9d6449ec3db4dd4c", 2),
+        "10_FOCUS_BALLAD_BT.k500": ("F10 BALLAD ALT", "9c90d1e7de5ea838ae3bf3f321a6d9a170c15b8350deb142171e4fc2d83da9e8", 2),
+        "11_ARTIST_D2R.k500": ("ARTIST G5", "e99acae1fd80cf89257006b233a56c43801dc3e6655601c0fff574bbe58b9c4c", 5),
+        "12_MC_HOST_RADIO_D2R.k500": ("MC HOST RADIO", "af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e", 5),
+        "13_DANGDUT_D2R.k500": ("DANGDUT G5", "732ac46ab689d1dcf6adf37e7fe6c55cd2e1ab9429668189a96271e0de04d0d1", 5),
+        "14_ROCK_D2R.k500": ("ROCK G5", "1a52db23ff5d08f45783228cf2aa48cde21a8afd477308e0572319d256922fcf", 5),
+        "15_ACOUSTIC_D2R.k500": ("ACOUSTIC G5", "a644d2d51865dc82a59ef2dd2878c3b2363c3b8d298446c765198a01341063c0", 5),
+        "16_JAZZ_D2R.k500": ("JAZZ G5", "9280b098f626aa96a8e6f8840ab3fb1559132162f0d35249714a5c20bf58a217", 5),
+        "17_MELAYU_D2R.k500": ("MELAYU G5", "e4eb5f5c1d1f83517196ba52fccf4f2f4997742a9c5bebeb8a95b135b22dc92b", 5),
+        "18_QORI_D2R.k500": ("QORI G5", "9a2c34414d75010acbfdea19603797c7a5986e0d84647834dece7dfad2ef11c4", 5),
+        "19_ADZAN_D2R.k500": ("ADZAN G5", "3a8638dbe5777ea257bf3e9aa8a2a7f07fbdb872673e935c8b1257f9e8ed1de6", 5),
+        "20_BALLAD_D2R.k500": ("BALLAD G5", "a9e38086329e37a94a9a83a6773b0191604ff37cf27527c006920dfd5f86b78e", 5),
+        "21_ARTIST_GEN3_ARI.k500": ("ARTIST GEN3 ARI", "8ad4e2d6a953fdaf5e7ac844b9841c6ff6ec9f9fe6a5fc19071b07d2aa8a0d55", 2),
+        "22_PODCAST_REBORN.k500": ("PODCAST REBORN", "a3001eafef5dde5993bafbcb56ac6834c806675ac4c36d0f55e0f154139bf170", 2),
+        "23_DANGDUT_GEN3_ARI.k500": ("DANGDUT GEN3 ARI", "f23fa4612b0d75a171c1e3cce0d56cdd96d6cf081f6c7ed43504320467c941a1", 2),
+        "24_KARAOKE_ARTIST.k500": ("KARAOKE ARTIST", "2836a4bdaaf369c9d848950a85d3cbb4b900073ac1ef8faf18e28ab79f0ff1c9", 2),
+        "25_AKUSTIK_GEN3_ARI.k500": ("AKUSTIK GEN3 ARI", "de3f92cf1198f42b0d87bcaa554cadd6f668194429a0f04829bfbf4bd5705dc3", 2),
+        "26_IMAM_QORI_GEN3.k500": ("IMAM QORI GEN 3", "3bbe02e77413f6b9bda1ba2b704d7a7beefcc23d977a47464109754760480ca3", 2),
+        "27_JAZZ_GEN3_ARI.k500": ("JAZZ GEN3 ARI", "139e378f8d68af32e39d8fb717c7164e4af489926754d45cab6dc93cb162bf03", 2),
+        "28_ROCK_GEN3_ARI.k500": ("ROCK GEN3 ARI", "1f841e113ff357b909f4fdff0f18bfd0bc72f3b2879edfc903c11b6214f79d9e", 2),
+        "29_MC_CERAMAH_GEN3.k500": ("MC CERAMAH GEN 3", "f0d39c9bf1c168c973c7d60c53ba86713bfc20344f31d1ff419ea87e5ee12520", 2),
+        "30_ADZAN_MEKAH_GEN3.k500": ("ADZAN MEKAH GEN3", "9519acc2b77a14bdaef4098299f1f8594294e013171aaafcfc5daed03bebbac1", 2),
+        "41_GOLDEN_D2R.k500": ("D2_REV", "465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a", 2),
+        "42_KONSER_NYANYI.k500": ("KONSER NYANYI", "66ba788daadf56212e4de6673a702404cfc915dc934e98fe3b479ee972f978a1", 2),
+        "43_MC_HOST_RADIO.k500": ("MC HOST RADIO", "adf3c868cfa471b4b0975bb58ffb4e8c05c071a7ed0896fc0a89b72933a88fa7", 2),
+        "44_KAR_DANGDUT.k500": ("KAR DANGDUT", "ec683042962c635d8d87d262512a694797bd62842c07775e53eb497f34d329bc", 2),
+        "45_POP_ROCK_BALLAD.k500": ("POP ROCK BALLAD", "bf8dbbdb0f8f79cca5a299f9d1c824bfa2f4c21facae9b03564ba1cbf2998e2c", 2),
+        "46_POP_KENANGAN_V2.k500": ("POP KENANGAN V2", "e0d6e985f068576a37ea776c1ed730b63bafac44d3afc80ab31f8541ff6398b5", 2),
+        "47_SHOLAWAT_SYAHDU.k500": ("SHOLAWAT SYAHDU", "9a4377cba86880ab18d0caf2933fe054749782355771eb221f396510bd7eb5cb", 2),
+        "48_JAZZ_LOUNGE.k500": ("JAZZ LOUNGE", "a61a84c62865b66c51fb2baef857611cfeb34be0e3e62adb6d88bce7df25dbfb", 2),
+        "49_BLUES_CLUB.k500": ("BLUES CLUB", "ca15409e5c5dddfcf8678c5ec225495d76f3331421410fc71944208c1982c060", 2),
+        "50_ACOUSTIC_NATURAL.k500": ("ACOUSTIC NATURAL", "785c814bfc2bb3d6df7d03ca036dbd39bf36ce36a4acae13a095c5aeeae5c37b", 2),
+        "51_REGGAE_DUB.k500": ("REGGAE DUB", "e0eb3825aec6ce17fff804f7c6c2b0575e0f4fd3d9c844cb3052a965c2c98e1f", 2),
     }
-    root = ROOT / "resources" / "presets"
-    files = sorted(root.glob("*.k500"))
-    if len(files) != 31 or {p.name for p in files} != set(expected):
-        FAILURES.append(f"GEN5 catalog: expected exactly 31 pinned .k500 files, got {[p.name for p in files]}")
+    folder = ROOT / "resources" / "presets"
+    files = list(folder.glob("*.k500"))
+    if len(files) != 41 or {f.name for f in files} != set(expected):
+        FAILURES.append("FOCUS public bank: expected exactly 41 committed .k500 files")
         return
     for path in files:
-        raw = path.read_bytes()
-        name, expected_hash = expected[path.name]
-        if len(raw) != 0x478 or (sum(raw) & 0xFF):
-            FAILURES.append(f"{path.name}: invalid 1144-byte size/checksum")
+        b = path.read_bytes()
+        name, sha, raw_source = expected[path.name]
+        if len(b) != 1144 or (sum(b) & 255):
+            FAILURES.append(f"{path.name}: invalid 1144-byte size or checksum")
             continue
-        actual_name = raw[0x454:0x464].split(bytes([0]), 1)[0].decode("ascii", errors="strict").strip()
-        if actual_name != name:
-            FAILURES.append(f"{path.name}: native embedded name {actual_name!r} != {name!r}")
-        catalog_id = int(path.name[:2])
-        if 1 <= catalog_id <= 10 and raw[0x0E] != 5:
-            FAILURES.append(f"{path.name}: GEN5 primary must use UAUDIO raw=5; got {raw[0x0E]}")
-        if catalog_id == 2:
-            if raw[0x2A] != 48 or raw[0x7B] != 0 or raw[0x7C] != 0:
-                FAILURES.append("02 Velvet R1 requires Music->Main=48 and Echo OFF")
-            if raw[0x18] != 3 or raw[0x16] != 11:
-                FAILURES.append("02 Velvet R1 must retain Mic compressor ratio3 / gate -70dB")
-        if (11 <= catalog_id <= 20 or catalog_id == 41) and raw[0x0E] != 2:
-            FAILURES.append(f"{path.name}: protected archival / GOLDEN BT source drift")
-        sha = hashlib.sha256(raw).hexdigest()
-        if sha != expected_hash:
-            FAILURES.append(f"{path.name}: SHA-256 drift {sha} != {expected_hash}")
-    golden = (root / "41_GOLDEN_D2R.k500").read_bytes()
-    if hashlib.sha256(golden).hexdigest() != "465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a":
-        FAILURES.append("D2R GOLDEN 41 mutated: never alter user-selected sonic reference")
-    require("src/k500/K500PresetFileBridge.cpp",
-            "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500",
-            "GEN5_UAUDIO_CACHE_MODE_GUARD_V1",
-            "GEN5_RADIO_VELVET_R1_CACHE_IDENTITY_V1",
-            "af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e",
-            'QStringLiteral("02_BALLAD_D2R.k500")',
-            'QStringLiteral("10_CERAMAH_D2R.k500")',
-            "02_MC_HOST_RADIO_D2R.k500", "10_BALLAD_D2R.k500",
-            "catalogNumber <= 41")
-    require("qml/components/MassUploadTransferWindow.qml", "catalogNumber <= 41")
-    require("CMakeLists.txt", "GEN5_D2R_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500")
-    # OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1: 41 display suffixes,
-    # while keeping the 16-character hardware names byte-identical.
-    bridge = read("src/k500/K500PresetFileBridge.cpp")
-    require("src/k500/K500PresetFileBridge.cpp",
-            "OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1",
-            "QString::fromLatin1(definition.displayName)")
-    labels = re.findall(
-        r'^\s+\{"([^"]+)", "[^"]+", "(\d\d_[^"]+\.k500)", ":/presets/[^"]+"\},?$',
-        bridge, re.MULTILINE,
-    )
-    if len(labels) != 41:
-        FAILURES.append(f"Expected 41 official visible source-mode labels, got {len(labels)}")
-    if len({fname for _, fname in labels}) != 41:
-        FAILURES.append("Duplicate filename in official PC catalog")
-    for title, fname in labels:
-        slot = int(fname[:2])
-        mode = "UAUDIO" if slot <= 10 or 21 <= slot <= 30 else "BT"
+        decoded = b[0x454:0x464].split(bytes([0]), 1)[0].decode("ascii", errors="strict").strip()
+        if decoded != name or b[0x0E] != raw_source:
+            FAILURES.append(f"{path.name}: embedded identity/source mismatch")
+        if hashlib.sha256(b).hexdigest() != sha:
+            FAILURES.append(f"{path.name}: unexpected binary mutation")
+    if hashlib.sha256((folder / "41_GOLDEN_D2R.k500").read_bytes()).hexdigest() != "465c077d654ca0100156ccfafbf29f8bdb59af37a7dcc2633a8a56dc6552864a":
+        FAILURES.append("GOLDEN 41 mutated")
+    if hashlib.sha256((folder / "12_MC_HOST_RADIO_D2R.k500").read_bytes()).hexdigest() != "af86797542e11d1079d1c2ee61000307469704db208daae10795b1e2dad7586e":
+        FAILURES.append("Archived Velvet R1 12 mutated")
+    require("src/k500/K500PresetFileBridge.cpp", "FOCUS_BT_PRIMARY_CACHE_GUARD_V1",
+            "OFFICIAL_PRESET_CANONICAL_CATALOG_ID_V1", "catalogNumber <= 51",
+            "OFFICIAL_PRESET_VISIBLE_SOURCE_MODE_V1", "QString::fromLatin1(definition.displayName)")
+    require("qml/components/MassUploadTransferWindow.qml", "catalogNumber <= 51")
+    require("CMakeLists.txt", "FOCUS_BT_PRIMARY_LIBRARY_V1", "41_GOLDEN_D2R.k500")
+    labels = re.findall(r'^\s+\{"([^"]+)", "[^"]+", "(\d\d_[^"]+\.k500)", ":/presets/[^"]+"\},?$',
+                        read("src/k500/K500PresetFileBridge.cpp"), re.MULTILINE)
+    if len(labels) != 51 or [int(filename[:2]) for _, filename in labels] != list(range(1, 52)):
+        FAILURES.append("Expected 51 unique ordered official PC preset IDs")
+    for title, filename in labels:
+        n = int(filename[:2])
+        mode = "UAUDIO" if 11 <= n <= 20 or 31 <= n <= 40 else "BT"
         if not title.endswith(f" [{mode}]"):
-            FAILURES.append(f"{fname}: wrong visible input-mode label {title!r}")
-    if len(labels) == 41 and (labels[1][0] != "MC HOST RADIO [UAUDIO]"
-                            or labels[40][0] != "D2R GOLDEN [BT]"):
-        FAILURES.append("MC HOST 02 or GOLDEN 41 display label drift")
-    PASSES.append("GEN5 UAUDIO 01–10 + native MC HOST 02 + Ballad 10 + archived GEN3 11–20 + legacy 31–40 + immutable Golden 41")
+            FAILURES.append(f"{filename}: display mode suffix mismatch")
+    if len(labels) == 51 and (labels[0][0] != "FOCUS ARTIST [BT]" or labels[1][0] != "FOCUS MC RADIO [BT]" or labels[40][0] != "D2R GOLDEN [BT]"):
+        FAILURES.append("Owner FOCUS priority or GOLDEN #41 identity drift")
+    PASSES.append("FOCUS BT 01–10 + G5 UAUDIO 11–20 + GEN3 BT 21–30 + UAUDIO 31–40 + GOLDEN 41 + legacy 42–51")
 
 
 def check_uaudio_companions() -> None:
-    """Build all ten derived .k500 files and guard the exact donor-only mutation."""
-    require(
-        "CMakeLists.txt",
-        "UAUDIO_COMPANION_PRESET_BANK_V1",
-        "tools/generate_uaudio_presets.py",
-        "SONKUPIK_UAUDIO_PRESET_FILES",
-        "list(APPEND SONKUPIK_PRESET_FILES",
-    )
-    require(
-        "src/k500/K500PresetFileBridge.cpp",
-        "UAUDIO_COMPANION_PRESET_BANK_V1",
-        ":/presets/21_ARTIST_GEN3_ARI_UAUDIO.k500",
-        ":/presets/30_ADZAN_MEKAH_GEN3_UAUDIO.k500",
-    )
+    """Regenerate native UAUDIO 31–40 from preserved GEN3 BT 21–30."""
+    require("CMakeLists.txt", "UAUDIO_COMPANION_PRESET_BANK_V1", "tools/generate_uaudio_presets.py", "SONKUPIK_UAUDIO_PRESET_FILES", "list(APPEND SONKUPIK_PRESET_FILES")
+    require("src/k500/K500PresetFileBridge.cpp", "UAUDIO_COMPANION_PRESET_BANK_V1", ":/presets/31_ARTIST_GEN3_ARI_UAUDIO.k500", ":/presets/40_ADZAN_MEKAH_GEN3_UAUDIO.k500")
     try:
         with tempfile.TemporaryDirectory(prefix="k500-uaudio-") as temp:
             out = Path(temp)
-            completed = subprocess.run(
-                [sys.executable, str(ROOT / "tools/generate_uaudio_presets.py"),
-                 "--source", str(ROOT / "resources/presets"), "--output", str(out)],
-                capture_output=True, text=True, timeout=30, check=False
-            )
-            if completed.returncode != 0:
-                FAILURES.append("UAUDIO companions generation failed: " + completed.stderr[-1200:])
+            done = subprocess.run([sys.executable, str(ROOT / "tools/generate_uaudio_presets.py"), "--source", str(ROOT / "resources/presets"), "--output", str(out)], capture_output=True, text=True, timeout=30, check=False)
+            if done.returncode != 0:
+                FAILURES.append("UAUDIO companion generation error: " + done.stderr[-1200:])
                 return
-            manifest = json.loads((out / "uaudio-manifest.json").read_text(encoding="utf-8"))
-            if len(manifest) != 10 or len(list(out.glob("*.k500"))) != 10:
-                FAILURES.append("UAUDIO companions: expected exactly 10 generated presets")
+            entries = json.loads((out / "uaudio-manifest.json").read_text(encoding="utf-8"))
+            if len(entries) != 10 or len(list(out.glob("*.k500"))) != 10:
+                FAILURES.append("Expected ten generated UAUDIO companions")
                 return
-            for index, entry in enumerate(manifest, 21):
-                path = out / entry["file"]
-                donor = ROOT / "resources/presets" / entry["donor"]
-                generated = path.read_bytes()
-                original = donor.read_bytes()
-                if not path.name.startswith(f"{index:02d}_") or len(generated) != 0x478:
-                    FAILURES.append(f"UAUDIO companions: incorrect output {path.name}")
-                    continue
-                if generated[0x0E] != 5 or sum(generated) & 0xFF:
-                    FAILURES.append(f"UAUDIO companions: source or checksum invalid for {path.name}")
-                if entry["donorSha256"] != hashlib.sha256(original).hexdigest():
-                    FAILURES.append(f"UAUDIO companions: donor provenance mismatch for {path.name}")
+            for n, entry in enumerate(entries, 31):
+                new = (out / entry["file"]).read_bytes()
+                donor = (folder / entry["donor"]).read_bytes() if False else (ROOT / "resources" / "presets" / entry["donor"]).read_bytes()
+                if not entry["file"].startswith(f"{n:02d}_") or len(new) != 1144 or new[0x0E] != 5 or sum(new) & 255:
+                    FAILURES.append(f"UAUDIO companion {n}: bad number/size/source/checksum")
+                if entry["donorSha256"] != hashlib.sha256(donor).hexdigest():
+                    FAILURES.append(f"UAUDIO companion {n}: donor fingerprint drift")
                 allowed = set(range(0x454, 0x464)) | {0x0E, 0x475}
-                changed = {i for i, (a, b) in enumerate(zip(original, generated)) if a != b}
-                if not changed <= allowed:
-                    FAILURES.append(f"UAUDIO companions: illegal sonic edits in {path.name}")
-            PASSES.append("UAUDIO companions: 10 verified donor-derived native presets")
+                if {i for i,(a,b) in enumerate(zip(donor,new)) if a!=b} - allowed:
+                    FAILURES.append(f"UAUDIO companion {n}: changed protected DSP bytes")
+            PASSES.append("Ten GEN3 UAUDIO companions 31–40 preserved from 21–30 donor")
     except (OSError, ValueError, KeyError, subprocess.TimeoutExpired) as exc:
-        FAILURES.append("UAUDIO companions validation: " + str(exc))
-
+        FAILURES.append("UAUDIO companion generation: " + str(exc))
 
 
 def check_fbe_mapping_evidence() -> None:
