@@ -1245,9 +1245,15 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
     if (hadUserInstall)
         logLine(request, L"Canonical HKCU target snapshotted before upgrade.");
 
-    const auto discardBackup = [&request] {
+    const auto discardBackup = [&request]() -> bool {
         std::error_code ec;
         fs::remove_all(fs::path(request.backup), ec);
+        if (ec) {
+            logLine(request, L"Recovery snapshot cleanup deferred (Windows "
+                + std::to_wstring(ec.value()) + L"): " + request.backup);
+            return false;
+        }
+        return true;
     };
 
     const auto restoreUserTarget = [&]() -> bool {
@@ -1437,9 +1443,12 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
             L"Instalasi baru sudah terverifikasi tetapi K500 belum bisa dibuka. "
             L"Backup versi sebelumnya tetap disimpan untuk pemulihan:\n" + request.backup);
     }
-    discardBackup();
-    logLine(request, L"Machine->user migration verified and relaunched; old application and HKLM uninstall registration absent;"
-                     L" canonical Program Files directory must also be absent; recovery snapshot released.");
+    const bool backupRemoved = discardBackup();
+    logLine(request, backupRemoved
+        ? L"Machine->user migration verified and relaunched; old application and HKLM uninstall registration absent;"
+          L" canonical Program Files directory must also be absent; recovery snapshot released."
+        : L"Machine->user migration relaunched, but the recovery snapshot could not be removed. "
+          L"It remains protected for review.");
     return 0;
 }
 
@@ -1697,8 +1706,6 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
             + std::to_wstring(ec.value()) + L"). Previous-version recovery folder was retained at "
             + request.backup);
     else
-        logLine(request, L"Installer, health check and relaunch passed; recovery snapshot released.");
-    // Keep historic successful-check breadcrumb for RC acceptance tooling.
-    logLine(request, L"Installer and app health check passed; recovery snapshot released.");
+        logLine(request, L"Installer and app health check passed; recovery snapshot released.");
     return 0;
 }
