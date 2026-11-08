@@ -66,11 +66,15 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         return 71;
     const std::wstring dir = installDir(argc, argv);
     LocalFree(argv);
-    if (dir.empty() || !corruptApp(dir) || !corruptRegistry())
-        return 72;
-
     wchar_t mode[32]{};
     GetEnvironmentVariableW(L"SONKUPIK_P3_FAKE_INSTALL_MODE", mode, 32);
+    // CI-only successful/no-op installer. The prior EXE remains healthy
+    // while the helper's first GUI relaunch is artificially rejected.
+    // This tests the historically unprotected gap AFTER health-check success.
+    if (std::wstring(mode) == L"healthy")
+        return dir.empty() ? 72 : 0;
+    if (dir.empty() || !corruptApp(dir) || !corruptRegistry())
+        return 72;
     if (std::wstring(mode) == L"nonzero")
         return 7;
     if (std::wstring(mode) == L"abort")
