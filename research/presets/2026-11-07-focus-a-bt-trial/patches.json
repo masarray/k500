@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-11-07",
-  "status": "R4 Artist01 effects 2–2.5 kHz refinement; owner Melayu R3 accepted and held exact; hardware R4 audition pending",
+  "status": "R5 research-only K500 Artist sweet-spot from owner A/B between R4 and E9; only slot 01 changed; physical listening pending",
   "donor": {
     "path": "source/KTVPRO_FOCUS_A.k500",
     "sha256": "e48e45d5cdbd66aa6b80609d1ad48987fff48eddb5673e2fc893e53e463ddfdb",
@@ -13,18 +13,25 @@
     {
       "slot": 1,
       "file": "01_FOCUS_ARTIST_BT.k500",
-      "name": "F1 ARTIST R4",
-      "intent": "Owner 2026-11-07: Artist 01 effects ringing at 2–2.5k; surgical transplant of accepted Melayu R3 Reverb PEQ band2 and band5; unchanged dry Mic/Music/Echo/routing",
+      "name": "F1 ARTIST R5",
+      "intent": "Owner R4 vs E9 listening: R4 enjoyable but less standout; E9 more standout but mid too prominent. 9 echo repeats locked; tiny echo PEQ band3/high shelf trim and Main Echo return 95->94, dry Mic unchanged. Hardware test pending.",
       "sourceRaw": 2,
-      "scalars": {},
+      "scalars": {
+        "echo.repeat": 9,
+        "main.echo": 94
+      },
       "eqGainDb": {
         "reverb": {
           "2": -12,
           "5": 12.7
+        },
+        "echo": {
+          "3": -12.8,
+          "5": 11.4
         }
       },
-      "gitBlobSha": "f70a943cfb146a71b5e7bdef759e666597aa13dc",
-      "sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+      "gitBlobSha": "238d2c9c29697415914bc05a1a42e471d32c4789",
+      "sha256": "ec67e635d974fd6cd0f62d01ea4ad709909a77562c560840243ef2e52ffc6218",
       "eqBandEdits": {
         "reverb": {
           "2": {
@@ -35,11 +42,15 @@
       },
       "changedOffsets": [
         "0x000E",
+        "0x002E",
+        "0x007C",
         "0x03E4",
         "0x03E5",
         "0x03E6",
         "0x03E8",
         "0x0400",
+        "0x0428",
+        "0x0438",
         "0x0454",
         "0x0455",
         "0x0456",
@@ -55,7 +66,7 @@
         "0x0461",
         "0x0475"
       ],
-      "changedOffsetCount": 20
+      "changedOffsetCount": 24
     },
     {
       "slot": 2,
@@ -402,5 +413,26 @@
     "mainVocalProxyModeledDeltaDb2k_2p5k": -1.108,
     "dryMicDeltaDb": 0,
     "limitations": "RBJ comparative model; no physical K500 DSP/feedback guarantee"
+  },
+  "feedbackR5": {
+    "observed": "R4 good but less vocal standout than E9; E9 good yet mid too forward; only audio diff R4 vs E9 is echo.repeat 10/9",
+    "primary": {
+      "echoRepeat": 9,
+      "mainEcho": 94,
+      "echoBell3GainDb": -12.8,
+      "echoShelf5GainDb": 11.4
+    },
+    "lockedSlots": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "limitations": "Static RBJ simulation cannot reproduce native K500 echo time behavior"
   }
 }

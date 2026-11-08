@@ -18,7 +18,7 @@ S = {
  "mic.comp.ratio":0x18,"mic.comp.attack_ms":0x19,"mic.comp.release_s":0x1A,
  "music.bluetooth_gain_db":0x20
 }
-EQ = {"micA":(0xF0,10),"micB":(0x150,10),"music":(0x1B0,7),"reverb":(0x3D8,5)}
+EQ = {"micA":(0xF0,10),"micB":(0x150,10),"music":(0x1B0,7),"reverb":(0x3D8,5),"echo":(0x410,5)}
 p = argparse.ArgumentParser()
 p.add_argument("--check", action="store_true")
 opt = p.parse_args()

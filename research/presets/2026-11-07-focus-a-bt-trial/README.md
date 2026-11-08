@@ -1,3 +1,14 @@
+# R5 — Artist 01 sweet-spot update, 2026-11-08
+
+**Owner hardware A/B:** R4 sounds pleasant but E9 has more vocal standout; E9 feels slightly excessive in vocal mids. Binary audit found **the sole audio difference** is Echo repeat 10 versus 9, with EQ identical.
+
+Research bank 01 now targets E9 repeat 9 with a small Main Echo return change (95 -> 94) plus minor Echo-only EQ adjustments (bell3 −12.4 -> −12.8 dB, shelf5 +11.7 -> +11.4 dB). All Mic dry / Music / Main / Reverb EQ and compressor are untouched.
+
+Variants and detailed A/B instructions: `refinement-r5/README.md`. Slots 02–10 are **identical**, including accepted Melayu R3 and owner-favorite Ballad ALT. Native .k500 bytes, checksum, PEQ and Bluetooth audit passed. The RBJ 48 kHz Echo path comparison is **only a relative model**; no firmware impulse, room acoustics or physical test proven.
+
+PR remains Draft; official 41 presets, Golden #41, Windows stable build and CI are untouched.
+
+---
 # R4 update (2026-11-07) — Artist 01 effects ringing at 2–2.5kHz
 
 **Owner feedback:** Melayu R3 sounds good and is frozen; Artist 01 now has mild wet-effect ringing around 2–2.5 kHz. Ballad ALT remains the owner's preferred Ballad.
