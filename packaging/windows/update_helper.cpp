@@ -672,24 +672,64 @@ bool copyTree(const std::wstring &source, const std::wstring &destination,
     return true;
 }
 
+// K500_SAFE_ROLLBACK_V2: do not delete partially installed/unknown files.
+// The prior version is restored only AFTER the failed directory is archived
+// by an atomic same-volume rename. If a file is still locked, keep BOTH
+// original directory and verified backup; never force removal or overwrite.
 bool restoreTree(const std::wstring &backup, const std::wstring &target,
-                 std::wstring *error)
+                 std::wstring *error, std::wstring *failedArchive = nullptr)
 {
     std::error_code ec;
     const fs::path src(backup);
     const fs::path dst(target);
+    if (failedArchive) failedArchive->clear();
     if (!fs::is_directory(src, ec) || ec || !fs::exists(src / AppExeName)) {
         if (error) *error = L"Recovery snapshot is missing or incomplete.";
         return false;
     }
-    fs::remove_all(dst, ec);
+
+    const bool hasTarget = fs::exists(dst, ec);
     if (ec) {
-        if (error) *error = L"Could not remove the failed installation.";
+        if (error) *error = L"Windows could not inspect the failed installation.";
         return false;
     }
+    if (hasTarget) {
+        ec.clear();
+        if (!fs::is_directory(dst, ec) || ec || fs::is_symlink(dst, ec) || ec) {
+            if (error) *error = L"Failed installation is not a regular directory; recovery stopped safely.";
+            return false;
+        }
+        const fs::path archive = dst.parent_path() /
+            (dst.filename().wstring() + L".failed-update-"
+             + std::to_wstring(GetCurrentProcessId()) + L"-"
+             + std::to_wstring(GetTickCount64()));
+        ec.clear();
+        if (fs::exists(archive, ec) || ec) {
+            if (error) *error = L"A failed-update recovery folder already exists; no files were changed.";
+            return false;
+        }
+        // The rename must stay on the target volume; no recursive deletion
+        // or partial overwrite of another process's open executable/DLLs.
+        for (int attempt = 0; attempt < 12; ++attempt) {
+            ec.clear();
+            fs::rename(dst, archive, ec);
+            if (!ec) break;
+            if (attempt < 11) Sleep(250);
+        }
+        if (ec) {
+            if (error) *error = L"Windows is still using the installation folder (error "
+                + std::to_wstring(ec.value())
+                + L"). Close K500 and other audio apps, restart Windows if needed, "
+                  L"then run the official setup. The previous-version backup was kept.";
+            return false;
+        }
+        if (failedArchive) *failedArchive = archive.wstring();
+    }
+
+    ec.clear();
     fs::create_directories(dst.parent_path(), ec);
     if (ec) {
-        if (error) *error = L"Could not recreate the installation parent directory.";
+        if (error) *error = L"Could not prepare the installation directory for safe recovery.";
         return false;
     }
     fs::copy(src, dst,
@@ -698,7 +738,8 @@ bool restoreTree(const std::wstring &backup, const std::wstring &target,
              | fs::copy_options::skip_symlinks,
              ec);
     if (ec || !fs::exists(dst / AppExeName)) {
-        if (error) *error = L"Could not restore the previous application files.";
+        if (error) *error = L"Could not restore previous application files. "
+            L"The recovery snapshot and quarantined failed installation were preserved.";
         return false;
     }
     return true;
@@ -723,8 +764,11 @@ bool restoreForRequest(const Request &request, std::wstring *error)
     }
 
     if (request.scope == L"user") {
-        if (!restoreTree(backupFilesPath(request.backup), targetDir, error))
+        std::wstring archived;
+        if (!restoreTree(backupFilesPath(request.backup), targetDir, error, &archived))
             return false;
+        if (!archived.empty())
+            logLine(request, L"Failed installation preserved (not deleted) at: " + archived);
         return restoreUninstallRegistry(request.scope, request.backup, error);
     }
 
@@ -765,8 +809,11 @@ int rollbackAndRelaunch(const Request &request, int code,
     std::wstring restoreError;
     if (!restoreForRequest(request, &restoreError)) {
         return fail(request, code,
-            reason + L"\n\nRollback also failed: " + restoreError
-            + L"\nRecovery snapshot was kept at:\n" + request.backup);
+            L"Pembaruan K500 berhenti dan pemulihan otomatis belum bisa selesai.\n"
+            L"Jangan hapus folder K500 secara manual. Tutup aplikasi audio lain, "
+            L"restart Windows jika perlu, lalu gunakan installer resmi.\n\n"
+            + reason + L"\n\nDetail pemulihan: " + restoreError
+            + L"\nBackup versi sebelumnya tetap disimpan di:\n" + request.backup);
     }
 
     if (!healthCheck(request.app, request.previousVersion)) {
@@ -776,16 +823,22 @@ int rollbackAndRelaunch(const Request &request, int code,
             + request.backup);
     }
 
-    std::error_code ec;
-    fs::remove_all(fs::path(request.backup), ec);
     logLine(request, L"Rollback health check passed; relaunching previous K500.");
     if (!startApplication(request.app)) {
         return fail(request, code,
-            reason + L"\n\nPrevious version was restored but could not be relaunched.");
+            reason + L"\n\nVersi K500 sebelumnya telah dipulihkan tetapi belum bisa dibuka. "
+            L"Backup pemulihan disimpan di:\n" + request.backup);
     }
 
+    std::error_code ec;
+    fs::remove_all(fs::path(request.backup), ec);
+    if (ec)
+        logLine(request, L"Recovered app relaunched; snapshot cleanup deferred (Windows "
+            + std::to_wstring(ec.value()) + L").");
     return fail(request, code,
-        reason + L"\n\nThe previous SonKuPik K500 version was restored and reopened.");
+        L"Pembaruan belum berhasil. Versi K500 sebelumnya sudah dipulihkan "
+        L"dan dibuka kembali. Preset dan pengaturan pribadi tidak dihapus.\n\n"
+        + reason);
 }
 
 bool cleanupPerUserMigration(const Request &request)
@@ -1394,6 +1447,25 @@ int selfTest()
         return 40;
     if (!fs::exists(root / L"source" / AppExeName))
         return 41;
+    // A partial installation with unknown user content must be archived intact.
+    {
+        std::ofstream userFile(root / L"source" / L"unrecognized-user-file.txt");
+        userFile << "do-not-delete";
+        std::ofstream broken(root / L"source" / AppExeName, std::ios::trunc);
+        broken << "broken-app";
+    }
+    std::wstring archived;
+    if (!restoreTree((root / L"backup").wstring(), (root / L"source").wstring(),
+                     &error, &archived))
+        return 42;
+    if (archived.empty()
+        || !fs::exists(fs::path(archived) / L"unrecognized-user-file.txt"))
+        return 43;
+    std::ifstream previous(root / L"source" / AppExeName, std::ios::binary);
+    char restoredBytes[3]{};
+    previous.read(restoredBytes, 3);
+    if (previous.gcount() != 3 || std::string(restoredBytes, 3) != "old")
+        return 44;
     fs::remove_all(root, ec);
     return 0;
 }
@@ -1458,11 +1530,14 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
         const std::wstring log = argv[8];
         LocalFree(argv);
         std::wstring error;
-        if (!restoreTree(backupFilesPath(backup), target, &error)
+        std::wstring archived;
+        if (!restoreTree(backupFilesPath(backup), target, &error, &archived)
             || !restoreUninstallRegistry(scope, backup, &error)) {
             appendLog(log, L"Elevated restore failed: " + error);
             return 61;
         }
+        if (!archived.empty())
+            appendLog(log, L"Failed machine install preserved (not deleted) at: " + archived);
         appendLog(log, L"Elevated application + uninstall-registration recovery snapshot restored.");
         return 0;
     }
@@ -1544,8 +1619,16 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     }
 
     if (installerExit != 0) {
-        return rollbackAndRelaunch(request, 23,
-            L"Installer exited with code " + std::to_wstring(installerExit) + L".");
+        logLine(request, L"Inno Setup exited with code " + std::to_wstring(installerExit)
+            + L"; inspect " + request.log + L".inno.log for the exact failing file/action.");
+        const std::wstring reason = installerExit == 5
+            ? L"Installer berhenti saat instalasi (kode 5: Cancel atau Abort setelah "
+              L"kesalahan). Penyebab rincinya ada di log installer."
+            : installerExit == 8
+                ? L"Installer meminta restart Windows sebelum melanjutkan."
+                : L"Installer berhenti dengan kode " + std::to_wstring(installerExit)
+                    + L". Penyebab rincinya ada di log installer.";
+        return rollbackAndRelaunch(request, 23, reason);
     }
 
     if (!healthCheck(request.targetApp, request.version)) {
