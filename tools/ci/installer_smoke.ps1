@@ -163,6 +163,66 @@ $smartReg = & reg.exe QUERY $smartKey /v 'Inno Setup: App Path' /reg:64
 if ($LASTEXITCODE -ne 0 -or (($smartReg | Out-String) -notlike "*$smartDir*")) {
     throw "Smart Installer upgrade lost its original HKCU registration"
 }
+# K500_INNO5_ROLLBACK_ACCEPTANCE_V1 — the actual field error on v1.1.5.
+# This runs in the EXISTING Installer Smoke job, not a new workflow/RC build.
+# The fixture damages the installed EXE, returns Inno's code 5, and verifies
+# the old version, HKCU registration and user-owned bytes all survive.
+Write-Host "==> Inno code 5: preserve unknown data and restore previous installation"
+$fixtureHelper = (Resolve-Path 'package/SonKuPik-K500-Updater.exe').Path
+$fixtureSetup = (Resolve-Path 'build/packaging/P3-Fake-Installer.exe').Path
+$fixtureSha = (Get-FileHash $fixtureSetup -Algorithm SHA256).Hash.ToLowerInvariant()
+$previousSha = (Get-FileHash (Join-Path $smartDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash
+$fixtureLog = Join-Path $env:RUNNER_TEMP 'K500-CI-inno-code5.log'
+$fixtureBackup = Join-Path $env:RUNNER_TEMP 'K500-CI-inno-code5-recovery'
+$archiveParent = Split-Path -Parent $smartDir
+$archivePrefix = (Split-Path -Leaf $smartDir) + '.failed-update-*'
+$knownArchives = @(Get-ChildItem $archiveParent -Directory -Filter $archivePrefix -ErrorAction SilentlyContinue |
+    ForEach-Object FullName)
+$env:SONKUPIK_UPDATE_HELPER_TEST = '1'
+$env:SONKUPIK_P3_FAKE_INSTALL_MODE = 'abort'
+try {
+    $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @(
+        '-NoProfile','-Command','Start-Sleep -Seconds 1'
+    ) -PassThru
+    $result = Start-Process -FilePath $fixtureHelper -ArgumentList @(
+        '--parent-pid',"$($parent.Id)",
+        '--setup',('"' + $fixtureSetup + '"'),
+        '--app',('"' + (Join-Path $smartDir 'SonKuPik-K500.exe') + '"'),
+        '--target-app',('"' + (Join-Path $smartDir 'SonKuPik-K500.exe') + '"'),
+        '--version',$version,'--previous-version',$version,
+        '--log',('"' + $fixtureLog + '"'),
+        '--sha256',$fixtureSha,
+        '--scope','user','--mode','update',
+        '--backup',('"' + $fixtureBackup + '"')
+    ) -Wait -PassThru
+    if ($result.ExitCode -ne 23) { throw "Expected safe updater exit 23, got $($result.ExitCode)" }
+} finally {
+    Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
+    Remove-Item Env:SONKUPIK_P3_FAKE_INSTALL_MODE -ErrorAction SilentlyContinue
+}
+if ((Get-FileHash (Join-Path $smartDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $previousSha) {
+    throw 'Inno 5 did not restore byte-identical original K500 EXE'
+}
+if ((Get-Content $userMarker -Raw) -ne 'KEEP-SMART-USER-DATA') {
+    throw 'Inno 5 rollback lost unknown user data'
+}
+& reg.exe QUERY $smartKey /v 'Inno Setup: App Path' /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) { throw 'Inno 5 rollback lost HKCU uninstall registration' }
+if ((Get-Content $fixtureLog -Raw) -notmatch 'Inno Setup exited with code 5') {
+    throw 'Inno 5 missing human diagnosis and detailed recovery log'
+}
+$archiveAfter = @(Get-ChildItem $archiveParent -Directory -Filter $archivePrefix |
+    Where-Object { $_.FullName -notin $knownArchives })
+if ($archiveAfter.Count -ne 1) {
+    throw "Expected one safely archived failed installation; found $($archiveAfter.Count)"
+}
+if ((Get-Content (Join-Path $archiveAfter[0].FullName 'ci-user-owned-sentinel.txt') -Raw) -ne 'KEEP-SMART-USER-DATA') {
+    throw 'Archived failed installation lost unknown contents'
+}
+# Only the verified CI-owned archive is removed; production never sweeps these.
+Remove-Item -LiteralPath $archiveAfter[0].FullName -Recurse -Force
+if (Test-Path $fixtureBackup) { throw 'Verified rollback left an unneeded backup snapshot' }
+
 $smartCleanup = Start-Process -FilePath (Join-Path $smartDir 'unins000.exe') -ArgumentList @(
     '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
 ) -Wait -PassThru
