@@ -57,7 +57,7 @@ Official presets can update independently through the in-app sync path and there
 
 ## v1.1.3 stable record — 2026-10-13
 
-- Stable tag: [`v1.1.3`](https://github.com/masarray/k500/releases/tag/v1.1.3) (**Latest Release**, non-prerelease).
+- Stable tag: [`v1.1.3`](https://github.com/masarray/k500/releases/tag/v1.1.3) (historical stable, non-prerelease).
 - Accepted immutable candidate: [`v1.1.3-rc.6`](https://github.com/masarray/k500/releases/tag/v1.1.3-rc.6).
 - Exact application source SHA: `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`.
 - Owner acceptance and immutable fingerprints: [v1.1.3 RC Acceptance](V1_1_3_UPDATER_RC_ACCEPTANCE.md).
