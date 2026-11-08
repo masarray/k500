@@ -1,7 +1,10 @@
-name: K500 Release Command
+name: K500 Command Hub
 
-# K500_COMMENT_RELEASE_V1 — one owner-only entry point on issue #241.
-# Unrelated comments are skipped before runner allocation; no extra CI build.
+# K500_COMMENT_RELEASE_V1 / K500_COMMENT_CI_V1
+# One comment entry point, zero new Actions workflows. Only repository-owner
+# comments on issue #241 or a same-repo PR may request targeted native CI.
+# Release commands retain independent physical-acceptance and SHA gates.
+# Unrelated comments skip jobs before runner allocation.
 on:
   issue_comment:
     types: [created]
@@ -11,7 +14,7 @@ permissions:
   actions: read
 
 concurrency:
-  group: k500-comment-release
+  group: k500-command-${{ github.event.issue.number }}-${{ startsWith(github.event.comment.body, '/k500 ci ') && 'ci' || 'release' }}
   cancel-in-progress: false
 
 jobs:
@@ -84,3 +87,88 @@ jobs:
     permissions:
       contents: write
       actions: read
+
+  authorize-ci:
+    name: Authorize pinned native CI from owner comment
+    if: >-
+      github.event.comment.user.login == github.repository_owner &&
+      startsWith(github.event.comment.body, '/k500 ci ') &&
+      (github.event.issue.number == 241 || github.event.issue.pull_request != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: read
+    steps:
+      - name: Checkout trusted main command parser
+        uses: actions/checkout@v4
+
+      - name: Validate exact CI command
+        id: requested
+        env:
+          K500_CI_COMMENT: ${{ github.event.comment.body }}
+          K500_CI_ACTOR: ${{ github.event.comment.user.login }}
+          K500_CI_NUMBER: ${{ github.event.issue.number }}
+          K500_CI_IS_PR: ${{ github.event.issue.pull_request != null }}
+        run: python3 tools/ci/parse_ci_comment.py
+
+      - name: Resolve current same-repo PR or main SHA and dispatch once
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_MODE: ${{ steps.requested.outputs.ci_mode }}
+          COMMENT_NUMBER: ${{ github.event.issue.number }}
+          IS_PR: ${{ github.event.issue.pull_request != null }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || {
+            echo "Command controller must use trusted default branch" >&2; exit 1;
+          }
+          current_main="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          [[ "$current_main" == "$GITHUB_SHA" ]] || {
+            echo "main moved since owner command: submit a fresh comment" >&2; exit 1;
+          }
+          if [[ "$IS_PR" == "true" ]]; then
+            pr="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$COMMENT_NUMBER")"
+            [[ "$(jq -r '.state' <<< "$pr")" == "open" ]] || {
+              echo "PR is not open" >&2; exit 1;
+            }
+            [[ "$(jq -r '.head.repo.full_name' <<< "$pr")" == "$GITHUB_REPOSITORY" &&
+               "$(jq -r '.base.repo.full_name' <<< "$pr")" == "$GITHUB_REPOSITORY" &&
+               "$(jq -r '.base.ref' <<< "$pr")" == "main" ]] || {
+              echo "Fork/foreign-base PR cannot request privileged CI" >&2; exit 1;
+            }
+            target_sha="$(jq -r '.head.sha' <<< "$pr")"
+            base_sha="$(jq -r '.base.sha' <<< "$pr")"
+            pr_number="$COMMENT_NUMBER"
+          else
+            [[ "$COMMENT_NUMBER" == "241" ]] || exit 1
+            target_sha="$current_main"
+            base_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$target_sha" --jq '.parents[0].sha')"
+            pr_number="0"
+          fi
+          [[ "$target_sha" =~ ^[0-9a-f]{40}$ && "$base_sha" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Invalid source/base commit SHA" >&2; exit 1;
+          }
+
+          # Idempotency: same mode + source + base gets at most one successful
+          # or currently-active heavy run. A failed result may be retried.
+          title="K500-$CI_MODE-$target_sha-$base_sha"
+          existing="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/windows-build.yml/runs?event=workflow_dispatch&per_page=100" |
+            jq --arg title "$title" '[.workflow_runs[] |
+              select(.display_title == $title and
+                (.status != "completed" or .conclusion == "success"))] | length')"
+          if (( existing > 0 )); then
+            echo "Already running or passed: $title. No duplicate CI dispatched."
+            exit 0
+          fi
+
+          # Main hosts the trusted workflow definition; native jobs checkout
+          # the pinned PR SHA, never implicitly test a stale/moved branch.
+          gh workflow run windows-build.yml --repo "$GITHUB_REPOSITORY" --ref main \
+            -f "ci_mode=$CI_MODE" \
+            -f "expected_sha=$target_sha" \
+            -f "base_sha=$base_sha" \
+            -f "pr_number=$pr_number"
+          echo "Dispatched one $CI_MODE QA run for $target_sha (base $base_sha)."
