@@ -3,6 +3,9 @@
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 
 bool AppUpdateManager::selfTest(QString *error)
 {
@@ -223,6 +226,33 @@ bool AppUpdateManager::selfTest(QString *error)
     manager.m_errorText.clear();
     if (manager.validateManifest(QJsonDocument(wrongRcTag).toJson(QJsonDocument::Compact)))
         return fail(QStringLiteral("candidate parser accepted metadata for a different RC tag"));
+
+    // P0_RECOVERY_EARLY_PREFLIGHT_V1 — exercise real on-disk occupancy
+    // detection independently of the user's installed K500 and real update
+    // folders. A retained snapshot must be detected BEFORE network download.
+    QTemporaryDir sandbox;
+    if (!sandbox.isValid())
+        return fail(QStringLiteral("could not create isolated recovery preflight fixture"));
+    const QString recovered = QDir(sandbox.path()).filePath(QStringLiteral("recovery-previous"));
+    if (recoveryPathOccupied(recovered))
+        return fail(QStringLiteral("nonexistent recovery snapshot incorrectly blocked update"));
+    if (!QDir().mkpath(recovered))
+        return fail(QStringLiteral("could not seed recovery folder fixture"));
+    if (!recoveryPathOccupied(recovered))
+        return fail(QStringLiteral("retained recovery folder was not detected"));
+    if (!QDir(recovered).removeRecursively())
+        return fail(QStringLiteral("could not clear isolated recovery fixture"));
+    {
+        QFile marker(recovered);
+        if (!marker.open(QIODevice::WriteOnly))
+            return fail(QStringLiteral("could not seed recovery file fixture"));
+        marker.write("pending-recovery");
+        marker.close();
+    }
+    if (!recoveryPathOccupied(recovered))
+        return fail(QStringLiteral("non-directory recovery entry was not protected"));
+    if (!QFile::remove(recovered) || recoveryPathOccupied(recovered))
+        return fail(QStringLiteral("removed recovery snapshot still blocked future update"));
 
     if (error)
         error->clear();
