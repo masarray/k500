@@ -1,0 +1,79 @@
+{
+  "revision": "R5",
+  "date": "2026-11-08",
+  "status": "REJECTED_ON_REAL_K500__DO_NOT_USE_AS_ACTIVE_PRESET",
+  "hardwareFeedback": "R4 less standout than E9; E9 more standout but mids too forward",
+  "e9VsR4AudioDifference": "echo.repeat = 9 vs 10 only",
+  "parentE9Sha256": "c847ddd316c699ec1c252e73f5b99ddbfa938667ed091cba859d320122cdbfd4",
+  "parentR4Sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+  "untouchedBankSlots": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "candidates": [
+    {
+      "file": "01_ARTIST_R5_SWEET_BT.k500",
+      "name": "F1 ARTIST R5",
+      "role": "primary",
+      "sha256": "ec67e635d974fd6cd0f62d01ea4ad709909a77562c560840243ef2e52ffc6218",
+      "gitBlobSha": "238d2c9c29697415914bc05a1a42e471d32c4789",
+      "echoRepeat": 9,
+      "mainEcho": 94,
+      "echoBand3GainDb": -12.8,
+      "echoBand5GainDb": 11.4,
+      "modelEchoDeltaDb": {
+        "2000_2500": -0.499,
+        "2500_3500": -0.58
+      }
+    },
+    {
+      "file": "01_ARTIST_R5_RETURN_BT.k500",
+      "name": "F1 E9 RETURN",
+      "role": "alternate_global",
+      "sha256": "729b531bd51da8cd62480c92423b121e434be47668399982f4313de155fc09ae",
+      "gitBlobSha": "8fa62114f0a7c1025430f185eb6d01d4da2c6bb5",
+      "echoRepeat": 9,
+      "mainEcho": 92,
+      "echoBand3GainDb": -12.4,
+      "echoBand5GainDb": 11.7,
+      "modelEchoDeltaDb": {
+        "2000_2500": -0.279,
+        "2500_3500": -0.279
+      }
+    },
+    {
+      "file": "01_ARTIST_R5_MID_BT.k500",
+      "name": "F1 E9 MID",
+      "role": "alternate_spectral",
+      "sha256": "0efd33fd78adafdc79b8a85ee5076282f790cac454a9ee5e67e3286d6027a1c1",
+      "gitBlobSha": "845fc89dae52780f4ee00f3eb040a03e285f1ad6",
+      "echoRepeat": 9,
+      "mainEcho": 95,
+      "echoBand3GainDb": -13.2,
+      "echoBand5GainDb": 11.2,
+      "modelEchoDeltaDb": {
+        "2000_2500": -0.767,
+        "2500_3500": -0.917
+      }
+    }
+  ],
+  "limitations": [
+    "No physical K500 R5 audition",
+    "No firmware echo impulse/time feedback modeling",
+    "No 656-byte slot projection executed during local R5 audit"
+  ],
+  "ownerHardwareResult": "ALL R5 variants performed worse than 01_ARTIST_R4_BT. Restore exact R4 as active research bank slot01.",
+  "activePrimaryReference": {
+    "file": "../refinement-r4/01_ARTIST_R4_BT.k500",
+    "sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+    "gitBlobSha": "f70a943cfb146a71b5e7bdef759e666597aa13dc"
+  },
+  "candidatesAreHistoricalOnly": true
+}

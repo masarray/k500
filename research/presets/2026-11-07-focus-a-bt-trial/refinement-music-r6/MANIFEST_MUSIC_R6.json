@@ -1,0 +1,70 @@
+{
+  "revision": "MUSIC_R6",
+  "status": "offline validated, physical K500 audition pending",
+  "hardwareApproval": false,
+  "date": "2026-11-08",
+  "rootCause": {
+    "musicEqOldNearlyIdentical": true,
+    "mainMusicRawOld": {
+      "01": 73,
+      "02": 55
+    },
+    "sharedMusicR6MainRaw": 73
+  },
+  "sharedMusicGainDb": {
+    "1": -4.3,
+    "2": -4.3,
+    "3": 15,
+    "4": -5.7,
+    "5": -10.3,
+    "6": -7.4,
+    "7": 14.6
+  },
+  "nativeMusicEqSha256": "850f999dea01327cd3263565e6444fc5ad6e98a89c182ddd76bdd7795f69d21c",
+  "nativeFileLength": 1144,
+  "sourceRawBluetooth": 2,
+  "preservedSlots": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "candidates": [
+    {
+      "file": "01_FOCUS_ARTIST_BT.k500",
+      "slot": 1,
+      "sha256": "eb64073940b3907e15b0c77fc630baf8aef737fb3ab6980d5310d8b459604dd9",
+      "gitBlobSha": "fc7275b0a28589239fb0412aa56a91b20f7d2737",
+      "rollbackSha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+      "change": "Music EQ gain-only; vocal R4 frozen"
+    },
+    {
+      "file": "02_FOCUS_MC_BT.k500",
+      "slot": 2,
+      "sha256": "4c8937765af3e2c7bc441b25daf4674cfdc87fbbb94240809cfbb8e00dfc9bfe",
+      "gitBlobSha": "a454910c42e81155ff94482187ca18b6145f6c14",
+      "rollbackSha256": "50c2dc10e188f213d7d8c2b3c662c0af9c42596383e70eec78c3f833407b6790",
+      "change": "Music EQ gain-only + Main Music level55→73; dry MC FX preserved"
+    }
+  ],
+  "modelDeltaDbComparedTo01R4": {
+    "bass_60_120Hz": -0.763,
+    "low_mid_150_500Hz": -0.679,
+    "presence_1500_3000Hz": -0.66,
+    "detail_3000_5000Hz": -0.502,
+    "detail_5000_9000Hz": -0.375,
+    "air_9000_14000Hz": -0.743
+  },
+  "safety": {
+    "zeroChecksum": true,
+    "strictNativePEQ": true,
+    "whitelistedChangedOffsets": true,
+    "sharedMusicSection": true,
+    "unchangedMainEQ": true,
+    "shadow656Projection": "not tested, requires production bridge or hardware"
+  }
+}

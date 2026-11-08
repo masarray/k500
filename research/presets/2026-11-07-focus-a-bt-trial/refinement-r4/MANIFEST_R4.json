@@ -1,0 +1,83 @@
+{
+  "revision": "R4",
+  "date": "2026-11-07",
+  "status": "OFFLINE_AUDITED__K500_AUDITION_REQUIRED",
+  "sourceDonorSha256": "e48e45d5cdbd66aa6b80609d1ad48987fff48eddb5673e2fc893e53e463ddfdb",
+  "originalArtistSha256": "9afa28ed2849676b9df715e22658143af63965ed58867b025bbaeb5242b93077",
+  "likedMelayuR3Sha256": "315b750917e028d99472cf46ad50240a792904594ebe4e9e0c0ca237d3904030",
+  "unmodifiedOtherSlots": [
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "variants": [
+    {
+      "slot": 1,
+      "file": "01_ARTIST_R3_ROLLBACK.k500",
+      "role": "rollback",
+      "sha256": "9afa28ed2849676b9df715e22658143af63965ed58867b025bbaeb5242b93077",
+      "gitBlobSha": "f0ce42d298905f8ca95e83f33acc6b191c60a6b0"
+    },
+    {
+      "slot": 1,
+      "file": "01_ARTIST_R4_BT.k500",
+      "role": "primary",
+      "name": "F1 ARTIST R4",
+      "sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+      "gitBlobSha": "f70a943cfb146a71b5e7bdef759e666597aa13dc",
+      "nativeSlotSha256": "2a706b8658d397d2c8edddd6a55d6840dca97d0160819756c7bb40184d7c7962",
+      "reverbBand2": {
+        "frequencyHz": 2500,
+        "q": 2,
+        "gainDb": -12
+      },
+      "reverbHighShelfGainDb": 12.7,
+      "echoRepeat": 10,
+      "modelDeltaReverb2k_2p5k": -3.835,
+      "modelDeltaVocalProxy2k_2p5k": -1.108
+    },
+    {
+      "slot": 1,
+      "file": "01_ARTIST_SOFT_R4_BT.k500",
+      "role": "alternate",
+      "name": "F1 ARTIST SOFT",
+      "sha256": "2c2ea9d2f8622b2b425f7e79cb10cf5e307a898266718a361f16ed8f835cb359",
+      "gitBlobSha": "ca5986d58ab174e266123b6de6dd7a91cf7fdadd",
+      "nativeSlotSha256": "ec2023074aa0dff0758b146976116ad507b155a3044c2c719840a3dbe956aa41",
+      "reverbBand2": {
+        "frequencyHz": 2550,
+        "q": 2.1,
+        "gainDb": -12
+      },
+      "reverbHighShelfGainDb": 12.6,
+      "echoRepeat": 10,
+      "modelDeltaReverb2k_2p5k": -3.211,
+      "modelDeltaVocalProxy2k_2p5k": -0.966
+    },
+    {
+      "slot": 1,
+      "file": "01_ARTIST_R4_E9_BT.k500",
+      "role": "alternate",
+      "name": "F1 ARTIST E9",
+      "sha256": "c847ddd316c699ec1c252e73f5b99ddbfa938667ed091cba859d320122cdbfd4",
+      "gitBlobSha": "cc8c5e16366b3f838ca86cfe0fab322334e68f19",
+      "nativeSlotSha256": "f47e44857ae076a98e92177b90d882236878d81354d9b79cf94a979bf4fe9291",
+      "reverbBand2": {
+        "frequencyHz": 2500,
+        "q": 2,
+        "gainDb": -12
+      },
+      "reverbHighShelfGainDb": 12.7,
+      "echoRepeat": 9,
+      "modelDeltaReverb2k_2p5k": -3.835,
+      "modelDeltaVocalProxy2k_2p5k": -1.108
+    }
+  ],
+  "warning": "Relative modeled magnitudes only; K500 firmware, room and microphone feedback need physical listening"
+}
