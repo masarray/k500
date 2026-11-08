@@ -1,7 +1,7 @@
 {
   "revision": "R5",
   "date": "2026-11-08",
-  "status": "OFFLINE_VALIDATED__HARDWARE_AUDITION_PENDING",
+  "status": "REJECTED_ON_REAL_K500__DO_NOT_USE_AS_ACTIVE_PRESET",
   "hardwareFeedback": "R4 less standout than E9; E9 more standout but mids too forward",
   "e9VsR4AudioDifference": "echo.repeat = 9 vs 10 only",
   "parentE9Sha256": "c847ddd316c699ec1c252e73f5b99ddbfa938667ed091cba859d320122cdbfd4",
@@ -68,5 +68,12 @@
     "No physical K500 R5 audition",
     "No firmware echo impulse/time feedback modeling",
     "No 656-byte slot projection executed during local R5 audit"
-  ]
+  ],
+  "ownerHardwareResult": "ALL R5 variants performed worse than 01_ARTIST_R4_BT. Restore exact R4 as active research bank slot01.",
+  "activePrimaryReference": {
+    "file": "../refinement-r4/01_ARTIST_R4_BT.k500",
+    "sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+    "gitBlobSha": "f70a943cfb146a71b5e7bdef759e666597aa13dc"
+  },
+  "candidatesAreHistoricalOnly": true
 }

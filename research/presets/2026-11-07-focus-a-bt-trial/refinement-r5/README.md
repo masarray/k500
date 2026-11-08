@@ -1,3 +1,12 @@
+# IMPORTANT — 2026-11-08 REAL K500 AUDITION: ALL R5 CANDIDATES REJECTED
+
+User reports **all R5 Artist candidates sound worse** than the earlier `01_ARTIST_R4_BT`. This is authoritative listening evidence. Do not install R5 Sweet, Return, or Mid as the active bank preset; do not promote any R5 candidate. This folder is retained **only as rejected historical experiments** for audit.
+
+Current active research bank slot01 has been reverted to **exact original R4 native bytes** (SHA-256 `e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80`, Git blob `f70a943cfb146a71b5e7bdef759e666597aa13dc`). Other nine candidate slots untouched.
+
+**Failure lesson:** Our 48-kHz static RBJ magnitude simulation does NOT predict the time-domain K500 echo/repeat interaction, psychoacoustic vocal standout or actual room/microphone behavior. Hardware preference overrides simulated small dB changes. Do not auto-generate further sweet spots without an explicit new request.
+
+---
 # FOCUS A BT research R5 — Artist 01 nuance between R4 and E9
 
 ## Real K500 feedback is authoritative

@@ -1,12 +1,10 @@
-# R5 — Artist 01 sweet-spot update, 2026-11-08
+# CURRENT OWNER-SELECTED TRIAL BANK — 2026-11-08
 
-**Owner hardware A/B:** R4 sounds pleasant but E9 has more vocal standout; E9 feels slightly excessive in vocal mids. Binary audit found **the sole audio difference** is Echo repeat 10 versus 9, with EQ identical.
+**Artist 01:** Exact earlier `01_ARTIST_R4_BT` restored. The owner tested R5 and explicitly rejected ALL its new variants as worse; the R4 version is the preferred physical K500 result. SHA-256 `e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80`. Native source remains Bluetooth (2), repeat 10, main echo 95.
 
-Research bank 01 now targets E9 repeat 9 with a small Main Echo return change (95 -> 94) plus minor Echo-only EQ adjustments (bell3 −12.4 -> −12.8 dB, shelf5 +11.7 -> +11.4 dB). All Mic dry / Music / Main / Reverb EQ and compressor are untouched.
+**Preserved unchanged:** 02–10, especially accepted Melayu R3 (07) and Ballad ALT favorite (10). **Do not promote R5 or modify the approved slot01 tone again without direct user instruction.** R5 history remains only as rejected material under `refinement-r5/`.
 
-Variants and detailed A/B instructions: `refinement-r5/README.md`. Slots 02–10 are **identical**, including accepted Melayu R3 and owner-favorite Ballad ALT. Native .k500 bytes, checksum, PEQ and Bluetooth audit passed. The RBJ 48 kHz Echo path comparison is **only a relative model**; no firmware impulse, room acoustics or physical test proven.
-
-PR remains Draft; official 41 presets, Golden #41, Windows stable build and CI are untouched.
+Offline validity and model scores are not listening evidence. No changes to official presets, Golden #41, stable installer or CI. This PR remains Draft.
 
 ---
 # R4 update (2026-11-07) — Artist 01 effects ringing at 2–2.5kHz
