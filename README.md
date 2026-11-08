@@ -1,8 +1,8 @@
-### Windows installer distribution — v1.1.5 stable
+### Windows installer distribution — v1.1.6 stable
 
-The latest public stable is **[v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5)**, promoted byte-for-byte from the owner-tested `v1.1.5-rc.1`. Windows 10/11 x64 + USB HID are the qualified scope. Fresh installs use `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator elevation. Older machine-wide installs require explicit migration and are not silently changed.
+The latest public stable is **[v1.1.6](https://github.com/masarray/k500/releases/tag/v1.1.6)**, promoted byte-for-byte from the owner-tested `v1.1.6-rc.1`. Windows 10/11 x64 + USB HID remain the supported scope. Fresh installs use `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator elevation. Older machine-wide installs require explicit migration and are not silently changed.
 
-**Recommended:** [Verified Windows ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) · [Direct Windows EXE](https://sonkupik-k500.pages.dev/download/windows). The ZIP contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe`; the direct EXE is `sonkupik-k500-setup.exe`. Both have the same installer bytes. The versioned `-Setup-PerUser.exe` release asset is kept for existing in-app updater compatibility.
+**Recommended:** [Verified Windows ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) · [Direct Windows EXE](https://sonkupik-k500.pages.dev/download/windows). The ZIP contains `SonKuPik-K500-v1.1.6-Windows-Setup.exe`; the direct EXE is `sonkupik-k500-setup.exe`. Both have the same installer bytes. The versioned `-Setup-PerUser.exe` release asset is kept for existing in-app updater compatibility.
 
 <p align="center">
   <img src="assets/SonKuPik-k500-logo.png" alt="SonKuPik K500" width="200">
@@ -16,7 +16,7 @@ The latest public stable is **[v1.1.5](https://github.com/masarray/k500/releases
 
 <p align="center">
   <a href="https://github.com/masarray/k500/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/masarray/k500?display_name=tag&sort=semver"></a>
-  <a href="https://github.com/masarray/k500/actions/workflows/windows-build.yml"><img alt="Windows stable release" src="https://github.com/masarray/k500/actions/workflows/windows-build.yml/badge.svg"></a>
+  <a href="https://github.com/masarray/k500/actions/workflows/windows-build.yml"><img alt="Fast CI status" src="https://github.com/masarray/k500/actions/workflows/windows-build.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg"></a>
   <img alt="Windows x64" src="https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4">
   <img alt="Qt 6" src="https://img.shields.io/badge/native-Qt%206%20%2F%20QML-41CD52">
@@ -47,9 +47,9 @@ The app is native Qt 6 / QML — no browser, Electron, Node.js, WebHID, or local
 
 > **Stable support:** Windows 10/11 x64 + K500 over USB HID. Bluetooth SPP is implemented but remains experimental until independently hardware-qualified.
 >
-> **Release line:** **v1.1.5** improves layouts on smaller/high-DPI laptops, keeps System faders reachable and makes the voluntary QRIS popup easy to dismiss. Core music, mic, effects, presets and qualified USB controls remain supported.
+> **Release line:** **v1.1.6** ships the 51-preset PC catalog led by 10 owner-approved FOCUS BT R6 presets, safer rollback and recovery snapshots during Windows updates, improved USB error guidance and the earlier responsive high-DPI/QRIS UI improvements. No device preset is permanently changed by installing the app.
 >
-> **Release provenance:** [Stable v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5) was promoted by [CI #41911424715](https://github.com/masarray/k500/actions/runs/41911424715) from [owner-approved v1.1.5-rc.1](docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md). Verified installer SHA-256: `72651326cd871ae3278b92b713b2bb9db03dd3761970fab2e7ec0d5bba62cb3f`. No release rebuild; older releases remain immutable.
+> **Release provenance:** [Stable v1.1.6](https://github.com/masarray/k500/releases/tag/v1.1.6) was promoted via [owner-comment workflow #42454469526](https://github.com/masarray/k500/actions/runs/42454469526) from [approved v1.1.6-rc.1](docs/V1_1_6_UPDATER_RC_ACCEPTANCE.md), exact application source `39f9cc926a53900e62f439c44f61878880c6d1d2`. Installer SHA-256: `937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899`. No Qt/Inno rebuild; historical releases remain immutable.
 
 ## See the real app
 
@@ -97,15 +97,15 @@ More screenshots are available in [`assets/k500 screenshot`](assets/k500%20scree
 
 | Package | Best for | Link |
 |---|---|---|
-| **Verified ZIP (recommended)** | Stable v1.1.5 archive. Extract first, then run `SonKuPik-K500-v1.1.5-Windows-Setup.exe`. Not a portable edition. | [Download ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) |
+| **Verified ZIP (recommended)** | Stable v1.1.6 archive. Extract first, then run `SonKuPik-K500-v1.1.6-Windows-Setup.exe`. Not a portable edition. | [Download ZIP](https://sonkupik-k500.pages.dev/download/windows-preferred) |
 | **Direct EXE** | `sonkupik-k500-setup.exe`; same verified Per-User installer, no admin/UAC for normal fresh installs. | [Download EXE](https://sonkupik-k500.pages.dev/download/windows) |
-| **GitHub Release** | Notes, checksums, release manifest and historical versions. | [v1.1.5 stable](https://github.com/masarray/k500/releases/tag/v1.1.5) |
+| **GitHub Release** | Notes, checksums, release manifest and historical versions. | [v1.1.6 stable](https://github.com/masarray/k500/releases/tag/v1.1.6) |
 
 Official Windows binaries are currently unsigned open-source builds. Windows SmartScreen or antivirus reputation systems may therefore warn when opening a new download. Release packages include SHA-256 verification metadata. See [Windows distribution & security](docs/WINDOWS_DISTRIBUTION_SECURITY.md).
 
 ## Getting started
 
-1. **Install SonKuPik K500 v1.1.5** via the verified ZIP or direct EXE. A new installation uses `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator rights; older Program Files installations require explicit migration.
+1. **Install SonKuPik K500 v1.1.6** via the verified ZIP or direct EXE. A new installation uses `%LOCALAPPDATA%\Programs\SonKuPik K500` without administrator rights; older Program Files installations require explicit migration.
 2. On first run, the default personal preset library is created at **`Documents\SonKuPik K500\Presets`**.
 3. **Connect the K500 by USB.** The app reads the processor state before LIVE editing is enabled.
 4. **Choose a section** such as Music, Mic, Reverb, Main, or Subwoofer.
@@ -187,7 +187,7 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The current **source catalog** is ordered as **01–10 FOCUS A BT** (owner-approved Music R6), **11–20 old GEN5 D2R UAUDIO**, **21–30 old GEN3 BT**, **31–40 derived GEN3 UAUDIO**, **41 immutable D2R GOLDEN**, and **42–51 historical SonKuPik BT**. This represents 51 PC presets, not hardware slots: the physical K500 still has 10 slots. The already published v1.1.5 installer does not contain this new compiled catalog; release artifacts must be built and qualified separately. Public preset ZIP: [Download FOCUS BT 01–10](https://sonkupik-k500.pages.dev/presets/focus-bt-01-10.zip). See [FOCUS catalog migration](docs/FOCUS_BT_PUBLIC_CATALOG_2026_11_08.md).
+The current **source catalog** is ordered as **01–10 FOCUS A BT** (owner-approved Music R6), **11–20 old GEN5 D2R UAUDIO**, **21–30 old GEN3 BT**, **31–40 derived GEN3 UAUDIO**, **41 immutable D2R GOLDEN**, and **42–51 historical SonKuPik BT**. This represents 51 PC presets, not hardware slots: the physical K500 still has 10 slots. The published v1.1.6 installer **already includes this 51-preset catalog**. No separate download is needed to browse it in the PC application; the ZIP is offered for users who want individual native .k500 files. Public preset ZIP: [Download FOCUS BT 01–10](https://sonkupik-k500.pages.dev/presets/focus-bt-01-10.zip). See [FOCUS catalog migration](docs/FOCUS_BT_PUBLIC_CATALOG_2026_11_08.md).
 
 See [GEN5 bank reordering and golden identity](docs/GEN5_D2R_PRIMARY_BANK_2026-10-29.md).
 
@@ -273,7 +273,7 @@ Clean rebuild:
 build-windows.cmd -Clean
 ```
 
-The stable release pipeline validates protocol, codec, preset persistence, batch upload, updater metadata integrity, runtime navigation, and both machine/per-user installed-package regressions.
+Development CI uses fast offline checks on PRs and main; owner-comment commands trigger Windows, installer and native platform regression only when needed. The versioned release candidate and stable promotion gates additionally verify exact installer identity, hashes and user-scope install/recovery. See [Smart CI comment workflow](docs/SMART_CI_COMMENT_WORKFLOW.md).
 
 ## Contributing
 
@@ -298,4 +298,4 @@ SonKuPik K500 is released under the **GNU General Public License v3.0 or later (
 
 
 ### Platform downloads
-The website publishes the verified Windows v1.1.5 ZIP and direct EXE. ZIP contains `SonKuPik-K500-v1.1.5-Windows-Setup.exe` and has identical installer bytes to the direct `sonkupik-k500-setup.exe`. No macOS/Linux stable packages are published for v1.1.5; those site links check availability instead of claiming qualified support.
+The website publishes the verified Windows v1.1.6 ZIP and direct EXE. ZIP contains `SonKuPik-K500-v1.1.6-Windows-Setup.exe` and has identical installer bytes to the direct `sonkupik-k500-setup.exe`. No macOS/Linux stable packages are published for v1.1.6; those site links check availability instead of claiming qualified support.

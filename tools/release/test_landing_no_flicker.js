@@ -32,9 +32,9 @@ async function exercise(metadata, expected = {}) {
   const preferred = anchor('/download/windows-preferred', original);
   const nav = anchor('/download/windows-preferred', 'Download K500');
   const direct = anchor('/download/windows', 'Download EXE');
-  const relPage = anchor(host + 'tag/v1.1.5', 'GitHub release');
-  const exeChecksum = anchor(host + 'download/v1.1.5/sonkupik-k500-setup.exe.sha256', 'Installer checksum');
-  const zipChecksum = anchor(host + 'download/v1.1.5/sonkupik-k500-setup.zip.sha256', 'ZIP checksum');
+  const relPage = anchor(host + 'tag/v1.1.6', 'GitHub release');
+  const exeChecksum = anchor(host + 'download/v1.1.6/sonkupik-k500-setup.exe.sha256', 'Installer checksum');
+  const zipChecksum = anchor(host + 'download/v1.1.6/sonkupik-k500-setup.zip.sha256', 'ZIP checksum');
   const selectors = {
     '[data-release-preferred]': [preferred, nav],
     '[data-release-download]': [direct],
@@ -63,7 +63,7 @@ async function exercise(metadata, expected = {}) {
   assert.equal(nav.href, expected.preferred || '/download/windows-preferred');
   assert.equal(direct.href, expected.exe || '/download/windows');
   assert.equal(zipChecksum.href, expected.zipChecksum ||
-    host + 'download/v1.1.5/sonkupik-k500-setup.zip.sha256');
+    host + 'download/v1.1.6/sonkupik-k500-setup.zip.sha256');
 }
 
 async function main() {

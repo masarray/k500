@@ -2207,7 +2207,7 @@ def check_release_contracts() -> None:
     require(
         "lib/stable-release.mjs",
         "releases/latest",
-        "FALLBACK_TAG = 'v1.1.5'",
+        "FALLBACK_TAG = 'v1.1.6'",
         "validGitHubAsset",
         "prerelease !== false",
         "cacheTtl: 300",
@@ -2335,9 +2335,10 @@ def check_release_contracts() -> None:
 
     require(
         "README.md",
-        "**[v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5)**",
-        "owner-tested `v1.1.5-rc.1`",
+        "**[v1.1.6](https://github.com/masarray/k500/releases/tag/v1.1.6)**",
+        "owner-tested `v1.1.6-rc.1`",
         "Verified Windows ZIP",
+        "937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899",
     )
     forbid(
         "README.md",
@@ -2346,7 +2347,7 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/RELEASES.md",
-        "Current public stable: **v1.1.5**",
+        "Current public stable: **v1.1.6**",
         "## v1.1.3 stable record",
         "## v1.1.2 stable record",
         "## v1.1.1 stable record",
@@ -2399,10 +2400,30 @@ def check_release_contracts() -> None:
     require(
         "site/download/index.html",
         "Download for Windows",
+        "Latest stable · v1.1.6",
+        "SonKuPik-K500-v1.1.6-Windows-Setup.exe",
         "data-release-preferred",
         "data-release-download",
         "data-zip-checksum",
     )
+    require("site/index.html",
+            "Latest stable · v1.1.6",
+            "51-preset PC library")
+    require("site/features/index.html",
+            "51 bundled PC presets", "FOCUS Bluetooth R6")
+    require("site/presets/index.html",
+            "Official v1.1.6 built-in", "51 PC presets")
+    require("site/README.md",
+            "Current stable is v1.1.6", "verified ZIP and EXE")
+    require("CHANGELOG.md",
+            "## v1.1.6 — FOCUS BT catalog",
+            "937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899")
+    require("functions/api/release.js",
+            "Windows-Setup-PerUser.exe")
+    forbid("functions/api/release.js",
+           "Windows-Smart-Installer.exe")
+    forbid("site/index.html", "Latest stable · v1.1.5")
+    forbid("site/download/index.html", "Latest stable · v1.1.5")
     for _page in ("site/index.html", "site/features/index.html", "site/download/index.html"):
         forbid(_page, "data-release-template=", "Download v1.1.3")
     require(
@@ -2424,7 +2445,7 @@ def check_release_contracts() -> None:
     )
     require(
         "AGENTS.md",
-        "CURRENT PUBLIC STABLE v1.1.5",
+        "CURRENT PUBLIC STABLE v1.1.6",
     )
     forbid(
         "AGENTS.md",
@@ -2432,8 +2453,8 @@ def check_release_contracts() -> None:
     )
     require(
         "docs/README.md",
-        "| Public stable | `v1.1.5`",
-        "| Stable provenance | Accepted `v1.1.5-rc.1`",
+        "| Public stable | `v1.1.6`",
+        "| Stable provenance | Owner-accepted `v1.1.6-rc.1`",
         "V1_1_1_UPDATER_RC_ACCEPTANCE.md",
         "landing buttons use stable, version-independent labels",
     )

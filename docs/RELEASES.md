@@ -8,9 +8,9 @@ This document defines how application releases and Official Preset updates are p
 
 Stable releases are intended for general use within the explicitly documented hardware-qualified scope.
 
-Current public stable: **v1.1.5** (Windows 10/11 x64 + USB HID; no-admin Per-User installer).
+Current public stable: **v1.1.6** (Windows 10/11 x64 + USB HID; no-admin Per-User installer).
 
-Owner-accepted `v1.1.3-rc.6` was promoted byte-identically from application commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) verified all three installer SHA-256 digests and successfully published `v1.1.3` as the GitHub Latest Release. No installer bytes were rebuilt. The site routes resolve this latest non-prerelease release dynamically; v1.1.2 remains a historical stable.
+Owner-accepted `v1.1.3-rc.6` was promoted byte-identically from application commit `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`. [Stable Promotion #38406359639](https://github.com/masarray/k500/actions/runs/38406359639) verified all three installer SHA-256 digests and successfully published `v1.1.3` as the GitHub Latest Release. No installer bytes were rebuilt. The site routes resolve GitHub's latest non-prerelease release dynamically (now v1.1.6); v1.1.3 and earlier remain historical stable releases.
 
 Stable **v1.1.1** was promoted byte-identically from accepted **v1.1.1-rc.1** at exact source commit `df7a6dd3504f4c7ffbf19b12d9e0c2e1b9243b13`. Stable **v1.1.0** remains historical and was promoted byte-identically from accepted **v1.1.0-rc.5** at exact commit `01c545ed27d9a4316fb255765a25ae41f0e1457a`.
 
@@ -36,7 +36,16 @@ MAJOR.MINOR.PATCH
 
 Official presets can update independently through the in-app sync path and therefore do not require an application version bump for every validated preset revision.
 
-## v1.1.5 stable — published 2026-11-05 (WIB)
+## v1.1.6 stable — published 2026-11-08 (WIB)
+
+- [Official stable v1.1.6](https://github.com/masarray/k500/releases/tag/v1.1.6) is GitHub Latest. Promoted **without rebuilding** from [owner-accepted v1.1.6-rc.1](V1_1_6_UPDATER_RC_ACCEPTANCE.md) by [comment-triggered workflow #42454469526](https://github.com/masarray/k500/actions/runs/42454469526).
+- Exact immutable installer source: `39f9cc926a53900e62f439c44f61878880c6d1d2`; original Per-User installer SHA-256: `937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899` (55,615,005 bytes).
+- Public aliases: `sonkupik-k500-setup.exe` and `sonkupik-k500-setup.zip`; ZIP contains `SonKuPik-K500-v1.1.6-Windows-Setup.exe` with the **identical** installer bytes. Versioned `SonKuPik-K500-v1.1.6-Windows-Setup-PerUser.exe` remains published for installed updater compatibility.
+- The app ships **51 bundled PC presets**: approved FOCUS BT Music R6 01–10; previous GEN5 UAUDIO 11–20; GEN3 BT 21–30; derived GEN3 UAUDIO 31–40; protected original GOLDEN 41; legacy BT 42–51. The real device still has 10 slots, and installation itself does not upload or overwrite device presets.
+- Windows updater adds guarded recovery snapshots/rollback, a second-GUI-instance preflight and clearer USB HID errors. Owner tested RC and approved stable; detailed individual fault and USB readback field logs remain separate evidence. Windows 10/11 x64 + USB HID is the supported platform/transport; Bluetooth SPP remains experimental. No stable macOS/Linux assets are published for v1.1.6.
+- [Smart development CI](SMART_CI_COMMENT_WORKFLOW.md) runs cheap Fast Contracts automatically and targeted native tests by authorized comment. Stable approval still requires an independent exact-SHA RC and explicit owner release comment, not an automatic push-triggered native build.
+
+## v1.1.5 stable — historical release published 2026-11-05 (WIB)
 
 - [Official stable](https://github.com/masarray/k500/releases/tag/v1.1.5) was promoted from [owner-accepted v1.1.5-rc.1](V1_1_5_UPDATER_RC_ACCEPTANCE.md) by [single-pass CI #41911424715](https://github.com/masarray/k500/actions/runs/41911424715), without recompiling Qt/Inno.
 - Exact RC source commit: `89a1e59535c891190d226b9eb636a5c967dd4c73`. Verified installer SHA-256: `72651326cd871ae3278b92b713b2bb9db03dd3761970fab2e7ec0d5bba62cb3f`.
@@ -48,7 +57,7 @@ Official presets can update independently through the in-app sync path and there
 
 ## v1.1.3 stable record — 2026-10-13
 
-- Stable tag: [`v1.1.3`](https://github.com/masarray/k500/releases/tag/v1.1.3) (**Latest Release**, non-prerelease).
+- Stable tag: [`v1.1.3`](https://github.com/masarray/k500/releases/tag/v1.1.3) (historical stable, non-prerelease).
 - Accepted immutable candidate: [`v1.1.3-rc.6`](https://github.com/masarray/k500/releases/tag/v1.1.3-rc.6).
 - Exact application source SHA: `2cfd0060d5c4d192d35347ce1ae34b250d98d7ff`.
 - Owner acceptance and immutable fingerprints: [v1.1.3 RC Acceptance](V1_1_3_UPDATER_RC_ACCEPTANCE.md).
@@ -97,23 +106,24 @@ The GitHub release remains the canonical source for downloadable artifacts and m
 
 ## Windows artifacts
 
-For v1.1+, the stable release publishes:
+For the **current v1.1.6 stable** the exact published assets are:
 
 ```text
-SonKuPik-K500-v<version>-Windows-Setup.exe
-SonKuPik-K500-v<version>-Windows-Setup-PerUser.exe
-SonKuPik-K500-v<version>-Windows-Smart-Installer.exe
+sonkupik-k500-setup.exe
+sonkupik-k500-setup.exe.sha256
+sonkupik-k500-setup.zip
+sonkupik-k500-setup.zip.sha256
+SonKuPik-K500-v1.1.6-Windows-Setup-PerUser.exe
 SHA256SUMS.txt
 release-manifest.json
 ```
 
-Historical public v1.1.2 still serves the Machine Setup asset. For **accepted
-v1.1.3+**, the public Smart Installer must be **LocalAppData-only with no UAC**;
-Machine/Per-User Setups stay as legacy, scope-matched updater backends.
-Migrating an old Program Files installation needs an explicit verified
-machine-to-user handoff and a **single authorized UAC** to remove protected
-machine files; no all-users fallback or automatic dual registration is allowed.
-v1.1+ does not publish Portable ZIP, historical v1.0.x assets stay unchanged.
+The ZIP is an **installer archive, not a portable edition**. It contains the
+same Per-User EXE bytes under the friendly name `SonKuPik-K500-v1.1.6-Windows-Setup.exe`.
+There is no newly published machine-wide or Smart Installer binary. Historical
+v1.1.2/v1.1.3 packages remain immutable and may retain their old installer
+variants. Fresh user installs go to LocalAppData without routine UAC; older
+Program Files installations require a separately approved scope migration.
 
 ## Release manifest
 
@@ -135,28 +145,16 @@ Use the manifest and `SHA256SUMS.txt` together when verifying a binary.
 
 ## Stable publishing gate
 
-The stable workflow must pass before GitHub publishes a non-prerelease tag. Current gates include:
+The public stable workflow is an **owner-comment approval of an immutable RC**, not an automatic rebuild after every push.
 
-- stable version/support truth;
-- exact native Mode 01 hash;
-- clean Qt/MSVC build;
-- preset protocol/codec/persistence/batch regressions;
-- direct deployed-app runtime tests;
-- section-navigation runtime stress tests;
-- branded Inno packaging;
-- machine-wide installer runtime validation;
-- per-user installer runtime validation;
-- manifest and artifact hash validation.
+- A separately tagged RC is built once from an exact source commit and passes its Windows/Qt/Inno and updater lifecycle qualification.
+- The owner tests the RC and records the accepted tag, full source commit and 64-hex SHA-256 in the versioned release acceptance document.
+- Fast Contracts on the exact current `main` commit must pass, and the owner issues the exact release command on issue #241.
+- Stable promotion checks GitHub RC tag→commit, published asset size/digest, accepted manifest and a fresh SHA-256 of downloaded installer bytes.
+- The identical RC Per-User setup is installed, reinstalled and uninstalled on Windows CI; user-owned data must survive.
+- The stable publisher creates friendly EXE/ZIP aliases from those same bytes. **No Qt or Inno rebuild**, no reuse or overwrite of old stable tags.
 
-CI can verify software behavior; hardware-facing support claims still require real-device evidence appropriate to the changed path.
-
-For v1.1+, the release model changes from **build-and-publish** to **accept-and-promote**:
-
-- `v1.1.x-rc.N` is an immutable GitHub prerelease built from one exact `main` commit;
-- desktop acceptance records the RC tag, full source commit and SHA-256 of every installer (Machine, PerUser and Smart for v1.1.3) in the release-specific acceptance record;
-- public v1.0.3 is never pointed at prereleases; an installed v1.1 candidate uses the explicit process-local `--update-candidate=<tag>` QA channel;
-- stable v1.1.x promotion downloads the accepted prerelease installer assets, verifies tag→commit→manifest→hash provenance, revalidates the published installer variants, and republishes the **same binary bytes** under stable filenames (three installers and a release v3 manifest for v1.1.3);
-- rebuilding the application after RC acceptance is not a valid v1.1 promotion path.
+For v1.1.6, promotion was triggered by `/k500 release stable v1.1.6` on issue #241, after the owner's positive RC trial. Software CI is not a substitute for independently logged hardware failure scenarios. The installed app still uses GitHub's latest non-prerelease release and the process-local `--update-candidate=<tag>` opt-in for RC qualification.
 
 Candidate source and a green CI matrix do not by themselves authorize a public stable release.
 

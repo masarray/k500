@@ -1,3 +1,12 @@
+## v1.1.6 — FOCUS BT catalog, resilient updater and verified stable release (2026-11-08)
+
+- [Public stable v1.1.6](https://github.com/masarray/k500/releases/tag/v1.1.6) was **promoted byte-for-byte** from owner-tested [v1.1.6-rc.1](https://github.com/masarray/k500/releases/tag/v1.1.6-rc.1) using [GitHub owner-comment workflow #42454469526](https://github.com/masarray/k500/actions/runs/42454469526). No Qt/Inno rebuild; the previous v1.1.5 release is unchanged.
+- Native PC catalog expands to **51 presets**. New FOCUS R6 Bluetooth profiles 01–10 lead the list, followed by archived GEN5 and GEN3 banks, protected GOLDEN #41 and historical 42–51. K500 hardware continues to have 10 writable slots; app installation never overwrites device presets.
+- The verified Windows Per-User installer ships as `sonkupik-k500-setup.exe`, `sonkupik-k500-setup.zip` and the versioned updater-compatible EXE. Installer SHA-256: `937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899`.
+- P0 update recovery improvements: protect previous-version backup until successful relaunch, roll back failed relaunch safely, refuse another open K500 instance and preserve interrupted-update evidence; clearer USB error/retry/report behavior.
+- Windows 10/11 x64 with USB HID remains the public support scope; Bluetooth SPP is experimental and no Linux/macOS stable binaries are attached. Owner approval followed positive RC testing; individual unrecorded fault/USB evidence remains tracked separately.
+- After the release source was built, development workflow was made more efficient: PR/main use fast offline tests, and an owner GitHub comment triggers only the needed Windows/installer/platform CI. This workflow change is a repository maintenance update, **not** a change to the already-published installer bytes.
+
 ## v1.1.5 — Adaptive laptop UI and verified stable downloads (2026-11-05)
 
 - [Public stable v1.1.5](https://github.com/masarray/k500/releases/tag/v1.1.5) promoted without rebuilding from owner-tested `v1.1.5-rc.1` by [single-pass CI #41911424715](https://github.com/masarray/k500/actions/runs/41911424715).
@@ -14,20 +23,20 @@
 - Per-User install defaults to LocalAppData without Windows admin/UAC elevation; machine-wide legacy installations require a separately authorized migration.
 - CI/release costs reduced by packaging only Per-User going forward, using one consolidated CI and exact RC promotion.
 
-## Unreleased — PC catalog source-mode labels (2026-11-01)
+## Historical development milestone — PC catalog source-mode labels (2026-11-01)
 - Show [UAUDIO] or [BT] suffix directly in all 41 official PC preset names.
 - GEN5 01–10 remain UAUDIO with owner-selected Velvet R1 as 02 MC HOST; older GEN3 / legacy and Golden unchanged.
 - Labels use metadata only: preserve all K500 native preset binaries and source checksums.
 - Release from exact-main green CI as a NEW immutable RC (next available rc.3).
 
-## Unreleased — GEN5 radio host Velvet R1 selected (2026-11-01)
+## Historical development milestone — GEN5 radio host Velvet R1 selected (2026-11-01)
 
 - Current native UAUDIO catalog #02 now uses the exact owner-listened Velvet R1. No new untested sonic tuning.
 - Former R2 Silk, R3 OnAir, D2R/Ceramah host choices are retired from the active MC HOST bank; original D2R GOLDEN #41 remains protected.
 - Pin #02 SHA-256 and prevent old UAUDIO official cache from overriding owner-selected #02.
 - Existing release assets remain immutable; Windows release of this revision needs a new qualified tag.
 
-## Unreleased — GEN5 UAUDIO radio-preserving catalog correction (2026-11-01)
+## Historical development milestone — GEN5 UAUDIO radio-preserving catalog correction (2026-11-01)
 
 - Native UAUDIO raw=5 for all GEN5 primary preset 01–10, exact source/headroom/EQ/FX preserved otherwise.
 - Restore the familiar preset **02 MC HOST RADIO** from prior **10 CERAMAH** vocal speech profile, and restore moderate **Music→Main raw70** for usable UAUDIO radio background tracks; move prior **02 BALLAD** to **10 BALLAD**.
