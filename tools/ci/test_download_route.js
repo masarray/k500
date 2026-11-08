@@ -9,7 +9,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 const root = path.resolve(__dirname, "../..");
 const API = "https://api.github.com/repos/masarray/k500/releases/latest";
-const FALLBACK = "v1.1.5";
+const FALLBACK = "v1.1.6";
 function installer(tag) {
   const v = tag.slice(1).split(".").map(Number);
   const perUser = v[0] > 1 || (v[0] === 1 && (v[1] > 1 || (v[1] === 1 && v[2] >= 4)));
@@ -90,7 +90,7 @@ async function checkDownload(options, expectedTag) {
   });
   assert.equal(response.status, options.expectedStatus || 302);
   if (response.status === 302) {
-    // Metadata failure uses the last verified stable v1.1.5 public aliases.
+    // Metadata failure uses the last verified stable v1.1.6 public aliases.
     const fallback = !!(options.prerelease || options.draft || options.missingAsset ||
       options.badUrl || options.apiStatus || options.throwNetwork);
     const fallbackTarget = (options.kind === "windows-preferred" || options.kind === "windows-zip")
@@ -134,7 +134,7 @@ async function checkApi(options, expectedTag, source) {
   assert.equal(data.resolution, source || "github");
 }
 async function main() {
-  for (const tag of ["v1.0.3", "v1.1.2", "v1.1.3", "v1.1.4", "v1.1.5", "v2.0.0"]) {
+  for (const tag of ["v1.0.3", "v1.1.2", "v1.1.3", "v1.1.4", "v1.1.5", "v1.1.6", "v2.0.0"]) {
     await checkDownload({ tag }, tag);
     await checkApi({ tag }, tag);
   }
