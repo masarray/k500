@@ -52,6 +52,9 @@ jobs:
       - name: Verified ZIP packaging regression (offline)
         run: python3 tools/release/test_package_windows_zip.py
 
+      - name: Linux tar package listing regression (offline)
+        run: bash tools/ci/test_linux_package_listing.sh
+
       - name: Simple filename release integrity regression (offline)
         run: python3 tools/release/test_package_short_downloads.py
 
