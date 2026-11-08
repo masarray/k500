@@ -420,8 +420,10 @@ public:
         UniqueDeviceInfoSet devices(SetupDiGetClassDevsW(&hidGuid, nullptr, nullptr,
                                                          DIGCF_PRESENT | DIGCF_DEVICEINTERFACE));
         if (!devices) {
+            const DWORD code = GetLastError();
             if (error)
-                *error = QStringLiteral("Cannot enumerate HID devices");
+                *error = QStringLiteral("Windows belum bisa memeriksa perangkat USB HID (kode %1). "
+                                        "Periksa kabel USB dan coba sambungkan lagi.").arg(code);
             return false;
         }
 
@@ -467,7 +469,10 @@ public:
 
         if (matchedPath.isEmpty()) {
             if (error)
-                *error = QStringLiteral("USB HID DSP AUDIO %1:%2 not found")
+                *error = QStringLiteral("K500 tidak ditemukan melalui USB. Pastikan K500 menyala, "
+                                        "kabel data terpasang, dan perangkat DSP AUDIO terdeteksi "
+                                        "oleh Windows. Lepas-pasang kabel bila perlu, lalu Coba Lagi. "
+                                        "ID perangkat: %1:%2.")
                              .arg(vendorId, 4, 16, QLatin1Char('0'))
                              .arg(productId, 4, 16, QLatin1Char('0')).toUpper();
             return false;
@@ -479,9 +484,19 @@ public:
                                               nullptr, OPEN_EXISTING,
                                               FILE_FLAG_OVERLAPPED, nullptr));
         if (!newHandle) {
-            if (error)
-                *error = QStringLiteral("K500 USB HID is present but cannot be opened. Close the original K500 app and retry. Windows error %1")
-                             .arg(GetLastError());
+            const DWORD code = GetLastError();
+            if (error) {
+                if (code == ERROR_ACCESS_DENIED || code == ERROR_SHARING_VIOLATION)
+                    *error = QStringLiteral("K500 terdeteksi, tetapi akses USB sedang ditolak Windows "
+                                            "(kode %1). Tutup aplikasi K500 lain yang mungkin memakai "
+                                            "perangkat, lalu klik Coba Lagi.").arg(code);
+                else if (code == ERROR_DEVICE_NOT_CONNECTED || code == ERROR_FILE_NOT_FOUND)
+                    *error = QStringLiteral("K500 terdeteksi tetapi koneksi USB terputus "
+                                            "(kode %1). Periksa kabel dan coba sambungkan lagi.").arg(code);
+                else
+                    *error = QStringLiteral("K500 terdeteksi, namun Windows belum bisa membuka "
+                                            "koneksi USB (kode %1). Coba sambungkan lagi.").arg(code);
+            }
             return false;
         }
 
