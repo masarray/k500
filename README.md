@@ -16,7 +16,7 @@ The latest public stable is **[v1.1.6](https://github.com/masarray/k500/releases
 
 <p align="center">
   <a href="https://github.com/masarray/k500/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/masarray/k500?display_name=tag&sort=semver"></a>
-  <a href="https://github.com/masarray/k500/actions/workflows/windows-build.yml"><img alt="Windows stable release" src="https://github.com/masarray/k500/actions/workflows/windows-build.yml/badge.svg"></a>
+  <a href="https://github.com/masarray/k500/actions/workflows/windows-build.yml"><img alt="Fast CI status" src="https://github.com/masarray/k500/actions/workflows/windows-build.yml/badge.svg"></a>
   <a href="LICENSE"><img alt="GPL-3.0-or-later" src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg"></a>
   <img alt="Windows x64" src="https://img.shields.io/badge/platform-Windows%2010%2F11%20x64-0078D4">
   <img alt="Qt 6" src="https://img.shields.io/badge/native-Qt%206%20%2F%20QML-41CD52">
