@@ -223,7 +223,7 @@ jobs:
             printf '#!/bin/sh\nHERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"\nexec "$HERE/bin/SONKUPIK-STUDIO-Native-UI" "$@"\n' > "$PWD/stage/run-sonkupik-k500"
             chmod +x "$PWD/stage/run-sonkupik-k500"
             tar -czf "dist/${{ matrix.artifact }}" -C stage .
-            tar -tzf "dist/${{ matrix.artifact }}" | grep -q './run-sonkupik-k500'
+            # Drain the entire tar listing: grep -q closes early and sends SIGPIPE\n            # to tar under pipefail, falsely failing a valid Linux package.\n            tar -tzf "dist/${{ matrix.artifact }}" | grep -Fx './run-sonkupik-k500' >/dev/null
           fi
           test -s "dist/${{ matrix.artifact }}"
           (cd dist && shasum -a 256 "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256")
