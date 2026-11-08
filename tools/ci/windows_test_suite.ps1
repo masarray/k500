@@ -103,7 +103,15 @@ $cmakeVersionMatch = [regex]::Match(
 if (-not $cmakeVersionMatch.Success) { throw "Could not derive runtime version from CMakeLists.txt" }
 $runtimeVersion = $cmakeVersionMatch.Groups[1].Value
 
-foreach ($arg in @("--font-self-test", "--protocol-self-test", "--sync-master-init-self-test", "--update-health-check=$runtimeVersion")) {
+# Same exact Win32 mutex name in native GUI and Inno, or updates can race
+# a second running K500 process and fail during file replacement.
+$inno = Get-Content packaging/windows/installer.iss -Raw
+$runtime = Get-Content src/main.cpp -Raw
+if ($inno -notmatch '(?m)^AppMutex=SonKuPikK500\.K500\.Native\s*$' -or
+    $runtime -notmatch 'K500InnoAppMutex\[\] = L"SonKuPikK500\.K500\.Native"') {
+    throw 'K500 runtime Win32 mutex does not match Inno AppMutex'
+}
+foreach ($arg in @("--font-self-test", "--app-mutex-self-test", "--protocol-self-test", "--sync-master-init-self-test", "--update-health-check=$runtimeVersion")) {
     Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @($arg) "Runtime $arg"
 }
 

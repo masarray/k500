@@ -52,6 +52,9 @@ jobs:
       - name: Verified ZIP packaging regression (offline)
         run: python3 tools/release/test_package_windows_zip.py
 
+      - name: Linux tar package listing regression (offline)
+        run: bash tools/ci/test_linux_package_listing.sh
+
       - name: Simple filename release integrity regression (offline)
         run: python3 tools/release/test_package_short_downloads.py
 
@@ -223,7 +226,9 @@ jobs:
             printf '#!/bin/sh\nHERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"\nexec "$HERE/bin/SONKUPIK-STUDIO-Native-UI" "$@"\n' > "$PWD/stage/run-sonkupik-k500"
             chmod +x "$PWD/stage/run-sonkupik-k500"
             tar -czf "dist/${{ matrix.artifact }}" -C stage .
-            tar -tzf "dist/${{ matrix.artifact }}" | grep -q './run-sonkupik-k500'
+            # Drain the entire tar listing: grep -q closes early and sends SIGPIPE
+            # to tar under pipefail, falsely failing a valid Linux package.
+            tar -tzf "dist/${{ matrix.artifact }}" | grep -Fx './run-sonkupik-k500' >/dev/null
           fi
           test -s "dist/${{ matrix.artifact }}"
           (cd dist && shasum -a 256 "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256")

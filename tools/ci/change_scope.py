@@ -62,6 +62,9 @@ def main() -> int:
         "src/k500/K500TransactionScheduler.h",
         "src/k500/K500TransactionScheduler.cpp",
         "src/AppUpdateManager.cpp",
+        # A packaging-workflow fix must qualify the actual native archives on
+        # the next main push. Still only ONE consolidated run, no RC build.
+        ".github/workflows/windows-build.yml",
     }
     platform = event == "push" and any(p in platform_names for p in paths)
 
