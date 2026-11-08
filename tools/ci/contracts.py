@@ -2702,7 +2702,7 @@ def check_owner_comment_release_contracts() -> None:
             "mainSha", "stableResponse.StatusCode -eq 200",
             "overwrite_files: false", "requiredExactHeadWorkflows")
     require(".github/workflows/windows-updater-promote.yml",
-            "owner physical acceptance", "tokenPrefix", "Get-FileHash",
+            "physical acceptance is not approved", "tokenPrefix", "Get-FileHash",
             "overwrite_files: false")
     require("docs/V1_1_6_UPDATER_RC_ACCEPTANCE.md",
             "UPDATER_V1_1_6_ACCEPTANCE=pending",
