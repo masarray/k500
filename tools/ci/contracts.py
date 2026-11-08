@@ -2464,10 +2464,11 @@ def check_release_contracts() -> None:
 
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_5_ACCEPTANCE=accepted",
-        "v1.1.5 RC line is closed after acceptance/stable promotion",
-        "Bump the source version before starting a new RC line.",
+        "if ($version -eq '1.1.5')",
+        "$gate = Get-Content $gatePath -Raw",
+        "if ($token.Groups[1].Value -eq 'accepted')",
+        "stableResponse.StatusCode -eq 200",
+        "mainSha -ne $env:GITHUB_SHA",
     )
     # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
     # scripts never acquire a de-indented argument or command outside run: |.
@@ -2494,13 +2495,13 @@ def check_release_contracts() -> None:
                 FAILURES.append(f"{workflow}:{number}: orphaned PowerShell -Force")
 
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw")
-    rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
+    rc_gate = rc_workflow.find("$gate = Get-Content $gatePath -Raw")
+    rc_close = rc_workflow.find("if ($token.Groups[1].Value -eq 'accepted')")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):
-        FAILURES.append("windows-updater-rc.yml: acceptance/closed-line/tag-check ordering is corrupt")
-    if rc_workflow.count("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1") != 1:
-        FAILURES.append("windows-updater-rc.yml: closed-line guard must occur exactly once")
+        FAILURES.append("windows-updater-rc.yml: versioned acceptance/immutable-tag guard ordering is corrupt")
+    if rc_workflow.count("if ($token.Groups[1].Value -eq 'accepted')") != 1:
+        FAILURES.append("windows-updater-rc.yml: version-specific accepted-line guard must occur once")
     if "overwrite_files: false\n) {" in rc_workflow or "accepted\\s*\n          $response" in rc_workflow:
         FAILURES.append("windows-updater-rc.yml: malformed RC workflow tail detected")
     require(
