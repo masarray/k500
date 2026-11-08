@@ -187,7 +187,7 @@ Mic, Reverb, Echo, Main, Surround, Center, and Sub use stable EQ-page lifetimes 
 ## Preset integrity reference
 
 <!-- MUSICALITY_FINAL_LIBRARY_20261004 -->
-The current **source catalog** is ordered as **01–10 FOCUS A BT** (owner-approved Music R6), **11–20 old GEN5 D2R UAUDIO**, **21–30 old GEN3 BT**, **31–40 derived GEN3 UAUDIO**, **41 immutable D2R GOLDEN**, and **42–51 historical SonKuPik BT**. This represents 51 PC presets, not hardware slots: the physical K500 still has 10 slots. The already published v1.1.5 installer does not contain this new compiled catalog; release artifacts must be built and qualified separately. See [FOCUS catalog migration](docs/FOCUS_BT_PUBLIC_CATALOG_2026_11_08.md).
+The current **source catalog** is ordered as **01–10 FOCUS A BT** (owner-approved Music R6), **11–20 old GEN5 D2R UAUDIO**, **21–30 old GEN3 BT**, **31–40 derived GEN3 UAUDIO**, **41 immutable D2R GOLDEN**, and **42–51 historical SonKuPik BT**. This represents 51 PC presets, not hardware slots: the physical K500 still has 10 slots. The already published v1.1.5 installer does not contain this new compiled catalog; release artifacts must be built and qualified separately. Public preset ZIP: [Download FOCUS BT 01–10](https://sonkupik-k500.pages.dev/presets/focus-bt-01-10.zip). See [FOCUS catalog migration](docs/FOCUS_BT_PUBLIC_CATALOG_2026_11_08.md).
 
 See [GEN5 bank reordering and golden identity](docs/GEN5_D2R_PRIMARY_BANK_2026-10-29.md).
 

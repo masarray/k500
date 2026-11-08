@@ -164,7 +164,7 @@ def check_uaudio_companions() -> None:
                 return
             for n, entry in enumerate(entries, 31):
                 new = (out / entry["file"]).read_bytes()
-                donor = (folder / entry["donor"]).read_bytes() if False else (ROOT / "resources" / "presets" / entry["donor"]).read_bytes()
+                donor = (ROOT / "resources" / "presets" / entry["donor"]).read_bytes()
                 if not entry["file"].startswith(f"{n:02d}_") or len(new) != 1144 or new[0x0E] != 5 or sum(new) & 255:
                     FAILURES.append(f"UAUDIO companion {n}: bad number/size/source/checksum")
                 if entry["donorSha256"] != hashlib.sha256(donor).hexdigest():
