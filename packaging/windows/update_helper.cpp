@@ -354,6 +354,20 @@ std::wstring applicationLaunchCommand(const std::wstring &exe)
 
 bool startApplication(const std::wstring &exe)
 {
+#ifdef SONKUPIK_UPDATE_HELPER_CI
+    // CI-only, one-shot fault injection: prove that a verified installer
+    // cannot discard recovery just because a new GUI fails to start.
+    // The original application must still be allowed to relaunch on rollback.
+    if (testMode()) {
+        wchar_t failOnce[8]{};
+        if (GetEnvironmentVariableW(
+                L"SONKUPIK_P3_FAIL_RELAUNCH_ONCE", failOnce, 8) == 1
+            && failOnce[0] == L'1') {
+            SetEnvironmentVariableW(L"SONKUPIK_P3_FAIL_RELAUNCH_ONCE", nullptr);
+            return false;
+        }
+    }
+#endif
     std::wstring command = applicationLaunchCommand(exe);
     STARTUPINFOW startup{};
     startup.cb = sizeof(startup);
@@ -1413,13 +1427,19 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
         // while user-owned files remain recoverable for manual data review.
         logLine(request, L"Legacy unregistered folder archived safely at: " + orphanRecovery);
     }
-    discardBackup();
-    logLine(request, L"Machine->user migration verified; old application and HKLM uninstall registration absent;"
-                     L" canonical Program Files directory must also be absent; recovery snapshot released.");
-    if (!startApplication(request.targetApp))
+    // K500_POST_UPDATE_RELAUNCH_GATE_V1: never discard the previous machine
+    // installation snapshot before the verified replacement actually launches.
+    // Once old Program Files is retired there is no safe unelevated undo.
+    // Preserve the complete recovery snapshot when CreateProcess fails.
+    if (!startApplication(request.targetApp)) {
+        logLine(request, L"Verified per-user migration failed to relaunch; preserving machine recovery snapshot.");
         return fail(request, 35,
-            L"Migration completed and the new installation passed validation, "
-            L"but K500 could not be relaunched.");
+            L"Instalasi baru sudah terverifikasi tetapi K500 belum bisa dibuka. "
+            L"Backup versi sebelumnya tetap disimpan untuk pemulihan:\n" + request.backup);
+    }
+    discardBackup();
+    logLine(request, L"Machine->user migration verified and relaunched; old application and HKLM uninstall registration absent;"
+                     L" canonical Program Files directory must also be absent; recovery snapshot released.");
     return 0;
 }
 
@@ -1660,11 +1680,25 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
             L"Installed K500 did not pass the version/startup health check.");
     }
 
+    // The version/font smoke only proves the binary can answer a short
+    // command-line probe. It does NOT prove GUI relaunch. Retain the previous
+    // application + uninstall registration until CreateProcess succeeds.
+    if (!startApplication(request.targetApp)) {
+        logLine(request, L"New version passed health check but GUI relaunch failed; attempting safe rollback.");
+        return rollbackAndRelaunch(request, 18,
+            L"Versi baru berhasil dipasang tetapi belum bisa dibuka. "
+            L"K500 mencoba memulihkan aplikasi sebelumnya.");
+    }
+
     std::error_code ec;
     fs::remove_all(fs::path(request.backup), ec);
+    if (ec)
+        logLine(request, L"New application relaunched; redundant backup removal deferred (Windows "
+            + std::to_wstring(ec.value()) + L"). Previous-version recovery folder was retained at "
+            + request.backup);
+    else
+        logLine(request, L"Installer, health check and relaunch passed; recovery snapshot released.");
+    // Keep historic successful-check breadcrumb for RC acceptance tooling.
     logLine(request, L"Installer and app health check passed; recovery snapshot released.");
-    if (!startApplication(request.targetApp))
-        return fail(request, 18,
-            L"Updated K500 passed validation but could not be launched.");
     return 0;
 }
