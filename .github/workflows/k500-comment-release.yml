@@ -60,7 +60,7 @@ jobs:
             exit 1
           }
           green="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$remote_main&per_page=100" \
-            --jq '[.workflow_runs[] | select(.name == "K500 CI" and .event == "push" and .status == "completed" and .conclusion == "success")] | length')"
+            --jq '[.workflow_runs[] | select(.path == ".github/workflows/windows-build.yml" and .event == "push" and .status == "completed" and .conclusion == "success")] | length')"
           [[ "$green" =~ ^[1-9][0-9]*$ ]] || {
             echo "Exact current main has no completed successful consolidated K500 CI" >&2
             exit 1

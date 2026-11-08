@@ -2722,11 +2722,37 @@ def check_owner_comment_release_contracts() -> None:
             "Already running or passed")
     require("tools/ci/parse_ci_comment.py",
             "COMMAND.fullmatch(comment)", 'number != "241"')
-    require("docs/V1_1_6_UPDATER_RC_ACCEPTANCE.md",
-            "UPDATER_V1_1_6_ACCEPTANCE=pending",
-            "UPDATER_V1_1_6_ACCEPTED_TAG=pending",
-            "UPDATER_V1_1_6_ACCEPTED_COMMIT=pending",
-            "UPDATER_V1_1_6_USER_SHA256=pending")
+    # Valid owner approval changes pending to accepted; never lock contracts
+    # to the initial RC-only state. All four acceptance fields are atomic.
+    accepted_gate = read("docs/V1_1_6_UPDATER_RC_ACCEPTANCE.md")
+    prefix = "UPDATER_V1_1_6_"
+    def recorded(field: str) -> str:
+        matches = re.findall(
+            rf"(?m)^{prefix}{field}=([^\r\n]*)$", accepted_gate
+        )
+        if len(matches) != 1:
+            FAILURES.append(f"v1.1.6 acceptance needs exactly one {field}")
+            return ""
+        return matches[0].strip()
+
+    approval = recorded("ACCEPTANCE")
+    rc_tag = recorded("ACCEPTED_TAG")
+    rc_commit = recorded("ACCEPTED_COMMIT")
+    rc_sha256 = recorded("USER_SHA256")
+    if approval == "pending":
+        if (rc_tag, rc_commit, rc_sha256) != ("pending", "pending", "pending"):
+            FAILURES.append("v1.1.6 pending gate must not assert accepted RC identity")
+    elif approval == "accepted":
+        if (not re.fullmatch(r"v1\.1\.6-rc\.[1-9][0-9]*", rc_tag)
+                or not re.fullmatch(r"[0-9a-f]{40}", rc_commit)
+                or not re.fullmatch(r"[0-9a-f]{64}", rc_sha256)):
+            FAILURES.append("v1.1.6 accepted gate needs valid immutable tag, commit and SHA256")
+    else:
+        FAILURES.append("v1.1.6 acceptance must be pending or accepted")
+    require(".github/workflows/k500-comment-release.yml",
+            ".path == \".github/workflows/windows-build.yml\"")
+    require(".github/workflows/windows-updater-promote.yml",
+            ".path -eq '.github/workflows/windows-build.yml'")
     test = subprocess.run(
         [sys.executable, "-m", "unittest", "discover", "-s", "tests",
          "-p", "test_release_comment.py"],
