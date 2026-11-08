@@ -1,3 +1,11 @@
+## 2026-11-08 CURRENT AI DEV WORKFLOW: COMMENT-DRIVEN SMART CI (supersedes older CI instructions)
+- **One cheap automatic Fast Contracts run** per relevant PR/main update; NO Qt Windows/Installer/Linux/macOS native build automatically from a routine commit.
+- **Owner-only GitHub comment** on same-repo PR or issue #241: `/k500 ci smart` runs minimum changed-path native suites on a pinned and live-verified SHA. Supported: `/k500 ci fast`, `/k500 ci windows`, `/k500 ci installer`, `/k500 ci platform`, `/k500 ci full`.
+- AI can add an owner comment using the GitHub connector to trigger native tests. CI uses a GitHub-owned`workflow_dispatch~ on main and checks out the exact requested SHA; it refuses stale or fork heads, and deduplicates identical successful/in-progress requests.
+- Release remains owner-comment driven on issue #241: `/k500 release rc v1.1.6-rc.N`; stable `/k500 release stable v1.1.6` requires verified owner hardware acceptance and exact prerelease hash. No auto-stable promotion on any push.
+- **Recommended practice:** finalize code first; run `/k500 ci smart` once at PR checkpoint; inspect one run, then merge. Never trigger batches of expensive CI just to check progress. Use full only for major releases. See docs/SMART_CI_COMMENT_WORKFLOW.md.
+- These workflow rules supersede the older 2026-11-05 push-triggered Windows and automatic-stable instructions further down this file; historical release records remain untouched.
+
 ## 2026-11-08 NEW FOCUS BT OWNER-APPROVED PUBLIC CATALOG
 OWNER APPROVED FOCUS Music R6 Bluetooth bank to replace official PC catalog 01–10. Shift old D2R G5 UAUDIO to 11–20, old GEN3 BT to 21–30, generated UAUDIO to 31–40. GOLDEN 41 is an exception and MUST remain byte-identical at original protected number. Old legacy 31–40 move to 42–51. Total PC 51, K500 physical 10. Supersedes old GEN5 01–10 catalog instructions below. Published installer v1.1.5 remains immutable; new installer requires separate build and verified release. See docs/FOCUS_BT_PUBLIC_CATALOG_2026_11_08.md.
 
