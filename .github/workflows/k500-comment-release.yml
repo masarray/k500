@@ -1,0 +1,86 @@
+name: K500 Release Command
+
+# K500_COMMENT_RELEASE_V1 — one owner-only entry point on issue #241.
+# Unrelated comments are skipped before runner allocation; no extra CI build.
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: k500-comment-release
+  cancel-in-progress: false
+
+jobs:
+  authorize:
+    name: Owner command and exact-main CI gate
+    if: >-
+      github.event.issue.number == 241 &&
+      github.event.issue.pull_request == null &&
+      github.event.comment.user.login == github.repository_owner &&
+      startsWith(github.event.comment.body, '/k500 release ')
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    outputs:
+      mode: ${{ steps.command.outputs.mode }}
+      version: ${{ steps.command.outputs.version }}
+      rc_number: ${{ steps.command.outputs.rc_number }}
+    steps:
+      - name: Checkout current main
+        uses: actions/checkout@v4
+
+      - name: Parse exact owner command (no shell evaluation)
+        id: command
+        env:
+          K500_RELEASE_COMMENT: ${{ github.event.comment.body }}
+          K500_RELEASE_ACTOR: ${{ github.event.comment.user.login }}
+          K500_RELEASE_ISSUE: ${{ github.event.issue.number }}
+          K500_RELEASE_IS_PR: ${{ github.event.issue.pull_request != null }}
+        run: python3 tools/release/parse_release_comment.py
+
+      - name: Require current main and completed green consolidated CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$GITHUB_REF" == "refs/heads/main" ]] || {
+            echo "Release comment must resolve the default main branch" >&2
+            exit 1
+          }
+          remote_main="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+          [[ "$remote_main" == "$GITHUB_SHA" ]] || {
+            echo "main changed after comment; re-qualify and comment again" >&2
+            exit 1
+          }
+          green="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$remote_main&per_page=100" \
+            --jq '[.workflow_runs[] | select(.name == "K500 CI" and .event == "push" and .status == "completed" and .conclusion == "success")] | length')"
+          [[ "$green" =~ ^[1-9][0-9]*$ ]] || {
+            echo "Exact current main has no completed successful consolidated K500 CI" >&2
+            exit 1
+          }
+          echo "Release entry gate PASS: owner, issue, current main, green CI"
+
+  candidate:
+    name: One verified Windows RC build and immutable prerelease
+    needs: authorize
+    if: needs.authorize.outputs.mode == 'rc'
+    uses: ./.github/workflows/windows-updater-rc.yml
+    with:
+      rc_number: ${{ needs.authorize.outputs.rc_number }}
+      publish_prerelease: true
+    permissions:
+      contents: write
+      actions: read
+
+  stable:
+    name: Promote accepted RC bytes without rebuild
+    needs: authorize
+    if: needs.authorize.outputs.mode == 'stable'
+    uses: ./.github/workflows/windows-updater-promote.yml
+    permissions:
+      contents: write
+      actions: read
