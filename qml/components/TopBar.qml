@@ -300,7 +300,14 @@ StudioPanel {
             ToolTip.visible: statusHover.containsMouse && (root.deviceManager.lastError.length > 0 || root.deviceManager.portLabel.length > 0)
             ToolTip.text: root.deviceManager.lastError.length > 0 ? root.deviceManager.lastError : root.deviceManager.portLabel
             ToolTip.delay: 350
-            MouseArea { id:statusHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton;cursorShape:Qt.ArrowCursor }
+            MouseArea {
+                id: statusHover
+                anchors.fill: parent
+                hoverEnabled: true
+                acceptedButtons: root.deviceManager.status === "error" ? Qt.LeftButton : Qt.NoButton
+                cursorShape: root.deviceManager.status === "error" ? Qt.PointingHandCursor : Qt.ArrowCursor
+                onClicked: connectionHelp.open()
+            }
         }
 
         Item { Layout.fillWidth:true }
@@ -333,6 +340,80 @@ StudioPanel {
             ToolTip.text:"Export K500 diagnostic report (JSON)"
             ToolTip.delay:350
             MouseArea { id:supportHover;anchors.fill:parent;hoverEnabled:true;acceptedButtons:Qt.NoButton }
+        }
+    }
+
+    // An error pill must be actionable on touch/laptop, not hover-only.
+    // No automatic USB write/retry: the user explicitly starts each new probe.
+    Popup {
+        id: connectionHelp
+        parent: root
+        width: Math.min(338, root.width - 24)
+        x: Math.max(8, Math.min(root.width - width - 8,
+             statusDisplay.mapToItem(root, 0, 0).x + statusDisplay.width - width))
+        y: root.height + 5
+        padding: 12
+        modal: false
+        focus: true
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        background: Rectangle {
+            radius: 9
+            color: "#172027"
+            border.color: "#48525B"
+            border.width: 1
+        }
+        contentItem: ColumnLayout {
+            spacing: 9
+            Text {
+                Layout.fillWidth: true
+                text: root.deviceManager.transportMode === "usb"
+                      ? "K500 USB belum tersambung" : "K500 belum tersambung"
+                font.family: Theme.fontFamily
+                font.pixelSize: 13
+                font.weight: Font.DemiBold
+                color: Theme.text
+            }
+            Text {
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+                text: root.deviceManager.lastError.length > 0
+                      ? root.deviceManager.lastError
+                      : "Periksa perangkat dan klik Coba Lagi."
+                font.family: Theme.fontFamily
+                font.pixelSize: 12
+                lineHeight: 1.3
+                color: Theme.textSoft
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 8
+                SoftButton {
+                    Layout.preferredWidth: 118
+                    Layout.preferredHeight: 30
+                    text: "Coba Lagi"
+                    iconName: "refresh-cw"
+                    compact: true
+                    toolbar: true
+                    mixerSelect: true
+                    primaryAction: true
+                    onClicked: {
+                        connectionHelp.close()
+                        root.deviceManager.connectDevice()
+                    }
+                }
+                SoftButton {
+                    Layout.preferredWidth: 146
+                    Layout.preferredHeight: 30
+                    text: "Simpan Laporan"
+                    iconName: "file-down"
+                    compact: true
+                    toolbar: true
+                    onClicked: {
+                        connectionHelp.close()
+                        supportReportDialog.open()
+                    }
+                }
+            }
         }
     }
 }
