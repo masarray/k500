@@ -65,7 +65,7 @@ jobs:
           $gatePath = "docs/V$($version.Replace('.', '_'))_UPDATER_RC_ACCEPTANCE.md"
           if (-not (Test-Path $gatePath)) { throw "New release must include a version-specific acceptance gate: $gatePath" }
           $gate = Get-Content $gatePath -Raw
-          $token = [regex]::Match($gate, "(?m)^$([regex]::Escape($acceptanceKey))=(pending|accepted)\\s*$")
+          $token = [regex]::Match($gate, "(?m)^$([regex]::Escape($acceptanceKey))=(pending|accepted)\s*$")
           if (-not $token.Success) { throw 'Updater acceptance record has no valid machine-readable token.' }
           if ($token.Groups[1].Value -eq 'accepted') {
             throw "v$version RC line was already accepted; create a new patch version instead of rebuilding immutable RC bytes."
@@ -252,7 +252,7 @@ jobs:
           $gatePath = "docs/V$($version.Replace('.', '_'))_UPDATER_RC_ACCEPTANCE.md"
           $key = "UPDATER_V$($version.Replace('.', '_'))_ACCEPTANCE"
           $gate = Get-Content $gatePath -Raw
-          $token = [regex]::Match($gate, "(?m)^$([regex]::Escape($key))=(pending|accepted)\\s*$")
+          $token = [regex]::Match($gate, "(?m)^$([regex]::Escape($key))=(pending|accepted)\s*$")
           if (-not $token.Success) { throw 'Acceptance token missing' }
           $acceptance = $token.Groups[1].Value
           $manifest = [ordered]@{
