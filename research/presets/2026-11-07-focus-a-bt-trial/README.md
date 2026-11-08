@@ -1,3 +1,10 @@
+# CURRENT MUSIC TRIAL R6 (2026-11-08) — SLOTS 01 AND 02 ONLY
+
+Owner: 01 R4 music standout but slightly over/less detail; 02 music not standout. Binary audit: old seven-band Music EQ was essentially the same; **Main Music raw 73 vs 55** was the major configuration mismatch. Current research trials 01 and 02 now use exactly the same refined Music EQ **and Main Music raw73**, while each retains its own previously selected vocal/Echo/Reverb/MC settings. See `refinement-music-r6/` for full A/B data and rollback copies.
+
+01 Music is adjusted slightly from R4, with the owner-selected R4 **vocal/FX fully frozen**. 02 MC Music level is restored to 73, but its MC low-wet profile is fully retained. Music trial R6 has **not** yet been physically accepted. Presets 03–10 unchanged and official bank untouched.
+
+---
 # CURRENT OWNER-SELECTED TRIAL BANK — 2026-11-08
 
 **Artist 01:** Exact earlier `01_ARTIST_R4_BT` restored. The owner tested R5 and explicitly rejected ALL its new variants as worse; the R4 version is the preferred physical K500 result. SHA-256 `e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80`. Native source remains Bluetooth (2), repeat 10, main echo 95.

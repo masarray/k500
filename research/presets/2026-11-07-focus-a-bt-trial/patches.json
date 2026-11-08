@@ -1,7 +1,7 @@
 {
   "version": 1,
   "date": "2026-11-07",
-  "status": "2026-11-08: OWNER HARDWARE-SELECTED slot01 R4; all R5 candidates REJECTED; research only, no official promotion",
+  "status": "R6: Music EQ shared by 01/02 with Main Music raw73; Artist R4 vocal/FX and MC 02 speech/FX preserved; real K500 music listening pending",
   "donor": {
     "path": "source/KTVPRO_FOCUS_A.k500",
     "sha256": "e48e45d5cdbd66aa6b80609d1ad48987fff48eddb5673e2fc893e53e463ddfdb",
@@ -13,18 +13,27 @@
     {
       "slot": 1,
       "file": "01_FOCUS_ARTIST_BT.k500",
-      "name": "F1 ARTIST R4",
-      "intent": "Owner 2026-11-07: Artist 01 effects ringing at 2–2.5k; surgical transplant of accepted Melayu R3 Reverb PEQ band2 and band5; unchanged dry Mic/Music/Echo/routing",
+      "name": "F1 MUSIC R6",
+      "intent": "Owner requested Music 01 and 02 truly identical and detailed. Artist R4 vocal/FX locked; shared Music R6 trims broad bass/shelf boost and eases 2.88/6.5k cuts; hardware approval pending.",
       "sourceRaw": 2,
       "scalars": {},
       "eqGainDb": {
         "reverb": {
           "2": -12,
           "5": 12.7
+        },
+        "music": {
+          "1": -4.3,
+          "2": -4.3,
+          "3": 15,
+          "4": -5.7,
+          "5": -10.3,
+          "6": -7.4,
+          "7": 14.6
         }
       },
-      "gitBlobSha": "f70a943cfb146a71b5e7bdef759e666597aa13dc",
-      "sha256": "e48948cb45bb016bcd41570221c6a1ad878a3a25a2e45782faba943b61a75b80",
+      "gitBlobSha": "fc7275b0a28589239fb0412aa56a91b20f7d2737",
+      "sha256": "eb64073940b3907e15b0c77fc630baf8aef737fb3ab6980d5310d8b459604dd9",
       "eqBandEdits": {
         "reverb": {
           "2": {
@@ -35,6 +44,11 @@
       },
       "changedOffsets": [
         "0x000E",
+        "0x01B8",
+        "0x01C8",
+        "0x01D8",
+        "0x01E0",
+        "0x01E8",
         "0x03E4",
         "0x03E5",
         "0x03E6",
@@ -44,6 +58,7 @@
         "0x0455",
         "0x0456",
         "0x0457",
+        "0x0458",
         "0x0459",
         "0x045A",
         "0x045B",
@@ -52,16 +67,15 @@
         "0x045E",
         "0x045F",
         "0x0460",
-        "0x0461",
-        "0x0475"
+        "0x0461"
       ],
-      "changedOffsetCount": 20
+      "changedOffsetCount": 25
     },
     {
       "slot": 2,
       "file": "02_FOCUS_MC_BT.k500",
-      "name": "F2 MC RADIO BT",
-      "intent": "Drier speech, echo OFF",
+      "name": "F2 MC MUSIC R6",
+      "intent": "Same exact Music EQ/Main Music 73 as Artist 01; retain original MC mic compression and drier reverb/echo settings; device audition pending",
       "sourceRaw": 2,
       "scalars": {
         "reverb.level": 40,
@@ -76,11 +90,17 @@
         "surround.reverb": 45,
         "surround.echo": 0,
         "mic.comp.ratio": 3,
-        "main.music": 55
+        "main.music": 73
       },
       "eqGainDb": {
         "music": {
-          "2": -4.4
+          "1": -4.3,
+          "2": -4.3,
+          "3": 15,
+          "4": -5.7,
+          "5": -10.3,
+          "6": -7.4,
+          "7": 14.6
         },
         "micA": {
           "3": 21.7
@@ -89,8 +109,47 @@
           "3": 21.7
         }
       },
-      "gitBlobSha": "963e15ff870aebfb78a9237a6332f76ab8491dcb",
-      "sha256": "50c2dc10e188f213d7d8c2b3c662c0af9c42596383e70eec78c3f833407b6790"
+      "gitBlobSha": "a454910c42e81155ff94482187ca18b6145f6c14",
+      "sha256": "4c8937765af3e2c7bc441b25daf4674cfdc87fbbb94240809cfbb8e00dfc9bfe",
+      "changedOffsets": [
+        "0x000E",
+        "0x0018",
+        "0x002C",
+        "0x002E",
+        "0x0040",
+        "0x0042",
+        "0x0054",
+        "0x0056",
+        "0x0074",
+        "0x007B",
+        "0x007C",
+        "0x00C8",
+        "0x00C9",
+        "0x00CA",
+        "0x0108",
+        "0x0168",
+        "0x01B8",
+        "0x01C8",
+        "0x01D8",
+        "0x01E0",
+        "0x01E8",
+        "0x0454",
+        "0x0455",
+        "0x0456",
+        "0x0457",
+        "0x0458",
+        "0x0459",
+        "0x045A",
+        "0x045B",
+        "0x045C",
+        "0x045D",
+        "0x045E",
+        "0x045F",
+        "0x0460",
+        "0x0461",
+        "0x0475"
+      ],
+      "changedOffsetCount": 36
     },
     {
       "slot": 3,
@@ -424,5 +483,45 @@
     "hardwareFindingOverrides": "Static RBJ results cannot predict actual K500 echo timing, midrange/forwardness or singer preference",
     "notProductionApproved": true,
     "action": "No further changes to 01 unless owner explicitly requests"
+  },
+  "musicR6": {
+    "date": "2026-11-08",
+    "customerFeedback": "01 Music standout but excessive and detail a little subdued; 02 Music not standout",
+    "rootCause": {
+      "mainMusicRawOld": {
+        "01": 73,
+        "02": 55
+      },
+      "musicBand2GainDbOld": {
+        "01": -4.3,
+        "02": -4.4
+      },
+      "bluetoothTrimDb": -3,
+      "mainEQ": "unchanged and shared"
+    },
+    "sharedMusicEqGainDb": {
+      "1": -4.3,
+      "2": -4.3,
+      "3": 15,
+      "4": -5.7,
+      "5": -10.3,
+      "6": -7.4,
+      "7": 14.6
+    },
+    "mainMusicRawBoth": 73,
+    "preservedBankSlots": [
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10
+    ],
+    "artist01VocalFX": "byte-identical to preferred R4",
+    "mc02VocalFX": "byte-identical to prior 02",
+    "hardwareStatus": "pending",
+    "officialPromotion": "not approved"
   }
 }
