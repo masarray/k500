@@ -73,6 +73,8 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     GetEnvironmentVariableW(L"SONKUPIK_P3_FAKE_INSTALL_MODE", mode, 32);
     if (std::wstring(mode) == L"nonzero")
         return 7;
+    if (std::wstring(mode) == L"abort")
+        return 5; // Official Inno Setup: cancelled/Abort during installation.
     if (std::wstring(mode) == L"badhealth")
         return 0; // Helper must detect that the replaced app can no longer launch.
     return 73;

@@ -172,6 +172,7 @@ $fakeHash = (Get-FileHash $fakeInstaller -Algorithm SHA256).Hash.ToLowerInvarian
 
 foreach ($case in @(
     @{ Mode='nonzero'; Expected=23; Name='installer-nonzero' },
+    @{ Mode='abort'; Expected=23; Name='inno-abort-code5' },
     @{ Mode='badhealth'; Expected=24; Name='failed-health-check' }
 )) {
     $env:SONKUPIK_P3_FAKE_INSTALL_MODE = $case.Mode
@@ -197,6 +198,12 @@ foreach ($case in @(
     $result = Start-BoundedProcess -FilePath $helperPath -ArgumentList $args -Label ("rollback " + $case.Name)
     if ($result.ExitCode -ne $case.Expected) {
         throw "$($case.Name) returned $($result.ExitCode), expected $($case.Expected)"
+    }
+    if ($case.Mode -eq 'abort') {
+        $detail = Get-Content $caseLog -Raw
+        if (-not $detail.Contains('Inno Setup exited with code 5')) {
+            throw 'Inno code 5 was not diagnosed in the updater log'
+        }
     }
     Stop-RelaunchedK500
     if ((Get-FileHash (Join-Path $rollbackDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $originalAppHash) {
