@@ -1272,6 +1272,20 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         return false;
     }
 
+    // Fail BEFORE closing K500 if a previous update's recovery data remains.
+    // The helper independently enforces the same rule after process handoff.
+    const QString backup = QDir::toNativeSeparators(
+        QDir(updateDirectory()).filePath(QStringLiteral("recovery-previous")));
+    const QFileInfo backupInfo(backup);
+    if (backupInfo.exists() || backupInfo.isSymLink()) {
+        if (error)
+            *error = QStringLiteral(
+                "K500 menemukan backup pemulihan dari update sebelumnya:\n%1\n\n"
+                "Aplikasi tetap terbuka dan pembaruan dihentikan supaya data "
+                "tidak tertimpa. Simpan laporan sebelum mencoba lagi.").arg(backup);
+        return false;
+    }
+
     QString stageError;
     const QString staged = stageUpdateHelper(&stageError);
     if (staged.isEmpty()) {
@@ -1290,8 +1304,6 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
     }
     const QString log = QDir::toNativeSeparators(
         QDir(updateDirectory()).filePath(QStringLiteral("update-handoff.log")));
-    const QString backup = QDir::toNativeSeparators(
-        QDir(updateDirectory()).filePath(QStringLiteral("recovery-previous")));
     const QStringList args = {
         QStringLiteral("--parent-pid"), QString::number(GetCurrentProcessId()),
         QStringLiteral("--setup"), setup,
