@@ -11,7 +11,7 @@ workflow file is added; the existing CI and release-comment hub are reused.
   repository-owner comment or explicitly authorized manual dispatch.
 - No automatic stable release from accepting a documentation file: the
   existing owner-comment stable release path enforces accepted RC evidence.
-- The current v1.1.5 stable and v1.1.6-rc.1 prerelease are immutable.
+- The **current public stable is v1.1.6**, promoted byte-for-byte from the accepted immutable v1.1.6-rc.1. The previous v1.1.5 stable remains an immutable historical release.
 
 ## One-line owner comments
 
