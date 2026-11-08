@@ -1,3 +1,6 @@
+## 2026-11-08 NEW FOCUS BT OWNER-APPROVED PUBLIC CATALOG
+OWNER APPROVED FOCUS Music R6 Bluetooth bank to replace official PC catalog 01–10. Shift old D2R G5 UAUDIO to 11–20, old GEN3 BT to 21–30, generated UAUDIO to 31–40. GOLDEN 41 is an exception and MUST remain byte-identical at original protected number. Old legacy 31–40 move to 42–51. Total PC 51, K500 physical 10. Supersedes old GEN5 01–10 catalog instructions below. Published installer v1.1.5 remains immutable; new installer requires separate build and verified release. See docs/FOCUS_BT_PUBLIC_CATALOG_2026_11_08.md.
+
 ## K500 SMART RELEASE PIPELINE (2026-11-05)
 - ONE consolidated `.github/workflows/windows-build.yml` for PR/main.
 - `tools/ci/change_scope.py` now gates Windows compilation by changed paths even for main pushes; docs-only acceptance must not rebuild Qt/installer.
