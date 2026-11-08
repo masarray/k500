@@ -2414,7 +2414,10 @@ def check_release_contracts() -> None:
     require("site/presets/index.html",
             "Official v1.1.6 built-in", "51 PC presets")
     require("site/README.md",
-            "Current stable is v1.1.6", "verified ZIP and EXE")
+            "Current stable is v1.1.6", "verified ZIP and EXE",
+            "937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899")
+    forbid("site/README.md",
+           "72651326cd871ae3278b92b713b2bb9db03dd3761970fab2e7ec0d5bba62cb3f")
     require("CHANGELOG.md",
             "## v1.1.6 — FOCUS BT catalog",
             "937a28a4bb715f60ba7ed06c437bbce165357d519bab824b77fa84c39b284899")
