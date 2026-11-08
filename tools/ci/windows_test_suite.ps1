@@ -107,47 +107,7 @@ $runtimeVersion = $cmakeVersionMatch.Groups[1].Value
 # a second running K500 process and fail during file replacement.
 $inno = Get-Content packaging/windows/installer.iss -Raw
 $runtime = Get-Content src/main.cpp -Raw
-if ($inno -notmatch '(?m)^AppMutex=SonKuPikK500\.K500\.Native\s*
-    Invoke-Checked "$PackageDir/SonKuPik-K500.exe" @($arg) "Runtime $arg"
-}
-
-# FINAL_DEVICE_PERFORMANCE_SMOKE_V1 — keep the old hardware-free qualification
-# signal, but run it against the already-built/deployed executable instead of
-# paying for another Qt/MSVC workflow.
-Write-Host "==> Final device performance smoke"
-$perfReport = Join-Path (Resolve-Path $BuildDir).Path "final-device-performance-smoke.json"
-Remove-Item $perfReport -Force -ErrorAction SilentlyContinue
-$perfArgs = @(
-    "--engine-self-test",
-    "--device-perf",
-    "--device-perf-report=$perfReport"
-)
-$perfProcess = Start-Process -FilePath "$PackageDir/SonKuPik-K500.exe" -ArgumentList $perfArgs -Wait -PassThru
-if ($perfProcess.ExitCode -ne 0) { throw "Engine + device performance smoke failed with exit code $($perfProcess.ExitCode)" }
-if (-not (Test-Path $perfReport)) { throw "Device performance smoke did not create JSON report" }
-$perf = Get-Content -Raw $perfReport | ConvertFrom-Json
-if ($perf.schema -ne "sonkupik-k500-device-performance-v1") { throw "Device performance report schema mismatch" }
-if ([string]::IsNullOrWhiteSpace($perf.gitCommit) -or $perf.gitCommit -eq "unknown") { throw "Device performance report missing exact Git commit" }
-if ($perf.bootstrapToEventLoopMs -lt 0) { throw "Bootstrap/event-loop timing was not recorded" }
-if (-not $perf.runtime.startupPostQml.valid) { throw "Windows runtime snapshot was not captured" }
-if ($perf.eventLoop.samples -lt 1) { throw "Event-loop sampler did not run" }
-if ($perf.gates.scope -notmatch "Performance-only") { throw "Performance/manual acceptance scope separation missing" }
-
-Write-Host "==> RC-only updater acceptance script syntax"
-$parseTokens = $null
-$parseErrors = $null
-[void][System.Management.Automation.Language.Parser]::ParseFile(
-    (Join-Path $PWD "tools/ci/updater_deep_acceptance.ps1"),
-    [ref]$parseTokens,
-    [ref]$parseErrors
-)
-if ($parseErrors.Count -ne 0) {
-    $parseErrors | ForEach-Object { Write-Error $_.Message }
-    throw "RC deep updater acceptance script has PowerShell syntax errors"
-}
-
-Write-Host "K500 consolidated Windows regression suite PASS"
- -or
+if ($inno -notmatch '(?m)^AppMutex=SonKuPikK500\.K500\.Native\s*$' -or
     $runtime -notmatch 'K500InnoAppMutex\[\] = L"SonKuPikK500\.K500\.Native"') {
     throw 'K500 runtime Win32 mutex does not match Inno AppMutex'
 }
