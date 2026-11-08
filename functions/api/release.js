@@ -8,7 +8,7 @@ export async function onRequestGet() {
     channel: 'stable',
     setup: '/download/windows',
     downloadUrl: release.downloadUrl,
-    downloadFilename: release.downloadFilename || 'SonKuPik-K500-' + release.tag + '-Windows-Smart-Installer.exe',
+    downloadFilename: release.downloadFilename || 'SonKuPik-K500-' + release.tag + '-Windows-Setup-PerUser.exe',
     zipUrl: release.zipUrl,
     zipFilename: release.zipFilename || null,
     zipAvailable: release.zipAvailable,
