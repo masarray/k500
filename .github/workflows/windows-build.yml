@@ -1,20 +1,41 @@
 name: K500 CI
+run-name: K500-${{ inputs.ci_mode || 'fast' }}-${{ inputs.expected_sha || github.sha }}-${{ inputs.base_sha || 'auto' }}
 
-# CI_CONSOLIDATED_PIPELINE_V1
-# SMART_CI_SCOPE_V2 — no unnecessary main-push Windows builds or ZIP jobs.
-# One PR/main workflow, one Windows build, many tests. Regressions belong in
-# executable tests or tools/ci/contracts.py, not new per-feature workflows.
+# CI_CONSOLIDATED_PIPELINE_V1 / SMART_CI_SCOPE_V3
+# PR/push: only fast, offline contracts; no Windows/Qt, Inno, Linux or macOS.
+# The existing comment controller dispatches a pinned SHA/scope on demand.
 on:
   pull_request:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      ci_mode:
+        description: "fast, smart (changed paths), windows, installer, platform, full"
+        required: true
+        default: smart
+        type: choice
+        options: [fast, smart, windows, installer, platform, full]
+      expected_sha:
+        description: "Exact source commit SHA, verified against current PR or main"
+        required: true
+        type: string
+      base_sha:
+        description: "Expected main base SHA for PR or previous main commit"
+        required: true
+        type: string
+      pr_number:
+        description: "0 for main, otherwise same-repository PR number"
+        required: true
+        default: "0"
+        type: string
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
-  group: k500-ci-${{ github.event.pull_request.number || github.ref }}
+  group: k500-ci-${{ inputs.expected_sha || github.event.pull_request.number || github.ref }}-${{ inputs.ci_mode || 'fast' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
@@ -31,15 +52,52 @@ jobs:
       platform_required: ${{ steps.scope.outputs.platform_required }}
       promotion_required: ${{ steps.scope.outputs.promotion_required }}
     steps:
-      - name: Checkout
+      - name: Checkout exact source
         uses: actions/checkout@v4
         with:
+          ref: ${{ inputs.expected_sha || github.sha }}
           fetch-depth: 0
+
+      - name: Verify requested SHA is still current (manual only)
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+          EXPECTED_BASE: ${{ inputs.base_sha }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$EXPECTED_SHA" =~ ^[0-9a-f]{40}$ && "$EXPECTED_BASE" =~ ^[0-9a-f]{40}$ ]] || {
+            echo "Invalid immutable target/base SHA" >&2; exit 1;
+          }
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]] || {
+            echo "Checkout is not the authorized exact source SHA" >&2; exit 1;
+          }
+          if [[ "$PR_NUMBER" == "0" ]]; then
+            current="$(gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.commit.sha')"
+            [[ "$current" == "$EXPECTED_SHA" ]] || {
+              echo "main changed: comment again on the latest commit" >&2; exit 1;
+            }
+          else
+            [[ "$PR_NUMBER" =~ ^[1-9][0-9]*$ ]] || exit 1
+            pr="$(gh api "repos/$GITHUB_REPOSITORY/pulls/$PR_NUMBER")"
+            [[ "$(jq -r '.state' <<< "$pr")" == "open" &&
+               "$(jq -r '.head.repo.full_name' <<< "$pr")" == "$GITHUB_REPOSITORY" &&
+               "$(jq -r '.base.ref' <<< "$pr")" == "main" &&
+               "$(jq -r '.head.sha' <<< "$pr")" == "$EXPECTED_SHA" &&
+               "$(jq -r '.base.sha' <<< "$pr")" == "$EXPECTED_BASE" ]] || {
+              echo "PR, head SHA or base changed: reject stale testing" >&2; exit 1;
+            }
+          fi
+          echo "PINNED SHA VERIFIED: $EXPECTED_SHA"
 
       - name: Compute CI scope
         id: scope
         env:
-          CI_BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.before }}
+          CI_BASE_SHA: ${{ inputs.base_sha || github.event.pull_request.base.sha || github.event.before }}
+          CI_HEAD_SHA: ${{ inputs.expected_sha || github.sha }}
+          CI_REQUEST_SCOPE: ${{ inputs.ci_mode || 'fast' }}
         run: python tools/ci/change_scope.py
 
       - name: Repository contracts
@@ -68,6 +126,9 @@ jobs:
       - name: Preset lab syntax
         run: python -m py_compile tools/k500_preset_lab.py
 
+      - name: Comment command and CI scope policy tests (offline)
+        run: python -m unittest discover -s tests -p 'test_ci_comment*.py'
+
   windows:
     name: Windows build + regression
     needs: contracts
@@ -75,8 +136,10 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
-      - name: Checkout
+      - name: Checkout exact tested source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha || github.sha }}
 
       - name: Install Qt
         uses: jurplel/install-qt-action@v4
@@ -108,7 +171,7 @@ jobs:
         # for final GUI/QRIS inspection before merge.
         uses: actions/upload-artifact@v4
         with:
-          name: SonKuPik-K500-${{ github.sha }}-Windows
+          name: SonKuPik-K500-${{ inputs.expected_sha || github.sha }}-Windows
           path: package
           if-no-files-found: error
           retention-days: ${{ github.event_name == 'pull_request' && 3 || 7 }}
@@ -121,8 +184,10 @@ jobs:
     runs-on: windows-2022
     timeout-minutes: 20
     steps:
-      - name: Checkout
+      - name: Checkout exact tested source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha || github.sha }}
 
       - name: Activate MSVC 2022
         uses: ilammy/msvc-dev-cmd@v1
@@ -134,27 +199,13 @@ jobs:
         run: ./tools/ci/installer_smoke.ps1
 
 
-  promote-approved-rc:
-    # SMART_STABLE_PROMOTION_GATE_V1: same K500 CI run, not a second
-    # automatic workflow. On acceptance-only commits, Windows and installer
-    # jobs are skipped; the immutable RC is promoted without recompilation.
-    name: Promote owner-accepted RC (no rebuild)
-    needs: [contracts, windows, installer]
-    if: >-
-      always() && github.event_name == 'push' && github.ref == 'refs/heads/main' &&
-      needs.contracts.result == 'success' &&
-      needs.contracts.outputs.promotion_required == 'true' &&
-      (needs.windows.result == 'success' || needs.windows.result == 'skipped') &&
-      (needs.installer.result == 'success' || needs.installer.result == 'skipped')
-    permissions:
-      contents: write
-      actions: read
-    uses: ./.github/workflows/windows-updater-promote.yml
+  # SMART_STABLE_PROMOTION_GATE_V1 is now owner-comment-only.
+  # No automatic stable release on a push, even for an accepted gate document.
 
   cross-platform:
     name: Native platform — ${{ matrix.platform }}
     needs: contracts
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.contracts.outputs.platform_required == 'true'
+    if: needs.contracts.outputs.platform_required == 'true'
     runs-on: ${{ matrix.os }}
     timeout-minutes: 40
     permissions:
@@ -170,8 +221,10 @@ jobs:
             platform: macos
             artifact: SonKuPik-K500-native-macOS-arm64.dmg
     steps:
-      - name: Checkout source
+      - name: Checkout exact tested source
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.expected_sha || github.sha }}
       - name: Install OS transport dependencies
         shell: bash
         run: |
@@ -197,6 +250,8 @@ jobs:
           ./build-platform/k500_protocol_selftest
           ./build-platform/k500_p1_state_selftest
       - name: Install Qt QML runtime, package and checksum
+        env:
+          SOURCE_SHA: ${{ inputs.expected_sha || github.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -233,14 +288,14 @@ jobs:
           test -s "dist/${{ matrix.artifact }}"
           (cd dist && shasum -a 256 "${{ matrix.artifact }}" > "${{ matrix.artifact }}.sha256")
           printf 'source_commit=%s\nos=${{ matrix.platform }}\nqt=6.10.2\nhardware_test=not_yet_physically_qualified\n' \
-            "$GITHUB_SHA" > "dist/${{ matrix.artifact }}.provenance.txt"
+            "$SOURCE_SHA" > "dist/${{ matrix.artifact }}.provenance.txt"
       # PATCH_115_NO_STALE_RELEASE_MUTATION_V1: a source push must never
       # upload new binary bytes into the immutable v1.1.4 public release.
       # Keep native packages as short-lived QA evidence only.
       - name: Upload native platform QA evidence (not a stable release)
         uses: actions/upload-artifact@v4
         with:
-          name: SonKuPik-K500-${{ matrix.platform }}-${{ github.sha }}-QA
+          name: SonKuPik-K500-${{ matrix.platform }}-${{ inputs.expected_sha || github.sha }}-QA
           path: |
             dist/${{ matrix.artifact }}
             dist/${{ matrix.artifact }}.sha256
