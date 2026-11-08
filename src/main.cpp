@@ -32,6 +32,12 @@
 
 namespace {
 const QString kUiFontFamily = QStringLiteral("Plus Jakarta Sans");
+#ifdef Q_OS_WIN
+// Must match AppMutex in packaging/windows/installer.iss byte-for-byte.
+// Inno Setup checks existence of this named Win32 mutex before changing
+// installed files. Keep it alive for the WHOLE interactive GUI process.
+constexpr wchar_t K500InnoAppMutex[] = L"SonKuPikK500.K500.Native";
+#endif
 
 bool registerEmbeddedFonts()
 {
@@ -118,6 +124,21 @@ int main(int argc, char *argv[])
         qCritical() << "Plus Jakarta Sans embedded font family is unavailable";
         return 5;
     }
+
+#ifdef Q_OS_WIN
+    // Windows smoke proof: the Inno name is a real kernel mutex, not just an
+    // installer.iss declaration. Health checks must NOT create this mutex.
+    if (app.arguments().contains(QStringLiteral("--app-mutex-self-test"))) {
+        HANDLE mutex = CreateMutexW(nullptr, FALSE, K500InnoAppMutex);
+        if (!mutex)
+            return 41;
+        HANDLE observed = OpenMutexW(SYNCHRONIZE, FALSE, K500InnoAppMutex);
+        if (observed)
+            CloseHandle(observed);
+        CloseHandle(mutex);
+        return observed ? 0 : 42;
+    }
+#endif
 
     // UPDATE_HANDOFF_HEALTH_V1 — the external updater runs this without opening
     // QML or touching K500 hardware. It rejects a stale/incorrect replacement.
@@ -868,6 +889,21 @@ int main(int argc, char *argv[])
             return 7;
         qInfo() << "Mic EQ LINK instant A/B editor parity regression passed";
     }
+
+#ifdef Q_OS_WIN
+    // K500_INSTALLER_APP_MUTEX_V1 — only the interactive GUI holds the mutex.
+    // Do not acquire it for --update-health-check, protocol tests, or
+    // --app-mutex-self-test: the external updater probes these modes while Inno
+    // may be running. A second interactive K500 keeps the named mutex alive
+    // until the LAST instance exits, allowing Inno to block unsafe replacement.
+    // Intentionally keep the handle open through process termination.
+    const HANDLE innoAppMutex = CreateMutexW(nullptr, FALSE, K500InnoAppMutex);
+    if (!innoAppMutex) {
+        qCritical() << "Could not create K500 installer safety mutex:"
+                    << GetLastError();
+        return 43;
+    }
+#endif
 
     QQmlApplicationEngine engine;
     engine.setInitialProperties({
