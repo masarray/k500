@@ -1,9 +1,17 @@
 name: Windows Updater Release Candidate
-run-name: Updater RC v1.1.5-rc.${{ inputs.rc_number }}
+run-name: K500 updater RC ${{ inputs.rc_number }}
 
-# Manual-only P4 candidate publisher. A green candidate does not promote stable;
-# stable v1.1+ remains blocked by docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md.
+# Reusable single-build RC publisher for owner-only GitHub issue comments or
+# manual dispatch. Green RC never auto-promotes stable; acceptance stays independent.
 on:
+  workflow_call:
+    inputs:
+      rc_number:
+        required: true
+        type: string
+      publish_prerelease:
+        required: true
+        type: boolean
   workflow_dispatch:
     inputs:
       rc_number:
@@ -29,7 +37,7 @@ env:
 
 jobs:
   package-updater-rc:
-    name: Qualify v1.1.5 updater RC
+    name: Qualify immutable Windows updater RC
     runs-on: windows-2022
     timeout-minutes: 45
 
@@ -51,18 +59,31 @@ jobs:
             throw 'Unable to read project version from CMakeLists.txt'
           }
           $version = $Matches[1]
-          if ($version -ne '1.1.5') { throw "P4 updater RC requires source version 1.1.5; found $version" }
+          if ($version -eq '1.1.5') { throw 'v1.1.5 RC line is already publicly released and immutable.' }
           $tag = "v$version-rc.$env:RC_NUMBER"
-          $gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw
-          if ($gate -notmatch '(?m)^UPDATER_V1_1_5_ACCEPTANCE=(pending|accepted)\s*$') {
-            throw 'Updater acceptance record has no valid machine-readable token.'
+          $acceptanceKey = "UPDATER_V$($version.Replace('.', '_'))_ACCEPTANCE"
+          $gatePath = "docs/V$($version.Replace('.', '_'))_UPDATER_RC_ACCEPTANCE.md"
+          if (-not (Test-Path $gatePath)) { throw "New release must include a version-specific acceptance gate: $gatePath" }
+          $gate = Get-Content $gatePath -Raw
+          $token = [regex]::Match($gate, "(?m)^$([regex]::Escape($acceptanceKey))=(pending|accepted)\s*$")
+          if (-not $token.Success) { throw 'Updater acceptance record has no valid machine-readable token.' }
+          if ($token.Groups[1].Value -eq 'accepted') {
+            throw "v$version RC line was already accepted; create a new patch version instead of rebuilding immutable RC bytes."
           }
-          # RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1 — once this version has an
-          # accepted immutable RC/stable promotion, publishing another rebuilt
-          # RC for the same source version would violate byte-identical provenance.
-          if ($gate -match '(?m)^UPDATER_V1_1_5_ACCEPTANCE=accepted\s*$') {
-            throw 'v1.1.5 RC line is closed after acceptance/stable promotion. Bump the source version before starting a new RC line.'
+          $mainSha = (gh api "repos/$env:GITHUB_REPOSITORY/branches/main" --jq '.commit.sha').Trim()
+          if ($LASTEXITCODE -ne 0 -or $mainSha -ne $env:GITHUB_SHA) {
+            throw 'A newer main commit exists; do not create an RC from stale source.'
           }
+          $stable = "v$version"
+          $stableUrl = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$stable"
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            'User-Agent' = 'SonKuPik-K500-updater-rc'
+            Accept = 'application/vnd.github+json'
+          }
+          $stableResponse = Invoke-WebRequest -Uri $stableUrl -Headers $headers -SkipHttpErrorCheck -ErrorAction Stop
+          if ($stableResponse.StatusCode -eq 200) { throw "Stable tag $stable already exists; no rebuilt RC may be published." }
+          if ($stableResponse.StatusCode -ne 404) { throw "Cannot verify stable tag vacancy (HTTP $($stableResponse.StatusCode))." }
           $url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"
           $response = Invoke-WebRequest -Uri $url -Headers @{
             Authorization = "Bearer $env:GH_TOKEN"
@@ -228,9 +249,12 @@ jobs:
             "$hash  $($file.Name)" | Add-Content -Encoding ascii dist/SHA256SUMS.txt
             $artifacts += [ordered]@{ file=$file.Name; sha256=$hash; bytes=$file.Length }
           }
-          $gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw
-          if ($gate -notmatch '(?m)^UPDATER_V1_1_5_ACCEPTANCE=(pending|accepted)\s*$') { throw 'Acceptance token missing' }
-          $acceptance = $Matches[1]
+          $gatePath = "docs/V$($version.Replace('.', '_'))_UPDATER_RC_ACCEPTANCE.md"
+          $key = "UPDATER_V$($version.Replace('.', '_'))_ACCEPTANCE"
+          $gate = Get-Content $gatePath -Raw
+          $token = [regex]::Match($gate, "(?m)^$([regex]::Escape($key))=(pending|accepted)\s*$")
+          if (-not $token.Success) { throw 'Acceptance token missing' }
+          $acceptance = $token.Groups[1].Value
           $manifest = [ordered]@{
             schema = 'sonkupik-k500-updater-rc-v1'
             product = 'SonKuPik K500'
@@ -285,7 +309,7 @@ jobs:
 
             SINGLE_PER_USER_RC_V1 — one native Per-User installer, no machine-wide/Smart installer and no Windows administrator prompt. Existing machine-wide installations require explicit migration outside this public setup.
 
-            v1.1.5 candidate is pending independent acceptance. Publish only a new immutable RC, then record accepted hashes before stable promotion.
+            This RC is pending independent hardware acceptance. Publish only a new immutable RC and record owner-tested SHA-256 in the versioned acceptance file before stable promotion.
 
             Windows binaries are unsigned open-source builds. No UAC or Windows security bypass is used.
           files: |

@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   promote-user:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.workflow == 'K500 CI') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'issue_comment' || (github.event_name == 'push' && github.workflow == 'K500 CI') }}
     runs-on: windows-2022
     timeout-minutes: 18
     steps:
@@ -54,7 +54,7 @@ jobs:
             if ($env:CI_WORKFLOW_NAME -ne 'K500 CI') {
               throw 'Only the consolidated K500 CI may automatically promote'
             }
-          } elseif ($env:CI_EVENT_NAME -eq 'workflow_dispatch') {
+          } elseif ($env:CI_EVENT_NAME -eq 'workflow_dispatch' -or $env:CI_EVENT_NAME -eq 'issue_comment') {
             $results = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs?head_sha=$mainSha&per_page=100" | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0 -or @($results.workflow_runs | Where-Object {
               $_.name -eq 'K500 CI' -and $_.event -eq 'push' -and $_.status -eq 'completed' -and $_.conclusion -eq 'success'
@@ -63,28 +63,31 @@ jobs:
             throw 'Stable promotion must be invoked by K500 CI or manual dispatch'
           }
           $cmake = Get-Content 'CMakeLists.txt' -Raw
-          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION (1\.1\.5) LANGUAGES CXX\)') {
-            throw 'Wrong version for v1.1.5 stable'
+          if ($cmake -notmatch 'project\(SonkupikStudioNative VERSION ([0-9]+\.[0-9]+\.[0-9]+) LANGUAGES CXX\)') {
+            throw 'Could not resolve project version'
           }
           $version = $Matches[1]
-          $gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw
+          if ($version -eq '1.1.5') { throw 'Published stable v1.1.5 is immutable.' }
+          $tokenPrefix = "UPDATER_V$($version.Replace('.', '_'))_"
+          $gateFile = "docs/V$($version.Replace('.', '_'))_UPDATER_RC_ACCEPTANCE.md"
+          if (-not (Test-Path $gateFile)) { throw "Missing physical acceptance gate: $gateFile" }
+          $gate = Get-Content $gateFile -Raw
           function Gate([string]$key) {
             $m = [regex]::Match($gate, "(?m)^$([regex]::Escape($key))=(.*)$")
             if (-not $m.Success) { throw "Missing acceptance token $key" }
             return $m.Groups[1].Value.Trim()
           }
-          if ((Gate 'UPDATER_V1_1_5_ACCEPTANCE') -ne 'accepted') {
-            throw 'Owner acceptance is not approved'
+          if ((Gate "${tokenPrefix}ACCEPTANCE") -ne 'accepted') {
+            throw 'Owner physical acceptance is not approved; stable publication blocked'
           }
-          $tag = Gate 'UPDATER_V1_1_5_ACCEPTED_TAG'
-          $commit = (Gate 'UPDATER_V1_1_5_ACCEPTED_COMMIT').ToLowerInvariant()
-          $hash = (Gate 'UPDATER_V1_1_5_USER_SHA256').ToLowerInvariant()
-          # PATCH_115_ACCEPTED_RC_AUTHORITY_V1 — only an explicitly accepted
-          # v1.1.5 RC identity from a separate owner-audited acceptance record.
-          if ($tag -notmatch '^v1\.1\.5-rc\.[1-9][0-9]*$' -or
+          $tag = Gate "${tokenPrefix}ACCEPTED_TAG"
+          $commit = (Gate "${tokenPrefix}ACCEPTED_COMMIT").ToLowerInvariant()
+          $hash = (Gate "${tokenPrefix}USER_SHA256").ToLowerInvariant()
+          $expectedTag = "^v$([regex]::Escape($version))-rc\.[1-9][0-9]*$"
+          if ($tag -notmatch $expectedTag -or
               $commit -notmatch '^[a-f0-9]{40}$' -or
               $hash -notmatch '^[a-f0-9]{64}$') {
-            throw 'No valid v1.1.5 accepted RC identity; stable promotion blocked'
+            throw 'Invalid versioned accepted RC identity/hash; stable publication blocked'
           }
           $release = gh api "repos/$env:GITHUB_REPOSITORY/releases/tags/$tag" | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0 -or $release.draft -or $release.tag_name -ne $tag -or
@@ -160,7 +163,7 @@ jobs:
             installerTechnology = 'Inno Setup 6'
             distributionModel = 'per-user-only-no-uac'
             primaryDownload = $stableName
-            hardwareAcceptance = 'owner-confirmed-preset-library'
+            hardwareAcceptance = 'owner-approved-physical-updater-acceptance-record'
             machineScopeUpdates = 'not-published-use-explicit-migration'
             artifacts = @([ordered]@{ file=$stableName; sha256=$hash; bytes=(Get-Item (Join-Path dist $stableName)).Length })
           }
@@ -182,7 +185,7 @@ jobs:
           if ($install.ExitCode -ne 0) { throw 'Per-User install failed' }
           $app = Join-Path $dir 'SonKuPik-K500.exe'
           if (-not (Test-Path $app)) { throw 'Installer did not use default user LocalAppData' }
-          foreach ($arg in @('--update-scope-check=user','--update-health-check=1.1.5')) {
+          foreach ($arg in @('--update-scope-check=user','--update-health-check=${{ steps.accepted.outputs.version }}')) {
             $p = Start-Process $app -ArgumentList $arg -Wait -PassThru
             if ($p.ExitCode -ne 0) { throw "App regression $arg failed" }
           }
@@ -226,10 +229,10 @@ jobs:
           make_latest: true
           generate_release_notes: true
           body: |
-            SonKuPik K500 v1.1.5 — adaptive Windows DPI/laptop console and QRIS dismissal accessibility patch. The previously accepted GEN5 preset bank remains unchanged.
+            SonKuPik K500 ${{ steps.accepted.outputs.stable }} — updater reliability patch: safeguarded rollback, preserved recovery snapshots and USB HID error guidance. Byte-identical from an owner-accepted prerelease.
 
             **Windows x64: download sonkupik-k500-setup.exe or sonkupik-k500-setup.zip.**
-            The ZIP includes SonKuPik-K500-v1.1.5-Windows-Setup.exe (the requested clean filename). Both use the same verified Per-User installer, installed to %LOCALAPPDATA%\Programs\SonKuPik K500 without admin/UAC elevation.
+            The ZIP includes SonKuPik-K500-${{ steps.accepted.outputs.stable }}-Windows-Setup.exe. Both use the same verified Per-User installer, installed to %LOCALAPPDATA%\Programs\SonKuPik K500 without admin/UAC elevation.
 
             The additional versioned -PerUser.exe release asset is necessary for the existing in-app auto-updater. Renaming it directly to -Setup.exe would be misidentified by older machine-scope clients. All EXE aliases are byte-identical to the approved ${{ steps.accepted.outputs.tag }} RC; no Qt/Inno rebuild.
 

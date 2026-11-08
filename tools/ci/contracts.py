@@ -1867,8 +1867,8 @@ def check_public_surface_contracts() -> None:
 
 def check_release_contracts() -> None:
     cmake = read("CMakeLists.txt")
-    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.5 LANGUAGES CXX\)", cmake):
-        FAILURES.append("CMakeLists.txt: source version must be 1.1.5 for the candidate release")
+    if not re.search(r"project\(SonkupikStudioNative VERSION 1\.1\.6 LANGUAGES CXX\)", cmake):
+        FAILURES.append("CMakeLists.txt: new immutable release candidate source must be 1.1.6")
     if "V1_1_3_SMART_INSTALLER_RC_QUALIFICATION_ANCHOR" not in cmake:
         FAILURES.append("CMakeLists.txt: v1.1.3 qualification anchor missing")
 
@@ -1931,8 +1931,9 @@ def check_release_contracts() -> None:
     # but not emitted to the public for new stable releases.
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "v1.1.5-rc.${{ inputs.rc_number }}",
-        "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
+        "run-name: K500 updater RC",
+        "workflow_call:",
+        "accepted; create a new patch version",
         "SINGLE_PER_USER_RC_V1",
         '"/DPerUser=1"',
         "if ($check.artifacts.Count -ne 1)",
@@ -2002,9 +2003,9 @@ def check_release_contracts() -> None:
     require(
         ".github/workflows/windows-updater-promote.yml",
         "SINGLE_PER_USER_STABLE_V1",
-        "PATCH_115_ACCEPTED_RC_AUTHORITY_V1",
+        "tokenPrefix",
         "PATCH_115_EXPLICIT_PROMOTION_V1",
-        "v1\\.1\\.5-rc",
+        "owner-approved-physical-updater-acceptance-record",
         "byte-identical-rc-artifact-promotion",
         "Windows-Setup-PerUser.exe",
         "overwrite_files: false",
@@ -2463,10 +2464,11 @@ def check_release_contracts() -> None:
 
     require(
         ".github/workflows/windows-updater-rc.yml",
-        "RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1",
-        "UPDATER_V1_1_5_ACCEPTANCE=accepted",
-        "v1.1.5 RC line is closed after acceptance/stable promotion",
-        "Bump the source version before starting a new RC line.",
+        "if ($version -eq '1.1.5')",
+        "$gate = Get-Content $gatePath -Raw",
+        "if ($token.Groups[1].Value -eq 'accepted')",
+        "stableResponse.StatusCode -eq 200",
+        "mainSha -ne $env:GITHUB_SHA",
     )
     # RELEASE_WORKFLOW_BLOCK_SCOPING_GUARD_V1: verify that multiline shell
     # scripts never acquire a de-indented argument or command outside run: |.
@@ -2493,13 +2495,13 @@ def check_release_contracts() -> None:
                 FAILURES.append(f"{workflow}:{number}: orphaned PowerShell -Force")
 
     rc_workflow = read(".github/workflows/windows-updater-rc.yml")
-    rc_gate = rc_workflow.find("$gate = Get-Content 'docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md' -Raw")
-    rc_close = rc_workflow.find("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1")
+    rc_gate = rc_workflow.find("$gate = Get-Content $gatePath -Raw")
+    rc_close = rc_workflow.find("if ($token.Groups[1].Value -eq 'accepted')")
     rc_url = rc_workflow.find('$url = "https://api.github.com/repos/$env:GITHUB_REPOSITORY/git/ref/tags/$tag"')
     if not (0 <= rc_gate < rc_close < rc_url):
-        FAILURES.append("windows-updater-rc.yml: acceptance/closed-line/tag-check ordering is corrupt")
-    if rc_workflow.count("RC_LINE_CLOSED_AFTER_ACCEPTANCE_V1") != 1:
-        FAILURES.append("windows-updater-rc.yml: closed-line guard must occur exactly once")
+        FAILURES.append("windows-updater-rc.yml: versioned acceptance/immutable-tag guard ordering is corrupt")
+    if rc_workflow.count("if ($token.Groups[1].Value -eq 'accepted')") != 1:
+        FAILURES.append("windows-updater-rc.yml: version-specific accepted-line guard must occur once")
     if "overwrite_files: false\n) {" in rc_workflow or "accepted\\s*\n          $response" in rc_workflow:
         FAILURES.append("windows-updater-rc.yml: malformed RC workflow tail detected")
     require(
@@ -2647,7 +2649,7 @@ def workflow_events(path: Path) -> set[str]:
     text = path.read_text(encoding="utf-8")
     before_jobs = text.split("\njobs:", 1)[0]
     events: set[str] = set()
-    for name in ("pull_request", "push", "schedule"):
+    for name in ("pull_request", "push", "schedule", "issue_comment"):
         if re.search(rf"(?m)^\s{{2}}{name}:\s*$", before_jobs):
             events.add(name)
     return events
@@ -2661,22 +2663,63 @@ def check_ci_topology() -> None:
         if events:
             event_driven[path.name] = events
 
-    allowed = {"windows-build.yml"}
-    unexpected = sorted(set(event_driven) - allowed)
-    if unexpected:
-        FAILURES.append(f"event-driven workflow sprawl: {unexpected}; only windows-build.yml may auto-run")
-    ci_events = event_driven.get("windows-build.yml", set())
-    if ci_events != {"pull_request", "push"}:
-        FAILURES.append(f"windows-build.yml event contract mismatch: {sorted(ci_events)}")
+    allowed = {
+        "windows-build.yml": {"pull_request", "push"},
+        "k500-comment-release.yml": {"issue_comment"},
+    }
+    if event_driven != allowed:
+        FAILURES.append(
+            f"CI topology drift: {event_driven}; only consolidated CI and "
+            "owner-only release issue comments may auto-start jobs"
+        )
     else:
-        PASSES.append("CI topology: single PR/main workflow")
+        PASSES.append("CI topology: one consolidated CI + one owner-comment release entry")
 
     workflow_count = len(list(workflows.glob("*.y*ml")))
-    if workflow_count > 4:
-        FAILURES.append(f"active workflow budget exceeded: {workflow_count} > 4")
+    if workflow_count > 5:
+        FAILURES.append(f"active workflow budget exceeded: {workflow_count} > 5")
     else:
-        PASSES.append(f"active workflow budget: {workflow_count}/4")
+        PASSES.append(f"active workflow budget: {workflow_count}/5")
 
+
+
+def check_owner_comment_release_contracts() -> None:
+    # The issue_comment hook is NOT a second CI pipeline: unrelated comments
+    # skip the job without allocating any runner; only the repository owner on
+    # issue #241 may invoke the existing single-build RC/promotion workflows.
+    require(".github/workflows/k500-comment-release.yml",
+            "K500_COMMENT_RELEASE_V1",
+            "issue_comment:",
+            "github.event.issue.number == 241",
+            "github.event.comment.user.login == github.repository_owner",
+            "github.event.issue.pull_request == null",
+            "tools/release/parse_release_comment.py",
+            "needs.authorize.outputs.mode == 'rc'",
+            "needs.authorize.outputs.mode == 'stable'",
+            "uses: ./.github/workflows/windows-updater-rc.yml",
+            "uses: ./.github/workflows/windows-updater-promote.yml")
+    require(".github/workflows/windows-updater-rc.yml",
+            "workflow_call:", "publish_prerelease:", "gatePath",
+            "mainSha", "stableResponse.StatusCode -eq 200",
+            "overwrite_files: false", "requiredExactHeadWorkflows")
+    require(".github/workflows/windows-updater-promote.yml",
+            "physical acceptance is not approved", "tokenPrefix", "Get-FileHash",
+            "overwrite_files: false")
+    require("docs/V1_1_6_UPDATER_RC_ACCEPTANCE.md",
+            "UPDATER_V1_1_6_ACCEPTANCE=pending",
+            "UPDATER_V1_1_6_ACCEPTED_TAG=pending",
+            "UPDATER_V1_1_6_ACCEPTED_COMMIT=pending",
+            "UPDATER_V1_1_6_USER_SHA256=pending")
+    test = subprocess.run(
+        [sys.executable, "-m", "unittest", "discover", "-s", "tests",
+         "-p", "test_release_comment.py"],
+        cwd=ROOT, capture_output=True, text=True, timeout=15, check=False
+    )
+    if test.returncode:
+        FAILURES.append("owner comment release parser tests failed: "
+                        + (test.stdout + test.stderr)[-1800:])
+    else:
+        PASSES.append("Owner comment release parser: offline spoof/injection gates")
 
 
 def check_crossplatform_downloads() -> None:
@@ -2709,6 +2752,7 @@ def main() -> int:
     check_ui_contracts()
     check_public_surface_contracts()
     check_release_contracts()
+    check_owner_comment_release_contracts()
     check_preset_sync()
     check_build_targets()
     check_ci_topology()
