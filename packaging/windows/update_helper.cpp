@@ -31,6 +31,8 @@ constexpr DWORD InstallTimeoutMs = 20 * 60 * 1000;
 constexpr DWORD HealthTimeoutMs = 60000;
 constexpr wchar_t AppExeName[] = L"SonKuPik-K500.exe";
 constexpr wchar_t UninstallerName[] = L"unins000.exe";
+// Must match BOTH src/main.cpp and Inno Setup's AppMutex declaration.
+constexpr wchar_t LiveGuiMutexName[] = L"SonKuPikK500.K500.Native";
 constexpr wchar_t UninstallKey[] =
     L"Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\"
     L"{8F568FE8-A747-4CD0-A727-5FE81A405500}_is1";
@@ -276,6 +278,23 @@ bool verifySetup(const Request &request, HANDLE &lockedFile)
     }
     SetFilePointer(lockedFile, 0, nullptr, FILE_BEGIN);
     return true;
+}
+
+// Inno's AppMutex is effective only when an interactive K500 process
+// actually owns the named object. Detect another running instance BEFORE
+// taking an installation snapshot or starting setup. An unexpected Win32
+// query failure also stops safely instead of guessing the GUI has closed.
+enum class LiveGuiState { Clear, Running, Unknown };
+
+LiveGuiState liveK500GuiState()
+{
+    HANDLE mutex = OpenMutexW(SYNCHRONIZE, FALSE, LiveGuiMutexName);
+    if (mutex) {
+        CloseHandle(mutex);
+        return LiveGuiState::Running;
+    }
+    return GetLastError() == ERROR_FILE_NOT_FOUND
+        ? LiveGuiState::Clear : LiveGuiState::Unknown;
 }
 
 bool waitParent(const Request &request)
@@ -1460,6 +1479,13 @@ int selfTest()
     if (parentDirectory(L"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe")
         != L"C:\\Program Files\\SonKuPik K500") return 34;
     if (!parentDirectory(L"SonKuPik-K500.exe").empty()) return 35;
+    // Validate the same named kernel object Inno checks. No user process is
+    // killed and a real second K500 instance remains untouched.
+    HANDLE heldGui = CreateMutexW(nullptr, FALSE, LiveGuiMutexName);
+    if (!heldGui) return 59;
+    const bool detectedGui = liveK500GuiState() == LiveGuiState::Running;
+    CloseHandle(heldGui);
+    if (!detectedGui) return 60;
     if (applicationLaunchCommand(L"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe")
         != L"\"C:\\Program Files\\SonKuPik K500\\SonKuPik-K500.exe\" --post-update-foreground")
         return 58;
@@ -1602,6 +1628,20 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     HANDLE lockedSetup = INVALID_HANDLE_VALUE;
     if (!verifySetup(request, lockedSetup))
         return fail(request, 14, L"Installer SHA-256 changed after download. Nothing was installed.");
+
+    // K500_SECOND_INSTANCE_PREFLIGHT_V1 — prevent the predictable Inno abort
+    // with no installer launch or disk changes. Inno still owns the final
+    // race-safe application check if another window starts milliseconds later.
+    const LiveGuiState otherInstance = liveK500GuiState();
+    if (otherInstance != LiveGuiState::Clear) {
+        CloseHandle(lockedSetup);
+        return fail(request, 16,
+            otherInstance == LiveGuiState::Running
+                ? L"Masih ada jendela K500 lain yang terbuka. Tutup semua aplikasi "
+                  L"K500, lalu jalankan pembaruan kembali. Tidak ada file yang diubah."
+                : L"Windows belum bisa memastikan semua jendela K500 tertutup. "
+                  L"Pembaruan tidak dilanjutkan agar instalasi tetap aman.");
+    }
 
     if (request.mode == L"migrate")
         return migrateMachineToUser(request, lockedSetup);
