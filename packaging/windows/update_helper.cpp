@@ -653,8 +653,14 @@ bool copyTree(const std::wstring &source, const std::wstring &destination,
         if (error) *error = L"Source installation directory is unavailable.";
         return false;
     }
-    fs::remove_all(dst, ec);
-    ec.clear();
+    // A prior interrupted update may still own this recovery destination.
+    // NEVER erase it to make room for a newer attempt.
+    const bool occupied = fs::exists(dst, ec);
+    if (ec || occupied) {
+        if (error) *error = L"An existing recovery snapshot was found. "
+                            L"No existing backup was overwritten.";
+        return false;
+    }
     fs::create_directories(dst.parent_path(), ec);
     if (ec) {
         if (error) *error = L"Could not create recovery parent directory.";
@@ -1173,9 +1179,16 @@ int migrateMachineToUser(const Request &request, HANDLE lockedSetup)
 
     // Snapshot BOTH original scopes when necessary. Nothing has been moved.
 
+    // A previous unsuccessful attempt may still need this exact snapshot.
+    // Refuse a new migration rather than deleting the user's only recovery.
     {
-        std::error_code cleanup;
-        fs::remove_all(fs::path(request.backup), cleanup);
+        std::error_code probe;
+        if (fs::exists(fs::path(request.backup), probe) || probe) {
+            CloseHandle(lockedSetup);
+            return fail(request, 30,
+                L"Backup pemulihan dari percobaan sebelumnya masih ada. "
+                L"Update tidak dilanjutkan agar data tidak tertimpa:\n" + request.backup);
+        }
     }
     if (!copyTree(sourceDir, backupFilesPath(request.backup), &backupError)
         || !snapshotUninstallRegistry(L"machine", request.backup, &backupError)) {
@@ -1442,6 +1455,11 @@ int selfTest()
     std::wstring error;
     if (!copyTree((root / L"source").wstring(), (root / L"backup").wstring(), &error))
         return 39;
+    // A second attempt must not replace an already trusted recovery snapshot.
+    if (copyTree((root / L"source").wstring(), (root / L"backup").wstring(), &error))
+        return 45;
+    if (!fs::exists(root / L"backup" / AppExeName))
+        return 46;
     fs::remove_all(root / L"source", ec);
     if (!restoreTree((root / L"backup").wstring(), (root / L"source").wstring(), &error))
         return 40;
@@ -1566,9 +1584,15 @@ int WINAPI wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
     }
 
     std::wstring backupError;
+    // Never discard evidence or the previous version after an interrupted update.
     {
-        std::error_code cleanup;
-        fs::remove_all(fs::path(request.backup), cleanup);
+        std::error_code probe;
+        if (fs::exists(fs::path(request.backup), probe) || probe) {
+            CloseHandle(lockedSetup);
+            return fail(request, 20,
+                L"Backup pemulihan dari update sebelumnya masih ada. "
+                L"Update ditunda supaya versi lama tidak tertimpa:\n" + request.backup);
+        }
     }
     if (!copyTree(installDir, backupFilesPath(request.backup), &backupError)) {
         CloseHandle(lockedSetup);
