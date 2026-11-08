@@ -1954,22 +1954,28 @@ def check_release_contracts() -> None:
     ):
         if token not in gate:
             FAILURES.append(f"v1.1.4 Per-User RC.3 owner gate mismatch: {token}")
-    # SMART_CI_SCOPE_V2 / SMART_STABLE_PROMOTION_GATE_V1:
-    # The same K500 CI run conditionally calls existing promotion; no nested
-    # workflow_run event, no Qt rebuild for docs-only owner acceptance.
+    # SMART_CI_SCOPE_V3 / SMART_STABLE_PROMOTION_GATE_V1:
+    # All automatic PR/main runs are lightweight; native jobs require an
+    # owner command. Owner-approved stable promotion is comment-only.
     require(".github/workflows/windows-build.yml",
-            "SMART_CI_SCOPE_V2",
-            "SMART_STABLE_PROMOTION_GATE_V1",
-            "promotion_required: ${{ steps.scope.outputs.promotion_required }}",
-            "needs: [contracts, windows, installer]",
-            "needs.contracts.outputs.promotion_required == 'true'",
-            "uses: ./.github/workflows/windows-updater-promote.yml")
+            "SMART_CI_SCOPE_V3",
+            "workflow_dispatch:",
+            "expected_sha:",
+            "base_sha:",
+            "Verify requested SHA is still current (manual only)",
+            "CI_REQUEST_SCOPE:",
+            "needs.contracts.outputs.build_required == 'true'",
+            "needs.contracts.outputs.installer_required == 'true'",
+            "needs.contracts.outputs.platform_required == 'true'",
+            "No automatic stable release on a push")
+    forbid(".github/workflows/windows-build.yml",
+           "  promote-approved-rc:", "github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.contracts.outputs.platform_required")
     require("tools/ci/change_scope.py",
-            "SMART_CI_SCOPE_V2",
-            'force_build = event == "workflow_dispatch"',
+            "SMART_CI_SCOPE_V3",
+            'manual = event == "workflow_dispatch"',
+            'if not manual or mode == "fast":',
             "SMART_STABLE_PROMOTION_GATE_V1",
-            'promotion_required=',
-            're.fullmatch(r"v1\\.1\\.5-rc\\.[1-9][0-9]*"')
+            'promotion_required=false')
     require(".github/workflows/windows-updater-promote.yml",
             "SMART_STABLE_PROMOTION_GATE_V1",
             "workflow_call:",
@@ -2673,7 +2679,7 @@ def check_ci_topology() -> None:
             "owner-only release issue comments may auto-start jobs"
         )
     else:
-        PASSES.append("CI topology: one consolidated CI + one owner-comment release entry")
+        PASSES.append("CI topology: one fast consolidated CI + one authenticated comment hub")
 
     workflow_count = len(list(workflows.glob("*.y*ml")))
     if workflow_count > 5:
@@ -2705,6 +2711,17 @@ def check_owner_comment_release_contracts() -> None:
     require(".github/workflows/windows-updater-promote.yml",
             "physical acceptance is not approved", "tokenPrefix", "Get-FileHash",
             "overwrite_files: false")
+    require(".github/workflows/k500-comment-release.yml",
+            "K500_COMMENT_CI_V1", "authorize-ci:",
+            "github.event.comment.user.login == github.repository_owner",
+            "tools/ci/parse_ci_comment.py",
+            "gh workflow run windows-build.yml",
+            'ref main',
+            "expected_sha=$target_sha",
+            "base_sha=$base_sha",
+            "Already running or passed")
+    require("tools/ci/parse_ci_comment.py",
+            "COMMAND.fullmatch(comment)", 'number != "241"')
     require("docs/V1_1_6_UPDATER_RC_ACCEPTANCE.md",
             "UPDATER_V1_1_6_ACCEPTANCE=pending",
             "UPDATER_V1_1_6_ACCEPTED_TAG=pending",
