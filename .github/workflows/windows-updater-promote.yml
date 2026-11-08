@@ -57,7 +57,7 @@ jobs:
           } elseif ($env:CI_EVENT_NAME -eq 'workflow_dispatch' -or $env:CI_EVENT_NAME -eq 'issue_comment') {
             $results = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs?head_sha=$mainSha&per_page=100" | ConvertFrom-Json
             if ($LASTEXITCODE -ne 0 -or @($results.workflow_runs | Where-Object {
-              $_.name -eq 'K500 CI' -and $_.event -eq 'push' -and $_.status -eq 'completed' -and $_.conclusion -eq 'success'
+              $_.path -eq '.github/workflows/windows-build.yml' -and $_.event -eq 'push' -and $_.status -eq 'completed' -and $_.conclusion -eq 'success'
             }).Count -eq 0) { throw 'No exact-main successful K500 CI push exists' }
           } else {
             throw 'Stable promotion must be invoked by K500 CI or manual dispatch'
