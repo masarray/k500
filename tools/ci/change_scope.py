@@ -1,109 +1,118 @@
 #!/usr/bin/env python3
-"""Compute path-aware K500 CI scope without spawning extra workflows."""
+"""K500 SMART_CI_SCOPE_V3: fast-on-change, native-on-owner-comment only.
+
+All automatic PR/main CI is cheap/offline. A deliberately authenticated
+workflow_dispatch (from the existing GitHub issue_comment controller) may
+request a targeted native regression against an exact immutable Git SHA.
+No release or stable promotion is ever implied by a source push.
+"""
 from __future__ import annotations
 
 import os
-import re
 import subprocess
 from pathlib import Path
 
+ALLOWED = {"fast", "smart", "windows", "installer", "platform", "full"}
 
-def changed_paths() -> list[str]:
-    event = os.environ.get("GITHUB_EVENT_NAME", "")
-    if event == "workflow_dispatch":
-        return []
+WINDOWS_NAMES = {
+    "CMakeLists.txt",
+    ".github/workflows/windows-build.yml",
+    "src/k500/K500WinIo.cpp",
+    "src/k500/K500WinIo.h",
+}
+WINDOWS_PREFIXES = (
+    "src/", "qml/", "resources/", "packaging/windows/", "tests/windows/",
+    "tools/ci/windows_", "tools/ci/installer_",
+)
+INSTALLER_PREFIXES = (
+    "packaging/windows/", "tests/windows/", "src/AppUpdateManager",
+    "qml/components/UpdateDialog.qml",
+)
+INSTALLER_NAMES = {
+    "CMakeLists.txt", "src/AppVersionInit.cpp",
+    "tools/ci/installer_smoke.ps1",
+}
+PLATFORM_PREFIXES = (
+    "src/k500/K500PosixIo.", "src/k500/K500TransactionScheduler.",
+    "src/k500/K500DeviceManager.", "src/k500/K500CanonicalState.",
+)
+PLATFORM_NAMES = {"CMakeLists.txt", ".github/workflows/windows-build.yml"}
 
-    base = os.environ.get("CI_BASE_SHA", "").strip()
-    head = os.environ.get("GITHUB_SHA", "HEAD").strip() or "HEAD"
-    if not base or set(base) == {"0"}:
+
+def changed_paths(base: str, head: str) -> list[str]:
+    if not base or not head or set(base) == {"0"}:
         return ["<unknown-diff>"]
     try:
         out = subprocess.check_output(
             ["git", "diff", "--name-only", f"{base}...{head}"],
-            text=True,
+            text=True, stderr=subprocess.DEVNULL,
         )
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, OSError):
         return ["<unknown-diff>"]
     return [line.strip() for line in out.splitlines() if line.strip()]
 
 
-def main() -> int:
-    event = os.environ.get("GITHUB_EVENT_NAME", "")
-    paths = changed_paths()
-
-    # CI_SELF_VALIDATION_SCOPE_V1 — changing the consolidated CI implementation
-    # must exercise the Windows suite it controls. Do not let a tools/ci-only PR
-    # validate only the fast Ubuntu contracts.
-    build_prefixes = ("src/", "qml/", "resources/", "packaging/", "tests/", "tools/ci/")
-    build_names = {"CMakeLists.txt", ".github/workflows/windows-build.yml"}
-    # SMART_CI_SCOPE_V2: normal main pushes obey the same file-based rules
-    # as PRs. Only an explicit manual diagnostic or missing diff forces build.
-    force_build = event == "workflow_dispatch" or "<unknown-diff>" in paths
-    build = force_build or any(p in build_names or p.startswith(build_prefixes) for p in paths)
-
-    installer_prefixes = (
-        "packaging/windows/",
-        "tests/windows/",
-        "src/AppUpdateManager",
-        "qml/components/UpdateDialog.qml",
-        "assets/SonKuPik-k500-logo.png",
-    )
-    installer_names = {
-        "CMakeLists.txt",
-        "src/AppVersionInit.cpp",
-        "tools/ci/installer_smoke.ps1",
-    }
-    # Native Mac/Linux jobs run only when their real transport/build inputs change.
-    platform_names = {
-        # Version-only bumps do not alter native Mac/Linux transport. Do not
-        # spin up 2 expensive platform jobs for a Windows GUI patch release.
-        "src/k500/K500PosixIo.cpp",
-        "src/k500/K500DeviceManager.cpp",
-        "src/k500/K500TransactionScheduler.h",
-        "src/k500/K500TransactionScheduler.cpp",
-        "src/AppUpdateManager.cpp",
-        # A packaging-workflow fix must qualify the actual native archives on
-        # the next main push. Still only ONE consolidated run, no RC build.
-        ".github/workflows/windows-build.yml",
-    }
-    platform = event == "push" and any(p in platform_names for p in paths)
-
-    installer = any(
-        p in installer_names
-        or any(p.startswith(prefix) for prefix in installer_prefixes)
+def scopes(mode: str, paths: list[str], manual: bool) -> tuple[bool, bool, bool]:
+    """Return (Windows, Installer, Linux+macOS); never start native in auto CI."""
+    if mode not in ALLOWED:
+        raise ValueError(f"Unsupported CI mode: {mode}")
+    if not manual or mode == "fast":
+        return False, False, False
+    if mode == "full":
+        return True, True, True
+    if mode == "windows":
+        return True, False, False
+    if mode == "installer":
+        return False, True, False
+    if mode == "platform":
+        return False, False, True
+    # smart: if git history is unavailable, fail safe by qualifying all.
+    if "<unknown-diff>" in paths:
+        return True, True, True
+    # POSIX transport is excluded from Windows-only compilation by CMake.
+    windows = any(
+        (p in WINDOWS_NAMES or p.startswith(WINDOWS_PREFIXES))
+        and not p.startswith("src/k500/K500PosixIo.")
         for p in paths
     )
+    installer = any(
+        p in INSTALLER_NAMES or p.startswith(INSTALLER_PREFIXES)
+        for p in paths
+    )
+    platform = any(
+        p in PLATFORM_NAMES or p.startswith(PLATFORM_PREFIXES)
+        for p in paths
+    )
+    return windows, installer, platform
 
-    # SMART_STABLE_PROMOTION_GATE_V1: no extra release workflow is spawned.
-    # A single, verified acceptance-file change in main unlocks the existing
-    # byte-identical promotion as a final job of K500 CI. Never auto-approve RC.
-    gate_path = "docs/V1_1_5_UPDATER_RC_ACCEPTANCE.md"
-    gate = Path(gate_path).read_text(encoding="utf-8") if Path(gate_path).is_file() else ""
-    def gate_value(key: str) -> str:
-        match = re.search(rf"(?m)^{re.escape(key)}=(.*)$", gate)
-        return match.group(1).strip() if match else ""
 
-    approval = gate_value("UPDATER_V1_1_5_ACCEPTANCE") == "accepted"
-    provenance = all((
-        re.fullmatch(r"v1\.1\.5-rc\.[1-9][0-9]*",
-                     gate_value("UPDATER_V1_1_5_ACCEPTED_TAG")),
-        re.fullmatch(r"[a-fA-F0-9]{40}",
-                     gate_value("UPDATER_V1_1_5_ACCEPTED_COMMIT")),
-        re.fullmatch(r"[a-fA-F0-9]{64}",
-                     gate_value("UPDATER_V1_1_5_USER_SHA256")),
-    ))
-    promotion = event == "push" and gate_path in paths and approval and provenance
+def main() -> int:
+    event = os.environ.get("GITHUB_EVENT_NAME", "")
+    manual = event == "workflow_dispatch"
+    mode = os.environ.get("CI_REQUEST_SCOPE", "fast") if manual else "fast"
+    if mode not in ALLOWED:
+        raise ValueError(f"Unsupported CI mode {mode!r}")
+    base = os.environ.get("CI_BASE_SHA", "").strip()
+    head = os.environ.get("CI_HEAD_SHA", os.environ.get("GITHUB_SHA", "HEAD")).strip()
+    # Skip git diff entirely for automatic fast-only runs or explicit suites.
+    paths = changed_paths(base, head) if manual and mode == "smart" else []
+    build, installer, platform = scopes(mode, paths, manual)
 
     output = Path(os.environ["GITHUB_OUTPUT"])
     with output.open("a", encoding="utf-8") as fh:
-        fh.write(f"build_required={'true' if build else 'false'}\n")
-        fh.write(f"installer_required={'true' if installer else 'false'}\n")
-        fh.write(f"platform_required={'true' if platform else 'false'}\n")
-        fh.write(f"promotion_required={'true' if promotion else 'false'}\n")
+        fh.write(f"build_required={str(build).lower()}\n")
+        fh.write(f"installer_required={str(installer).lower()}\n")
+        fh.write(f"platform_required={str(platform).lower()}\n")
+        # SMART_STABLE_PROMOTION_GATE_V1 was previously push-driven. Removed:
+        # only authenticated issue-comment owner acceptance promotes RC bytes.
+        fh.write("promotion_required=false\n")
         fh.write(f"changed_count={len(paths)}\n")
-
-    print(f"build_required={build}; installer_required={installer}; platform_required={platform}; promotion_required={promotion}; changed={len(paths)}")
-    for path in paths[:80]:
+    print(
+        f"SMART_CI_SCOPE_V3 event={event} mode={mode} manual={manual} "
+        f"windows={build} installer={installer} platform={platform} "
+        f"files={len(paths)}"
+    )
+    for path in paths[:70]:
         print(f"  {path}")
     return 0
 
