@@ -107,8 +107,10 @@ $runtimeVersion = $cmakeVersionMatch.Groups[1].Value
 # a second running K500 process and fail during file replacement.
 $inno = Get-Content packaging/windows/installer.iss -Raw
 $runtime = Get-Content src/main.cpp -Raw
+$helperSource = Get-Content packaging/windows/update_helper.cpp -Raw
 if ($inno -notmatch '(?m)^AppMutex=SonKuPikK500\.K500\.Native\s*$' -or
-    $runtime -notmatch 'K500InnoAppMutex\[\] = L"SonKuPikK500\.K500\.Native"') {
+    $runtime -notmatch 'K500InnoAppMutex\[\] = L"SonKuPikK500\.K500\.Native"' -or
+    $helperSource -notmatch 'LiveGuiMutexName\[\] = L"SonKuPikK500\.K500\.Native"') {
     throw 'K500 runtime Win32 mutex does not match Inno AppMutex'
 }
 foreach ($arg in @("--font-self-test", "--app-mutex-self-test", "--protocol-self-test", "--sync-master-init-self-test", "--update-health-check=$runtimeVersion")) {
