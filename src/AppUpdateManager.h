@@ -92,6 +92,10 @@ private:
     bool verifyInstaller(QString *error = nullptr) const;
     bool launchInstallerElevated(QString *error = nullptr);
     QString updateDirectory() const;
+    // One authoritative recovery guard used BEFORE network download and
+    // rechecked at the final process handoff, with no automatic deletion.
+    static bool recoveryPathOccupied(const QString &path);
+    QString pendingRecoverySnapshot() const;
     QString installerPath() const;
     QUrl releaseDiscoveryUrl() const;
     QNetworkReply *get(const QUrl &url, qint64 rangeStart = -1);

@@ -673,6 +673,26 @@ QString AppUpdateManager::updateDirectory() const
     return QDir::cleanPath(path);
 }
 
+// A previously interrupted update owns recovery-previous until verified
+// cleanup. Detect both normal entries and dangling links. Never remove or
+// dereference the directory from this unprivileged UI preflight.
+bool AppUpdateManager::recoveryPathOccupied(const QString &path)
+{
+    const QFileInfo info(path);
+    return info.exists() || info.isSymLink();
+}
+
+QString AppUpdateManager::pendingRecoverySnapshot() const
+{
+#ifdef Q_OS_WIN
+    const QString backup = QDir(updateDirectory())
+        .filePath(QStringLiteral("recovery-previous"));
+    return recoveryPathOccupied(backup) ? QDir::toNativeSeparators(backup) : QString();
+#else
+    return {};
+#endif
+}
+
 QString AppUpdateManager::installerPath() const
 {
     return QDir(updateDirectory()).filePath(m_setupAssetName);
@@ -810,6 +830,20 @@ void AppUpdateManager::repairStaleRegistration()
 void AppUpdateManager::beginSelectedPackageInstall()
 {
 #ifdef Q_OS_WIN
+    // EARLY_RECOVERY_GUARD_V1 — no release manifest request or multi-MB Setup
+    // download when the last interrupted install still owns its safety copy.
+    // The helper independently rechecks it after the parent exits.
+    const QString pendingBackup = pendingRecoverySnapshot();
+    if (!pendingBackup.isEmpty()) {
+        setState(QStringLiteral("error"),
+                 QStringLiteral("Pembaruan ditunda untuk melindungi versi lama"),
+                 QStringLiteral("K500 menemukan backup pemulihan yang masih diperlukan:\n%1\n\n"
+                                "Aplikasi tetap bisa digunakan. Pembaruan tidak diunduh. "
+                                "Jangan hapus backup ini; simpan laporan agar instalasi "
+                                "sebelumnya dapat diperiksa dengan aman.")
+                     .arg(pendingBackup));
+        return;
+    }
     const QString stale = staleRegistrationScope();
     if (!stale.isEmpty()) {
         setState(QStringLiteral("registration-repair"),
@@ -1272,19 +1306,19 @@ bool AppUpdateManager::launchInstallerElevated(QString *error)
         return false;
     }
 
-    // Fail BEFORE closing K500 if a previous update's recovery data remains.
-    // The helper independently enforces the same rule after process handoff.
-    const QString backup = QDir::toNativeSeparators(
-        QDir(updateDirectory()).filePath(QStringLiteral("recovery-previous")));
-    const QFileInfo backupInfo(backup);
-    if (backupInfo.exists() || backupInfo.isSymLink()) {
+    // Recheck at the LAST boundary too: another helper may have created
+    // recovery data during the download. Do not close this running K500.
+    const QString pendingBackup = pendingRecoverySnapshot();
+    if (!pendingBackup.isEmpty()) {
         if (error)
             *error = QStringLiteral(
-                "K500 menemukan backup pemulihan dari update sebelumnya:\n%1\n\n"
-                "Aplikasi tetap terbuka dan pembaruan dihentikan supaya data "
-                "tidak tertimpa. Simpan laporan sebelum mencoba lagi.").arg(backup);
+                "Backup dari pembaruan sebelumnya masih ada:\n%1\n\n"
+                "K500 tetap terbuka. Pembaruan tidak dilanjutkan karena "
+                "pemulihan lama belum diperiksa.").arg(pendingBackup);
         return false;
     }
+    const QString backup = QDir::toNativeSeparators(
+        QDir(updateDirectory()).filePath(QStringLiteral("recovery-previous")));
 
     QString stageError;
     const QString staged = stageUpdateHelper(&stageError);

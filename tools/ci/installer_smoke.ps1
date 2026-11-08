@@ -223,6 +223,106 @@ if ((Get-Content (Join-Path $archiveAfter[0].FullName 'ci-user-owned-sentinel.tx
 Remove-Item -LiteralPath $archiveAfter[0].FullName -Recurse -Force
 if (Test-Path $fixtureBackup) { throw 'Verified rollback left an unneeded backup snapshot' }
 
+# K500_POST_HEALTH_RELAUNCH_ROLLBACK_V1 — installer and version smoke pass,
+# but the first GUI CreateProcess fails. The PREVIOUS full installation and
+# HKCU registration must still be available for automatic rollback.
+# This case used to lose the only recovery snapshot before relaunch.
+Write-Host "==> Successful install but GUI relaunch fails: restore previous EXE + registration"
+$relaunchLog = Join-Path $env:RUNNER_TEMP 'K500-CI-relaunch-failed.log'
+$relaunchBefore = @(Get-ChildItem $archiveParent -Directory -Filter $archivePrefix -ErrorAction SilentlyContinue |
+    ForEach-Object FullName)
+$env:SONKUPIK_UPDATE_HELPER_TEST = '1'
+$env:SONKUPIK_P3_FAKE_INSTALL_MODE = 'healthy'
+$env:SONKUPIK_P3_FAIL_RELAUNCH_ONCE = '1'
+try {
+    $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @(
+        '-NoProfile','-Command','Start-Sleep -Seconds 1'
+    ) -PassThru
+    $relaunchResult = Start-Process -FilePath $fixtureHelper -ArgumentList @(
+        '--parent-pid',"$($parent.Id)",
+        '--setup',('"' + $fixtureSetup + '"'),
+        '--app',('"' + (Join-Path $smartDir 'SonKuPik-K500.exe') + '"'),
+        '--target-app',('"' + (Join-Path $smartDir 'SonKuPik-K500.exe') + '"'),
+        '--version',$version,'--previous-version',$version,
+        '--log',('"' + $relaunchLog + '"'),
+        '--sha256',$fixtureSha,
+        '--scope','user','--mode','update',
+        '--backup',('"' + $fixtureBackup + '"')
+    ) -Wait -PassThru
+    if ($relaunchResult.ExitCode -ne 18) {
+        throw "Expected safe relaunch-failure rollback exit 18, got $($relaunchResult.ExitCode)"
+    }
+} finally {
+    Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
+    Remove-Item Env:SONKUPIK_P3_FAKE_INSTALL_MODE -ErrorAction SilentlyContinue
+    Remove-Item Env:SONKUPIK_P3_FAIL_RELAUNCH_ONCE -ErrorAction SilentlyContinue
+}
+if ((Get-FileHash (Join-Path $smartDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $previousSha) {
+    throw 'Post-health relaunch failure lost original executable bytes'
+}
+if ((Get-Content $userMarker -Raw) -ne 'KEEP-SMART-USER-DATA') {
+    throw 'Post-health relaunch failure lost unknown user data'
+}
+& reg.exe QUERY $smartKey /v 'Inno Setup: App Path' /reg:64 *> $null
+if ($LASTEXITCODE -ne 0) {
+    throw 'Post-health relaunch failure lost HKCU uninstall registration'
+}
+$relaunchLogText = Get-Content $relaunchLog -Raw
+if (-not $relaunchLogText.Contains('GUI relaunch failed; attempting safe rollback') -or
+    -not $relaunchLogText.Contains('Rollback health check passed')) {
+    throw 'Post-health relaunch failure did not execute full rollback and prior-version health check'
+}
+if (Test-Path $fixtureBackup) { throw 'Verified post-health rollback did not release its backup' }
+$relaunchArchive = @(Get-ChildItem $archiveParent -Directory -Filter $archivePrefix |
+    Where-Object { $_.FullName -notin $relaunchBefore })
+if ($relaunchArchive.Count -ne 1) {
+    throw "Post-health rollback did not preserve its failed installation archive"
+}
+if ((Get-Content (Join-Path $relaunchArchive[0].FullName 'ci-user-owned-sentinel.txt') -Raw) -ne 'KEEP-SMART-USER-DATA') {
+    throw 'Post-health rollback archive lost user-owned bytes'
+}
+Remove-Item -LiteralPath $relaunchArchive[0].FullName -Recurse -Force
+
+# K500_SECOND_GUI_PREINSTALL_REFUSAL_V1 — a second running instance must
+# stop the helper BEFORE backup, registry changes, or Inno. The Windows
+# named mutex is held by this CI host while updater runs as a child.
+Write-Host "==> Second K500 GUI active: fail before snapshot or installer launch"
+$busyGuiLog = Join-Path $env:RUNNER_TEMP 'K500-CI-second-window.log'
+$otherGui = [System.Threading.Mutex]::new($false, 'SonKuPikK500.K500.Native')
+$env:SONKUPIK_UPDATE_HELPER_TEST = '1'
+try {
+    $parent = Start-Process -FilePath 'pwsh.exe' -ArgumentList @(
+        '-NoProfile','-Command','Start-Sleep -Seconds 1'
+    ) -PassThru
+    $busyGuiResult = Start-Process -FilePath $fixtureHelper -ArgumentList @(
+        '--parent-pid',"$($parent.Id)",
+        '--setup',('"' + $fixtureSetup + '"'),
+        '--app',('"' + (Join-Path $smartDir 'SonKuPik-K500.exe') + '"'),
+        '--target-app',('"' + (Join-Path $smartDir 'SonKuPik-K500.exe') + '"'),
+        '--version',$version,'--previous-version',$version,
+        '--log',('"' + $busyGuiLog + '"'),
+        '--sha256',$fixtureSha,
+        '--scope','user','--mode','update',
+        '--backup',('"' + $fixtureBackup + '"')
+    ) -Wait -PassThru
+    if ($busyGuiResult.ExitCode -ne 16) {
+        throw "Active K500 GUI was not detected safely: exit $($busyGuiResult.ExitCode)"
+    }
+} finally {
+    $otherGui.Dispose()
+    Remove-Item Env:SONKUPIK_UPDATE_HELPER_TEST -ErrorAction SilentlyContinue
+}
+if (Test-Path $fixtureBackup) { throw 'Another live K500 triggered unnecessary recovery snapshot' }
+if ((Get-FileHash (Join-Path $smartDir 'SonKuPik-K500.exe') -Algorithm SHA256).Hash -ne $previousSha) {
+    throw 'Another live K500 allowed installer to modify executable'
+}
+if ((Get-Content $userMarker -Raw) -ne 'KEEP-SMART-USER-DATA') {
+    throw 'Another live K500 affected user data'
+}
+if ((Get-Content $busyGuiLog -Raw) -notmatch 'Masih ada jendela K500 lain') {
+    throw 'Second-instance preflight did not explain the reason to a nontechnical user'
+}
+
 $smartCleanup = Start-Process -FilePath (Join-Path $smartDir 'unins000.exe') -ArgumentList @(
     '/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART'
 ) -Wait -PassThru
